@@ -1,0 +1,39 @@
+{
+  "name": "obsidian-switcher-plus",
+  "version": "0.0.1",
+  "description": "Enhanced Quick Switcher plugin for Obsidian.md.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/darlal/obsidian-switcher-plus"
+  },
+  "main": "./src/switcher-plus-volcano.js",
+  "scripts": {
+    "build": "npm run lint && rollup -c rollup.config.js",
+    "lint": "eslint .",
+    "test": "npm run lint && mocha test"
+  },
+  "keywords": [
+    "obsidian",
+    "obsidianmd",
+    "obsidian-plugin"
+  ],
+  "author": "darlal",
+  "license": "GPL-3.0-only",
+  "devDependencies": {
+    "@babel/core": "^7.11.0",
+    "@babel/eslint-parser": "^7.11.0",
+    "@babel/eslint-plugin": "^7.11.0",
+    "@babel/preset-env": "^7.11.0",
+    "@rollup/plugin-babel": "^5.2.0",
+    "@rollup/plugin-commonjs": "^14.0.0",
+    "@rollup/plugin-node-resolve": "^8.4.0",
+    "eslint": "^7.2.0",
+    "eslint-config-airbnb-base": "^14.2.0",
+    "eslint-plugin-import": "^2.22.0",
+    "mocha": "^7.2.0",
+    "rollup": "^2.23.0"
+  },
+  "dependencies": {
+    "core-js": "^3.6.5"
+  }
+}
