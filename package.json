@@ -6,7 +6,7 @@
     "type": "git",
     "url": "https://github.com/darlal/obsidian-switcher-plus"
   },
-  "main": "./src/switcher-plus-volcano.js",
+  "main": "./dist/volcano/switcher-plus-volcano.js",
   "scripts": {
     "build": "npm run lint && rollup -c rollup.config.js",
     "lint": "eslint .",
