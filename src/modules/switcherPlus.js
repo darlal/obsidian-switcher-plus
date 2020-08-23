@@ -19,7 +19,7 @@ export default (app) => {
   const QuickSwitcher = getQuickSwitcher(app);
   if (QuickSwitcher === null) { return null; }
 
-  class ModalPopup extends QuickSwitcher {
+  class SwitcherPlus extends QuickSwitcher {
     constructor(appObj) {
       super(appObj);
 
@@ -96,7 +96,7 @@ export default (app) => {
       if (mode === Mode.Standard) {
         super.onInput();
       } else {
-        const search = ModalPopup.stringToCharCode(value, startIndex);
+        const search = SwitcherPlus.stringToCharCode(value, startIndex);
         this.triggerSearch(search);
       }
     }
@@ -393,5 +393,5 @@ export default (app) => {
     }
   }
 
-  return new ModalPopup(app);
+  return new SwitcherPlus(app);
 };

@@ -53,14 +53,14 @@
     return switcher.instance.modal.constructor;
   }
 
-  var createModalPopup = (app => {
+  var createSwitcherPlusModal = (app => {
     const QuickSwitcher = getQuickSwitcher(app);
 
     if (QuickSwitcher === null) {
       return null;
     }
 
-    class ModalPopup extends QuickSwitcher {
+    class SwitcherPlus extends QuickSwitcher {
       constructor(appObj) {
         super(appObj);
         this.mode = Mode.Standard;
@@ -141,7 +141,7 @@
         if (mode === Mode.Standard) {
           super.onInput();
         } else {
-          const search = ModalPopup.stringToCharCode(value, startIndex);
+          const search = SwitcherPlus.stringToCharCode(value, startIndex);
           this.triggerSearch(search);
         }
       }
@@ -498,7 +498,7 @@
 
     }
 
-    return new ModalPopup(app);
+    return new SwitcherPlus(app);
   });
 
   class SwitcherPlusVolcanoPlugin {
@@ -552,7 +552,7 @@
     }
 
     onEnable() {
-      const modal = createModalPopup(this.app);
+      const modal = createSwitcherPlusModal(this.app);
 
       if (modal) {
         this.modal = modal;

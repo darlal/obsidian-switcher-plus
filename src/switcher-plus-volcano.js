@@ -1,5 +1,5 @@
 import { Mode } from './modules/constants';
-import createModalPopup from './modules/modalPopup';
+import createSwitcherPlusModal from './modules/switcherPlus';
 
 class SwitcherPlusVolcanoPlugin {
   constructor() {
@@ -50,7 +50,7 @@ class SwitcherPlusVolcanoPlugin {
   }
 
   onEnable() {
-    const modal = createModalPopup(this.app);
+    const modal = createSwitcherPlusModal(this.app);
     if (modal) { this.modal = modal; }
   }
 
