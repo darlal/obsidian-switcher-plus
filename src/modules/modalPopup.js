@@ -76,7 +76,7 @@ export default (app) => {
 
         if (canUseSuggForSymbolTarget) {
           symbolTargetPath = currentSuggestion.item;
-        } else if (canUseActiveEditorForSymbolTarget) {
+        } else if (!hasExistingSymbolTarget && canUseActiveEditorForSymbolTarget) {
           symbolTargetPath = currentEditorFile.path;
         }
       } else if (hasEditorCmdPrefix) {
@@ -114,7 +114,7 @@ export default (app) => {
       // wether or not a symbol target file exists. Indicates that the previous
       // operation was a symbol operation
       const hasExistingSymbolTarget = oldMode === Mode.SymbolList
-        && symbolTargetPath;
+        && !!symbolTargetPath;
 
       // get the index of symbol command and determine if it exists
       const symbolCmdIndex = value.indexOf(symbolListCommand);
@@ -143,7 +143,7 @@ export default (app) => {
       // whether or not the current active editor can be used as the target for
       // symbol search
       const canUseActiveEditorForSymbolTarget = symbolCmdIndex === 0
-        && !canUseSuggForSymbolTarget && isCurrentEditorValid && currentEditorFile;
+        && !canUseSuggForSymbolTarget && isCurrentEditorValid && !!currentEditorFile;
 
       // determine if the editor command exists and if it's valid
       const editorCmdIndex = value.indexOf(editorListCommand);
