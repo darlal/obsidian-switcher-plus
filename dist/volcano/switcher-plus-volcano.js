@@ -436,20 +436,22 @@
         const {
           data
         } = sugg;
-        const line = Object.prototype.hasOwnProperty.call(data, 'line') ? data.line : data.lineStart;
+        const symbolStartPosition = data.position.start;
 
         if (leaf && !Settings.alwaysNewPaneForSymbols) {
           // activate the already open pane
           workspace.setActiveLeaf(leaf); // scroll to the line containing the symbol
 
           leaf.view.setEphemeralState({
-            line
+            col: symbolStartPosition.col,
+            line: symbolStartPosition.line
           });
         } else {
           workspace.openLinkText(symbolTargetPath, '', false, {
             eState: {
+              col: symbolStartPosition.col,
               focus: true,
-              line
+              line: symbolStartPosition.line
             }
           });
         }
