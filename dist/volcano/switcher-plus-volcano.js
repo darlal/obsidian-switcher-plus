@@ -38,7 +38,10 @@
     // types of open views to hide from the suggestion list
     excludeViewTypes: ['empty'],
     // true to always open a new pane when navigating to a Symbol
-    alwaysNewPaneForSymbols: false
+    alwaysNewPaneForSymbols: false,
+    // true to both highligh the symbol for navigation and have
+    // the editor focused, and ready for input
+    focusEditorOnSymbolNavigation: false
   };
 
   const indicatorStyle = 'color: var(--text-accent); width: 2.5em; text-align: center; float:left; font-weight:800;';
@@ -85,6 +88,7 @@
           // won't be incorrectly used for symbol search
 
           this.chooser.setSuggestions([]);
+          this.symbolTargetPath = null;
         }
 
         this.isOpen = true;
@@ -434,23 +438,44 @@
           view
         }) => view.file && view.file.path === symbolTargetPath);
         const {
-          data
-        } = sugg;
-        const line = Object.prototype.hasOwnProperty.call(data, 'line') ? data.line : data.lineStart;
+          start: {
+            line,
+            col: ch,
+            offset: startPos
+          },
+          end: {
+            offset: endPos
+          }
+        } = sugg.data.position; // object containing the state information for the target editor,
+        // start with the range to highlight in target editor
+
+        const eState = {
+          startPos,
+          endPos
+        };
+
+        if (Settings.focusEditorOnSymbolNavigation === true) {
+          // set the cursor position to an empty selection at the beginning of symbol
+          eState.cursor = {
+            from: {
+              line,
+              ch
+            },
+            to: {
+              line,
+              ch
+            }
+          };
+        }
 
         if (leaf && !Settings.alwaysNewPaneForSymbols) {
-          // activate the already open pane
-          workspace.setActiveLeaf(leaf); // scroll to the line containing the symbol
-
-          leaf.view.setEphemeralState({
-            line
-          });
+          // activate the already open pane, and set state
+          workspace.setActiveLeaf(leaf, true);
+          leaf.view.setEphemeralState(eState);
         } else {
+          eState.focus = true;
           workspace.openLinkText(symbolTargetPath, '', false, {
-            eState: {
-              focus: true,
-              line
-            }
+            eState
           });
         }
       }

@@ -344,24 +344,30 @@ export default (app) => {
         ({ view }) => view.file && (view.file.path === symbolTargetPath),
       );
 
-      const { data } = sugg;
-      const line = Object.prototype.hasOwnProperty.call(data, 'line')
-        ? data.line
-        : data.lineStart;
+      const {
+        start: { line, col: ch, offset: startPos },
+        end: { offset: endPos },
+      } = sugg.data.position;
+
+      // object containing the state information for the target editor,
+      // start with the range to highlight in target editor
+      const eState = { startPos, endPos };
+
+      if (Settings.focusEditorOnSymbolNavigation === true) {
+        // set the cursor position to an empty selection at the beginning of symbol
+        eState.cursor = {
+          from: { line, ch },
+          to: { line, ch },
+        };
+      }
 
       if (leaf && !Settings.alwaysNewPaneForSymbols) {
-        // activate the already open pane
-        workspace.setActiveLeaf(leaf);
-
-        // scroll to the line containing the symbol
-        leaf.view.setEphemeralState({ line });
+        // activate the already open pane, and set state
+        workspace.setActiveLeaf(leaf, true);
+        leaf.view.setEphemeralState(eState);
       } else {
-        workspace.openLinkText(symbolTargetPath, '', false, {
-          eState: {
-            focus: true,
-            line,
-          },
-        });
+        eState.focus = true;
+        workspace.openLinkText(symbolTargetPath, '', false, { eState });
       }
     }
 
