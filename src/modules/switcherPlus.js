@@ -44,6 +44,7 @@ export default (app) => {
         // force reset suggestions so any suggestions from a previous operation
         // won't be incorrectly used for symbol search
         this.chooser.setSuggestions([]);
+        this.symbolTargetPath = null;
       }
 
       this.isOpen = true;
