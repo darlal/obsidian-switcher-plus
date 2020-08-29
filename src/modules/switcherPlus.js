@@ -97,7 +97,7 @@ export default (app) => {
       if (mode === Mode.Standard) {
         super.onInput();
       } else {
-        const search = SwitcherPlus.stringToCharCode(value, startIndex);
+        const search = SwitcherPlus.extractTokens(value, startIndex);
         this.triggerSearch(search);
       }
     }
@@ -194,15 +194,34 @@ export default (app) => {
       this.backupKeys = backupKeys;
     }
 
-    static stringToCharCode(str = '', startIndex = 0) {
-      const strLower = str.slice(startIndex).toLowerCase();
-      const charCodes = [];
+    static extractTokens(str, startIndex = 0) {
+      // shamelessly stolen directly from Obsidian
+      // eslint-disable-next-line no-useless-escape
+      const p = /[\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,\-.\/:;<=>?@\[\]^_`{|}~]/;
+      const u = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f]/;
+      const b = /\s/;
+      const query = str.slice(startIndex).toLowerCase();
+      const tokens = [];
+      let pos = 0;
 
-      for (let i = 0; i < strLower.length; i++) {
-        charCodes[i] = strLower.charCodeAt(i);
+      for (let i = 0; i < query.length; i++) {
+        const char = query.charAt(i);
+
+        if (b.test(char)) {
+          if (pos !== i) { tokens.push(query.slice(pos, i)); }
+
+          pos = i + 1;
+        } else if (p.test(char) || u.test(char)) {
+          if (pos !== i) { tokens.push(query.slice(pos, i)); }
+
+          tokens.push(char);
+          pos = i + 1;
+        }
       }
 
-      return charCodes;
+      if (pos !== query.length) { tokens.push(query.slice(pos, query.length)); }
+
+      return { query, tokens, fuzzy: query.split('') };
     }
 
     triggerSearch(search) {
@@ -253,7 +272,7 @@ export default (app) => {
         const value = valueCallback(item);
 
         if (value) {
-          const sugg = search.length
+          const sugg = search.query.length
             ? this.match(search, value)
             : { item: value, match: null };
 
