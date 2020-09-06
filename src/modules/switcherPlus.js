@@ -304,9 +304,21 @@ export default (app) => {
     }
 
     createEditorSuggestions(data, search) {
-      const getValue = (item) => {
-        const { file } = item.view;
-        return file ? file.path : null;
+      const getValue = (leaf) => {
+        if (!leaf.view) { return null; }
+
+        const referenceViews = ['backlink', 'outline', 'localgraph'];
+        const viewType = leaf.view.getViewType();
+        let value = null;
+
+        if (referenceViews.includes(viewType)) {
+          value = leaf.getDisplayText();
+        } else {
+          const { file } = leaf.view;
+          value = file ? file.path : null;
+        }
+
+        return value;
       };
 
       return this.makeSuggestions(data, search, getValue);
@@ -412,25 +424,28 @@ export default (app) => {
 
     updateSuggestionElForMode(sugg, parentEl) {
       const { mode } = this;
-      if (mode !== Mode.SymbolList) { return; }
 
-      // remove create kbd helper text
-      const helperEl = parentEl.querySelector('.suggestion-hotkey');
-      if (helperEl) { parentEl.removeChild(helperEl); }
-
-      // add symbol type indicator
-      const { symbolType } = sugg;
-      let indicator = SymbolIndicators[symbolType];
-      if (symbolType === SymbolType.Heading) {
-        indicator = indicator[sugg.data.level];
+      if (mode !== Mode.Standard) {
+        // remove create kbd helper text
+        const helperEl = parentEl.querySelector('.suggestion-hotkey');
+        if (helperEl) { parentEl.removeChild(helperEl); }
       }
 
-      // eslint-disable-next-line no-undef
-      const indicatorEl = createEl('div', {
-        text: indicator,
-        attr: { style: indicatorStyle },
-      });
-      parentEl.insertAdjacentElement('afterbegin', indicatorEl);
+      if (mode === Mode.SymbolList) {
+        // add symbol type indicator
+        const { symbolType } = sugg;
+        let indicator = SymbolIndicators[symbolType];
+        if (symbolType === SymbolType.Heading) {
+          indicator = indicator[sugg.data.level];
+        }
+
+        // eslint-disable-next-line no-undef
+        const indicatorEl = createEl('div', {
+          text: indicator,
+          attr: { style: indicatorStyle },
+        });
+        parentEl.insertAdjacentElement('afterbegin', indicatorEl);
+      }
     }
   }
 
