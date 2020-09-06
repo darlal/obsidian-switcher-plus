@@ -385,7 +385,7 @@ export default (app) => {
 
       // object containing the state information for the target editor,
       // start with the range to highlight in target editor
-      const eState = { startPos, endPos };
+      const eState = { startPos, endPos, line };
 
       if (Settings.focusEditorOnSymbolNavigation === true) {
         // set the cursor position to an empty selection at the beginning of symbol
