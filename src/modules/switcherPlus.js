@@ -32,13 +32,13 @@ export default (app) => {
 
     previousItem() {
       if (this.chooser.isOpen) {
-        this.setSelectedItem(this.selectedItem - 1);
+        this.setSelectedItem(this.selectedItem - 1, true);
       }
     }
 
     nextItem() {
       if (this.chooser.isOpen) {
-        this.setSelectedItem(this.selectedItem + 1);
+        this.setSelectedItem(this.selectedItem + 1, true);
       }
     }
 
