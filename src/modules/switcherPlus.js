@@ -25,6 +25,21 @@ export default (app) => {
 
       this.mode = Mode.Standard;
       this.symbolTargetPath = null;
+
+      this.scope.registerKey(['Ctrl'], 'n', this.nextItem.bind(this.chooser));
+      this.scope.registerKey(['Ctrl'], 'p', this.previousItem.bind(this.chooser));
+    }
+
+    previousItem() {
+      if (this.chooser.isOpen) {
+        this.setSelectedItem(this.selectedItem - 1, true);
+      }
+    }
+
+    nextItem() {
+      if (this.chooser.isOpen) {
+        this.setSelectedItem(this.selectedItem + 1, true);
+      }
     }
 
     openInMode(mode) {
