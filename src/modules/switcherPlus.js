@@ -258,11 +258,12 @@ export default (app) => {
 
     makeSuggestions(items = [], searchData) {
       const suggestions = [];
+      const hasSearchTerm = searchData.query.length > 0;
 
       items.forEach((item) => {
         let sugg;
 
-        if (searchData.query.length) {
+        if (hasSearchTerm) {
           const match = this.match(searchData, item);
           if (match !== null) { sugg = { match }; }
         } else {
@@ -276,6 +277,7 @@ export default (app) => {
         }
       });
 
+      if (hasSearchTerm) { suggestions.sort((a, b) => b.match.score - a.match.score); }
       return suggestions;
     }
 
