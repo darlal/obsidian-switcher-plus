@@ -67,7 +67,21 @@
       constructor(appObj) {
         super(appObj);
         this.mode = Mode.Standard;
-        this.symbolTargetPath = null;
+        this.symbolTarget = null;
+        this.scope.registerKey(['Ctrl'], 'n', this.nextItem.bind(this.chooser));
+        this.scope.registerKey(['Ctrl'], 'p', this.previousItem.bind(this.chooser));
+      }
+
+      previousItem() {
+        if (this.chooser.isOpen) {
+          this.setSelectedItem(this.selectedItem - 1, true);
+        }
+      }
+
+      nextItem() {
+        if (this.chooser.isOpen) {
+          this.setSelectedItem(this.selectedItem + 1, true);
+        }
       }
 
       openInMode(mode) {
@@ -88,7 +102,7 @@
           // won't be incorrectly used for symbol search
 
           this.chooser.setSuggestions([]);
-          this.symbolTargetPath = null;
+          this.symbolTarget = null;
         }
 
         this.isOpen = true;
@@ -98,97 +112,54 @@
       }
 
       onInput() {
-        let startIndex = 0;
-        let {
+        const {
           mode,
-          symbolTargetPath
-        } = this;
-        const {
-          editorListCommand,
-          symbolListCommand
-        } = Settings;
-        const {
-          value,
-          hasSymbolCmd,
-          canUseSuggForSymbolTarget,
-          hasExistingSymbolTarget,
-          canUseActiveEditorForSymbolTarget,
-          symbolCmdIndex,
-          currentSuggestion,
-          currentEditorFile,
-          hasEditorCmdPrefix
+          symbolTarget
         } = this.parseInput();
-
-        if (hasSymbolCmd && (canUseSuggForSymbolTarget || hasExistingSymbolTarget || canUseActiveEditorForSymbolTarget)) {
-          mode = Mode.SymbolList;
-          startIndex = symbolCmdIndex + symbolListCommand.length;
-
-          if (canUseSuggForSymbolTarget) {
-            symbolTargetPath = currentSuggestion.item;
-          } else if (!hasExistingSymbolTarget && canUseActiveEditorForSymbolTarget) {
-            symbolTargetPath = currentEditorFile.path;
-          }
-        } else if (hasEditorCmdPrefix) {
-          mode = Mode.EditorList;
-          startIndex = editorListCommand.length;
-          symbolTargetPath = null;
-        } else {
-          mode = Mode.Standard;
-          symbolTargetPath = null;
-        }
-
-        this.symbolTargetPath = symbolTargetPath;
+        this.symbolTarget = symbolTarget;
         this.mode = mode;
         this.updateHelperTextForMode(mode);
         this.updateKeymapForMode(mode);
-
-        if (mode === Mode.Standard) {
-          super.onInput();
-        } else {
-          const search = SwitcherPlus.extractTokens(value, startIndex);
-          this.triggerSearch(search);
-        }
+        this.updateSuggestions();
       }
 
       parseInput() {
         const {
           editorListCommand,
-          symbolListCommand,
-          excludeViewTypes
+          symbolListCommand
         } = Settings;
         const {
-          symbolTargetPath,
-          chooser,
-          mode: oldMode,
-          app: {
-            workspace
-          },
           inputEl: {
             value
           }
-        } = this; // wether or not a symbol target file exists. Indicates that the previous
-        // operation was a symbol operation
+        } = this; // determine if the editor command exists and if it's valid
 
-        const hasExistingSymbolTarget = oldMode === Mode.SymbolList && !!symbolTargetPath; // get the index of symbol command and determine if it exists
+        const hasEditorCmdPrefix = value.indexOf(editorListCommand) === 0; // get the index of symbol command and determine if it exists
 
         const symbolCmdIndex = value.indexOf(symbolListCommand);
         const hasSymbolCmd = symbolCmdIndex !== -1;
-        let currentSuggestion = null;
+        const hasSymbolCmdPrefix = symbolCmdIndex === 0; // determine if the chooser is showing suggestions, and if so, is the
+        // currently selected suggestion a valid target for symbols
 
-        if (hasSymbolCmd) {
-          // determine if there is a current suggestion that can be used as the
-          // target for symbol search. This means the suggestion has to point to
-          // a file
-          currentSuggestion = chooser.values[chooser.selectedItem];
+        const {
+          currentSuggestion,
+          isSuggValidSymbolTarget
+        } = this.isSelectedSuggValidSymbolTarget(hasSymbolCmd); // determine if the current active editor pane a valid target for symbols
 
-          if (currentSuggestion && Object.prototype.hasOwnProperty.call(currentSuggestion, 'symbolType')) {
-            // symbol suggestions don't point to a file
-            currentSuggestion = null;
-          }
-        } // whether or not the current suggestion can be used for symbol search
+        const {
+          isEditorValidSymbolTarget,
+          currentEditor
+        } = this.isActiveEditorValidSymbolTarget(hasSymbolCmdPrefix, isSuggValidSymbolTarget);
+        return this.determineRunMode(hasEditorCmdPrefix, hasSymbolCmd, isSuggValidSymbolTarget, isEditorValidSymbolTarget, currentSuggestion, currentEditor);
+      }
 
-
-        const canUseSuggForSymbolTarget = !!currentSuggestion; // determine if the current active editor pane is valid
+      isActiveEditorValidSymbolTarget(hasSymbolCmdPrefix, isSuggValidSymbolTarget) {
+        const {
+          workspace
+        } = this.app;
+        const {
+          excludeViewTypes
+        } = Settings; // determine if the current active editor pane is valid
 
         const {
           view,
@@ -199,20 +170,66 @@
         const isCurrentEditorValid = !excludeViewTypes.includes(view.getViewType()); // whether or not the current active editor can be used as the target for
         // symbol search
 
-        const canUseActiveEditorForSymbolTarget = symbolCmdIndex === 0 && !canUseSuggForSymbolTarget && isCurrentEditorValid && !!currentEditorFile; // determine if the editor command exists and if it's valid
-
-        const editorCmdIndex = value.indexOf(editorListCommand);
-        const hasEditorCmdPrefix = editorCmdIndex === 0;
+        const isEditorValidSymbolTarget = hasSymbolCmdPrefix && !isSuggValidSymbolTarget && isCurrentEditorValid && !!currentEditorFile;
         return {
-          value,
-          hasSymbolCmd,
-          canUseSuggForSymbolTarget,
-          hasExistingSymbolTarget,
-          canUseActiveEditorForSymbolTarget,
-          symbolCmdIndex,
+          isEditorValidSymbolTarget,
+          currentEditor: workspace.activeLeaf
+        };
+      }
+
+      isSelectedSuggValidSymbolTarget(hasSymbolCmd) {
+        let currentSuggestion = null;
+
+        if (hasSymbolCmd) {
+          const {
+            chooser
+          } = this;
+          currentSuggestion = chooser.values[chooser.selectedItem]; // determine if there is a current suggestion that can be used as the
+          // target for symbol search. This means the suggestion has to point to
+          // a file
+
+          if (currentSuggestion && (!currentSuggestion.item || currentSuggestion.type === Mode.SymbolList)) {
+            // symbol suggestions don't point to a file
+            currentSuggestion = null;
+          }
+        } // whether or not the current suggestion can be used for symbol search
+
+
+        const isSuggValidSymbolTarget = !!currentSuggestion;
+        return {
           currentSuggestion,
-          currentEditorFile,
-          hasEditorCmdPrefix
+          isSuggValidSymbolTarget
+        };
+      }
+
+      determineRunMode(hasEditorCmdPrefix, hasSymbolCmd, isSuggValidSymbolTarget, isEditorValidSymbolTarget, currentSuggestion, currentEditor) {
+        let {
+          mode,
+          symbolTarget
+        } = this; // wether or not a symbol target file exists. Indicates that the previous
+        // operation was a symbol operation
+
+        const hasExistingSymbolTarget = mode === Mode.SymbolList && !!symbolTarget;
+
+        if (hasSymbolCmd) {
+          mode = Mode.SymbolList;
+
+          if (isSuggValidSymbolTarget) {
+            symbolTarget = currentSuggestion.item;
+          } else if (!hasExistingSymbolTarget && isEditorValidSymbolTarget) {
+            symbolTarget = currentEditor;
+          }
+        } else if (hasEditorCmdPrefix) {
+          mode = Mode.EditorList;
+          symbolTarget = null;
+        } else {
+          mode = Mode.Standard;
+          symbolTarget = null;
+        }
+
+        return {
+          mode,
+          symbolTarget
         };
       }
 
@@ -259,6 +276,29 @@
         this.backupKeys = backupKeys;
       }
 
+      getSearchData() {
+        const {
+          mode,
+          inputEl: {
+            value
+          }
+        } = this;
+        const {
+          editorListCommand,
+          symbolListCommand
+        } = Settings;
+        let startIndex = 0;
+
+        if (mode === Mode.SymbolList) {
+          const symbolCmdIndex = value.indexOf(symbolListCommand);
+          startIndex = symbolCmdIndex + symbolListCommand.length;
+        } else if (mode === Mode.EditorList) {
+          startIndex = editorListCommand.length;
+        }
+
+        return SwitcherPlus.extractTokens(value, startIndex);
+      }
+
       static extractTokens(str, startIndex = 0) {
         // shamelessly stolen directly from Obsidian
         // eslint-disable-next-line no-useless-escape
@@ -299,103 +339,89 @@
         };
       }
 
-      triggerSearch(search) {
+      updateSuggestions() {
         const {
           mode
         } = this;
-        const items = this.getItemsToFilter();
-        let suggestions;
 
-        if (mode === Mode.EditorList) {
-          suggestions = this.createEditorSuggestions(items, search);
-        } else if (mode === Mode.SymbolList) {
-          suggestions = this.createSymbolSuggestions(items, search);
+        if (mode === Mode.Standard) {
+          super.updateSuggestions();
+        } else {
+          const items = this.getItems();
+          const searchData = this.getSearchData();
+          const suggestions = this.makeSuggestions(items, searchData);
+          this.chooser.setSuggestions(suggestions);
         }
-
-        this.chooser.setSuggestions(suggestions);
       }
 
-      createSymbolSuggestions(data = {}, search) {
+      makeSuggestions(items = [], searchData) {
         const suggestions = [];
-        const {
-          links,
-          embeds,
-          tags,
-          headings
-        } = data;
-
-        const getLinkValue = item => {
-          let {
-            link: value
-          } = item;
-          const {
-            displayText
-          } = item;
-
-          if (displayText && displayText !== value) {
-            value += `|${displayText}`;
-          }
-
-          return value;
-        };
-
-        this.makeSuggestions(headings, search, item => item.heading, suggestions, SymbolType.Heading);
-        this.makeSuggestions(tags, search, item => item.tag.slice(1), suggestions, SymbolType.Tag);
-        this.makeSuggestions(links, search, getLinkValue, suggestions, SymbolType.Link);
-        this.makeSuggestions(embeds, search, getLinkValue, suggestions, SymbolType.Embed);
-        return suggestions;
-      }
-
-      makeSuggestions(items = [], search, valueCallback, suggestions = [], symbolType) {
         items.forEach(item => {
-          const value = valueCallback(item);
+          let sugg;
 
-          if (value) {
-            const sugg = search.query.length ? this.match(search, value) : {
-              item: value,
+          if (searchData.query.length) {
+            const match = this.match(searchData, item);
+
+            if (match !== null) {
+              sugg = {
+                match
+              };
+            }
+          } else {
+            sugg = {
               match: null
             };
+          }
 
-            if (sugg) {
-              sugg.data = item;
-
-              if (symbolType) {
-                sugg.symbolType = symbolType;
-              }
-
-              suggestions.push(sugg);
-            }
+          if (sugg) {
+            sugg.item = item;
+            sugg.type = this.mode;
+            suggestions.push(sugg);
           }
         });
         return suggestions;
       }
 
-      createEditorSuggestions(data, search) {
-        const getValue = item => {
-          const {
-            file
-          } = item.view;
-          return file ? file.path : null;
-        };
-
-        return this.makeSuggestions(data, search, getValue);
-      }
-
-      getSymbolsForTargetFile() {
-        let ret;
+      getSymbolsForTarget() {
+        const ret = [];
         const {
-          symbolTargetPath,
+          symbolTarget,
           app: {
             metadataCache
           }
         } = this;
 
-        if (!symbolTargetPath) {
-          return ret;
+        if (symbolTarget) {
+          let file = symbolTarget; // determine if symbolTarget is a workspace leaf, or file
+
+          if (symbolTarget.type === 'leaf' && symbolTarget.view) {
+            file = symbolTarget.view.file;
+          }
+
+          if (file) {
+            const mdFile = metadataCache.fileCache[file.path];
+
+            if (mdFile) {
+              const symbolData = metadataCache.metadataCache[mdFile.hash];
+
+              if (symbolData) {
+                const push = (symbols, type) => {
+                  symbols.forEach(symbol => ret.push({
+                    symbol,
+                    type
+                  }));
+                };
+
+                push(symbolData.links, SymbolType.Link);
+                push(symbolData.embeds, SymbolType.Embed);
+                push(symbolData.tags, SymbolType.Tag);
+                push(symbolData.headings, SymbolType.Heading);
+              }
+            }
+          }
         }
 
-        const file = metadataCache.fileCache[symbolTargetPath];
-        return file ? metadataCache.metadataCache[file.hash] : ret;
+        return ret;
       }
 
       getOpenRootSplits() {
@@ -414,58 +440,110 @@
         return leaves;
       }
 
-      getItemsToFilter() {
+      getItems() {
         const {
           mode
         } = this;
         let items;
 
-        switch (mode) {
-          case Mode.EditorList:
-            items = this.getOpenRootSplits();
-            break;
-
-          case Mode.SymbolList:
-            items = this.getSymbolsForTargetFile();
-            break;
-
-          default:
-            items = super.getItemsToFilter();
+        if (mode === Mode.EditorList) {
+          items = this.getOpenRootSplits();
+        } else if (mode === Mode.SymbolList) {
+          items = this.getSymbolsForTarget();
+        } else {
+          items = super.getItems();
         }
 
         return items;
       }
 
-      onSelectSuggestion(sugg, nextSegment) {
+      getItemText(item) {
+        const {
+          mode
+        } = this;
+        let text;
+
+        if (mode === Mode.SymbolList) {
+          text = SwitcherPlus.getSuggestionTextForSymbol(item);
+        } else if (mode === Mode.EditorList) {
+          text = this.getSuggestionTextForEditor(item);
+        } else {
+          text = super.getItemText(item);
+        }
+
+        return text;
+      }
+
+      static getSuggestionTextForSymbol(item) {
+        const {
+          symbol,
+          type
+        } = item;
+        let text;
+
+        if (type === SymbolType.Heading) {
+          text = symbol.heading;
+        } else if (type === SymbolType.Tag) {
+          text = symbol.tag.slice(1);
+        } else {
+          ({
+            link: text
+          } = symbol);
+          const {
+            displayText
+          } = symbol;
+
+          if (displayText && displayText !== text) {
+            text += `|${displayText}`;
+          }
+        }
+
+        return text;
+      }
+
+      getSuggestionTextForEditor(leaf) {
+        const {
+          view,
+          view: {
+            file
+          }
+        } = leaf;
+        let text;
+        const referenceViews = ['backlink', 'outline', 'localgraph'];
+
+        if (!file || referenceViews.includes(view.getViewType())) {
+          text = leaf.getDisplayText();
+        } else {
+          text = super.getItemText(file);
+        }
+
+        return text;
+      }
+
+      onChooseOption(suggestionItem, evt) {
         const {
           mode
         } = this;
 
-        if (mode === Mode.Standard) {
-          super.onSelectSuggestion(sugg, nextSegment);
+        if (mode === Mode.EditorList) {
+          this.app.workspace.setActiveLeaf(suggestionItem);
+        } else if (mode === Mode.SymbolList) {
+          this.navigateToSymbol(suggestionItem);
         } else {
-          this.close();
-          this.isOpen = false;
-
-          if (mode === Mode.EditorList) {
-            this.app.workspace.setActiveLeaf(sugg.data);
-          } else if (mode === Mode.SymbolList) {
-            this.navigateToSymbol(sugg);
-          }
+          super.onChooseOption(suggestionItem, evt);
         }
       }
 
-      navigateToSymbol(sugg) {
+      navigateToSymbol(suggestionItem) {
         const {
-          symbolTargetPath,
+          symbolTarget,
           app: {
             workspace
           }
-        } = this; // determine if the target is already open in a pane
+        } = this;
+        const isTargetLeaf = symbolTarget.type === 'leaf'; // determine if the target is already open in a pane
 
-        const leaf = this.getOpenRootSplits().find(({
-          view
-        }) => view.file && view.file.path === symbolTargetPath);
+        const leaf = this.getOpenRootSplits().find(l => isTargetLeaf ? l === symbolTarget : l.view.file === symbolTarget);
         const {
           start: {
             line,
@@ -475,12 +553,13 @@
           end: {
             offset: endPos
           }
-        } = sugg.data.position; // object containing the state information for the target editor,
+        } = suggestionItem.symbol.position; // object containing the state information for the target editor,
         // start with the range to highlight in target editor
 
         const eState = {
           startPos,
-          endPos
+          endPos,
+          line
         };
 
         if (Settings.focusEditorOnSymbolNavigation === true) {
@@ -502,15 +581,16 @@
           workspace.setActiveLeaf(leaf, true);
           leaf.view.setEphemeralState(eState);
         } else {
+          const targetFilePath = isTargetLeaf ? symbolTarget.view.file.path : symbolTarget.path;
           eState.focus = true;
-          workspace.openLinkText(symbolTargetPath, '', false, {
+          workspace.openLinkText(targetFilePath, '', false, {
             eState
           });
         }
       }
 
-      createSuggestion(sugg, parentEl) {
-        super.createSuggestion(sugg, parentEl);
+      renderSuggestion(sugg, parentEl) {
+        super.renderSuggestion(sugg, parentEl);
         this.updateSuggestionElForMode(sugg, parentEl);
       }
 
@@ -519,35 +599,27 @@
           mode
         } = this;
 
-        if (mode !== Mode.SymbolList) {
-          return;
-        } // remove create kbd helper text
+        if (mode === Mode.SymbolList) {
+          // add symbol type indicator
+          const {
+            type,
+            symbol
+          } = sugg.item;
+          let indicator = SymbolIndicators[type];
+
+          if (type === SymbolType.Heading) {
+            indicator = indicator[symbol.level];
+          } // eslint-disable-next-line no-undef
 
 
-        const helperEl = parentEl.querySelector('.suggestion-hotkey');
-
-        if (helperEl) {
-          parentEl.removeChild(helperEl);
-        } // add symbol type indicator
-
-
-        const {
-          symbolType
-        } = sugg;
-        let indicator = SymbolIndicators[symbolType];
-
-        if (symbolType === SymbolType.Heading) {
-          indicator = indicator[sugg.data.level];
-        } // eslint-disable-next-line no-undef
-
-
-        const indicatorEl = createEl('div', {
-          text: indicator,
-          attr: {
-            style: indicatorStyle
-          }
-        });
-        parentEl.insertAdjacentElement('afterbegin', indicatorEl);
+          const indicatorEl = createEl('div', {
+            text: indicator,
+            attr: {
+              style: indicatorStyle
+            }
+          });
+          parentEl.insertAdjacentElement('afterbegin', indicatorEl);
+        }
       }
 
     }
