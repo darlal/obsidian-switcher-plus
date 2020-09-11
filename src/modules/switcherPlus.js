@@ -92,20 +92,14 @@ export default (app) => {
 
       // determine if the chooser is showing suggestions, and if so, is the
       // currently selected suggestion a valid target for symbols
-      const {
-        currentSuggestion,
-        isSuggValidSymbolTarget,
-      } = this.isSelectedSuggValidSymbolTarget(hasSymbolCmd);
+      const selectedSuggInfo = this.isSelectedSuggValidSymbolTarget(hasSymbolCmd);
 
       // determine if the current active editor pane a valid target for symbols
-      const {
-        isEditorValidSymbolTarget,
-        currentEditor,
-      } = this.isActiveEditorValidSymbolTarget(hasSymbolCmdPrefix, isSuggValidSymbolTarget);
+      const activeEditorInfo = this.isActiveEditorValidSymbolTarget(hasSymbolCmdPrefix,
+        selectedSuggInfo.isSuggValidSymbolTarget);
 
       return this.determineRunMode(hasEditorCmdPrefix, hasSymbolCmd,
-        isSuggValidSymbolTarget, isEditorValidSymbolTarget,
-        currentSuggestion, currentEditor);
+        selectedSuggInfo, activeEditorInfo);
     }
 
     isActiveEditorValidSymbolTarget(hasSymbolCmdPrefix, isSuggValidSymbolTarget) {
@@ -146,8 +140,7 @@ export default (app) => {
       return { currentSuggestion, isSuggValidSymbolTarget };
     }
 
-    determineRunMode(hasEditorCmdPrefix, hasSymbolCmd, isSuggValidSymbolTarget,
-      isEditorValidSymbolTarget, currentSuggestion, currentEditor) {
+    determineRunMode(hasEditorCmdPrefix, hasSymbolCmd, selectedSuggInfo, activeEditorInfo) {
       let { mode, symbolTarget } = this;
 
       // wether or not a symbol target file exists. Indicates that the previous
@@ -157,10 +150,10 @@ export default (app) => {
       if (hasSymbolCmd) {
         mode = Mode.SymbolList;
 
-        if (isSuggValidSymbolTarget) {
-          symbolTarget = currentSuggestion.item;
-        } else if (!hasExistingSymbolTarget && isEditorValidSymbolTarget) {
-          symbolTarget = currentEditor;
+        if (selectedSuggInfo.isSuggValidSymbolTarget) {
+          symbolTarget = selectedSuggInfo.currentSuggestion.item;
+        } else if (!hasExistingSymbolTarget && activeEditorInfo.isEditorValidSymbolTarget) {
+          symbolTarget = activeEditorInfo.currentEditor;
         }
       } else if (hasEditorCmdPrefix) {
         mode = Mode.EditorList;
