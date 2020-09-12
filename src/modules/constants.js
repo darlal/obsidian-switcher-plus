@@ -26,3 +26,5 @@ SymbolIndicators[SymbolType.Heading] = {
   5: 'H₅',
   6: 'H₆',
 };
+
+export const ReferenceViews = ['backlink', 'outline', 'localgraph'];

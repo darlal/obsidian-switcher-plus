@@ -3,6 +3,7 @@ import {
   Mode,
   SymbolType,
   SymbolIndicators,
+  ReferenceViews,
 } from './constants';
 import Settings from './settings';
 
@@ -384,8 +385,7 @@ export default (app) => {
       const { view, view: { file } } = leaf;
       let text;
 
-      const referenceViews = ['backlink', 'outline', 'localgraph'];
-      if (!file || referenceViews.includes(view.getViewType())) {
+      if (!file || ReferenceViews.includes(view.getViewType())) {
         text = leaf.getDisplayText();
       } else {
         text = super.getItemText(file);
@@ -407,13 +407,10 @@ export default (app) => {
     }
 
     navigateToSymbol(suggestionItem) {
-      const { symbolTarget, app: { workspace } } = this;
-      const isTargetLeaf = symbolTarget.type === 'leaf';
+      const { workspace } = this.app;
 
       // determine if the target is already open in a pane
-      const leaf = this.getOpenRootSplits().find((l) => (isTargetLeaf
-        ? l === symbolTarget
-        : l.view.file === symbolTarget));
+      const { leaf, targetFilePath } = this.findOpenEditorMatchingSymbolTarget();
 
       const {
         start: { line, col: ch, offset: startPos },
@@ -437,13 +434,33 @@ export default (app) => {
         workspace.setActiveLeaf(leaf, true);
         leaf.view.setEphemeralState(eState);
       } else {
-        const targetFilePath = isTargetLeaf
-          ? symbolTarget.view.file.path
-          : symbolTarget.path;
-
         eState.focus = true;
         workspace.openLinkText(targetFilePath, '', false, { eState });
       }
+    }
+
+    findOpenEditorMatchingSymbolTarget() {
+      const { symbolTarget } = this;
+      const isTargetLeaf = symbolTarget.type === 'leaf';
+      const file = isTargetLeaf ? symbolTarget.view.file : symbolTarget;
+
+      const predicate = (leaf) => {
+        const isLeafRefView = ReferenceViews.includes(leaf.view.getViewType());
+        const isTargetRefView = isTargetLeaf
+          && ReferenceViews.includes(symbolTarget.view.getViewType());
+        let val = false;
+
+        if (!isLeafRefView) {
+          val = isTargetLeaf && !isTargetRefView
+            ? leaf === symbolTarget
+            : leaf.view.file === file;
+        }
+
+        return val;
+      };
+
+      const leaf = this.getOpenRootSplits().find(predicate);
+      return { leaf, targetFilePath: file.path };
     }
 
     renderSuggestion(sugg, parentEl) {
