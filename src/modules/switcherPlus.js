@@ -305,10 +305,10 @@ export default (app) => {
                 symbols.forEach((symbol) => ret.push({ symbol, type }));
               };
 
+              push(symbolData.headings, SymbolType.Heading);
+              push(symbolData.tags, SymbolType.Tag);
               push(symbolData.links, SymbolType.Link);
               push(symbolData.embeds, SymbolType.Embed);
-              push(symbolData.tags, SymbolType.Tag);
-              push(symbolData.headings, SymbolType.Heading);
             }
           }
         }
