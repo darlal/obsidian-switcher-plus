@@ -301,7 +301,7 @@ export default (app) => {
             const symbolData = metadataCache.metadataCache[mdFile.hash];
 
             if (symbolData) {
-              const push = (symbols, type) => {
+              const push = (symbols = [], type) => {
                 symbols.forEach((symbol) => ret.push({ symbol, type }));
               };
 
