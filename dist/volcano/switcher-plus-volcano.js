@@ -29,6 +29,7 @@
     5: 'H₅',
     6: 'H₆'
   };
+  const ReferenceViews = ['backlink', 'outline', 'localgraph'];
 
   const Settings = {
     // command to enable filtering of open editors
@@ -141,19 +142,13 @@
         const hasSymbolCmdPrefix = symbolCmdIndex === 0; // determine if the chooser is showing suggestions, and if so, is the
         // currently selected suggestion a valid target for symbols
 
-        const {
-          currentSuggestion,
-          isSuggValidSymbolTarget
-        } = this.isSelectedSuggValidSymbolTarget(hasSymbolCmd); // determine if the current active editor pane a valid target for symbols
+        const selectedSuggInfo = this.getSelectedSuggInfo(hasSymbolCmd); // determine if the current active editor pane a valid target for symbols
 
-        const {
-          isEditorValidSymbolTarget,
-          currentEditor
-        } = this.isActiveEditorValidSymbolTarget(hasSymbolCmdPrefix, isSuggValidSymbolTarget);
-        return this.determineRunMode(hasEditorCmdPrefix, hasSymbolCmd, isSuggValidSymbolTarget, isEditorValidSymbolTarget, currentSuggestion, currentEditor);
+        const activeEditorInfo = this.getActiveEditorInfo(hasSymbolCmdPrefix, selectedSuggInfo.isSuggValidSymbolTarget);
+        return this.determineRunMode(hasEditorCmdPrefix, hasSymbolCmd, selectedSuggInfo, activeEditorInfo);
       }
 
-      isActiveEditorValidSymbolTarget(hasSymbolCmdPrefix, isSuggValidSymbolTarget) {
+      getActiveEditorInfo(hasSymbolCmdPrefix, isSuggValidSymbolTarget) {
         const {
           workspace
         } = this.app;
@@ -177,7 +172,7 @@
         };
       }
 
-      isSelectedSuggValidSymbolTarget(hasSymbolCmd) {
+      getSelectedSuggInfo(hasSymbolCmd) {
         let currentSuggestion = null;
 
         if (hasSymbolCmd) {
@@ -202,7 +197,7 @@
         };
       }
 
-      determineRunMode(hasEditorCmdPrefix, hasSymbolCmd, isSuggValidSymbolTarget, isEditorValidSymbolTarget, currentSuggestion, currentEditor) {
+      determineRunMode(hasEditorCmdPrefix, hasSymbolCmd, selectedSuggInfo, activeEditorInfo) {
         let {
           mode,
           symbolTarget
@@ -214,10 +209,10 @@
         if (hasSymbolCmd) {
           mode = Mode.SymbolList;
 
-          if (isSuggValidSymbolTarget) {
-            symbolTarget = currentSuggestion.item;
-          } else if (!hasExistingSymbolTarget && isEditorValidSymbolTarget) {
-            symbolTarget = currentEditor;
+          if (selectedSuggInfo.isSuggValidSymbolTarget) {
+            symbolTarget = selectedSuggInfo.currentSuggestion.item;
+          } else if (!hasExistingSymbolTarget && activeEditorInfo.isEditorValidSymbolTarget) {
+            symbolTarget = activeEditorInfo.currentEditor;
           }
         } else if (hasEditorCmdPrefix) {
           mode = Mode.EditorList;
@@ -356,10 +351,11 @@
 
       makeSuggestions(items = [], searchData) {
         const suggestions = [];
+        const hasSearchTerm = searchData.query.length > 0;
         items.forEach(item => {
           let sugg;
 
-          if (searchData.query.length) {
+          if (hasSearchTerm) {
             const match = this.match(searchData, item);
 
             if (match !== null) {
@@ -379,6 +375,11 @@
             suggestions.push(sugg);
           }
         });
+
+        if (hasSearchTerm) {
+          suggestions.sort((a, b) => b.match.score - a.match.score);
+        }
+
         return suggestions;
       }
 
@@ -405,17 +406,17 @@
               const symbolData = metadataCache.metadataCache[mdFile.hash];
 
               if (symbolData) {
-                const push = (symbols, type) => {
+                const push = (symbols = [], type) => {
                   symbols.forEach(symbol => ret.push({
                     symbol,
                     type
                   }));
                 };
 
+                push(symbolData.headings, SymbolType.Heading);
+                push(symbolData.tags, SymbolType.Tag);
                 push(symbolData.links, SymbolType.Link);
                 push(symbolData.embeds, SymbolType.Embed);
-                push(symbolData.tags, SymbolType.Tag);
-                push(symbolData.headings, SymbolType.Heading);
               }
             }
           }
@@ -509,9 +510,8 @@
           }
         } = leaf;
         let text;
-        const referenceViews = ['backlink', 'outline', 'localgraph'];
 
-        if (!file || referenceViews.includes(view.getViewType())) {
+        if (!file || ReferenceViews.includes(view.getViewType())) {
           text = leaf.getDisplayText();
         } else {
           text = super.getItemText(file);
@@ -536,14 +536,13 @@
 
       navigateToSymbol(suggestionItem) {
         const {
-          symbolTarget,
-          app: {
-            workspace
-          }
-        } = this;
-        const isTargetLeaf = symbolTarget.type === 'leaf'; // determine if the target is already open in a pane
+          workspace
+        } = this.app; // determine if the target is already open in a pane
 
-        const leaf = this.getOpenRootSplits().find(l => isTargetLeaf ? l === symbolTarget : l.view.file === symbolTarget);
+        const {
+          leaf,
+          targetFilePath
+        } = this.findOpenEditorMatchingSymbolTarget();
         const {
           start: {
             line,
@@ -581,12 +580,37 @@
           workspace.setActiveLeaf(leaf, true);
           leaf.view.setEphemeralState(eState);
         } else {
-          const targetFilePath = isTargetLeaf ? symbolTarget.view.file.path : symbolTarget.path;
           eState.focus = true;
           workspace.openLinkText(targetFilePath, '', false, {
             eState
           });
         }
+      }
+
+      findOpenEditorMatchingSymbolTarget() {
+        const {
+          symbolTarget
+        } = this;
+        const isTargetLeaf = symbolTarget.type === 'leaf';
+        const file = isTargetLeaf ? symbolTarget.view.file : symbolTarget;
+
+        const predicate = leaf => {
+          const isLeafRefView = ReferenceViews.includes(leaf.view.getViewType());
+          const isTargetRefView = isTargetLeaf && ReferenceViews.includes(symbolTarget.view.getViewType());
+          let val = false;
+
+          if (!isLeafRefView) {
+            val = isTargetLeaf && !isTargetRefView ? leaf === symbolTarget : leaf.view.file === file;
+          }
+
+          return val;
+        };
+
+        const leaf = this.getOpenRootSplits().find(predicate);
+        return {
+          leaf,
+          targetFilePath: file.path
+        };
       }
 
       renderSuggestion(sugg, parentEl) {
