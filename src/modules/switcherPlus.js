@@ -93,17 +93,17 @@ export default (app) => {
 
       // determine if the chooser is showing suggestions, and if so, is the
       // currently selected suggestion a valid target for symbols
-      const selectedSuggInfo = this.isSelectedSuggValidSymbolTarget(hasSymbolCmd);
+      const selectedSuggInfo = this.getSelectedSuggInfo(hasSymbolCmd);
 
       // determine if the current active editor pane a valid target for symbols
-      const activeEditorInfo = this.isActiveEditorValidSymbolTarget(hasSymbolCmdPrefix,
+      const activeEditorInfo = this.getActiveEditorInfo(hasSymbolCmdPrefix,
         selectedSuggInfo.isSuggValidSymbolTarget);
 
       return this.determineRunMode(hasEditorCmdPrefix, hasSymbolCmd,
         selectedSuggInfo, activeEditorInfo);
     }
 
-    isActiveEditorValidSymbolTarget(hasSymbolCmdPrefix, isSuggValidSymbolTarget) {
+    getActiveEditorInfo(hasSymbolCmdPrefix, isSuggValidSymbolTarget) {
       const { workspace } = this.app;
       const { excludeViewTypes } = Settings;
 
@@ -119,7 +119,7 @@ export default (app) => {
       return { isEditorValidSymbolTarget, currentEditor: workspace.activeLeaf };
     }
 
-    isSelectedSuggValidSymbolTarget(hasSymbolCmd) {
+    getSelectedSuggInfo(hasSymbolCmd) {
       let currentSuggestion = null;
 
       if (hasSymbolCmd) {
