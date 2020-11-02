@@ -1,0 +1,7 @@
+qsp-indicator-style {
+    color: var(--text-accent);
+    width: 2.5em;
+    text-align: center;
+    float:left;
+    font-weight:800;
+}
