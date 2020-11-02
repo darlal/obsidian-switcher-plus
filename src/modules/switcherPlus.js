@@ -10,7 +10,7 @@ import Settings from './settings';
 const indicatorStyle = 'color: var(--text-accent); width: 2.5em; text-align: center; float:left; font-weight:800;';
 
 function getQuickSwitcher(app) {
-  const switcher = app.plugins.getPluginById(QUICK_SWITCHER_ID);
+  const switcher = app.internalPlugins.getPluginById(QUICK_SWITCHER_ID);
   if (!switcher) { return null; }
 
   return switcher.instance.modal.constructor;
