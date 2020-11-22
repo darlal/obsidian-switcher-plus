@@ -1,6 +1,6 @@
 {
   "name": "obsidian-switcher-plus",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Enhanced Quick Switcher plugin for Obsidian.md.",
   "repository": {
     "type": "git",
@@ -8,7 +8,7 @@
   },
   "main": "./dist/volcano/switcher-plus-volcano.js",
   "scripts": {
-    "build": "npm run lint && rollup -c rollup.config.js && cp -a ./styles.css ./manifest.json ./dist/darlal-switcher-plus",
+    "build": "npm run lint && rollup -c rollup.config.js && cp -a ./styles.css ./manifest.json ./versions.json ./dist/darlal-switcher-plus",
     "lint": "eslint .",
     "test": "npm run lint && mocha test"
   },
