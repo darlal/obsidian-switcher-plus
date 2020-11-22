@@ -1,10 +1,17 @@
 /* eslint-disable import/no-unresolved */
 import { Plugin } from 'obsidian';
 import { Mode } from './modules/constants';
+import { Settings } from './modules/settings';
+import SettingTab from './modules/settingTab';
 import createSwitcherPlusModal from './modules/switcherPlus';
 
 export default class SwitcherPlusPlugin extends Plugin {
-  onload() {
+  async onload() {
+    const settings = new Settings(this);
+    await settings.loadSettings();
+    this.settings = settings;
+    this.addSettingTab(new SettingTab(this.app, this));
+
     this.registerCommand('switcher-plus:open',
       'Open', Mode.Standard);
     this.registerCommand('switcher-plus:open-editors',
@@ -23,7 +30,7 @@ export default class SwitcherPlusPlugin extends Plugin {
       name,
       hotkeys: [],
       checkCallback: (checking) => {
-        const modal = this.getModal(this.app);
+        const modal = this.getModal();
         if (modal) {
           if (!checking) {
             modal.openInMode(mode);
@@ -37,11 +44,12 @@ export default class SwitcherPlusPlugin extends Plugin {
     });
   }
 
-  getModal(app) {
+  getModal() {
     let { modal } = this;
+    const { app, settings } = this;
     if (modal) { return modal; }
 
-    modal = createSwitcherPlusModal(app);
+    modal = createSwitcherPlusModal(app, settings);
     this.modal = modal;
     return modal;
   }

@@ -5,7 +5,7 @@ import {
   SymbolIndicators,
   ReferenceViews,
 } from './constants';
-import Settings from './settings';
+import { Config } from './settings';
 
 const indicatorStyle = 'color: var(--text-accent); width: 2.5em; text-align: center; float:left; font-weight:800;';
 
@@ -16,14 +16,15 @@ function getQuickSwitcher(app) {
   return switcher.instance.modal.constructor;
 }
 
-export default (app) => {
+export default (app, settings) => {
   const QuickSwitcher = getQuickSwitcher(app);
   if (QuickSwitcher === null) { return null; }
 
   class SwitcherPlus extends QuickSwitcher {
-    constructor(appObj) {
+    constructor(appObj, settingsObj) {
       super(appObj);
 
+      this.settings = settingsObj;
       this.mode = Mode.Standard;
       this.symbolTarget = null;
 
@@ -53,9 +54,9 @@ export default (app) => {
       const { mode } = this;
 
       if (mode === Mode.EditorList) {
-        val = Settings.editorListCommand;
+        val = Config.editorListCommand;
       } else if (mode === Mode.SymbolList) {
-        val = Settings.symbolListCommand;
+        val = Config.symbolListCommand;
 
         // force reset suggestions so any suggestions from a previous operation
         // won't be incorrectly used for symbol search
@@ -80,7 +81,7 @@ export default (app) => {
     }
 
     parseInput() {
-      const { editorListCommand, symbolListCommand } = Settings;
+      const { editorListCommand, symbolListCommand } = Config;
       const { inputEl: { value } } = this;
 
       // determine if the editor command exists and if it's valid
@@ -105,7 +106,7 @@ export default (app) => {
 
     getActiveEditorInfo(hasSymbolCmdPrefix, isSuggValidSymbolTarget) {
       const { workspace } = this.app;
-      const { excludeViewTypes } = Settings;
+      const { excludeViewTypes } = Config;
 
       // determine if the current active editor pane is valid
       const { view, view: { file: currentEditorFile } } = workspace.activeLeaf;
@@ -200,7 +201,7 @@ export default (app) => {
 
     getSearchData() {
       const { mode, inputEl: { value } } = this;
-      const { editorListCommand, symbolListCommand } = Settings;
+      const { editorListCommand, symbolListCommand } = Config;
       let startIndex = 0;
 
       if (mode === Mode.SymbolList) {
@@ -322,7 +323,7 @@ export default (app) => {
       const leaves = [];
 
       const saveLeaf = (l) => {
-        if (!Settings.excludeViewTypes.includes(l.view.getViewType())) {
+        if (!Config.excludeViewTypes.includes(l.view.getViewType())) {
           leaves.push(l);
         }
       };
@@ -413,29 +414,25 @@ export default (app) => {
       const { leaf, targetFilePath } = this.findOpenEditorMatchingSymbolTarget();
 
       const {
-        start: { line, col: ch, offset: startPos },
+        start: { line, offset: startPos },
         end: { offset: endPos },
       } = suggestionItem.symbol.position;
 
       // object containing the state information for the target editor,
       // start with the range to highlight in target editor
-      const eState = { startPos, endPos, line };
+      const eState = {
+        startPos,
+        endPos,
+        line,
+        focus: true,
+      };
 
-      if (Settings.focusEditorOnSymbolNavigation === true) {
-        // set the cursor position to an empty selection at the beginning of symbol
-        eState.cursor = {
-          from: { line, ch },
-          to: { line, ch },
-        };
-      }
-
-      if (leaf && !Settings.alwaysNewPaneForSymbols) {
+      if (leaf && !this.settings.alwaysNewPaneForSymbols) {
         // activate the already open pane, and set state
         workspace.setActiveLeaf(leaf, true);
         leaf.view.setEphemeralState(eState);
       } else {
-        eState.focus = true;
-        workspace.openLinkText(targetFilePath, '', false, { eState });
+        workspace.openLinkText(targetFilePath, '', true, { eState });
       }
     }
 
@@ -490,5 +487,5 @@ export default (app) => {
     }
   }
 
-  return new SwitcherPlus(app);
+  return new SwitcherPlus(app, settings);
 };
