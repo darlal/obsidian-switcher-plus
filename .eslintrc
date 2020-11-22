@@ -24,6 +24,12 @@
       {
         "argsIgnorePattern": "^_"
       }
+    ],
+    "no-param-reassign": [
+      "error",
+      {
+        "props": false
+      }
     ]
   }
 }
