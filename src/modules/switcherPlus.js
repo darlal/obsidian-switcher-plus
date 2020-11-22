@@ -400,6 +400,7 @@ export default (app, settings) => {
 
       if (mode === Mode.EditorList) {
         this.app.workspace.setActiveLeaf(suggestionItem);
+        suggestionItem.view.setEphemeralState({ focus: true });
       } else if (mode === Mode.SymbolList) {
         this.navigateToSymbol(suggestionItem);
       } else {
