@@ -25,7 +25,7 @@ function getDefaultData(): SettingsData {
   };
 }
 
-export class Settings {
+export class SwitcherPlusSettings {
   private data: SettingsData;
 
   get alwaysNewPaneForSymbols(): boolean {

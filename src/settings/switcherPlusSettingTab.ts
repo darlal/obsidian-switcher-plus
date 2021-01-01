@@ -1,9 +1,13 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import { Settings } from 'src/settings';
+import { SwitcherPlusSettings } from 'src/settings';
 import type SwitcherPlusPlugin from '../main';
 
-class SettingTab extends PluginSettingTab {
-  constructor(app: App, private plugin: SwitcherPlusPlugin, private settings: Settings) {
+export class SwitcherPlusSettingTab extends PluginSettingTab {
+  constructor(
+    app: App,
+    plugin: SwitcherPlusPlugin,
+    private settings: SwitcherPlusSettings,
+  ) {
     super(app, plugin);
   }
 
@@ -11,10 +15,13 @@ class SettingTab extends PluginSettingTab {
     const { containerEl, settings } = this;
 
     containerEl.empty();
-    SettingTab.setAlwaysNewPaneForSymbols(containerEl, settings);
+    SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols(containerEl, settings);
   }
 
-  static setAlwaysNewPaneForSymbols(containerEl: HTMLElement, settings: Settings): void {
+  static setAlwaysNewPaneForSymbols(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
     new Setting(containerEl)
       .setName('Open Symbols in new pane')
       .setDesc(
@@ -28,5 +35,3 @@ class SettingTab extends PluginSettingTab {
       );
   }
 }
-
-export { SettingTab as default };

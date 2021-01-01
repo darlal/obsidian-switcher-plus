@@ -1,6 +1,6 @@
 import { isOfType } from 'src/utils';
-import ModeHandler from './modeHandler';
-import { Settings } from 'src/settings';
+import { ModeHandler } from './modeHandler';
+import { SwitcherPlusSettings } from 'src/settings';
 import type { App } from 'obsidian';
 import {
   SystemSwitcher,
@@ -25,7 +25,10 @@ function getSystemSwitcher(app: App): SystemSwitcherConstructor {
   return switcher.instance.modal.constructor as SystemSwitcherConstructor;
 }
 
-export function createSwitcherPlus(app: App, settings: Settings): SwitcherPlus {
+export function createSwitcherPlus(
+  app: App,
+  settings: SwitcherPlusSettings,
+): SwitcherPlus {
   const systemSwitcher = getSystemSwitcher(app);
   if (systemSwitcher === null) {
     return null;
@@ -34,7 +37,7 @@ export function createSwitcherPlus(app: App, settings: Settings): SwitcherPlus {
   const switcherPlusClass = class extends systemSwitcher implements SwitcherPlus {
     private exMode: ModeHandler;
 
-    constructor(app: App, settings: Settings) {
+    constructor(app: App, settings: SwitcherPlusSettings) {
       super(app);
       this.exMode = new ModeHandler(
         app,

@@ -1,4 +1,4 @@
-import { DefaultConfig, Settings } from 'src/settings';
+import { DefaultConfig, SwitcherPlusSettings } from 'src/settings';
 import {
   isSymbolSuggestion,
   isSystemSuggestion,
@@ -56,7 +56,7 @@ function fileFromView(view: View): TFile {
   return (view as any)?.file;
 }
 
-export default class ModeHandler {
+export class ModeHandler {
   private _mode = Mode.Standard;
   public get mode(): Mode {
     return this._mode;
@@ -68,7 +68,7 @@ export default class ModeHandler {
 
   constructor(
     private app: App,
-    private settings: Settings,
+    private settings: SwitcherPlusSettings,
     private scope: Scope,
     private chooser: any,
     private modalContainerEl: HTMLElement,

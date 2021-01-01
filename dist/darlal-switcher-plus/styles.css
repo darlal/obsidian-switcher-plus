@@ -1,4 +1,4 @@
-qsp-indicator-style {
+.qsp-symbol-indicator {
     color: var(--text-accent);
     width: 2.5em;
     text-align: center;

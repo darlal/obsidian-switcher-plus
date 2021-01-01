@@ -1,2 +1,2 @@
-export * from './settings';
-export * from './settingTab';
+export * from './switcherPlusSettings';
+export * from './switcherPlusSettingTab';

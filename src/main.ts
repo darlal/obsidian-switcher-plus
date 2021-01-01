@@ -1,19 +1,18 @@
 import { Plugin } from 'obsidian';
-import { Settings } from 'src/settings';
-import SettingTab from 'src/settings/settingTab';
-import { createSwitcherPlus } from './switcherPlus';
+import { SwitcherPlusSettings, SwitcherPlusSettingTab } from 'src/settings';
+import { createSwitcherPlus } from 'src/switcherPlus';
 import { Mode, SwitcherPlus } from 'src/types';
 
 export default class SwitcherPlusPlugin extends Plugin {
-  private settings: Settings;
+  private settings: SwitcherPlusSettings;
   private modal: SwitcherPlus;
 
   async onload(): Promise<void> {
-    const settings = new Settings(this);
+    const settings = new SwitcherPlusSettings(this);
     await settings.loadSettings();
     this.settings = settings;
 
-    this.addSettingTab(new SettingTab(this.app, this, settings));
+    this.addSettingTab(new SwitcherPlusSettingTab(this.app, this, settings));
 
     this.registerCommand('switcher-plus:open', 'Open', Mode.Standard);
     this.registerCommand(
