@@ -45,10 +45,6 @@ export function createSwitcherPlus(app: App, settings: Settings): SwitcherPlus {
       );
     }
 
-    isModalOpen(): boolean {
-      return this.isOpen;
-    }
-
     openInMode(mode: Mode): void {
       this.exMode.openInMode(mode);
       this.open();

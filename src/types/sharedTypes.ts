@@ -60,7 +60,6 @@ export declare class SystemSwitcher extends SuggestModal<AnySuggestion> {
 
 export interface SwitcherPlus extends SystemSwitcher {
   openInMode(mode: Mode): void;
-  isModalOpen(): boolean;
 }
 
 export type AnySymbolInfoPayload = LinkCache | EmbedCache | TagCache | HeadingCache;
