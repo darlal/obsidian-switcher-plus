@@ -1,23 +1,24 @@
+import typescript from '@rollup/plugin-typescript'
 import commonjs from '@rollup/plugin-commonjs';
-import babel from '@rollup/plugin-babel';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 
 export default {
-  input: 'src/main.js',
+  input: 'src/main.ts',
   treeshake: false,
   output: {
     dir: 'dist/darlal-switcher-plus',
-    sourcemap: 'inline',
+    sourcemap: false,
     format: 'cjs',
     exports: 'default',
   },
   external: ['obsidian'],
   plugins: [
-    commonjs(),
+    // typescript(),
+    // typescript({ sourceMap: true }),
+    typescript({ sourceMap: true, inlineSources: true }),
+    // typescript({ inlineSourceMap: true, inlineSources: true }),
+    // typescript({ sourceMap: true, inlineSourceMap: true, inlineSources: true }),
     nodeResolve(),
-    babel({
-      babelHelpers: 'bundled',
-      exclude: 'node_modules/**',
-    }),
+    commonjs(),
   ],
 };
