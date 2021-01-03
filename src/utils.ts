@@ -1,3 +1,4 @@
+import { HeadingCache } from 'obsidian';
 import { SymbolSuggestion, EditorSuggestion, SystemSuggestion } from 'src/types';
 
 export function isOfType<T>(
@@ -27,4 +28,8 @@ export function isEditorSuggestion(obj: unknown): obj is EditorSuggestion {
 
 export function isSystemSuggestion(obj: unknown): obj is SystemSuggestion {
   return isOfType<SystemSuggestion>(obj, 'file');
+}
+
+export function isHeadingCache(obj: unknown): obj is HeadingCache {
+  return isOfType<HeadingCache>(obj, 'level');
 }

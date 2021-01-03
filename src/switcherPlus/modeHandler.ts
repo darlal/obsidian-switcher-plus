@@ -4,9 +4,9 @@ import {
   isSystemSuggestion,
   isOfType,
   isEditorSuggestion,
+  isHeadingCache,
 } from 'src/utils';
 import {
-  HeadingCache,
   View,
   TagCache,
   ReferenceCache,
@@ -65,6 +65,7 @@ export class ModeHandler {
   private isOpen = false;
   private symbolTarget: SuggestionTarget = null;
   private backupKeys: any[];
+  private hasSearchTerm = false;
 
   constructor(
     private app: App,
@@ -135,8 +136,17 @@ export class ModeHandler {
     let containerEl = parentEl;
 
     if (isSymbolSuggestion(sugg)) {
-      ModeHandler.addSymbolIndicator(sugg.item, containerEl);
-      containerEl = createSpan({ parent: containerEl });
+      const { item } = sugg;
+
+      if (this.settings.symbolsInlineOrder && !this.hasSearchTerm) {
+        parentEl.addClass(`qsp-symbol-l${item.indentLevel}`);
+      }
+
+      ModeHandler.addSymbolIndicator(item, containerEl);
+      containerEl = createSpan({
+        cls: 'qsp-symbol-text',
+        parent: containerEl,
+      });
     }
 
     const text = ModeHandler.getItemText(sugg.item);
@@ -355,9 +365,10 @@ export class ModeHandler {
     const { mode, symbolTarget } = this;
     const suggestions: AnyExSuggestion[] = [];
 
-    const items = this.getItems(mode, symbolTarget);
     const prepQuery = ModeHandler.extractSearchQuery(input, mode);
     const hasSearchTerm = prepQuery?.query?.length > 0;
+    this.hasSearchTerm = hasSearchTerm;
+    const items = this.getItems(mode, symbolTarget);
 
     const push = (item: AnyExSuggestionPayload, match: SearchResult) => {
       if (item instanceof WorkspaceLeaf) {
@@ -439,7 +450,34 @@ export class ModeHandler {
       }
     }
 
-    return ret;
+    return this.settings.symbolsInlineOrder && !this.hasSearchTerm
+      ? this.orderSymbolsByLineNumber(ret)
+      : ret;
+  }
+
+  private orderSymbolsByLineNumber(symbols: SymbolInfo[] = []): SymbolInfo[] {
+    const sorted = symbols.sort((a: SymbolInfo, b: SymbolInfo) => {
+      const { start: aStart } = a.symbol.position;
+      const { start: bStart } = b.symbol.position;
+      const lineDiff = aStart.line - bStart.line;
+      return lineDiff === 0 ? aStart.col - bStart.col : lineDiff;
+    });
+
+    let currIndentLevel = 0;
+
+    sorted.forEach((si) => {
+      let indentLevel = 0;
+      if (isHeadingCache(si.symbol)) {
+        currIndentLevel = si.symbol.level;
+        indentLevel = si.symbol.level - 1;
+      } else {
+        indentLevel = currIndentLevel;
+      }
+
+      si.indentLevel = indentLevel;
+    });
+
+    return sorted;
   }
 
   private static getItemText(item: AnyExSuggestionPayload): string {
@@ -458,7 +496,7 @@ export class ModeHandler {
     const { symbol } = symbolInfo;
     let text;
 
-    if (isOfType<HeadingCache>(symbol, 'level')) {
+    if (isHeadingCache(symbol)) {
       text = symbol.heading;
     } else if (isOfType<TagCache>(symbol, 'tag')) {
       text = symbol.tag.slice(1);
@@ -533,7 +571,7 @@ export class ModeHandler {
     const { type, symbol } = symbolInfo;
     let indicator: string;
 
-    if (isOfType<HeadingCache>(symbol, 'level')) {
+    if (isHeadingCache(symbol)) {
       indicator = HeadingIndicators[symbol.level];
     } else {
       indicator = SymbolIndicators[type];

@@ -16,6 +16,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
 
     containerEl.empty();
     SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols(containerEl, settings);
+    SwitcherPlusSettingTab.setSymbolsInLineOrder(containerEl, settings);
   }
 
   static setAlwaysNewPaneForSymbols(
@@ -30,6 +31,23 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(settings.alwaysNewPaneForSymbols).onChange((value) => {
           settings.alwaysNewPaneForSymbols = value;
+          settings.saveSettings();
+        }),
+      );
+  }
+
+  static setSymbolsInLineOrder(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl)
+      .setName('List symbols in order they appear')
+      .setDesc(
+        'Enabled, symbols will be displayed in the (line) order they appear in the source text, indented under any preceding heading. Disabled, symbols will be grouped by type: Headings, Tags, Links, Embeds.',
+      )
+      .addToggle((toggle) =>
+        toggle.setValue(settings.symbolsInlineOrder).onChange((value) => {
+          settings.symbolsInlineOrder = value;
           settings.saveSettings();
         }),
       );

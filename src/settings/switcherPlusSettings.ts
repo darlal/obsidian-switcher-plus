@@ -17,11 +17,13 @@ export const DefaultConfig: Config = {
 
 interface SettingsData {
   alwaysNewPaneForSymbols: boolean;
+  symbolsInLineOrder: boolean;
 }
 
 function getDefaultData(): SettingsData {
   return {
     alwaysNewPaneForSymbols: false,
+    symbolsInLineOrder: true,
   };
 }
 
@@ -36,6 +38,16 @@ export class SwitcherPlusSettings {
   set alwaysNewPaneForSymbols(value: boolean) {
     const { data } = this;
     data.alwaysNewPaneForSymbols = value;
+  }
+
+  get symbolsInlineOrder(): boolean {
+    const { data } = this;
+    return data.symbolsInLineOrder;
+  }
+
+  set symbolsInlineOrder(value: boolean) {
+    const { data } = this;
+    data.symbolsInLineOrder = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

@@ -66,6 +66,7 @@ export type AnySymbolInfoPayload = LinkCache | EmbedCache | TagCache | HeadingCa
 export interface SymbolInfo {
   symbol: AnySymbolInfoPayload;
   type: SymbolType;
+  indentLevel?: number;
 }
 
 export interface SymbolSuggestion extends FuzzyMatch<SymbolInfo> {

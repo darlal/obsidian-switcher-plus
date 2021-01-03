@@ -238,6 +238,7 @@ var DefaultConfig = {
 function getDefaultData() {
     return {
         alwaysNewPaneForSymbols: false,
+        symbolsInLineOrder: true,
     };
 }
 var SwitcherPlusSettings = /** @class */ (function () {
@@ -253,6 +254,18 @@ var SwitcherPlusSettings = /** @class */ (function () {
         set: function (value) {
             var data = this.data;
             data.alwaysNewPaneForSymbols = value;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(SwitcherPlusSettings.prototype, "symbolsInlineOrder", {
+        get: function () {
+            var data = this.data;
+            return data.symbolsInLineOrder;
+        },
+        set: function (value) {
+            var data = this.data;
+            data.symbolsInLineOrder = value;
         },
         enumerable: false,
         configurable: true
@@ -306,6 +319,7 @@ var SwitcherPlusSettingTab = /** @class */ (function (_super) {
         var _a = this, containerEl = _a.containerEl, settings = _a.settings;
         containerEl.empty();
         SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols(containerEl, settings);
+        SwitcherPlusSettingTab.setSymbolsInLineOrder(containerEl, settings);
     };
     SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols = function (containerEl, settings) {
         new obsidian.Setting(containerEl)
@@ -314,6 +328,17 @@ var SwitcherPlusSettingTab = /** @class */ (function (_super) {
             .addToggle(function (toggle) {
             return toggle.setValue(settings.alwaysNewPaneForSymbols).onChange(function (value) {
                 settings.alwaysNewPaneForSymbols = value;
+                settings.saveSettings();
+            });
+        });
+    };
+    SwitcherPlusSettingTab.setSymbolsInLineOrder = function (containerEl, settings) {
+        new obsidian.Setting(containerEl)
+            .setName('List symbols in order they appear')
+            .setDesc('Enabled, symbols will be displayed in the (line) order they appear in the source text, indented under any preceding heading. Disabled, symbols will be grouped by type: Headings, Tags, Links, Embeds.')
+            .addToggle(function (toggle) {
+            return toggle.setValue(settings.symbolsInlineOrder).onChange(function (value) {
+                settings.symbolsInlineOrder = value;
                 settings.saveSettings();
             });
         });
@@ -339,6 +364,9 @@ function isEditorSuggestion(obj) {
 }
 function isSystemSuggestion(obj) {
     return isOfType(obj, 'file');
+}
+function isHeadingCache(obj) {
+    return isOfType(obj, 'level');
 }
 
 var Mode;
@@ -382,6 +410,7 @@ var ModeHandler = /** @class */ (function () {
         this._mode = Mode.Standard;
         this.isOpen = false;
         this.symbolTarget = null;
+        this.hasSearchTerm = false;
         scope.register(['Ctrl'], 'n', this.navigateItems.bind(this));
         scope.register(['Ctrl'], 'p', this.navigateItems.bind(this));
     }
@@ -441,8 +470,15 @@ var ModeHandler = /** @class */ (function () {
     ModeHandler.prototype.renderSuggestion = function (sugg, parentEl) {
         var containerEl = parentEl;
         if (isSymbolSuggestion(sugg)) {
-            ModeHandler.addSymbolIndicator(sugg.item, containerEl);
-            containerEl = createSpan({ parent: containerEl });
+            var item = sugg.item;
+            if (this.settings.symbolsInlineOrder && !this.hasSearchTerm) {
+                parentEl.addClass("qsp-symbol-l" + item.indentLevel);
+            }
+            ModeHandler.addSymbolIndicator(item, containerEl);
+            containerEl = createSpan({
+                cls: 'qsp-symbol-text',
+                parent: containerEl,
+            });
         }
         var text = ModeHandler.getItemText(sugg.item);
         obsidian.renderResults(containerEl, text, sugg.match);
@@ -590,9 +626,10 @@ var ModeHandler = /** @class */ (function () {
         var _a;
         var _b = this, mode = _b.mode, symbolTarget = _b.symbolTarget;
         var suggestions = [];
-        var items = this.getItems(mode, symbolTarget);
         var prepQuery = ModeHandler.extractSearchQuery(input, mode);
         var hasSearchTerm = ((_a = prepQuery === null || prepQuery === void 0 ? void 0 : prepQuery.query) === null || _a === void 0 ? void 0 : _a.length) > 0;
+        this.hasSearchTerm = hasSearchTerm;
+        var items = this.getItems(mode, symbolTarget);
         var push = function (item, match) {
             if (item instanceof obsidian.WorkspaceLeaf) {
                 suggestions.push({ type: 'Editor', item: item, match: match });
@@ -657,7 +694,31 @@ var ModeHandler = /** @class */ (function () {
                 push(symbolData.embeds, SymbolType.Embed);
             }
         }
-        return ret;
+        return this.settings.symbolsInlineOrder && !this.hasSearchTerm
+            ? this.orderSymbolsByLineNumber(ret)
+            : ret;
+    };
+    ModeHandler.prototype.orderSymbolsByLineNumber = function (symbols) {
+        if (symbols === void 0) { symbols = []; }
+        var sorted = symbols.sort(function (a, b) {
+            var aStart = a.symbol.position.start;
+            var bStart = b.symbol.position.start;
+            var lineDiff = aStart.line - bStart.line;
+            return lineDiff === 0 ? aStart.col - bStart.col : lineDiff;
+        });
+        var currIndentLevel = 0;
+        sorted.forEach(function (si) {
+            var indentLevel = 0;
+            if (isHeadingCache(si.symbol)) {
+                currIndentLevel = si.symbol.level;
+                indentLevel = si.symbol.level - 1;
+            }
+            else {
+                indentLevel = currIndentLevel;
+            }
+            si.indentLevel = indentLevel;
+        });
+        return sorted;
     };
     ModeHandler.getItemText = function (item) {
         var text;
@@ -672,7 +733,7 @@ var ModeHandler = /** @class */ (function () {
     ModeHandler.getSuggestionTextForSymbol = function (symbolInfo) {
         var symbol = symbolInfo.symbol;
         var text;
-        if (isOfType(symbol, 'level')) {
+        if (isHeadingCache(symbol)) {
             text = symbol.heading;
         }
         else if (isOfType(symbol, 'tag')) {
@@ -729,7 +790,7 @@ var ModeHandler = /** @class */ (function () {
     ModeHandler.addSymbolIndicator = function (symbolInfo, parentEl) {
         var type = symbolInfo.type, symbol = symbolInfo.symbol;
         var indicator;
-        if (isOfType(symbol, 'level')) {
+        if (isHeadingCache(symbol)) {
             indicator = HeadingIndicators[symbol.level];
         }
         else {
