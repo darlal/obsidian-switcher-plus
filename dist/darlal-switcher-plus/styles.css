@@ -1,6 +1,6 @@
 :root {
     --symbol-base-padding: 0px;
-    --symbol-indent-padding: 8px;
+    --symbol-indent-padding: 12px;
 }
 
 .qsp-symbol-indicator {
