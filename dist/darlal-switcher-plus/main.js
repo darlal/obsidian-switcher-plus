@@ -753,14 +753,18 @@ var ModeHandler = /** @class */ (function () {
         var workspace = this.app.workspace;
         // determine if the target is already open in a pane
         var _a = this.findOpenEditorMatchingSymbolTarget(), leaf = _a.leaf, path = _a.file.path;
-        var _b = sugg.item.symbol.position, _c = _b.start, line = _c.line, startPos = _c.offset, endPos = _b.end.offset;
+        var _b = sugg.item.symbol.position, _c = _b.start, line = _c.line, col = _c.col, endLoc = _b.end;
         // object containing the state information for the target editor,
         // start with the range to highlight in target editor
         var eState = {
-            startPos: startPos,
-            endPos: endPos,
+            startLoc: { line: line, col: col },
+            endLoc: endLoc,
             line: line,
             focus: true,
+            cursor: {
+                from: { line: line, ch: col },
+                to: { line: line, ch: col },
+            },
         };
         if (leaf && !this.settings.alwaysNewPaneForSymbols) {
             // activate the already open pane, and set state
