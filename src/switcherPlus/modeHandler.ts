@@ -523,17 +523,21 @@ export class ModeHandler {
     } = this.findOpenEditorMatchingSymbolTarget();
 
     const {
-      start: { line, offset: startPos },
-      end: { offset: endPos },
+      start: { line, col },
+      end: endLoc,
     } = sugg.item.symbol.position;
 
     // object containing the state information for the target editor,
     // start with the range to highlight in target editor
     const eState = {
-      startPos,
-      endPos,
+      startLoc: { line, col },
+      endLoc,
       line,
       focus: true,
+      cursor: {
+        from: { line, ch: col },
+        to: { line, ch: col },
+      },
     };
 
     if (leaf && !this.settings.alwaysNewPaneForSymbols) {
