@@ -56,13 +56,16 @@ export class SwitcherPlusSettings {
 
   async loadSettings(): Promise<void> {
     const { plugin } = this;
-    this.data = Object.assign(getDefaultData(), await plugin.loadData());
+    const savedData = (await plugin.loadData()) as SettingsData;
+    this.data = { ...getDefaultData(), ...savedData };
   }
 
-  async saveSettings(): Promise<void> {
+  saveSettings(): void {
     const { plugin, data } = this;
     if (plugin && data) {
-      await plugin.saveData(data);
+      plugin.saveData(data).catch(() => {
+        console.log('Switcher++: Error saving settings data');
+      });
     }
   }
 }

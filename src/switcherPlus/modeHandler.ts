@@ -545,7 +545,9 @@ export class ModeHandler {
       workspace.setActiveLeaf(leaf, true);
       leaf.view.setEphemeralState(eState);
     } else {
-      workspace.openLinkText(path, '', true, { eState });
+      workspace
+        .openLinkText(path, '', true, { eState })
+        .catch(() => console.log('Switcher++: unable to navigate to symbol'));
     }
   }
 
