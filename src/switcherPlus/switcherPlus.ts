@@ -1,3 +1,4 @@
+import { Keymap } from './keymap';
 import { isOfType } from 'src/utils';
 import { ModeHandler } from './modeHandler';
 import { SwitcherPlusSettings } from 'src/settings';
@@ -36,16 +37,13 @@ export function createSwitcherPlus(
 
   const switcherPlusClass = class extends systemSwitcher implements SwitcherPlus {
     private exMode: ModeHandler;
+    private exKeymap: Keymap;
 
     constructor(app: App, settings: SwitcherPlusSettings) {
       super(app);
-      this.exMode = new ModeHandler(
-        app,
-        settings,
-        this.scope,
-        this.chooser,
-        this.containerEl,
-      );
+
+      this.exMode = new ModeHandler(app, settings, this.chooser);
+      this.exKeymap = new Keymap(this.scope, this.chooser, this.containerEl);
     }
 
     openInMode(mode: Mode): void {
@@ -55,6 +53,7 @@ export function createSwitcherPlus(
 
     onOpen(): void {
       this.isOpen = true;
+      this.exKeymap.isOpen = true;
       const value = this.exMode.onOpen();
       this.inputEl.value = value;
       this.inputEl.focus();
@@ -63,16 +62,18 @@ export function createSwitcherPlus(
 
     onClose() {
       super.onClose();
-      this.exMode.onClose();
+      this.exKeymap.isOpen = false;
     }
 
     onInput(): void {
       const {
         exMode,
+        exKeymap,
         inputEl: { value },
       } = this;
 
-      exMode.onInput(value);
+      const mode = exMode.onInput(value);
+      exKeymap.updateKeymapForMode(mode);
       super.onInput();
     }
 

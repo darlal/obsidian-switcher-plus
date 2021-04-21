@@ -19,8 +19,6 @@ import {
   sortSearchResults,
   PreparedQuery,
   SearchResult,
-  Scope,
-  KeymapContext,
 } from 'obsidian';
 import {
   Mode,
@@ -62,21 +60,14 @@ export class ModeHandler {
     return this._mode;
   }
 
-  private isOpen = false;
   private symbolTarget: SuggestionTarget = null;
-  private backupKeys: any[];
   private hasSearchTerm = false;
 
   constructor(
     private app: App,
     private settings: SwitcherPlusSettings,
-    private scope: Scope,
     private chooser: any,
-    private modalContainerEl: HTMLElement,
-  ) {
-    scope.register(['Ctrl'], 'n', this.navigateItems.bind(this));
-    scope.register(['Ctrl'], 'p', this.navigateItems.bind(this));
-  }
+  ) {}
 
   openInMode(mode: Mode): void {
     this._mode = mode ?? Mode.Standard;
@@ -86,7 +77,6 @@ export class ModeHandler {
   }
 
   onOpen(): string {
-    this.isOpen = true;
     let val = '';
     const { mode } = this;
 
@@ -103,18 +93,11 @@ export class ModeHandler {
     return val;
   }
 
-  onClose(): void {
-    this.isOpen = false;
-  }
-
   onInput(input: string): Mode {
     const { chooser } = this;
 
     const currentSuggestion = chooser.values[chooser.selectedItem];
-    const mode = this.parseInput(input, currentSuggestion);
-    this.updateHelperTextForMode(this.modalContainerEl);
-    this.updateKeymapForMode(mode);
-    return mode;
+    return this.parseInput(input, currentSuggestion);
   }
 
   updateSuggestions(input: string): void {
@@ -151,18 +134,6 @@ export class ModeHandler {
 
     const text = ModeHandler.getItemText(sugg.item);
     renderResults(containerEl, text, sugg.match);
-  }
-
-  navigateItems(_evt: KeyboardEvent, ctx: KeymapContext): boolean | void {
-    const { isOpen, chooser } = this;
-
-    if (isOpen) {
-      const isNext = ctx.key === 'n';
-      const index: number = chooser.selectedItem as number;
-      chooser.setSelectedItem(isNext ? index + 1 : index - 1);
-    }
-
-    return false;
   }
 
   private parseInput(input: string, currentSuggestion: AnySuggestion): Mode {
@@ -266,43 +237,6 @@ export class ModeHandler {
     this._mode = mode;
 
     return mode;
-  }
-
-  private updateHelperTextForMode(containerEl: HTMLElement): void {
-    const { mode } = this;
-    const selector = '.prompt-instructions';
-
-    const el = containerEl.querySelector<HTMLElement>(selector);
-    if (el) {
-      el.style.display = mode === Mode.Standard ? '' : 'none';
-    }
-  }
-
-  private updateKeymapForMode(mode: Mode): void {
-    const keys = (this.scope as any).keys;
-    let { backupKeys = [] } = this;
-
-    if (mode === Mode.Standard) {
-      if (backupKeys.length) {
-        backupKeys.forEach((key) => keys.push(key));
-      }
-      backupKeys = undefined;
-    } else {
-      // unregister unused hotkeys for custom modes
-      for (let i = keys.length - 1; i >= 0; --i) {
-        const key = keys[i];
-
-        if (
-          key.key === 'Enter' &&
-          (key.modifiers === 'Meta' || key.modifiers === 'Shift')
-        ) {
-          keys.splice(i, 1);
-          backupKeys.push(key);
-        }
-      }
-    }
-
-    this.backupKeys = backupKeys;
   }
 
   private static getTargetForSymbolMode(
