@@ -4,15 +4,15 @@ import { createSwitcherPlus } from 'src/switcherPlus';
 import { Mode, SwitcherPlus } from 'src/types';
 
 export default class SwitcherPlusPlugin extends Plugin {
-  private settings: SwitcherPlusSettings;
+  public options: SwitcherPlusSettings;
   private modal: SwitcherPlus;
 
   async onload(): Promise<void> {
-    const settings = new SwitcherPlusSettings(this);
-    await settings.loadSettings();
-    this.settings = settings;
+    const options = new SwitcherPlusSettings(this);
+    await options.loadSettings();
+    this.options = options;
 
-    this.addSettingTab(new SwitcherPlusSettingTab(this.app, this, settings));
+    this.addSettingTab(new SwitcherPlusSettingTab(this.app, this, options));
 
     this.registerCommand('switcher-plus:open', 'Open', Mode.Standard);
     this.registerCommand(
@@ -53,13 +53,12 @@ export default class SwitcherPlusPlugin extends Plugin {
 
   private getModal(): SwitcherPlus {
     let { modal } = this;
-    const { app, settings } = this;
 
     if (modal) {
       return modal;
     }
 
-    modal = createSwitcherPlus(app, settings);
+    modal = createSwitcherPlus(this.app, this);
     this.modal = modal;
     return modal;
   }

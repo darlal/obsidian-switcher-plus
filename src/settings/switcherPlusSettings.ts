@@ -18,12 +18,14 @@ export const DefaultConfig: Config = {
 interface SettingsData {
   alwaysNewPaneForSymbols: boolean;
   symbolsInLineOrder: boolean;
+  showExistingOnly: boolean;
 }
 
 function getDefaultData(): SettingsData {
   return {
     alwaysNewPaneForSymbols: false,
     symbolsInLineOrder: true,
+    showExistingOnly: false,
   };
 }
 
@@ -31,23 +33,27 @@ export class SwitcherPlusSettings {
   private data: SettingsData;
 
   get alwaysNewPaneForSymbols(): boolean {
-    const { data } = this;
-    return data.alwaysNewPaneForSymbols;
+    return this.data.alwaysNewPaneForSymbols;
   }
 
   set alwaysNewPaneForSymbols(value: boolean) {
-    const { data } = this;
-    data.alwaysNewPaneForSymbols = value;
+    this.data.alwaysNewPaneForSymbols = value;
   }
 
   get symbolsInlineOrder(): boolean {
-    const { data } = this;
-    return data.symbolsInLineOrder;
+    return this.data.symbolsInLineOrder;
   }
 
   set symbolsInlineOrder(value: boolean) {
-    const { data } = this;
-    data.symbolsInLineOrder = value;
+    this.data.symbolsInLineOrder = value;
+  }
+
+  get showExistingOnly(): boolean {
+    return this.data.showExistingOnly;
+  }
+
+  set showExistingOnly(value: boolean) {
+    this.data.showExistingOnly = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

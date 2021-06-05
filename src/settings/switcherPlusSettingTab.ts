@@ -17,6 +17,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     containerEl.empty();
     SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols(containerEl, settings);
     SwitcherPlusSettingTab.setSymbolsInLineOrder(containerEl, settings);
+    SwitcherPlusSettingTab.setShowExistingOnly(containerEl, settings);
   }
 
   static setAlwaysNewPaneForSymbols(
@@ -48,6 +49,21 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(settings.symbolsInlineOrder).onChange((value) => {
           settings.symbolsInlineOrder = value;
+          settings.saveSettings();
+        }),
+      );
+  }
+
+  static setShowExistingOnly(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl)
+      .setName('Show existing only')
+      .setDesc('Whether to show links to files that are not yet created.')
+      .addToggle((toggle) =>
+        toggle.setValue(settings.showExistingOnly).onChange((value) => {
+          settings.showExistingOnly = value;
           settings.saveSettings();
         }),
       );

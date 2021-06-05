@@ -4,7 +4,6 @@ import {
   FuzzyMatch,
   HeadingCache,
   LinkCache,
-  Scope,
   TagCache,
   TFile,
   WorkspaceLeaf,
@@ -49,7 +48,6 @@ HeadingIndicators[6] = 'H₆';
 export declare class SystemSwitcher extends SuggestModal<AnySuggestion> {
   protected isOpen: boolean;
   protected chooser: unknown;
-  protected scope: Scope;
   constructor(app: App);
   protected onInput(): void;
   protected updateSuggestions(): void;

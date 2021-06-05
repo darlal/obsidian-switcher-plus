@@ -1,7 +1,7 @@
 import { Keymap } from './keymap';
 import { isOfType } from 'src/utils';
 import { ModeHandler } from './modeHandler';
-import { SwitcherPlusSettings } from 'src/settings';
+import SwitcherPlusPlugin from 'src/main';
 import type { App } from 'obsidian';
 import {
   SystemSwitcher,
@@ -26,10 +26,7 @@ function getSystemSwitcher(app: App): SystemSwitcherConstructor {
   return switcher.instance.modal.constructor as SystemSwitcherConstructor;
 }
 
-export function createSwitcherPlus(
-  app: App,
-  settings: SwitcherPlusSettings,
-): SwitcherPlus {
+export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): SwitcherPlus {
   const systemSwitcher = getSystemSwitcher(app);
   if (systemSwitcher === null) {
     return null;
@@ -39,10 +36,10 @@ export function createSwitcherPlus(
     private exMode: ModeHandler;
     private exKeymap: Keymap;
 
-    constructor(app: App, settings: SwitcherPlusSettings) {
+    constructor(app: App, public plugin: SwitcherPlusPlugin) {
       super(app);
 
-      this.exMode = new ModeHandler(app, settings, this.chooser);
+      this.exMode = new ModeHandler(app, plugin.options, this.chooser);
       this.exKeymap = new Keymap(this.scope, this.chooser, this.containerEl);
     }
 
@@ -108,5 +105,5 @@ export function createSwitcherPlus(
     }
   };
 
-  return new switcherPlusClass(app, settings);
+  return new switcherPlusClass(app, plugin);
 }
