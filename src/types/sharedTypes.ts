@@ -75,11 +75,23 @@ export interface EditorSuggestion extends FuzzyMatch<WorkspaceLeaf> {
   type: 'Editor';
 }
 
-export interface SystemSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
-  alias?: string;
+export interface FileSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
   file: TFile;
+  type: 'file';
+}
+
+export interface AliasSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
+  file: TFile;
+  alias: string;
+  type: 'alias';
+}
+
+export interface UnresolvedSuggestion extends Omit<FuzzyMatch<string>, 'item'> {
+  linktext: string;
+  type: 'unresolved';
 }
 
 export type AnyExSuggestionPayload = WorkspaceLeaf | SymbolInfo;
 export type AnyExSuggestion = SymbolSuggestion | EditorSuggestion;
-export type AnySuggestion = AnyExSuggestion | SystemSuggestion;
+export type AnySystemSuggestion = FileSuggestion | AliasSuggestion | UnresolvedSuggestion;
+export type AnySuggestion = AnyExSuggestion | AnySystemSuggestion;

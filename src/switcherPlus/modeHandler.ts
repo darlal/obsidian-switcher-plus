@@ -1,10 +1,10 @@
 import { DefaultConfig, SwitcherPlusSettings } from 'src/settings';
 import {
   isSymbolSuggestion,
-  isSystemSuggestion,
   isOfType,
   isEditorSuggestion,
   isHeadingCache,
+  isUnresolvedSuggestion,
 } from 'src/utils';
 import {
   View,
@@ -266,12 +266,12 @@ export class ModeHandler {
       leaf: WorkspaceLeaf = null,
       ret: SuggestionTarget = null;
 
-    if (!isSymbolSuggestion(sugg)) {
-      if (isSystemSuggestion(sugg)) {
-        file = sugg.file;
-      } else {
+    if (!isSymbolSuggestion(sugg) && !isUnresolvedSuggestion(sugg)) {
+      if (isEditorSuggestion(sugg)) {
         leaf = sugg.item;
         file = fileFromView(leaf.view);
+      } else {
+        file = sugg.file;
       }
 
       ret = { file, leaf };

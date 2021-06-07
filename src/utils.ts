@@ -1,5 +1,12 @@
 import { HeadingCache } from 'obsidian';
-import { SymbolSuggestion, EditorSuggestion, SystemSuggestion } from 'src/types';
+import {
+  SymbolSuggestion,
+  EditorSuggestion,
+  FileSuggestion,
+  AliasSuggestion,
+  UnresolvedSuggestion,
+  AnySystemSuggestion,
+} from 'src/types';
 
 export function isOfType<T>(
   obj: unknown,
@@ -26,8 +33,20 @@ export function isEditorSuggestion(obj: unknown): obj is EditorSuggestion {
   return isOfType<EditorSuggestion>(obj, 'type', 'Editor');
 }
 
-export function isSystemSuggestion(obj: unknown): obj is SystemSuggestion {
-  return isOfType<SystemSuggestion>(obj, 'file');
+export function isFileSuggestion(obj: unknown): obj is FileSuggestion {
+  return isOfType<FileSuggestion>(obj, 'type', 'file');
+}
+
+export function isAliasSuggestion(obj: unknown): obj is AliasSuggestion {
+  return isOfType<AliasSuggestion>(obj, 'type', 'alias');
+}
+
+export function isUnresolvedSuggestion(obj: unknown): obj is UnresolvedSuggestion {
+  return isOfType<UnresolvedSuggestion>(obj, 'type', 'unresolved');
+}
+
+export function isSystemSuggestion(obj: unknown): obj is AnySystemSuggestion {
+  return isFileSuggestion(obj) || isUnresolvedSuggestion(obj) || isAliasSuggestion(obj);
 }
 
 export function isHeadingCache(obj: unknown): obj is HeadingCache {

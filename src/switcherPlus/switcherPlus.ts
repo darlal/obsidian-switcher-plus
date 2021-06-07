@@ -1,15 +1,9 @@
 import { Keymap } from './keymap';
-import { isOfType } from 'src/utils';
+import { isSystemSuggestion } from 'src/utils';
 import { ModeHandler } from './modeHandler';
 import SwitcherPlusPlugin from 'src/main';
 import type { App } from 'obsidian';
-import {
-  SystemSwitcher,
-  SwitcherPlus,
-  AnySuggestion,
-  SystemSuggestion,
-  Mode,
-} from 'src/types';
+import { SystemSwitcher, SwitcherPlus, AnySuggestion, Mode } from 'src/types';
 
 const QUICK_SWITCHER_ID = 'switcher';
 
@@ -87,7 +81,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
     onChooseSuggestion(item: AnySuggestion, evt: MouseEvent | KeyboardEvent) {
       const { exMode } = this;
 
-      if (isOfType<SystemSuggestion>(item, 'file') || exMode.mode === Mode.Standard) {
+      if (isSystemSuggestion(item) || exMode.mode === Mode.Standard) {
         super.onChooseSuggestion(item, evt);
       } else {
         this.exMode.onChooseSuggestion(item);
@@ -97,7 +91,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
     renderSuggestion(value: AnySuggestion, parentEl: HTMLElement) {
       const { exMode } = this;
 
-      if (isOfType<SystemSuggestion>(value, 'file') || exMode.mode === Mode.Standard) {
+      if (isSystemSuggestion(value) || exMode.mode === Mode.Standard) {
         super.renderSuggestion(value, parentEl);
       } else {
         this.exMode.renderSuggestion(value, parentEl);
