@@ -47,7 +47,7 @@ HeadingIndicators[6] = 'H₆';
 
 export declare class SystemSwitcher extends SuggestModal<AnySuggestion> {
   protected isOpen: boolean;
-  protected chooser: unknown;
+  protected chooser: any;
   constructor(app: App);
   protected onInput(): void;
   protected updateSuggestions(): void;

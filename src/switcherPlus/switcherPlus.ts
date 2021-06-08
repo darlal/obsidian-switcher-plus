@@ -29,26 +29,31 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
   const switcherPlusClass = class extends systemSwitcher implements SwitcherPlus {
     private exMode: ModeHandler;
     private exKeymap: Keymap;
+    private openWithCommandStr: string = null;
 
     constructor(app: App, public plugin: SwitcherPlusPlugin) {
       super(app);
 
-      this.exMode = new ModeHandler(app, plugin.options, this.chooser);
+      this.exMode = new ModeHandler(app, plugin.options);
       this.exKeymap = new Keymap(this.scope, this.chooser, this.containerEl);
     }
 
     openInMode(mode: Mode): void {
-      this.exMode.openInMode(mode);
+      const { exMode } = this;
+
+      exMode.reset();
+      this.chooser.setSuggestions([]);
+
+      if (mode !== Mode.Standard) {
+        this.openWithCommandStr = exMode.getCommandStringForMode(mode);
+      }
+
       this.open();
     }
 
     onOpen(): void {
-      this.isOpen = true;
       this.exKeymap.isOpen = true;
-      const value = this.exMode.onOpen();
-      this.inputEl.value = value;
-      this.inputEl.focus();
-      this.onInput();
+      super.onOpen();
     }
 
     onClose() {
@@ -56,25 +61,28 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       this.exKeymap.isOpen = false;
     }
 
-    onInput(): void {
-      const {
-        exMode,
-        exKeymap,
-        inputEl: { value },
-      } = this;
-
-      const mode = exMode.onInput(value);
-      exKeymap.updateKeymapForMode(mode);
-      super.onInput();
-    }
-
     protected updateSuggestions(): void {
-      const { exMode } = this;
+      const { exMode, exKeymap, chooser, openWithCommandStr } = this;
 
-      if (exMode.mode === Mode.Standard) {
+      if (openWithCommandStr !== null && openWithCommandStr !== '') {
+        // update UI with current command string in the case were openInMode was called
+        this.inputEl.value = openWithCommandStr;
+
+        // reset to null so user input is not overridden the next time onInput is called
+        this.openWithCommandStr = null;
+      }
+
+      const activeSugg = this.getActiveSuggestion();
+      const input = this.inputEl.value;
+      const mode = exMode.determineRunMode(input, activeSugg);
+      exKeymap.updateKeymapForMode(mode);
+
+      if (mode === Mode.Standard) {
         super.updateSuggestions();
       } else {
-        exMode.updateSuggestions(this.inputEl.value);
+        chooser.setSuggestions([]);
+        const suggestions = exMode.getSuggestions(input);
+        chooser.setSuggestions(suggestions);
       }
     }
 
@@ -84,7 +92,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       if (isSystemSuggestion(item) || exMode.mode === Mode.Standard) {
         super.onChooseSuggestion(item, evt);
       } else {
-        this.exMode.onChooseSuggestion(item);
+        exMode.onChooseSuggestion(item);
       }
     }
 
@@ -94,8 +102,19 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       if (isSystemSuggestion(value) || exMode.mode === Mode.Standard) {
         super.renderSuggestion(value, parentEl);
       } else {
-        this.exMode.renderSuggestion(value, parentEl);
+        exMode.renderSuggestion(value, parentEl);
       }
+    }
+
+    private getActiveSuggestion(): AnySuggestion {
+      const { chooser } = this;
+      let activeSuggestion: AnySuggestion = null;
+
+      if (chooser?.values) {
+        activeSuggestion = chooser.values[chooser.selectedItem];
+      }
+
+      return activeSuggestion;
     }
   };
 

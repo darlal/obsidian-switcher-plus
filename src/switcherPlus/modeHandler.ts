@@ -40,14 +40,14 @@ interface SuggestionTarget {
   leaf: WorkspaceLeaf;
 }
 
-interface CurrentSuggestionInfo {
-  currentSuggestion: AnySuggestion;
+interface SuggestionInfo {
+  suggestion: AnySuggestion;
   isValidSymbolTarget: boolean;
 }
 
-interface ActiveEditorInfo {
+interface EditorInfo {
   isValidSymbolTarget: boolean;
-  currentEditor: WorkspaceLeaf;
+  editor: WorkspaceLeaf;
 }
 
 function fileFromView(view: View): TFile {
@@ -63,22 +63,14 @@ export class ModeHandler {
   private symbolTarget: SuggestionTarget = null;
   private hasSearchTerm = false;
 
-  constructor(
-    private app: App,
-    private settings: SwitcherPlusSettings,
-    private chooser: any,
-  ) {}
+  constructor(private app: App, private settings: SwitcherPlusSettings) {}
 
-  openInMode(mode: Mode): void {
-    this._mode = mode ?? Mode.Standard;
-    if (mode === Mode.SymbolList) {
-      this.symbolTarget = null;
-    }
+  reset(): void {
+    this.symbolTarget = null;
   }
 
-  onOpen(): string {
+  getCommandStringForMode(mode: Mode): string {
     let val = '';
-    const { mode } = this;
 
     if (mode === Mode.EditorList) {
       val = DefaultConfig.editorListCommand;
@@ -86,23 +78,7 @@ export class ModeHandler {
       val = DefaultConfig.symbolListCommand;
     }
 
-    if (mode !== Mode.Standard) {
-      this.chooser.setSuggestions([]);
-    }
-
     return val;
-  }
-
-  onInput(input: string): Mode {
-    const { chooser } = this;
-
-    const currentSuggestion = chooser.values[chooser.selectedItem];
-    return this.parseInput(input, currentSuggestion);
-  }
-
-  updateSuggestions(input: string): void {
-    const suggestions = this.getSuggestions(input);
-    this.chooser.setSuggestions(suggestions);
   }
 
   onChooseSuggestion(sugg: AnyExSuggestion): void {
@@ -136,7 +112,7 @@ export class ModeHandler {
     renderResults(containerEl, text, sugg.match);
   }
 
-  private parseInput(input: string, currentSuggestion: AnySuggestion): Mode {
+  determineRunMode(input: string, activeSuggestion: AnySuggestion): Mode {
     const { editorListCommand, symbolListCommand } = DefaultConfig;
 
     // determine if the editor command exists and if it's valid
@@ -149,29 +125,29 @@ export class ModeHandler {
 
     // determine if the chooser is showing suggestions, and if so, is the
     // currently selected suggestion a valid target for symbols
-    const currentSuggInfo = ModeHandler.getSelectedSuggestionInfo(
+    const activeSuggInfo = ModeHandler.getActiveSuggestionInfo(
       hasSymbolCmd,
-      currentSuggestion,
+      activeSuggestion,
     );
 
     // determine if the current active editor pane a valid target for symbols
     const activeEditorInfo = this.getActiveEditorInfo(
       hasSymbolCmdPrefix,
-      currentSuggInfo.isValidSymbolTarget,
+      activeSuggInfo.isValidSymbolTarget,
     );
 
     return this.setupRunMode(
       hasEditorCmdPrefix,
       hasSymbolCmd,
-      currentSuggInfo,
+      activeSuggInfo,
       activeEditorInfo,
     );
   }
 
   private getActiveEditorInfo(
     hasSymbolCmdPrefix: boolean,
-    isCurrentSuggValidSymbolTarget: boolean,
-  ): ActiveEditorInfo {
+    isActiveSuggValidSymbolTarget: boolean,
+  ): EditorInfo {
     const {
       activeLeaf,
       activeLeaf: { view },
@@ -185,35 +161,35 @@ export class ModeHandler {
     // symbol search
     const isValidSymbolTarget =
       hasSymbolCmdPrefix &&
-      !isCurrentSuggValidSymbolTarget &&
+      !isActiveSuggValidSymbolTarget &&
       isCurrentEditorValid &&
       !!fileFromView(view);
 
-    return { isValidSymbolTarget, currentEditor: activeLeaf };
+    return { isValidSymbolTarget, editor: activeLeaf };
   }
 
-  private static getSelectedSuggestionInfo(
+  private static getActiveSuggestionInfo(
     hasSymbolCmd: boolean,
-    currentSuggestion: AnySuggestion,
-  ): CurrentSuggestionInfo {
-    let activeSugg = currentSuggestion;
+    activeSuggestion: AnySuggestion,
+  ): SuggestionInfo {
+    let sugg = activeSuggestion;
 
-    if (hasSymbolCmd && isSymbolSuggestion(activeSugg)) {
+    if (hasSymbolCmd && isSymbolSuggestion(sugg)) {
       // symbol suggestions don't point to a file and can't
       //themselves be used for symbol suggestions
-      activeSugg = null;
+      sugg = null;
     }
 
     // whether or not the current suggestion can be used for symbol search
-    const isValidSymbolTarget = !!activeSugg;
-    return { currentSuggestion: activeSugg, isValidSymbolTarget };
+    const isValidSymbolTarget = !!sugg;
+    return { suggestion: sugg, isValidSymbolTarget };
   }
 
   private setupRunMode(
     hasEditorCmdPrefix: boolean,
     hasSymbolCmd: boolean,
-    currentSuggInfo: CurrentSuggestionInfo,
-    activeEditorInfo: ActiveEditorInfo,
+    activeSuggInfo: SuggestionInfo,
+    activeEditorInfo: EditorInfo,
   ): Mode {
     let { mode, symbolTarget } = this;
 
@@ -221,7 +197,7 @@ export class ModeHandler {
       mode = Mode.SymbolList;
       symbolTarget = ModeHandler.getTargetForSymbolMode(
         mode,
-        currentSuggInfo,
+        activeSuggInfo,
         activeEditorInfo,
         symbolTarget,
       );
@@ -241,8 +217,8 @@ export class ModeHandler {
 
   private static getTargetForSymbolMode(
     mode: Mode,
-    currentSuggInfo: CurrentSuggestionInfo,
-    activeEditorInfo: ActiveEditorInfo,
+    activeSuggInfo: SuggestionInfo,
+    activeEditorInfo: EditorInfo,
     oldSymbolTarget: SuggestionTarget,
   ): SuggestionTarget {
     // wether or not a symbol target file exists. Indicates that the previous
@@ -250,10 +226,10 @@ export class ModeHandler {
     const hasExistingSymbolTarget = mode === Mode.SymbolList && !!oldSymbolTarget;
     let symbolTarget: SuggestionTarget = oldSymbolTarget;
 
-    if (currentSuggInfo.isValidSymbolTarget) {
-      symbolTarget = ModeHandler.targetFromSuggestion(currentSuggInfo.currentSuggestion);
+    if (activeSuggInfo.isValidSymbolTarget) {
+      symbolTarget = ModeHandler.targetFromSuggestion(activeSuggInfo.suggestion);
     } else if (!hasExistingSymbolTarget && activeEditorInfo.isValidSymbolTarget) {
-      const leaf = activeEditorInfo.currentEditor;
+      const leaf = activeEditorInfo.editor;
       const file = fileFromView(leaf.view);
       symbolTarget = { file, leaf };
     }
@@ -295,7 +271,7 @@ export class ModeHandler {
     return prepareQuery(queryStr);
   }
 
-  private getSuggestions(input: string): AnyExSuggestion[] {
+  getSuggestions(input: string): AnyExSuggestion[] {
     const { mode, symbolTarget } = this;
     const suggestions: AnyExSuggestion[] = [];
 
@@ -358,7 +334,7 @@ export class ModeHandler {
       }
     };
 
-    (workspace as any).iterateLeaves(saveLeaf, workspace.rootSplit);
+    workspace.iterateRootLeaves(saveLeaf);
     return leaves;
   }
 
