@@ -18,6 +18,8 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols(containerEl, settings);
     SwitcherPlusSettingTab.setSymbolsInLineOrder(containerEl, settings);
     SwitcherPlusSettingTab.setShowExistingOnly(containerEl, settings);
+    SwitcherPlusSettingTab.setEditorListCommand(containerEl, settings);
+    SwitcherPlusSettingTab.setSymbolListCommand(containerEl, settings);
   }
 
   static setAlwaysNewPaneForSymbols(
@@ -66,6 +68,42 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           settings.showExistingOnly = value;
           settings.saveSettings();
         }),
+      );
+  }
+
+  static setEditorListCommand(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl)
+      .setName('Editor list mode trigger')
+      .setDesc('Character that will trigger editor list mode in the switcher')
+      .addText((text) =>
+        text
+          .setPlaceholder(settings.editorListPlaceholderText)
+          .setValue(settings.editorListCommand)
+          .onChange(async (value) => {
+            settings.editorListCommand = value;
+            settings.saveSettings();
+          }),
+      );
+  }
+
+  static setSymbolListCommand(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl)
+      .setName('Symbol list mode trigger')
+      .setDesc('Character that will trigger symbol list mode in the switcher')
+      .addText((text) =>
+        text
+          .setPlaceholder(settings.symbolListPlaceholderText)
+          .setValue(settings.symbolListCommand)
+          .onChange(async (value) => {
+            settings.symbolListCommand = value;
+            settings.saveSettings();
+          }),
       );
   }
 }

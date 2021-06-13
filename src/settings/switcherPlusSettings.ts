@@ -1,17 +1,11 @@
 import type SwitcherPlusPlugin from '../main';
 
 interface Config {
-  // command to enable filtering of open editors
-  editorListCommand: string;
-  // command to enable filtering of file symbols
-  symbolListCommand: string;
   // types of open views to hide from the suggestion list
   excludeViewTypes: string[];
 }
 
 export const DefaultConfig: Config = {
-  editorListCommand: 'edt ',
-  symbolListCommand: '@',
   excludeViewTypes: ['empty'],
 };
 
@@ -19,6 +13,8 @@ interface SettingsData {
   alwaysNewPaneForSymbols: boolean;
   symbolsInLineOrder: boolean;
   showExistingOnly: boolean;
+  editorListCommand: string;
+  symbolListCommand: string;
 }
 
 function getDefaultData(): SettingsData {
@@ -26,6 +22,8 @@ function getDefaultData(): SettingsData {
     alwaysNewPaneForSymbols: false,
     symbolsInLineOrder: true,
     showExistingOnly: false,
+    editorListCommand: 'edt ',
+    symbolListCommand: '@',
   };
 }
 
@@ -54,6 +52,30 @@ export class SwitcherPlusSettings {
 
   set showExistingOnly(value: boolean) {
     this.data.showExistingOnly = value;
+  }
+
+  get editorListPlaceholderText(): string {
+    return getDefaultData().editorListCommand;
+  }
+
+  get symbolListPlaceholderText(): string {
+    return getDefaultData().symbolListCommand;
+  }
+
+  get editorListCommand(): string {
+    return this.data.editorListCommand;
+  }
+
+  set editorListCommand(value: string) {
+    this.data.editorListCommand = value;
+  }
+
+  get symbolListCommand(): string {
+    return this.data.symbolListCommand;
+  }
+
+  set symbolListCommand(value: string) {
+    this.data.symbolListCommand = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

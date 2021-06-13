@@ -71,11 +71,12 @@ export class ModeHandler {
 
   getCommandStringForMode(mode: Mode): string {
     let val = '';
+    const { editorListCommand, symbolListCommand } = this.settings;
 
     if (mode === Mode.EditorList) {
-      val = DefaultConfig.editorListCommand;
+      val = editorListCommand;
     } else if (mode === Mode.SymbolList) {
-      val = DefaultConfig.symbolListCommand;
+      val = symbolListCommand;
     }
 
     return val;
@@ -113,7 +114,7 @@ export class ModeHandler {
   }
 
   determineRunMode(input: string, activeSuggestion: AnySuggestion): Mode {
-    const { editorListCommand, symbolListCommand } = DefaultConfig;
+    const { editorListCommand, symbolListCommand } = this.settings;
 
     // determine if the editor command exists and if it's valid
     const hasEditorCmdPrefix = input.indexOf(editorListCommand) === 0;
@@ -256,8 +257,12 @@ export class ModeHandler {
     return ret;
   }
 
-  private static extractSearchQuery(input = '', mode: Mode): PreparedQuery {
-    const { editorListCommand, symbolListCommand } = DefaultConfig;
+  private static extractSearchQuery(
+    input = '',
+    mode: Mode,
+    settings: SwitcherPlusSettings,
+  ): PreparedQuery {
+    const { editorListCommand, symbolListCommand } = settings;
     let startIndex = 0;
 
     if (mode === Mode.SymbolList) {
@@ -275,7 +280,7 @@ export class ModeHandler {
     const { mode, symbolTarget } = this;
     const suggestions: AnyExSuggestion[] = [];
 
-    const prepQuery = ModeHandler.extractSearchQuery(input, mode);
+    const prepQuery = ModeHandler.extractSearchQuery(input, mode, this.settings);
     const hasSearchTerm = prepQuery?.query?.length > 0;
     this.hasSearchTerm = hasSearchTerm;
     const items = this.getItems(mode, symbolTarget);
