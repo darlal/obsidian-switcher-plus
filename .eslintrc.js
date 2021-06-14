@@ -13,7 +13,6 @@ module.exports = {
     'plugin:@typescript-eslint/eslint-recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:prettier/recommended',
-    'prettier/@typescript-eslint', // needs to be last in the list
   ],
   rules: {
     'no-unused-vars': 'off',
