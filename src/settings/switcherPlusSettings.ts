@@ -1,20 +1,13 @@
 import type SwitcherPlusPlugin from '../main';
 
-interface Config {
-  // types of open views to hide from the suggestion list
-  excludeViewTypes: string[];
-}
-
-export const DefaultConfig: Config = {
-  excludeViewTypes: ['empty'],
-};
-
 interface SettingsData {
   alwaysNewPaneForSymbols: boolean;
   symbolsInLineOrder: boolean;
   showExistingOnly: boolean;
   editorListCommand: string;
   symbolListCommand: string;
+  excludeViewTypes: Array<string>;
+  referenceViews: Array<string>;
 }
 
 function getDefaultData(): SettingsData {
@@ -24,6 +17,8 @@ function getDefaultData(): SettingsData {
     showExistingOnly: false,
     editorListCommand: 'edt ',
     symbolListCommand: '@',
+    excludeViewTypes: ['empty'],
+    referenceViews: ['backlink', 'outline', 'localgraph'],
   };
 }
 
@@ -76,6 +71,14 @@ export class SwitcherPlusSettings {
 
   set symbolListCommand(value: string) {
     this.data.symbolListCommand = value;
+  }
+
+  get excludeViewTypes(): Array<string> {
+    return this.data.excludeViewTypes;
+  }
+
+  get referenceViews(): Array<string> {
+    return this.data.referenceViews;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

@@ -1,4 +1,4 @@
-import { DefaultConfig, SwitcherPlusSettings } from 'src/settings';
+import { SwitcherPlusSettings } from 'src/settings';
 import {
   isSymbolSuggestion,
   isOfType,
@@ -32,8 +32,6 @@ import {
   AnyExSuggestionPayload,
   AnyExSuggestion,
 } from 'src/types';
-
-const ReferenceViews = ['backlink', 'outline', 'localgraph'];
 
 interface SuggestionTarget {
   file: TFile;
@@ -153,7 +151,7 @@ export class ModeHandler {
       activeLeaf,
       activeLeaf: { view },
     } = this.app.workspace;
-    const { excludeViewTypes } = DefaultConfig;
+    const { excludeViewTypes } = this.settings;
 
     // determine if the current active editor pane is valid
     const isCurrentEditorValid = !excludeViewTypes.includes(view.getViewType());
@@ -330,11 +328,12 @@ export class ModeHandler {
   private getOpenRootSplits(): WorkspaceLeaf[] {
     const {
       app: { workspace },
+      settings: { excludeViewTypes },
     } = this;
     const leaves: WorkspaceLeaf[] = [];
 
     const saveLeaf = (l: WorkspaceLeaf) => {
-      if (!DefaultConfig.excludeViewTypes.includes(l.view.getViewType())) {
+      if (!excludeViewTypes.includes(l.view.getViewType())) {
         leaves.push(l);
       }
     };
@@ -467,14 +466,15 @@ export class ModeHandler {
   }
 
   private findOpenEditorMatchingSymbolTarget(): SuggestionTarget {
+    const { referenceViews } = this.settings;
     const { file, leaf } = this.symbolTarget;
     const isTargetLeaf = !!leaf;
 
     const predicate = (l: WorkspaceLeaf) => {
       let val = false;
-      const isRefView = ReferenceViews.includes(l.view.getViewType());
+      const isRefView = referenceViews.includes(l.view.getViewType());
       const isTargetRefView =
-        isTargetLeaf && ReferenceViews.includes(leaf.view.getViewType());
+        isTargetLeaf && referenceViews.includes(leaf.view.getViewType());
 
       if (!isRefView) {
         val =
