@@ -95,3 +95,10 @@ export type AnyExSuggestionPayload = WorkspaceLeaf | SymbolInfo;
 export type AnyExSuggestion = SymbolSuggestion | EditorSuggestion;
 export type AnySystemSuggestion = FileSuggestion | AliasSuggestion | UnresolvedSuggestion;
 export type AnySuggestion = AnyExSuggestion | AnySystemSuggestion;
+
+export interface TargetInfo {
+  file: TFile;
+  leaf: WorkspaceLeaf;
+  suggestion: AnySuggestion;
+  isValidSymbolTarget: boolean;
+}

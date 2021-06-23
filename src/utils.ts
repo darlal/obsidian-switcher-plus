@@ -52,3 +52,7 @@ export function isSystemSuggestion(obj: unknown): obj is AnySystemSuggestion {
 export function isHeadingCache(obj: unknown): obj is HeadingCache {
   return isOfType<HeadingCache>(obj, 'level');
 }
+
+export function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

@@ -73,23 +73,29 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       }
 
       const activeSugg = this.getActiveSuggestion();
-      const input = this.inputEl.value;
-      const mode = exMode.determineRunMode(input, activeSugg);
+      const inputInfo = exMode.determineRunMode(
+        this.inputEl.value,
+        activeSugg,
+        this.app.workspace.activeLeaf,
+      );
+      const { mode } = inputInfo;
       exKeymap.updateKeymapForMode(mode);
 
       if (mode === Mode.Standard) {
         super.updateSuggestions();
       } else {
         chooser.setSuggestions([]);
-        const suggestions = exMode.getSuggestions(input);
+
+        const suggestions = exMode.getSuggestions(inputInfo);
         chooser.setSuggestions(suggestions);
       }
     }
 
     onChooseSuggestion(item: AnySuggestion, evt: MouseEvent | KeyboardEvent) {
       const { exMode } = this;
+      const useDefault = exMode.mode === Mode.Standard || item === null;
 
-      if (isSystemSuggestion(item) || exMode.mode === Mode.Standard) {
+      if (isSystemSuggestion(item) || useDefault) {
         super.onChooseSuggestion(item, evt);
       } else {
         exMode.onChooseSuggestion(item);
@@ -98,8 +104,9 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
 
     renderSuggestion(value: AnySuggestion, parentEl: HTMLElement) {
       const { exMode } = this;
+      const useDefault = exMode.mode === Mode.Standard || value === null;
 
-      if (isSystemSuggestion(value) || exMode.mode === Mode.Standard) {
+      if (isSystemSuggestion(value) || useDefault) {
         super.renderSuggestion(value, parentEl);
       } else {
         exMode.renderSuggestion(value, parentEl);
