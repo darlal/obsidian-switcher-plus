@@ -1,4 +1,4 @@
-import { InputInfo } from 'src/switcherPlus';
+import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
   isSymbolSuggestion,
