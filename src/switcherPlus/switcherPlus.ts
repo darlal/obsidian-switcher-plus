@@ -13,16 +13,15 @@ interface SystemSwitcherConstructor extends SystemSwitcher {
 
 function getSystemSwitcher(app: App): SystemSwitcherConstructor {
   const switcher = (app as any).internalPlugins.getPluginById(QUICK_SWITCHER_ID);
-  if (!switcher) {
-    return null;
-  }
-
-  return switcher.instance.modal.constructor as SystemSwitcherConstructor;
+  return switcher?.instance?.modal?.constructor as SystemSwitcherConstructor;
 }
 
 export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): SwitcherPlus {
   const systemSwitcher = getSystemSwitcher(app);
-  if (systemSwitcher === null) {
+  if (!systemSwitcher) {
+    console.log(
+      'Switcher++: unable to extend system switcher. Plugin UI will not be loaded. Use the builtin switcher instead.',
+    );
     return null;
   }
 
