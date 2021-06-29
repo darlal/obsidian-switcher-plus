@@ -70,9 +70,7 @@ export class ModeHandler {
 
   onChooseSuggestion(sugg: AnyExSuggestion): void {
     if (isEditorSuggestion(sugg)) {
-      const { item } = sugg;
-      this.app.workspace.setActiveLeaf(item);
-      item.view.setEphemeralState({ focus: true });
+      this.activateEditorLeaf(sugg.item, false);
     } else {
       this.navigateToSymbol(sugg);
     }
@@ -326,18 +324,45 @@ export class ModeHandler {
   private getOpenRootSplits(): WorkspaceLeaf[] {
     const {
       app: { workspace },
-      settings: { excludeViewTypes },
+      settings: { excludeViewTypes, includeSidePanelViewTypes },
     } = this;
     const leaves: WorkspaceLeaf[] = [];
 
     const saveLeaf = (l: WorkspaceLeaf) => {
-      if (!excludeViewTypes.includes(l.view.getViewType())) {
+      const viewType = l.view?.getViewType();
+
+      if (this.isMainPanelLeaf(l)) {
+        if (!excludeViewTypes.includes(viewType)) {
+          leaves.push(l);
+        }
+      } else if (includeSidePanelViewTypes.includes(viewType)) {
         leaves.push(l);
       }
     };
 
-    workspace.iterateRootLeaves(saveLeaf);
+    workspace.iterateAllLeaves(saveLeaf);
     return leaves;
+  }
+
+  private isMainPanelLeaf(leaf: WorkspaceLeaf): boolean {
+    return leaf?.getRoot() === this.app.workspace.rootSplit;
+  }
+
+  private activateEditorLeaf(
+    leaf: WorkspaceLeaf,
+    pushHistory?: boolean,
+    eState?: Record<string, unknown>,
+  ) {
+    const { workspace } = this.app;
+    const isInSidePanel = !this.isMainPanelLeaf(leaf);
+    const state = { focus: true, ...eState };
+
+    if (isInSidePanel) {
+      workspace.revealLeaf(leaf);
+    }
+
+    workspace.setActiveLeaf(leaf, pushHistory);
+    leaf.view.setEphemeralState(state);
   }
 
   private getSymbolsForTarget(
@@ -446,7 +471,6 @@ export class ModeHandler {
       startLoc: { line, col },
       endLoc,
       line,
-      focus: true,
       cursor: {
         from: { line, ch: col },
         to: { line, ch: col },
@@ -454,9 +478,7 @@ export class ModeHandler {
     };
 
     if (leaf && !this.settings.alwaysNewPaneForSymbols) {
-      // activate the already open pane, and set state
-      workspace.setActiveLeaf(leaf, true);
-      leaf.view.setEphemeralState(eState);
+      this.activateEditorLeaf(leaf, true, eState);
     } else {
       workspace
         .openLinkText(path, '', true, { eState })
