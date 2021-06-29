@@ -20,6 +20,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     SwitcherPlusSettingTab.setShowExistingOnly(containerEl, settings);
     SwitcherPlusSettingTab.setEditorListCommand(containerEl, settings);
     SwitcherPlusSettingTab.setSymbolListCommand(containerEl, settings);
+    this.setIncludeSidePanelViews(containerEl, settings);
   }
 
   static setAlwaysNewPaneForSymbols(
@@ -102,6 +103,30 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .setValue(settings.symbolListCommand)
           .onChange(async (value) => {
             settings.symbolListCommand = value;
+            settings.saveSettings();
+          }),
+      );
+  }
+
+  private setIncludeSidePanelViews(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    const viewsListing = Object.keys((this.app as any).viewRegistry.viewByType)
+      .sort()
+      .join(' ');
+
+    new Setting(containerEl)
+      .setName('Include side panel views')
+      .setDesc(
+        `When in Editor list mode, show the following view types from the side panels. Add one view type per line. Available view types: ${viewsListing}`,
+      )
+      .addTextArea((textArea) =>
+        textArea
+          .setPlaceholder(settings.includeSidePanelViewTypesPlaceholder)
+          .setValue(settings.includeSidePanelViewTypes.join('\n'))
+          .onChange(async (value) => {
+            settings.includeSidePanelViewTypes = value.split('\n');
             settings.saveSettings();
           }),
       );

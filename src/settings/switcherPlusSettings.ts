@@ -8,22 +8,24 @@ interface SettingsData {
   symbolListCommand: string;
   excludeViewTypes: Array<string>;
   referenceViews: Array<string>;
-}
-
-function getDefaultData(): SettingsData {
-  return {
-    alwaysNewPaneForSymbols: false,
-    symbolsInLineOrder: true,
-    showExistingOnly: false,
-    editorListCommand: 'edt ',
-    symbolListCommand: '@',
-    excludeViewTypes: ['empty'],
-    referenceViews: ['backlink', 'outline', 'localgraph'],
-  };
+  includeSidePanelViewTypes: Array<string>;
 }
 
 export class SwitcherPlusSettings {
   private data: SettingsData;
+
+  private static get defaultData(): SettingsData {
+    return {
+      alwaysNewPaneForSymbols: false,
+      symbolsInLineOrder: true,
+      showExistingOnly: false,
+      editorListCommand: 'edt ',
+      symbolListCommand: '@',
+      excludeViewTypes: ['empty'],
+      referenceViews: ['backlink', 'outline', 'localgraph'],
+      includeSidePanelViewTypes: ['markdown', 'image', 'pdf'],
+    };
+  }
 
   get alwaysNewPaneForSymbols(): boolean {
     return this.data.alwaysNewPaneForSymbols;
@@ -50,11 +52,11 @@ export class SwitcherPlusSettings {
   }
 
   get editorListPlaceholderText(): string {
-    return getDefaultData().editorListCommand;
+    return SwitcherPlusSettings.defaultData.editorListCommand;
   }
 
   get symbolListPlaceholderText(): string {
-    return getDefaultData().symbolListCommand;
+    return SwitcherPlusSettings.defaultData.symbolListCommand;
   }
 
   get editorListCommand(): string {
@@ -81,14 +83,27 @@ export class SwitcherPlusSettings {
     return this.data.referenceViews;
   }
 
+  get includeSidePanelViewTypes(): Array<string> {
+    return this.data.includeSidePanelViewTypes;
+  }
+
+  set includeSidePanelViewTypes(value: Array<string>) {
+    // remove any duplicates before storing
+    this.data.includeSidePanelViewTypes = [...new Set(value)];
+  }
+
+  get includeSidePanelViewTypesPlaceholder(): string {
+    return SwitcherPlusSettings.defaultData.includeSidePanelViewTypes.join('\n');
+  }
+
   constructor(private plugin: SwitcherPlusPlugin) {
-    this.data = getDefaultData();
+    this.data = SwitcherPlusSettings.defaultData;
   }
 
   async loadSettings(): Promise<void> {
     const { plugin } = this;
     const savedData = (await plugin.loadData()) as SettingsData;
-    this.data = { ...getDefaultData(), ...savedData };
+    this.data = { ...SwitcherPlusSettings.defaultData, ...savedData };
   }
 
   saveSettings(): void {
