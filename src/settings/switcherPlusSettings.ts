@@ -11,6 +11,12 @@ interface SettingsData {
   includeSidePanelViewTypes: Array<string>;
 }
 
+interface BuiltInSystemOptions {
+  showAllFileTypes: boolean;
+  showAttachments: boolean;
+  showExistingOnly: boolean;
+}
+
 export class SwitcherPlusSettings {
   private data: SettingsData;
 
@@ -27,6 +33,25 @@ export class SwitcherPlusSettings {
     };
   }
 
+  private get builtInSystemOptions(): BuiltInSystemOptions {
+    return (this.plugin.app as any).internalPlugins.plugins.switcher.instance.options;
+  }
+
+  get showAllFileTypes(): boolean {
+    // forward to core switcher settings
+    return this.builtInSystemOptions.showAllFileTypes;
+  }
+
+  get showAttachments(): boolean {
+    // forward to core switcher settings
+    return this.builtInSystemOptions.showAttachments;
+  }
+
+  get showExistingOnly(): boolean {
+    // forward to core switcher settings
+    return this.builtInSystemOptions.showExistingOnly;
+  }
+
   get alwaysNewPaneForSymbols(): boolean {
     return this.data.alwaysNewPaneForSymbols;
   }
@@ -41,14 +66,6 @@ export class SwitcherPlusSettings {
 
   set symbolsInlineOrder(value: boolean) {
     this.data.symbolsInLineOrder = value;
-  }
-
-  get showExistingOnly(): boolean {
-    return this.data.showExistingOnly;
-  }
-
-  set showExistingOnly(value: boolean) {
-    this.data.showExistingOnly = value;
   }
 
   get editorListPlaceholderText(): string {

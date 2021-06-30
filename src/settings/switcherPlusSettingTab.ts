@@ -15,7 +15,6 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     const { containerEl, settings } = this;
 
     containerEl.empty();
-    SwitcherPlusSettingTab.setShowExistingOnly(containerEl, settings);
     SwitcherPlusSettingTab.setSymbolModeSettingsGroup(containerEl, settings);
     this.setEditorModeSettingsGroup(containerEl, settings);
   }
@@ -70,21 +69,6 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(settings.symbolsInlineOrder).onChange((value) => {
           settings.symbolsInlineOrder = value;
-          settings.saveSettings();
-        }),
-      );
-  }
-
-  private static setShowExistingOnly(
-    containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
-  ): void {
-    new Setting(containerEl)
-      .setName('Show existing only')
-      .setDesc('Whether to show links to files that are not yet created.')
-      .addToggle((toggle) =>
-        toggle.setValue(settings.showExistingOnly).onChange((value) => {
-          settings.showExistingOnly = value;
           settings.saveSettings();
         }),
       );
