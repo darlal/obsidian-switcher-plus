@@ -55,16 +55,16 @@ export class SwitcherPlusSettings {
     return SwitcherPlusSettings.defaultData.editorListCommand;
   }
 
-  get symbolListPlaceholderText(): string {
-    return SwitcherPlusSettings.defaultData.symbolListCommand;
-  }
-
   get editorListCommand(): string {
     return this.data.editorListCommand;
   }
 
   set editorListCommand(value: string) {
     this.data.editorListCommand = value;
+  }
+
+  get symbolListPlaceholderText(): string {
+    return SwitcherPlusSettings.defaultData.symbolListCommand;
   }
 
   get symbolListCommand(): string {

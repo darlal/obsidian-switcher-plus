@@ -15,15 +15,33 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     const { containerEl, settings } = this;
 
     containerEl.empty();
-    SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols(containerEl, settings);
-    SwitcherPlusSettingTab.setSymbolsInLineOrder(containerEl, settings);
     SwitcherPlusSettingTab.setShowExistingOnly(containerEl, settings);
+    SwitcherPlusSettingTab.setSymbolModeSettingsGroup(containerEl, settings);
+    this.setEditorModeSettingsGroup(containerEl, settings);
+  }
+
+  private setEditorModeSettingsGroup(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl).setName('Editor List Mode Settings').setHeading();
+
     SwitcherPlusSettingTab.setEditorListCommand(containerEl, settings);
-    SwitcherPlusSettingTab.setSymbolListCommand(containerEl, settings);
     this.setIncludeSidePanelViews(containerEl, settings);
   }
 
-  static setAlwaysNewPaneForSymbols(
+  private static setSymbolModeSettingsGroup(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl).setName('Symbol List Mode Settings').setHeading();
+
+    SwitcherPlusSettingTab.setSymbolListCommand(containerEl, settings);
+    SwitcherPlusSettingTab.setSymbolsInLineOrder(containerEl, settings);
+    SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols(containerEl, settings);
+  }
+
+  private static setAlwaysNewPaneForSymbols(
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
   ): void {
@@ -40,7 +58,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       );
   }
 
-  static setSymbolsInLineOrder(
+  private static setSymbolsInLineOrder(
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
   ): void {
@@ -57,7 +75,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       );
   }
 
-  static setShowExistingOnly(
+  private static setShowExistingOnly(
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
   ): void {
@@ -72,7 +90,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       );
   }
 
-  static setEditorListCommand(
+  private static setEditorListCommand(
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
   ): void {
@@ -90,7 +108,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       );
   }
 
-  static setSymbolListCommand(
+  private static setSymbolListCommand(
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
   ): void {
