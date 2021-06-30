@@ -14,13 +14,14 @@ import {
   ReferenceCache,
   TFile,
   WorkspaceLeaf,
-  App,
+  Workspace,
   prepareQuery,
   renderResults,
   fuzzySearch,
   sortSearchResults,
   PreparedQuery,
   SearchResult,
+  MetadataCache,
 } from 'obsidian';
 import {
   Mode,
@@ -47,7 +48,11 @@ export class ModeHandler {
 
   private inputInfo: InputInfo;
 
-  constructor(private app: App, private settings: SwitcherPlusSettings) {
+  constructor(
+    private workspace: Workspace,
+    private metadataCache: MetadataCache,
+    private settings: SwitcherPlusSettings,
+  ) {
     this.reset();
   }
 
@@ -323,7 +328,7 @@ export class ModeHandler {
 
   private getOpenRootSplits(): WorkspaceLeaf[] {
     const {
-      app: { workspace },
+      workspace,
       settings: { excludeViewTypes, includeSidePanelViewTypes },
     } = this;
     const leaves: WorkspaceLeaf[] = [];
@@ -345,7 +350,7 @@ export class ModeHandler {
   }
 
   private isMainPanelLeaf(leaf: WorkspaceLeaf): boolean {
-    return leaf?.getRoot() === this.app.workspace.rootSplit;
+    return leaf?.getRoot() === this.workspace.rootSplit;
   }
 
   private activateEditorLeaf(
@@ -353,7 +358,7 @@ export class ModeHandler {
     pushHistory?: boolean,
     eState?: Record<string, unknown>,
   ) {
-    const { workspace } = this.app;
+    const { workspace } = this;
     const isInSidePanel = !this.isMainPanelLeaf(leaf);
     const state = { focus: true, ...eState };
 
@@ -369,9 +374,7 @@ export class ModeHandler {
     targetInfo: TargetInfo,
     orderByLineNumber: boolean,
   ): SymbolInfo[] {
-    const {
-      app: { metadataCache },
-    } = this;
+    const { metadataCache } = this;
     const ret: SymbolInfo[] = [];
 
     if (targetInfo && targetInfo.file) {
@@ -452,7 +455,7 @@ export class ModeHandler {
   }
 
   private navigateToSymbol(sugg: SymbolSuggestion): void {
-    const { workspace } = this.app;
+    const { workspace } = this;
 
     // determine if the target is already open in a pane
     const {

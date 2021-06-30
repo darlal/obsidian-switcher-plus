@@ -33,7 +33,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
     constructor(app: App, public plugin: SwitcherPlusPlugin) {
       super(app);
 
-      this.exMode = new ModeHandler(app, plugin.options);
+      this.exMode = new ModeHandler(app.workspace, app.metadataCache, plugin.options);
       this.exKeymap = new Keymap(this.scope, this.chooser, this.containerEl);
     }
 
