@@ -1,9 +1,10 @@
+import { BuiltInSystemOptions } from 'src/types';
+import { getSystemSwitcherInstance } from 'src/switcherPlus';
 import type SwitcherPlusPlugin from '../main';
 
 interface SettingsData {
   alwaysNewPaneForSymbols: boolean;
   symbolsInLineOrder: boolean;
-  showExistingOnly: boolean;
   editorListCommand: string;
   symbolListCommand: string;
   excludeViewTypes: Array<string>;
@@ -11,20 +12,13 @@ interface SettingsData {
   includeSidePanelViewTypes: Array<string>;
 }
 
-interface BuiltInSystemOptions {
-  showAllFileTypes: boolean;
-  showAttachments: boolean;
-  showExistingOnly: boolean;
-}
-
 export class SwitcherPlusSettings {
   private data: SettingsData;
 
-  private static get defaultData(): SettingsData {
+  private static get defaultSettingsData(): SettingsData {
     return {
       alwaysNewPaneForSymbols: false,
       symbolsInLineOrder: true,
-      showExistingOnly: false,
       editorListCommand: 'edt ',
       symbolListCommand: '@',
       excludeViewTypes: ['empty'],
@@ -33,23 +27,23 @@ export class SwitcherPlusSettings {
     };
   }
 
-  private get builtInSystemOptions(): BuiltInSystemOptions {
-    return (this.plugin.app as any).internalPlugins.plugins.switcher.instance.options;
+  get builtInSystemOptions(): BuiltInSystemOptions {
+    return getSystemSwitcherInstance(this.plugin.app)?.options as BuiltInSystemOptions;
   }
 
   get showAllFileTypes(): boolean {
     // forward to core switcher settings
-    return this.builtInSystemOptions.showAllFileTypes;
+    return this.builtInSystemOptions?.showAllFileTypes;
   }
 
   get showAttachments(): boolean {
     // forward to core switcher settings
-    return this.builtInSystemOptions.showAttachments;
+    return this.builtInSystemOptions?.showAttachments;
   }
 
   get showExistingOnly(): boolean {
     // forward to core switcher settings
-    return this.builtInSystemOptions.showExistingOnly;
+    return this.builtInSystemOptions?.showExistingOnly;
   }
 
   get alwaysNewPaneForSymbols(): boolean {
@@ -69,7 +63,7 @@ export class SwitcherPlusSettings {
   }
 
   get editorListPlaceholderText(): string {
-    return SwitcherPlusSettings.defaultData.editorListCommand;
+    return SwitcherPlusSettings.defaultSettingsData.editorListCommand;
   }
 
   get editorListCommand(): string {
@@ -81,7 +75,7 @@ export class SwitcherPlusSettings {
   }
 
   get symbolListPlaceholderText(): string {
-    return SwitcherPlusSettings.defaultData.symbolListCommand;
+    return SwitcherPlusSettings.defaultSettingsData.symbolListCommand;
   }
 
   get symbolListCommand(): string {
@@ -110,17 +104,17 @@ export class SwitcherPlusSettings {
   }
 
   get includeSidePanelViewTypesPlaceholder(): string {
-    return SwitcherPlusSettings.defaultData.includeSidePanelViewTypes.join('\n');
+    return SwitcherPlusSettings.defaultSettingsData.includeSidePanelViewTypes.join('\n');
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {
-    this.data = SwitcherPlusSettings.defaultData;
+    this.data = SwitcherPlusSettings.defaultSettingsData;
   }
 
   async loadSettings(): Promise<void> {
     const { plugin } = this;
     const savedData = (await plugin.loadData()) as SettingsData;
-    this.data = { ...SwitcherPlusSettings.defaultData, ...savedData };
+    this.data = { ...SwitcherPlusSettings.defaultSettingsData, ...savedData };
   }
 
   saveSettings(): void {

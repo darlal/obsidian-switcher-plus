@@ -1,3 +1,4 @@
+import { BuiltInSystemOptions } from 'src/types';
 import { Keymap } from './keymap';
 import { isSystemSuggestion } from 'src/utils';
 import { ModeHandler } from './modeHandler';
@@ -8,16 +9,18 @@ import { SystemSwitcher, SwitcherPlus, AnySuggestion, Mode } from 'src/types';
 const QUICK_SWITCHER_ID = 'switcher';
 
 interface SystemSwitcherConstructor extends SystemSwitcher {
-  new (app: App): SystemSwitcher;
+  new (app: App, builtInOptions: BuiltInSystemOptions): SystemSwitcher;
 }
 
-function getSystemSwitcher(app: App): SystemSwitcherConstructor {
-  const switcher = (app as any).internalPlugins.getPluginById(QUICK_SWITCHER_ID);
-  return switcher?.instance?.modal?.constructor as SystemSwitcherConstructor;
+export function getSystemSwitcherInstance(app: App): Record<string, unknown> {
+  const switcher = (app as any).internalPlugins?.getPluginById(QUICK_SWITCHER_ID);
+  return switcher?.instance;
 }
 
 export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): SwitcherPlus {
-  const systemSwitcher = getSystemSwitcher(app);
+  const systemSwitcher = getSystemSwitcherInstance(app)
+    ?.QuickSwitcherModal as SystemSwitcherConstructor;
+
   if (!systemSwitcher) {
     console.log(
       'Switcher++: unable to extend system switcher. Plugin UI will not be loaded. Use the builtin switcher instead.',
@@ -31,7 +34,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
     private openWithCommandStr: string = null;
 
     constructor(app: App, public plugin: SwitcherPlusPlugin) {
-      super(app);
+      super(app, plugin.options.builtInSystemOptions);
 
       this.exMode = new ModeHandler(app.workspace, app.metadataCache, plugin.options);
       this.exKeymap = new Keymap(this.scope, this.chooser, this.containerEl);

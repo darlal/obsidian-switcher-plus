@@ -102,3 +102,9 @@ export interface TargetInfo {
   suggestion: AnySuggestion;
   isValidSymbolTarget: boolean;
 }
+
+export interface BuiltInSystemOptions {
+  showAllFileTypes: boolean;
+  showAttachments: boolean;
+  showExistingOnly: boolean;
+}
