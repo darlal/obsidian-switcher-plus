@@ -37,7 +37,9 @@ export default class SwitcherPlusPlugin extends Plugin {
       name,
       hotkeys: [],
       checkCallback: (checking) => {
-        const modal = this.getModal();
+        // modal needs to be created dynamically (same as system switcher)
+        // as system options are evaluated in the modal constructor
+        const modal = createSwitcherPlus(this.app, this);
         if (modal) {
           if (!checking) {
             modal.openInMode(mode);
@@ -49,17 +51,5 @@ export default class SwitcherPlusPlugin extends Plugin {
         return false;
       },
     });
-  }
-
-  private getModal(): SwitcherPlus {
-    let { modal } = this;
-
-    if (modal) {
-      return modal;
-    }
-
-    modal = createSwitcherPlus(this.app, this);
-    this.modal = modal;
-    return modal;
   }
 }
