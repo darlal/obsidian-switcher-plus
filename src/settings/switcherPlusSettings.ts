@@ -22,8 +22,8 @@ export class SwitcherPlusSettings {
       editorListCommand: 'edt ',
       symbolListCommand: '@',
       excludeViewTypes: ['empty'],
-      referenceViews: ['backlink', 'outline', 'localgraph'],
-      includeSidePanelViewTypes: ['markdown', 'image', 'pdf'],
+      referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'],
+      includeSidePanelViewTypes: ['backlink', 'image', 'markdown', 'pdf'],
     };
   }
 
