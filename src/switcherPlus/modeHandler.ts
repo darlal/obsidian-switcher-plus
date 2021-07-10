@@ -103,14 +103,15 @@ export class ModeHandler {
   }
 
   determineRunMode(
-    input: string,
+    inputText: string,
     activeSuggestion: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
   ): InputInfo {
+    const input = inputText ?? '';
     const { editorListCommand, symbolListCommand } = this.settings;
     const info = new InputInfo(input);
 
-    if (!input || input.length === 0) {
+    if (input.length === 0) {
       this.reset();
     }
 
@@ -209,17 +210,24 @@ export class ModeHandler {
   }
 
   private getActiveEditorInfo(activeLeaf: WorkspaceLeaf): TargetInfo {
-    const { view } = activeLeaf;
     const { excludeViewTypes } = this.settings;
+    let file: TFile = null,
+      isValidSymbolTarget = false;
 
-    // determine if the current active editor pane is valid
-    const isCurrentEditorValid = !excludeViewTypes.includes(view.getViewType());
+    if (activeLeaf) {
+      const { view } = activeLeaf;
+      let isCurrentEditorValid = false;
 
-    const file = fileFromView(view);
+      if (view) {
+        // determine if the current active editor pane is valid
+        isCurrentEditorValid = !excludeViewTypes.includes(view.getViewType());
+        file = fileFromView(view);
+      }
 
-    // whether or not the current active editor can be used as the target for
-    // symbol search
-    const isValidSymbolTarget = isCurrentEditorValid && !!file;
+      // whether or not the current active editor can be used as the target for
+      // symbol search
+      isValidSymbolTarget = isCurrentEditorValid && !!file;
+    }
 
     return { isValidSymbolTarget, leaf: activeLeaf, file, suggestion: null };
   }
