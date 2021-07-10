@@ -9,9 +9,12 @@
   "main": "./dist/darlal-switcher-plus/main.js",
   "scripts": {
     "build": "npm run lint && rollup -c rollup.config.js && cp -a ./styles.css ./manifest.json ./versions.json ./dist/darlal-switcher-plus",
+    "build:watch": "onchange 'src/**/*.ts' -- npm run build",
     "build:PROD": "BUILD=production npm run build",
     "lint": "eslint '*/**/*.{js,ts}'",
-    "test": "npm run lint && mocha test"
+    "test": "jest",
+    "test:watch": "jest --watchAll",
+    "test:cov": "serve coverage/lcov-report"
   },
   "keywords": [
     "obsidian",
@@ -24,6 +27,7 @@
     "@rollup/plugin-commonjs": "^19.0.0",
     "@rollup/plugin-node-resolve": "^13.0.0",
     "@rollup/plugin-typescript": "^8.2.1",
+    "@types/jest": "^26.0.23",
     "@types/node": "^15.12.2",
     "@typescript-eslint/eslint-plugin": "^4.26.1",
     "@typescript-eslint/parser": "^4.26.1",
@@ -31,10 +35,13 @@
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-import": "^2.23.4",
     "eslint-plugin-prettier": "^3.4.0",
-    "mocha": "^7.2.0",
+    "jest": "^27.0.6",
     "obsidian": "^0.12.5",
+    "onchange": "^7.1.0",
     "prettier": "^2.3.1",
     "rollup": "^2.51.2",
+    "serve": "^12.0.0",
+    "ts-jest": "^27.0.3",
     "tslib": "^2.3.0",
     "typescript": "^4.3.2"
   }
