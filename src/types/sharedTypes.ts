@@ -62,17 +62,18 @@ export interface SwitcherPlus extends SystemSwitcher {
 
 export type AnySymbolInfoPayload = LinkCache | EmbedCache | TagCache | HeadingCache;
 export interface SymbolInfo {
+  type: 'symbolInfo';
   symbol: AnySymbolInfoPayload;
-  type: SymbolType;
+  symbolType: SymbolType;
   indentLevel?: number;
 }
 
 export interface SymbolSuggestion extends FuzzyMatch<SymbolInfo> {
-  type: 'Symbol';
+  type: 'symbol';
 }
 
 export interface EditorSuggestion extends FuzzyMatch<WorkspaceLeaf> {
-  type: 'Editor';
+  type: 'editor';
 }
 
 export interface FileSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {

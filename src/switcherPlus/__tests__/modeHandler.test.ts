@@ -95,7 +95,7 @@ describe('determineRunMode', () => {
 
         const es: EditorSuggestion = {
           item: new WorkspaceLeaf(),
-          type: 'Editor',
+          type: 'editor',
           match: {
             score: 0,
             matches: [[0, 0]],
@@ -223,7 +223,7 @@ describe('determineRunMode', () => {
         const leaf = new WorkspaceLeaf();
         const editorSuggestion: EditorSuggestion = {
           item: leaf,
-          type: 'Editor',
+          type: 'editor',
           match: {
             score: 0,
             matches: [[0, 0]],

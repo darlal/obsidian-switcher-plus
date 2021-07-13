@@ -7,6 +7,7 @@ import {
   isHeadingCache,
   isUnresolvedSuggestion,
   escapeRegExp,
+  isSymbolInfo,
 } from 'src/utils';
 import {
   View,
@@ -278,10 +279,11 @@ export class ModeHandler {
     const suggestions: AnyExSuggestion[] = [];
 
     const push = (item: AnyExSuggestionPayload, match: SearchResult) => {
-      if (item instanceof WorkspaceLeaf) {
-        suggestions.push({ type: 'Editor', item, match });
+      if (isSymbolInfo(item)) {
+        suggestions.push({ type: 'symbol', item, match });
       } else {
-        suggestions.push({ type: 'Symbol', item, match });
+        // item is workspace leaf
+        suggestions.push({ type: 'editor', item, match });
       }
     };
 
@@ -390,8 +392,10 @@ export class ModeHandler {
       const symbolData = metadataCache.getFileCache(file);
 
       if (symbolData) {
-        const push = (symbols: AnySymbolInfoPayload[] = [], type: SymbolType) => {
-          symbols.forEach((symbol) => ret.push({ symbol, type }));
+        const push = (symbols: AnySymbolInfoPayload[] = [], symbolType: SymbolType) => {
+          symbols.forEach((symbol) =>
+            ret.push({ type: 'symbolInfo', symbol, symbolType }),
+          );
         };
 
         push(symbolData.headings, SymbolType.Heading);
@@ -432,10 +436,11 @@ export class ModeHandler {
   private static getItemText(item: AnyExSuggestionPayload): string {
     let text;
 
-    if (item instanceof WorkspaceLeaf) {
-      text = item.getDisplayText();
-    } else {
+    if (isSymbolInfo(item)) {
       text = ModeHandler.getSuggestionTextForSymbol(item);
+    } else {
+      // item is workspace leaf
+      text = item.getDisplayText();
     }
 
     return text;
@@ -521,13 +526,13 @@ export class ModeHandler {
   }
 
   private static addSymbolIndicator(symbolInfo: SymbolInfo, parentEl: HTMLElement): void {
-    const { type, symbol } = symbolInfo;
+    const { symbolType, symbol } = symbolInfo;
     let indicator: string;
 
     if (isHeadingCache(symbol)) {
       indicator = HeadingIndicators[symbol.level];
     } else {
-      indicator = SymbolIndicators[type];
+      indicator = SymbolIndicators[symbolType];
     }
 
     createDiv({

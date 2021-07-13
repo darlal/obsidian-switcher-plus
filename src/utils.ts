@@ -1,3 +1,4 @@
+import { SymbolInfo } from './types/sharedTypes';
 import { HeadingCache } from 'obsidian';
 import {
   SymbolSuggestion,
@@ -26,11 +27,11 @@ export function isOfType<T>(
 }
 
 export function isSymbolSuggestion(obj: unknown): obj is SymbolSuggestion {
-  return isOfType<SymbolSuggestion>(obj, 'type', 'Symbol');
+  return isOfType<SymbolSuggestion>(obj, 'type', 'symbol');
 }
 
 export function isEditorSuggestion(obj: unknown): obj is EditorSuggestion {
-  return isOfType<EditorSuggestion>(obj, 'type', 'Editor');
+  return isOfType<EditorSuggestion>(obj, 'type', 'editor');
 }
 
 export function isFileSuggestion(obj: unknown): obj is FileSuggestion {
@@ -51,6 +52,10 @@ export function isSystemSuggestion(obj: unknown): obj is AnySystemSuggestion {
 
 export function isHeadingCache(obj: unknown): obj is HeadingCache {
   return isOfType<HeadingCache>(obj, 'level');
+}
+
+export function isSymbolInfo(obj: unknown): obj is SymbolInfo {
+  return isOfType<SymbolInfo>(obj, 'type', 'symbolInfo');
 }
 
 export function escapeRegExp(str: string): string {
