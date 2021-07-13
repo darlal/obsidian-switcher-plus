@@ -53,7 +53,7 @@ function standardExpectation(input: string): InputExpectationStandard {
   };
 }
 
-export const standardModeInputData = [
+export const standardModeInputFixture = [
   standardExpectation('test string'),
   standardExpectation(`test${editorTrigger}string`),
   standardExpectation(`test${editorTrigger}string`),
@@ -80,7 +80,7 @@ export const standardModeInputData = [
 ];
 
 // Used for editor mode tests
-export const editorPrefixOnlyInputData = [
+export const editorPrefixOnlyInputFixture = [
   editorExpectation(`${editorTrigger}`, ''),
   editorExpectation(`${editorTrigger}test string`, 'test string'),
   editorExpectation(`${editorTrigger}${symbolTrigger}`, `${symbolTrigger}`),
@@ -105,7 +105,7 @@ export const editorPrefixOnlyInputData = [
 ];
 
 // Used for tests with active leaf only (no suggestions)
-export const symbolPrefixOnlyInputData = [
+export const symbolPrefixOnlyInputFixture = [
   symbolExpectation(`${symbolTrigger}`, ''),
   symbolExpectation(`${symbolTrigger}test string`, 'test string'),
   symbolExpectation(`${symbolTrigger}${symbolTrigger}`, `${symbolTrigger}`),
@@ -130,7 +130,7 @@ export const symbolPrefixOnlyInputData = [
 ];
 
 // Used for tests with different types of suggestions (File, Editor)
-export const symbolModeInputData = [
+export const symbolModeInputFixture = [
   symbolExpectation(`${symbolTrigger}`, ''),
   symbolExpectation(`${symbolTrigger}test string`, 'test string'),
   symbolExpectation(`${symbolTrigger} `, ' '),
@@ -191,7 +191,7 @@ export const symbolModeInputData = [
   ),
 ];
 
-export const unicodeInputData = [
+export const unicodeInputFixture = [
   {
     editorTrigger: 'ë',
     input: 'ëfooô',

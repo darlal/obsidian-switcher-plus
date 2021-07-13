@@ -4,12 +4,12 @@ import { Mode, FileSuggestion, EditorSuggestion } from 'src/types/sharedTypes';
 import { editorTrigger, symbolTrigger } from 'src/__fixtures__/modeTrigger.fixture';
 import { TFile, WorkspaceLeaf } from 'obsidian';
 import {
-  standardModeInputData,
-  editorPrefixOnlyInputData,
-  symbolPrefixOnlyInputData,
-  symbolModeInputData,
-  unicodeInputData,
-} from 'src/__testdata__/inputText';
+  standardModeInputFixture,
+  editorPrefixOnlyInputFixture,
+  symbolPrefixOnlyInputFixture,
+  symbolModeInputFixture,
+  unicodeInputFixture,
+} from 'src/__fixtures__/inputText.fixture';
 
 describe('getCommandStringForMode', () => {
   let settings: SwitcherPlusSettings;
@@ -74,7 +74,7 @@ describe('determineRunMode', () => {
   });
 
   describe('should identify unicode triggers', () => {
-    test.each(unicodeInputData)(
+    test.each(unicodeInputFixture)(
       'for input: "$input" (array data index: $#)',
       ({ editorTrigger, symbolTrigger, input, expected: { mode, parsedInput } }) => {
         const s = new SwitcherPlusSettings(null);
@@ -140,7 +140,7 @@ describe('determineRunMode', () => {
       excludeViewTypesSpy.mockRestore();
     });
 
-    test.each(standardModeInputData)(
+    test.each(standardModeInputFixture)(
       'for input: "$input" (array data index: $#)',
       ({ input, expected: { mode } }) => {
         const inputInfo = sut.determineRunMode(input, null, null);
@@ -152,7 +152,7 @@ describe('determineRunMode', () => {
   });
 
   describe('should parse as editor mode', () => {
-    test.each(editorPrefixOnlyInputData)(
+    test.each(editorPrefixOnlyInputFixture)(
       'for input: "$input" (array data index: $#)',
       ({ input, expected: { mode, isValidated, parsedInput } }) => {
         const inputInfo = sut.determineRunMode(input, null, null);
@@ -166,7 +166,7 @@ describe('determineRunMode', () => {
   });
 
   describe('should parse as symbol mode', () => {
-    test.each(symbolPrefixOnlyInputData)(
+    test.each(symbolPrefixOnlyInputFixture)(
       'with ACTIVE LEAF for input: "$input" (array data index: $#)',
       ({ input, expected: { mode, isValidated, parsedInput } }) => {
         const activeLeaf = new WorkspaceLeaf();
@@ -188,7 +188,7 @@ describe('determineRunMode', () => {
       },
     );
 
-    test.each(symbolModeInputData)(
+    test.each(symbolModeInputFixture)(
       'with FILE SUGGESTIONO for input: "$input" (array data index: $#)',
       ({ input, expected: { mode, isValidated, parsedInput } }) => {
         const fileSuggestion: FileSuggestion = {
@@ -217,7 +217,7 @@ describe('determineRunMode', () => {
       },
     );
 
-    test.each(symbolModeInputData)(
+    test.each(symbolModeInputFixture)(
       'with EDITOR SUGGESTION for input: "$input" (array data index: $#)',
       ({ input, expected: { mode, isValidated, parsedInput } }) => {
         const leaf = new WorkspaceLeaf();
