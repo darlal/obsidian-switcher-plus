@@ -14,7 +14,7 @@ export const TFile = jest.fn().mockImplementation(() => {
 export const WorkspaceLeaf = jest.fn().mockImplementation(() => {
   const view = {
     file: new TFile(),
-    getViewType: jest.fn().mockReturnValue('markdown'),
+    getViewType: () => 'markdown',
   };
 
   return {
