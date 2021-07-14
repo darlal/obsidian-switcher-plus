@@ -2,7 +2,14 @@ import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
 import { ModeHandler } from 'src/switcherPlus/modeHandler';
 import { Mode, FileSuggestion, EditorSuggestion } from 'src/types/sharedTypes';
 import { editorTrigger, symbolTrigger } from 'src/__fixtures__/modeTrigger.fixture';
-import { TFile, WorkspaceLeaf } from 'obsidian';
+import {
+  TFile,
+  WorkspaceLeaf,
+  Workspace,
+  PreparedQuery,
+  prepareQuery,
+  fuzzySearch,
+} from 'obsidian';
 import {
   standardModeInputFixture,
   editorPrefixOnlyInputFixture,
@@ -10,6 +17,11 @@ import {
   symbolModeInputFixture,
   unicodeInputFixture,
 } from 'src/__fixtures__/inputText.fixture';
+import {
+  rootSplitEditorFixtures,
+  leftSplitEditorFixtures,
+  rightSplitEditorFixtures,
+} from 'src/__fixtures__/editorFilter.fixture';
 
 describe('getCommandStringForMode', () => {
   let settings: SwitcherPlusSettings;
@@ -247,5 +259,205 @@ describe('determineRunMode', () => {
         expect(target.suggestion).toBe(editorSuggestion);
       },
     );
+  });
+});
+
+describe('getSuggestions', () => {
+  const rootFixture = rootSplitEditorFixtures[0];
+  const leftFixture = leftSplitEditorFixtures[0];
+  const rightFixture = rightSplitEditorFixtures[0];
+  let settings: SwitcherPlusSettings;
+  let workspace: Workspace;
+  let rootSplitLeaf: WorkspaceLeaf;
+  let leftSplitLeaf: WorkspaceLeaf;
+  let rightSplitLeaf: WorkspaceLeaf;
+  let rootSplitGetRootSpy: jest.SpyInstance;
+  let leftSplitGetRootSpy: jest.SpyInstance;
+  let rightSplitGetRootSpy: jest.SpyInstance;
+  let rootSplitGetDisplayTextSpy: jest.SpyInstance;
+  let leftSplitGetDisplayTextSpy: jest.SpyInstance;
+  let rightSplitGetDisplayTextSpy: jest.SpyInstance;
+  let iterateAllLeavesSpy: jest.SpyInstance;
+  let mockPrepareQuery: jest.MockedFunction<typeof prepareQuery>;
+  let mockFuzzySearch: jest.MockedFunction<typeof fuzzySearch>;
+  let sut: ModeHandler;
+
+  beforeAll(() => {
+    settings = new SwitcherPlusSettings(null);
+    jest.spyOn(settings, 'editorListCommand', 'get').mockReturnValue(editorTrigger);
+    jest.spyOn(settings, 'symbolListCommand', 'get').mockReturnValue(symbolTrigger);
+
+    workspace = new Workspace();
+    rootSplitLeaf = new WorkspaceLeaf();
+    leftSplitLeaf = new WorkspaceLeaf();
+    rightSplitLeaf = new WorkspaceLeaf();
+
+    rootSplitGetRootSpy = jest
+      .spyOn(rootSplitLeaf, 'getRoot')
+      .mockReturnValue(workspace.rootSplit);
+    leftSplitGetRootSpy = jest
+      .spyOn(leftSplitLeaf, 'getRoot')
+      .mockReturnValue(workspace.leftSplit);
+    rightSplitGetRootSpy = jest
+      .spyOn(rightSplitLeaf, 'getRoot')
+      .mockReturnValue(workspace.rightSplit);
+
+    rootSplitGetDisplayTextSpy = jest
+      .spyOn(rootSplitLeaf, 'getDisplayText')
+      .mockReturnValue(rootFixture.displayText);
+    leftSplitGetDisplayTextSpy = jest
+      .spyOn(leftSplitLeaf, 'getDisplayText')
+      .mockReturnValue(leftFixture.displayText);
+    rightSplitGetDisplayTextSpy = jest
+      .spyOn(rightSplitLeaf, 'getDisplayText')
+      .mockReturnValue(rightFixture.displayText);
+
+    iterateAllLeavesSpy = jest
+      .spyOn(workspace, 'iterateAllLeaves')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .mockImplementation((callback: (leaf: WorkspaceLeaf) => any) => {
+        const leaves = [rootSplitLeaf, leftSplitLeaf, rightSplitLeaf];
+        leaves.forEach((leaf) => callback(leaf));
+      });
+
+    mockPrepareQuery = prepareQuery as jest.MockedFunction<typeof prepareQuery>;
+    mockPrepareQuery.mockReturnValue({ query: '', tokens: [], fuzzy: [] });
+
+    mockFuzzySearch = fuzzySearch as jest.MockedFunction<typeof fuzzySearch>;
+    sut = new ModeHandler(workspace, null, settings);
+  });
+
+  describe('for editor mode:', () => {
+    test('with filter search term, it should return only matching suggestions for editor mode', () => {
+      mockPrepareQuery.mockReturnValueOnce(rootFixture.prepQuery);
+
+      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
+        return text === rootFixture.displayText ? rootFixture.fuzzyMatch : null;
+      });
+
+      const inputInfo = sut.determineRunMode(rootFixture.inputText, null, null);
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(results).not.toBeNull();
+      expect(results instanceof Array).toBe(true);
+      expect(results.length).toBe(1);
+
+      const resultLeaves = new Set(results.map((sugg) => sugg.item));
+      expect(resultLeaves.has(rootSplitLeaf)).toBe(true);
+      expect(resultLeaves.has(leftSplitLeaf)).toBe(false);
+      expect(resultLeaves.has(rightSplitLeaf)).toBe(false);
+
+      expect(results[0].type).toBe('editor');
+
+      expect(mockPrepareQuery).toHaveBeenCalled();
+      expect(mockFuzzySearch).toHaveBeenCalled();
+      expect(iterateAllLeavesSpy).toHaveBeenCalled();
+      expect(rootSplitGetRootSpy).toHaveBeenCalled();
+      expect(leftSplitGetRootSpy).toHaveBeenCalled();
+      expect(rightSplitGetRootSpy).toHaveBeenCalled();
+      expect(rootSplitGetDisplayTextSpy).toHaveBeenCalled();
+      expect(leftSplitGetDisplayTextSpy).toHaveBeenCalled();
+      expect(rightSplitGetDisplayTextSpy).toHaveBeenCalled();
+
+      mockFuzzySearch.mockRestore();
+    });
+
+    test('with INCLUDED side view type, it should return included side panel editor suggestions for editor mode', () => {
+      const includeViewType = 'foo';
+      const includeViewTypesSpy = jest
+        .spyOn(settings, 'includeSidePanelViewTypes', 'get')
+        .mockReturnValue([includeViewType]);
+
+      const getViewTypeSpy = jest
+        .spyOn(leftSplitLeaf.view, 'getViewType')
+        .mockReturnValue(includeViewType);
+
+      const inputInfo = sut.determineRunMode(editorTrigger, null, null);
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(results).not.toBeNull();
+      expect(results instanceof Array).toBe(true);
+      expect(results.length).toBe(2);
+
+      const resultLeaves = new Set(results.map((sugg) => sugg.item));
+      expect(resultLeaves.has(rootSplitLeaf)).toBe(true);
+      expect(resultLeaves.has(leftSplitLeaf)).toBe(true);
+      expect(resultLeaves.has(rightSplitLeaf)).toBe(false);
+
+      expect(results[0].type).toBe('editor');
+      expect(results[1].type).toBe('editor');
+
+      expect(includeViewTypesSpy).toHaveBeenCalled();
+      expect(getViewTypeSpy).toHaveBeenCalled();
+      expect(mockPrepareQuery).toHaveBeenCalled();
+      expect(iterateAllLeavesSpy).toHaveBeenCalled();
+      expect(rootSplitGetRootSpy).toHaveBeenCalled();
+      expect(leftSplitGetRootSpy).toHaveBeenCalled();
+      expect(rightSplitGetRootSpy).toHaveBeenCalled();
+
+      includeViewTypesSpy.mockRestore();
+      getViewTypeSpy.mockRestore();
+    });
+
+    test('with EXCLUDED main view type, it should not return excluded main panel editor suggestions for editor mode', () => {
+      const excludeViewType = 'foo';
+      const excludeViewTypesSpy = jest
+        .spyOn(settings, 'excludeViewTypes', 'get')
+        .mockReturnValue([excludeViewType]);
+
+      const getViewTypeSpy = jest
+        .spyOn(rootSplitLeaf.view, 'getViewType')
+        .mockReturnValue(excludeViewType);
+
+      const inputInfo = sut.determineRunMode(editorTrigger, null, null);
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(results).not.toBeNull();
+      expect(results instanceof Array).toBe(true);
+      expect(results.length).toBe(2);
+
+      const resultLeaves = new Set(results.map((sugg) => sugg.item));
+      expect(resultLeaves.has(rootSplitLeaf)).toBe(false);
+      expect(resultLeaves.has(leftSplitLeaf)).toBe(true);
+      expect(resultLeaves.has(rightSplitLeaf)).toBe(true);
+
+      expect(results[0].type).toBe('editor');
+      expect(results[1].type).toBe('editor');
+
+      expect(excludeViewTypesSpy).toHaveBeenCalled();
+      expect(getViewTypeSpy).toHaveBeenCalled();
+      expect(mockPrepareQuery).toHaveBeenCalled();
+      expect(iterateAllLeavesSpy).toHaveBeenCalled();
+      expect(rootSplitGetRootSpy).toHaveBeenCalled();
+      expect(leftSplitGetRootSpy).toHaveBeenCalled();
+      expect(rightSplitGetRootSpy).toHaveBeenCalled();
+
+      excludeViewTypesSpy.mockRestore();
+      getViewTypeSpy.mockRestore();
+    });
+
+    test('with default settings, it should return suggestions for editor mode', () => {
+      const inputInfo = sut.determineRunMode(editorTrigger, null, null);
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(results).not.toBeNull();
+      expect(results instanceof Array).toBe(true);
+      expect(results.length).toBe(3);
+
+      const resultLeaves = new Set(results.map((sugg) => sugg.item));
+      expect(resultLeaves.has(rootSplitLeaf)).toBe(true);
+      expect(resultLeaves.has(leftSplitLeaf)).toBe(true);
+      expect(resultLeaves.has(rightSplitLeaf)).toBe(true);
+
+      expect(results[0].type).toBe('editor');
+      expect(results[1].type).toBe('editor');
+      expect(results[2].type).toBe('editor');
+
+      expect(mockPrepareQuery).toHaveBeenCalled();
+      expect(iterateAllLeavesSpy).toHaveBeenCalled();
+      expect(rootSplitGetRootSpy).toHaveBeenCalled();
+      expect(leftSplitGetRootSpy).toHaveBeenCalled();
+      expect(rightSplitGetRootSpy).toHaveBeenCalled();
+    });
   });
 });

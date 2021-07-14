@@ -11,6 +11,10 @@ export const TFile = jest.fn().mockImplementation(() => {
   };
 });
 
+export const WorkspaceSplit = jest.fn().mockImplementation(() => {
+  return {};
+});
+
 export const WorkspaceLeaf = jest.fn().mockImplementation(() => {
   const view = {
     file: new TFile(),
@@ -19,6 +23,8 @@ export const WorkspaceLeaf = jest.fn().mockImplementation(() => {
 
   return {
     view,
+    getRoot: jest.fn(),
+    getDisplayText: jest.fn(),
   };
 });
 
@@ -30,6 +36,9 @@ export const MetadataCache = jest.fn().mockImplementation(() => {
 
 export const Workspace = jest.fn().mockImplementation(() => {
   return {
+    rootSplit: new WorkspaceSplit(),
+    leftSplit: new WorkspaceSplit(),
+    rightSplit: new WorkspaceSplit(),
     iterateAllLeaves: jest.fn(),
   };
 });
@@ -39,3 +48,7 @@ export const App = jest.fn().mockImplementation(() => {
     workspace: new Workspace(),
   };
 });
+
+export const prepareQuery = jest.fn();
+export const fuzzySearch = jest.fn();
+export const sortSearchResults = jest.fn();
