@@ -1,5 +1,9 @@
+import { Chance } from 'chance';
+
+const chance = new Chance();
+
 export const TFile = jest.fn().mockImplementation(() => {
-  const basename = 'file-foo';
+  const basename = chance.word();
   const extension = 'bar';
   const name = `${basename}.${extension}`;
 

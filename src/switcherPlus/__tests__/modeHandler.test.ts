@@ -1,7 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
 import { ModeHandler } from 'src/switcherPlus/modeHandler';
-import { Mode, FileSuggestion, EditorSuggestion } from 'src/types/sharedTypes';
 import { editorTrigger, symbolTrigger } from 'src/__fixtures__/modeTrigger.fixture';
+import {
+  Mode,
+  FileSuggestion,
+  EditorSuggestion,
+  SymbolSuggestion,
+} from 'src/types/sharedTypes';
 import {
   TFile,
   WorkspaceLeaf,
@@ -9,6 +15,8 @@ import {
   PreparedQuery,
   prepareQuery,
   fuzzySearch,
+  MetadataCache,
+  SearchResult,
 } from 'obsidian';
 import {
   standardModeInputFixture,
@@ -21,6 +29,7 @@ import {
   rootSplitEditorFixtures,
   leftSplitEditorFixtures,
   rightSplitEditorFixtures,
+  makePreparedQuery,
 } from 'src/__fixtures__/editorFilter.fixture';
 
 describe('getCommandStringForMode', () => {
@@ -71,7 +80,7 @@ describe('determineRunMode', () => {
     sut = new ModeHandler(null, null, settings);
   });
 
-  it('should reset on nullish input', () => {
+  it('should reset on falsy input', () => {
     const spy = jest.spyOn(sut, 'reset');
 
     const input: string = null;
@@ -193,7 +202,6 @@ describe('determineRunMode', () => {
 
         const { target } = symbolCmd;
         expect(target.isValidSymbolTarget).toBe(true);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect(target.file).toBe((activeLeaf.view as any).file);
         expect(target.leaf).toBe(activeLeaf);
         expect(target.suggestion).toBe(null);
@@ -280,7 +288,6 @@ describe('getSuggestions', () => {
   let iterateAllLeavesSpy: jest.SpyInstance;
   let mockPrepareQuery: jest.MockedFunction<typeof prepareQuery>;
   let mockFuzzySearch: jest.MockedFunction<typeof fuzzySearch>;
-  let sut: ModeHandler;
 
   beforeAll(() => {
     settings = new SwitcherPlusSettings(null);
@@ -314,7 +321,6 @@ describe('getSuggestions', () => {
 
     iterateAllLeavesSpy = jest
       .spyOn(workspace, 'iterateAllLeaves')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .mockImplementation((callback: (leaf: WorkspaceLeaf) => any) => {
         const leaves = [rootSplitLeaf, leftSplitLeaf, rightSplitLeaf];
         leaves.forEach((leaf) => callback(leaf));
@@ -324,10 +330,26 @@ describe('getSuggestions', () => {
     mockPrepareQuery.mockReturnValue({ query: '', tokens: [], fuzzy: [] });
 
     mockFuzzySearch = fuzzySearch as jest.MockedFunction<typeof fuzzySearch>;
-    sut = new ModeHandler(workspace, null, settings);
   });
 
-  describe('for editor mode:', () => {
+  test('with falsy input, it should return an empty array', () => {
+    const sut = new ModeHandler(workspace, null, settings);
+
+    const results = sut.getSuggestions(null);
+
+    expect(sut.mode).toBe(Mode.Standard);
+    expect(results).not.toBeNull();
+    expect(results).toBeInstanceOf(Array);
+    expect(results).toHaveLength(0);
+  });
+
+  describe('for editor mode', () => {
+    let sut: ModeHandler;
+
+    beforeAll(() => {
+      sut = new ModeHandler(workspace, null, settings);
+    });
+
     test('with filter search term, it should return only matching suggestions for editor mode', () => {
       mockPrepareQuery.mockReturnValueOnce(rootFixture.prepQuery);
 
@@ -338,16 +360,16 @@ describe('getSuggestions', () => {
       const inputInfo = sut.determineRunMode(rootFixture.inputText, null, null);
       const results = sut.getSuggestions(inputInfo);
 
+      expect(sut.mode).toBe(Mode.EditorList);
       expect(results).not.toBeNull();
-      expect(results instanceof Array).toBe(true);
-      expect(results.length).toBe(1);
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(1);
 
       const resultLeaves = new Set(results.map((sugg) => sugg.item));
       expect(resultLeaves.has(rootSplitLeaf)).toBe(true);
       expect(resultLeaves.has(leftSplitLeaf)).toBe(false);
       expect(resultLeaves.has(rightSplitLeaf)).toBe(false);
-
-      expect(results[0].type).toBe('editor');
+      expect(results[0]).toHaveProperty('type', 'editor');
 
       expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockFuzzySearch).toHaveBeenCalled();
@@ -375,17 +397,16 @@ describe('getSuggestions', () => {
       const inputInfo = sut.determineRunMode(editorTrigger, null, null);
       const results = sut.getSuggestions(inputInfo);
 
+      expect(sut.mode).toBe(Mode.EditorList);
       expect(results).not.toBeNull();
-      expect(results instanceof Array).toBe(true);
-      expect(results.length).toBe(2);
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(2);
 
       const resultLeaves = new Set(results.map((sugg) => sugg.item));
       expect(resultLeaves.has(rootSplitLeaf)).toBe(true);
       expect(resultLeaves.has(leftSplitLeaf)).toBe(true);
       expect(resultLeaves.has(rightSplitLeaf)).toBe(false);
-
-      expect(results[0].type).toBe('editor');
-      expect(results[1].type).toBe('editor');
+      expect(results.every((sugg) => sugg.type === 'editor')).toBe(true);
 
       expect(includeViewTypesSpy).toHaveBeenCalled();
       expect(getViewTypeSpy).toHaveBeenCalled();
@@ -412,17 +433,16 @@ describe('getSuggestions', () => {
       const inputInfo = sut.determineRunMode(editorTrigger, null, null);
       const results = sut.getSuggestions(inputInfo);
 
+      expect(sut.mode).toBe(Mode.EditorList);
       expect(results).not.toBeNull();
-      expect(results instanceof Array).toBe(true);
-      expect(results.length).toBe(2);
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(2);
 
       const resultLeaves = new Set(results.map((sugg) => sugg.item));
       expect(resultLeaves.has(rootSplitLeaf)).toBe(false);
       expect(resultLeaves.has(leftSplitLeaf)).toBe(true);
       expect(resultLeaves.has(rightSplitLeaf)).toBe(true);
-
-      expect(results[0].type).toBe('editor');
-      expect(results[1].type).toBe('editor');
+      expect(results.every((sugg) => sugg.type === 'editor')).toBe(true);
 
       expect(excludeViewTypesSpy).toHaveBeenCalled();
       expect(getViewTypeSpy).toHaveBeenCalled();
@@ -440,24 +460,155 @@ describe('getSuggestions', () => {
       const inputInfo = sut.determineRunMode(editorTrigger, null, null);
       const results = sut.getSuggestions(inputInfo);
 
+      expect(sut.mode).toBe(Mode.EditorList);
       expect(results).not.toBeNull();
-      expect(results instanceof Array).toBe(true);
-      expect(results.length).toBe(3);
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(3);
 
       const resultLeaves = new Set(results.map((sugg) => sugg.item));
       expect(resultLeaves.has(rootSplitLeaf)).toBe(true);
       expect(resultLeaves.has(leftSplitLeaf)).toBe(true);
       expect(resultLeaves.has(rightSplitLeaf)).toBe(true);
-
-      expect(results[0].type).toBe('editor');
-      expect(results[1].type).toBe('editor');
-      expect(results[2].type).toBe('editor');
+      expect(results.every((sugg) => sugg.type === 'editor')).toBe(true);
 
       expect(mockPrepareQuery).toHaveBeenCalled();
       expect(iterateAllLeavesSpy).toHaveBeenCalled();
       expect(rootSplitGetRootSpy).toHaveBeenCalled();
       expect(leftSplitGetRootSpy).toHaveBeenCalled();
       expect(rightSplitGetRootSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('for symbol mode', () => {
+    let mockGetFileCache: jest.SpyInstance;
+    let metadataCache: MetadataCache;
+    let sut: ModeHandler;
+
+    beforeAll(() => {
+      metadataCache = new MetadataCache();
+      mockGetFileCache = jest
+        .spyOn(metadataCache, 'getFileCache')
+        .mockImplementation(() => {
+          return rootFixture.cachedMetadata;
+        });
+    });
+
+    beforeEach(() => {
+      // reset for each test because symbol mode will use saved data from previous runs
+      sut = new ModeHandler(workspace, metadataCache, settings);
+    });
+
+    test('with default settings, it should return symbol suggestions', () => {
+      const inputInfo = sut.determineRunMode(symbolTrigger, null, rootSplitLeaf);
+      const results = sut.getSuggestions(inputInfo) as SymbolSuggestion[];
+
+      expect(sut.mode).toBe(Mode.SymbolList);
+      expect(results).not.toBeNull();
+      expect(results).toBeInstanceOf(Array);
+      expect(results.every((sugg) => sugg.type === 'symbol')).toBe(true);
+
+      const set = new Set(results.map((sugg) => sugg.item.symbol));
+      const cached = Object.values(rootFixture.cachedMetadata).flat();
+      expect(results).toHaveLength(cached.length);
+      expect(cached.every((item) => set.has(item))).toBe(true);
+
+      expect(mockGetFileCache).toHaveBeenCalledWith((rootSplitLeaf.view as any).file);
+      expect(mockPrepareQuery).toHaveBeenCalled();
+    });
+
+    test('with filter search term, it should return only matching symbol suggestions', () => {
+      const filterText = 'tag';
+      mockGetFileCache.mockReturnValueOnce(leftFixture.cachedMetadata);
+      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
+      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
+        const match: SearchResult = { matches: [[0, 3]], score: -0.0104 };
+        return text === 'tag1' || text === 'tag2' ? match : null;
+      });
+
+      const inputInfo = sut.determineRunMode(
+        `${symbolTrigger}${filterText}`,
+        null,
+        leftSplitLeaf,
+      );
+      const results = sut.getSuggestions(inputInfo) as SymbolSuggestion[];
+
+      expect(sut.mode).toBe(Mode.SymbolList);
+      expect(results).not.toBeNull();
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(2);
+      expect(results.every((sugg) => sugg.type === 'symbol')).toBe(true);
+
+      const { tags } = leftFixture.cachedMetadata;
+      const resTags = new Set(results.map((sugg) => sugg.item.symbol));
+      expect(tags.every((tag) => resTags.has(tag))).toBe(true);
+
+      expect(mockGetFileCache).toHaveBeenCalledWith((leftSplitLeaf.view as any).file);
+      expect(mockPrepareQuery).toHaveBeenCalled();
+
+      mockFuzzySearch.mockRestore();
+    });
+
+    test('with existing filter search term, it should continue refining suggestions for the previous target', () => {
+      mockGetFileCache.mockReturnValue(leftFixture.cachedMetadata);
+
+      // 1) setup first initial run
+      let filterText = 'tag';
+      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
+      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
+        const match: SearchResult = { matches: [[0, 3]], score: -0.0104 };
+        return text === 'tag1' || text === 'tag2' ? match : null;
+      });
+
+      let inputInfo = sut.determineRunMode(
+        `${symbolTrigger}${filterText}`,
+        null,
+        leftSplitLeaf, // note the use of leftSplitLeaf in the first run
+      );
+
+      let results = sut.getSuggestions(inputInfo);
+
+      expect(sut.mode).toBe(Mode.SymbolList);
+      expect(results).not.toBeNull();
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(2);
+      expect(results.every((sugg) => sugg.type === 'symbol')).toBe(true);
+      expect(mockGetFileCache).toHaveBeenCalledWith((leftSplitLeaf.view as any).file);
+      mockFuzzySearch.mockRestore();
+
+      // 2) setup second run, which refines the filterText from the first run
+      filterText = 'tag2';
+      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
+      mockFuzzySearch.mockImplementation((q: PreparedQuery, text: string) => {
+        const match: SearchResult = { matches: [[0, 4]], score: -0.0104 };
+        return text === q.query ? match : null;
+      });
+
+      const tempLeaf = new WorkspaceLeaf();
+      const tempLeafFile = (tempLeaf.view as any).file;
+      inputInfo = sut.determineRunMode(
+        `${symbolTrigger}${filterText}`,
+        null,
+        tempLeaf, // note the use of a different leaf than the first run
+      );
+
+      results = sut.getSuggestions(inputInfo);
+
+      expect(sut.mode).toBe(Mode.SymbolList);
+      expect(results).not.toBeNull();
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(1); // expect just 1 this time
+      expect(results[0]).toHaveProperty('type', 'symbol');
+
+      const tag = leftFixture.cachedMetadata.tags.find((item) => item.tag === '#tag2');
+      expect(results[0]).toHaveProperty('item.symbol', tag);
+
+      // getFileCache should be called with leftSplitLeaf.view.file both times
+      expect(mockGetFileCache).not.toHaveBeenCalledWith(tempLeafFile);
+      expect(mockGetFileCache).toHaveBeenCalledWith((leftSplitLeaf.view as any).file);
+      expect(mockPrepareQuery).toHaveBeenCalled();
+
+      mockGetFileCache.mockRestore();
+      mockFuzzySearch.mockRestore();
     });
   });
 });

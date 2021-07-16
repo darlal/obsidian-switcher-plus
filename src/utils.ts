@@ -1,5 +1,5 @@
 import { SymbolInfo } from './types/sharedTypes';
-import { HeadingCache } from 'obsidian';
+import { HeadingCache, TagCache } from 'obsidian';
 import {
   SymbolSuggestion,
   EditorSuggestion,
@@ -52,6 +52,10 @@ export function isSystemSuggestion(obj: unknown): obj is AnySystemSuggestion {
 
 export function isHeadingCache(obj: unknown): obj is HeadingCache {
   return isOfType<HeadingCache>(obj, 'level');
+}
+
+export function isTagCache(obj: unknown): obj is TagCache {
+  return isOfType<TagCache>(obj, 'tag');
 }
 
 export function isSymbolInfo(obj: unknown): obj is SymbolInfo {

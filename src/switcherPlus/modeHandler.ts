@@ -2,16 +2,15 @@ import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
   isSymbolSuggestion,
-  isOfType,
   isEditorSuggestion,
   isHeadingCache,
   isUnresolvedSuggestion,
   escapeRegExp,
   isSymbolInfo,
+  isTagCache,
 } from 'src/utils';
 import {
   View,
-  TagCache,
   ReferenceCache,
   TFile,
   WorkspaceLeaf,
@@ -188,10 +187,9 @@ export class ModeHandler {
     const prevInputInfo = this.inputInfo;
     let prevTarget: TargetInfo = null;
     let hasPrevSymbolTarget = false;
-    if (prevInputInfo) {
-      prevTarget = prevInputInfo.symbolCmd?.target;
-      hasPrevSymbolTarget = prevInputInfo.mode === Mode.SymbolList && !!prevTarget;
-    }
+
+    prevTarget = prevInputInfo.symbolCmd?.target;
+    hasPrevSymbolTarget = prevInputInfo.mode === Mode.SymbolList && !!prevTarget;
 
     const activeSuggInfo = ModeHandler.getActiveSuggestionInfo(activeSuggestion);
     const activeEditorInfo = this.getActiveEditorInfo(activeLeaf);
@@ -452,7 +450,7 @@ export class ModeHandler {
 
     if (isHeadingCache(symbol)) {
       text = symbol.heading;
-    } else if (isOfType<TagCache>(symbol, 'tag')) {
+    } else if (isTagCache(symbol)) {
       text = symbol.tag.slice(1);
     } else {
       const refCache = symbol as ReferenceCache;
