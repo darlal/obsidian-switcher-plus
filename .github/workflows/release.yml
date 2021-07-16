@@ -24,7 +24,7 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build:PROD
+        run: npm run ci
 
       - name: Create zip distro
         run: |
