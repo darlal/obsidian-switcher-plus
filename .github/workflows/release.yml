@@ -38,5 +38,4 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifactErrorsFailBuild: true
-          prerelease: true
           artifacts: "dist/dist.zip,dist/${{ env.PLUGIN_NAME }}/*.*"
