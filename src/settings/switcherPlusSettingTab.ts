@@ -62,7 +62,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     settings: SwitcherPlusSettings,
   ): void {
     new Setting(containerEl)
-      .setName('List symbols in order they appear')
+      .setName('List symbols as indented outline')
       .setDesc(
         'Enabled, symbols will be displayed in the (line) order they appear in the source text, indented under any preceding heading. Disabled, symbols will be grouped by type: Headings, Tags, Links, Embeds.',
       )
