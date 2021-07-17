@@ -8,7 +8,7 @@ Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](ht
 
 ## Features
 
-* [Navigate to symbols (Headings, Hashtags, Links, Embeddings) in your notes](#symbol-navigation-headings--hashtags-links-embeddings)
+* [Navigate to symbols (Headings, Hashtags, Links, Embeddings) in your notes](#symbol-navigation-headings-hashtags-links-embeddings)
   * [Configuration](#symbol-navigation-configuration)
 * [Navigate between open editors, and side panels](#navigate-between-open-editors)
   * [Configuration](#editor-navigation-configuration)
