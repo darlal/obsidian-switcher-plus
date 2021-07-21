@@ -62,12 +62,14 @@ export class ModeHandler {
 
   getCommandStringForMode(mode: Mode): string {
     let val = '';
-    const { editorListCommand, symbolListCommand } = this.settings;
+    const { editorListCommand, symbolListCommand, workspaceListCommand } = this.settings;
 
     if (mode === Mode.EditorList) {
       val = editorListCommand;
     } else if (mode === Mode.SymbolList) {
       val = symbolListCommand;
+    } else if (mode === Mode.WorkspaceList) {
+      val = workspaceListCommand;
     }
 
     return val;

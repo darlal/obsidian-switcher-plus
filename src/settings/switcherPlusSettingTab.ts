@@ -17,6 +17,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     containerEl.empty();
     SwitcherPlusSettingTab.setSymbolModeSettingsGroup(containerEl, settings);
     this.setEditorModeSettingsGroup(containerEl, settings);
+    SwitcherPlusSettingTab.setWorkspaceModeSettingsGroup(containerEl, settings);
   }
 
   private setEditorModeSettingsGroup(
@@ -38,6 +39,15 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     SwitcherPlusSettingTab.setSymbolListCommand(containerEl, settings);
     SwitcherPlusSettingTab.setSymbolsInLineOrder(containerEl, settings);
     SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols(containerEl, settings);
+  }
+
+  private static setWorkspaceModeSettingsGroup(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl).setName('Workspace List Mode Settings').setHeading();
+
+    SwitcherPlusSettingTab.setWorkspaceListCommand(containerEl, settings);
   }
 
   private static setAlwaysNewPaneForSymbols(
@@ -129,6 +139,23 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .setValue(settings.includeSidePanelViewTypes.join('\n'))
           .onChange(async (value) => {
             settings.includeSidePanelViewTypes = value.split('\n');
+            settings.saveSettings();
+          }),
+      );
+  }
+  private static setWorkspaceListCommand(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl)
+      .setName('Workspace list mode trigger')
+      .setDesc('Character that will trigger workspace list mode in the switcher')
+      .addText((text) =>
+        text
+          .setPlaceholder(settings.workspaceListPlaceholderText)
+          .setValue(settings.workspaceListCommand)
+          .onChange(async (value) => {
+            settings.workspaceListCommand = value;
             settings.saveSettings();
           }),
       );

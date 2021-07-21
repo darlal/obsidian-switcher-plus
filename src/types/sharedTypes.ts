@@ -14,6 +14,7 @@ export enum Mode {
   Standard = 1,
   EditorList = 2,
   SymbolList = 4,
+  WorkspaceList = 8,
 }
 
 export enum SymbolType {

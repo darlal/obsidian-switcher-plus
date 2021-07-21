@@ -1,7 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
 import { ModeHandler } from 'src/switcherPlus/modeHandler';
-import { editorTrigger, symbolTrigger } from 'src/__fixtures__/modeTrigger.fixture';
+import {
+  editorTrigger,
+  symbolTrigger,
+  workspaceTrigger,
+} from 'src/__fixtures__/modeTrigger.fixture';
 import {
   Mode,
   FileSuggestion,
@@ -37,6 +41,7 @@ describe('getCommandStringForMode', () => {
   let sut: ModeHandler;
   let editorCmdSpy: jest.SpyInstance;
   let symbolCmdSpy: jest.SpyInstance;
+  let workspaceCmdSpy: jest.SpyInstance;
 
   beforeAll(() => {
     settings = new SwitcherPlusSettings(null);
@@ -47,6 +52,9 @@ describe('getCommandStringForMode', () => {
     symbolCmdSpy = jest
       .spyOn(settings, 'symbolListCommand', 'get')
       .mockReturnValue(symbolTrigger);
+    workspaceCmdSpy = jest
+      .spyOn(settings, 'workspaceListCommand', 'get')
+      .mockReturnValue(workspaceTrigger);
 
     sut = new ModeHandler(null, null, settings);
   });
@@ -65,6 +73,14 @@ describe('getCommandStringForMode', () => {
     expect(value).toBe(symbolTrigger);
     expect(symbolCmdSpy).toHaveBeenCalled();
     symbolCmdSpy.mockRestore();
+  });
+
+  it('should return workspaceListCommand trigger', () => {
+    const value = sut.getCommandStringForMode(Mode.WorkspaceList);
+
+    expect(value).toBe(workspaceTrigger);
+    expect(workspaceCmdSpy).toHaveBeenCalled();
+    workspaceCmdSpy.mockRestore();
   });
 });
 

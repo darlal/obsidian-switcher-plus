@@ -7,6 +7,7 @@ interface SettingsData {
   symbolsInLineOrder: boolean;
   editorListCommand: string;
   symbolListCommand: string;
+  workspaceListCommand: string;
   excludeViewTypes: Array<string>;
   referenceViews: Array<string>;
   includeSidePanelViewTypes: Array<string>;
@@ -21,6 +22,7 @@ export class SwitcherPlusSettings {
       symbolsInLineOrder: true,
       editorListCommand: 'edt ',
       symbolListCommand: '@',
+      workspaceListCommand: '+',
       excludeViewTypes: ['empty'],
       referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'],
       includeSidePanelViewTypes: ['backlink', 'image', 'markdown', 'pdf'],
@@ -84,6 +86,18 @@ export class SwitcherPlusSettings {
 
   set symbolListCommand(value: string) {
     this.data.symbolListCommand = value;
+  }
+
+  get workspaceListCommand(): string {
+    return this.data.workspaceListCommand;
+  }
+
+  set workspaceListCommand(value: string) {
+    this.data.workspaceListCommand = value;
+  }
+
+  get workspaceListPlaceholderText(): string {
+    return SwitcherPlusSettings.defaultSettingsData.workspaceListCommand;
   }
 
   get excludeViewTypes(): Array<string> {
