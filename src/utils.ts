@@ -1,5 +1,5 @@
 import { SymbolInfo } from './types/sharedTypes';
-import { HeadingCache, TagCache } from 'obsidian';
+import { App, HeadingCache, TagCache } from 'obsidian';
 import {
   SymbolSuggestion,
   EditorSuggestion,
@@ -64,4 +64,13 @@ export function isSymbolInfo(obj: unknown): obj is SymbolInfo {
 
 export function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function getInternalPluginById(app: App, id: string): Record<string, unknown> {
+  return (app as any)?.internalPlugins?.getPluginById(id);
+}
+
+export function getSystemSwitcherInstance(app: App): Record<string, unknown> {
+  const plugin = getInternalPluginById(app, 'switcher');
+  return plugin?.instance as Record<string, unknown>;
 }

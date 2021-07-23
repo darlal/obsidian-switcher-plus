@@ -1,6 +1,6 @@
 import { BuiltInSystemOptions } from 'src/types';
-import { getSystemSwitcherInstance } from 'src/switcherPlus';
-import type SwitcherPlusPlugin from '../main';
+import { getSystemSwitcherInstance } from 'src/utils';
+import type SwitcherPlusPlugin from 'src/main';
 
 interface SettingsData {
   alwaysNewPaneForSymbols: boolean;
