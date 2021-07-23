@@ -15,12 +15,11 @@ import {
 import {
   TFile,
   WorkspaceLeaf,
-  Workspace,
   PreparedQuery,
   prepareQuery,
   fuzzySearch,
-  MetadataCache,
   SearchResult,
+  App,
 } from 'obsidian';
 import {
   standardModeInputFixture,
@@ -28,6 +27,7 @@ import {
   symbolPrefixOnlyInputFixture,
   symbolModeInputFixture,
   unicodeInputFixture,
+  workspacePrefixOnlyInputFixture,
 } from 'src/__fixtures__/inputText.fixture';
 import {
   rootSplitEditorFixtures,
@@ -56,7 +56,7 @@ describe('getCommandStringForMode', () => {
       .spyOn(settings, 'workspaceListCommand', 'get')
       .mockReturnValue(workspaceTrigger);
 
-    sut = new ModeHandler(null, null, settings);
+    sut = new ModeHandler(null, settings);
   });
 
   it('should return editorListCommand trigger', () => {
@@ -86,14 +86,17 @@ describe('getCommandStringForMode', () => {
 
 describe('determineRunMode', () => {
   let settings: SwitcherPlusSettings;
+  let app: App;
   let sut: ModeHandler;
 
   beforeAll(() => {
     settings = new SwitcherPlusSettings(null);
     jest.spyOn(settings, 'editorListCommand', 'get').mockReturnValue(editorTrigger);
     jest.spyOn(settings, 'symbolListCommand', 'get').mockReturnValue(symbolTrigger);
+    jest.spyOn(settings, 'workspaceListCommand', 'get').mockReturnValue(workspaceTrigger);
 
-    sut = new ModeHandler(null, null, settings);
+    app = new App();
+    sut = new ModeHandler(app, settings);
   });
 
   it('should reset on falsy input', () => {
@@ -115,7 +118,7 @@ describe('determineRunMode', () => {
       'for input: "$input" (array data index: $#)',
       ({ editorTrigger, symbolTrigger, input, expected: { mode, parsedInput } }) => {
         const s = new SwitcherPlusSettings(null);
-        const mh = new ModeHandler(null, null, s);
+        const mh = new ModeHandler(null, s);
         let editorCmdSpy, symbolCmdSpy;
 
         if (editorTrigger) {
@@ -196,8 +199,10 @@ describe('determineRunMode', () => {
 
         expect(inputInfo.mode).toBe(mode);
         expect(inputInfo.inputText).toBe(input);
-        expect(inputInfo.editorCmd.isValidated).toBe(isValidated);
-        expect(inputInfo.editorCmd.parsedInput).toBe(parsedInput);
+
+        const { editorCmd } = inputInfo;
+        expect(editorCmd.isValidated).toBe(isValidated);
+        expect(editorCmd.parsedInput).toBe(parsedInput);
       },
     );
   });
@@ -225,7 +230,7 @@ describe('determineRunMode', () => {
     );
 
     test.each(symbolModeInputFixture)(
-      'with FILE SUGGESTIONO for input: "$input" (array data index: $#)',
+      'with FILE SUGGESTION for input: "$input" (array data index: $#)',
       ({ input, expected: { mode, isValidated, parsedInput } }) => {
         const fileSuggestion: FileSuggestion = {
           file: new TFile(),
@@ -284,6 +289,34 @@ describe('determineRunMode', () => {
       },
     );
   });
+
+  describe('should parse as workspace mode', () => {
+    let getPluginByIdSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      getPluginByIdSpy = jest
+        .spyOn((app as any).internalPlugins, 'getPluginById')
+        .mockReturnValue({ enabled: true });
+    });
+
+    afterAll(() => {
+      getPluginByIdSpy.mockRestore();
+    });
+
+    test.each(workspacePrefixOnlyInputFixture)(
+      'for input: "$input" (array data index: $#)',
+      ({ input, expected: { mode, isValidated, parsedInput } }) => {
+        const inputInfo = sut.determineRunMode(input, null, null);
+
+        expect(inputInfo.mode).toBe(mode);
+        expect(inputInfo.inputText).toBe(input);
+
+        const { workspaceCmd } = inputInfo;
+        expect(workspaceCmd.isValidated).toBe(isValidated);
+        expect(workspaceCmd.parsedInput).toBe(parsedInput);
+      },
+    );
+  });
 });
 
 describe('getSuggestions', () => {
@@ -291,7 +324,7 @@ describe('getSuggestions', () => {
   const leftFixture = leftSplitEditorFixtures[0];
   const rightFixture = rightSplitEditorFixtures[0];
   let settings: SwitcherPlusSettings;
-  let workspace: Workspace;
+  let app: App;
   let rootSplitLeaf: WorkspaceLeaf;
   let leftSplitLeaf: WorkspaceLeaf;
   let rightSplitLeaf: WorkspaceLeaf;
@@ -310,7 +343,8 @@ describe('getSuggestions', () => {
     jest.spyOn(settings, 'editorListCommand', 'get').mockReturnValue(editorTrigger);
     jest.spyOn(settings, 'symbolListCommand', 'get').mockReturnValue(symbolTrigger);
 
-    workspace = new Workspace();
+    app = new App();
+    const { workspace } = app;
     rootSplitLeaf = new WorkspaceLeaf();
     leftSplitLeaf = new WorkspaceLeaf();
     rightSplitLeaf = new WorkspaceLeaf();
@@ -349,7 +383,7 @@ describe('getSuggestions', () => {
   });
 
   test('with falsy input, it should return an empty array', () => {
-    const sut = new ModeHandler(workspace, null, settings);
+    const sut = new ModeHandler(app, settings);
 
     const results = sut.getSuggestions(null);
 
@@ -363,7 +397,7 @@ describe('getSuggestions', () => {
     let sut: ModeHandler;
 
     beforeAll(() => {
-      sut = new ModeHandler(workspace, null, settings);
+      sut = new ModeHandler(app, settings);
     });
 
     test('with filter search term, it should return only matching suggestions for editor mode', () => {
@@ -497,11 +531,10 @@ describe('getSuggestions', () => {
 
   describe('for symbol mode', () => {
     let mockGetFileCache: jest.SpyInstance;
-    let metadataCache: MetadataCache;
     let sut: ModeHandler;
 
     beforeAll(() => {
-      metadataCache = new MetadataCache();
+      const metadataCache = app.metadataCache;
       mockGetFileCache = jest
         .spyOn(metadataCache, 'getFileCache')
         .mockImplementation(() => {
@@ -511,7 +544,7 @@ describe('getSuggestions', () => {
 
     beforeEach(() => {
       // reset for each test because symbol mode will use saved data from previous runs
-      sut = new ModeHandler(workspace, metadataCache, settings);
+      sut = new ModeHandler(app, settings);
     });
 
     test('with default settings, it should return symbol suggestions', () => {

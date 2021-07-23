@@ -50,6 +50,10 @@ export const Workspace = jest.fn().mockImplementation(() => {
 export const App = jest.fn().mockImplementation(() => {
   return {
     workspace: new Workspace(),
+    metadataCache: new MetadataCache(),
+    internalPlugins: {
+      getPluginById: jest.fn(),
+    },
   };
 });
 

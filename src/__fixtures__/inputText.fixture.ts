@@ -1,5 +1,9 @@
 import { Mode } from 'src/types';
-import { editorTrigger, symbolTrigger } from 'src/__fixtures__/modeTrigger.fixture';
+import {
+  editorTrigger,
+  symbolTrigger,
+  workspaceTrigger,
+} from 'src/__fixtures__/modeTrigger.fixture';
 
 interface InputExpectation {
   input: string;
@@ -37,6 +41,13 @@ function symbolExpectation(
   expectedParsedInput?: string,
 ): InputExpectation {
   return makeInputExpectation(input, Mode.SymbolList, expectedParsedInput);
+}
+
+function workspaceExpectation(
+  input: string,
+  expectedParsedInput?: string,
+): InputExpectation {
+  return makeInputExpectation(input, Mode.WorkspaceList, expectedParsedInput);
 }
 
 interface InputExpectationStandard {
@@ -77,6 +88,12 @@ export const standardModeInputFixture = [
   standardExpectation(`bar${symbolTrigger} \\sfoo`),
   standardExpectation(`bar ${symbolTrigger}foo`),
   standardExpectation(`bar ${symbolTrigger} foo`),
+  standardExpectation(`test${workspaceTrigger}string`),
+  standardExpectation(`test${workspaceTrigger}string`),
+  standardExpectation(`^${workspaceTrigger}string`),
+  standardExpectation(` ${workspaceTrigger}test string`),
+  standardExpectation(`test string ${workspaceTrigger}`),
+  standardExpectation(`     ${workspaceTrigger}test string ${workspaceTrigger}`),
 ];
 
 // Used for editor mode tests
@@ -218,4 +235,44 @@ export const unicodeInputFixture = [
     input: '깍foo💩barô',
     expected: { mode: Mode.SymbolList, parsedInput: 'barô' },
   },
+];
+
+// Used for workspace mode tests
+export const workspacePrefixOnlyInputFixture = [
+  workspaceExpectation(`${workspaceTrigger}`, ''),
+  workspaceExpectation(`${workspaceTrigger}test string`, 'test string'),
+  workspaceExpectation(`${workspaceTrigger}${symbolTrigger}`, `${symbolTrigger}`),
+  workspaceExpectation(`${workspaceTrigger} ${symbolTrigger}`, ` ${symbolTrigger}`),
+  workspaceExpectation(`${workspaceTrigger}${symbolTrigger}  `, `${symbolTrigger}  `),
+  workspaceExpectation(`${workspaceTrigger}${symbolTrigger}foo`, `${symbolTrigger}foo`),
+  workspaceExpectation(
+    `${workspaceTrigger}${symbolTrigger} fooo`,
+    `${symbolTrigger} fooo`,
+  ),
+  workspaceExpectation(`${workspaceTrigger}bar${symbolTrigger}`, `bar${symbolTrigger}`),
+  workspaceExpectation(
+    `${workspaceTrigger}bar${editorTrigger}  `,
+    `bar${editorTrigger}  `,
+  ),
+  workspaceExpectation(`${workspaceTrigger}bar ${symbolTrigger}`, `bar ${symbolTrigger}`),
+  workspaceExpectation(
+    `${workspaceTrigger}bar ${symbolTrigger}   `,
+    `bar ${symbolTrigger}   `,
+  ),
+  workspaceExpectation(
+    `${workspaceTrigger}bar${symbolTrigger}foo`,
+    `bar${symbolTrigger}foo`,
+  ),
+  workspaceExpectation(
+    `${workspaceTrigger}bar${symbolTrigger} foo`,
+    `bar${symbolTrigger} foo`,
+  ),
+  workspaceExpectation(
+    `${workspaceTrigger}bar ${symbolTrigger}foo  `,
+    `bar ${symbolTrigger}foo  `,
+  ),
+  workspaceExpectation(
+    `${workspaceTrigger}bar ${symbolTrigger} foo`,
+    `bar ${symbolTrigger} foo`,
+  ),
 ];

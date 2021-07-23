@@ -1,3 +1,4 @@
+import { WorkspaceHandler } from 'src/Handlers';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
@@ -22,6 +23,7 @@ import {
   PreparedQuery,
   SearchResult,
   MetadataCache,
+  App,
 } from 'obsidian';
 import {
   Mode,
@@ -46,13 +48,15 @@ export class ModeHandler {
     return this.inputInfo.mode;
   }
 
+  private workspace: Workspace;
+  private metadataCache: MetadataCache;
   private inputInfo: InputInfo;
+  private wsHandler;
 
-  constructor(
-    private workspace: Workspace,
-    private metadataCache: MetadataCache,
-    private settings: SwitcherPlusSettings,
-  ) {
+  constructor(app: App, private settings: SwitcherPlusSettings) {
+    this.workspace = app?.workspace;
+    this.metadataCache = app?.metadataCache;
+    this.wsHandler = new WorkspaceHandler(app, settings);
     this.reset();
   }
 
@@ -110,7 +114,7 @@ export class ModeHandler {
     activeLeaf: WorkspaceLeaf,
   ): InputInfo {
     const input = inputText ?? '';
-    const { editorListCommand, symbolListCommand } = this.settings;
+    const { editorListCommand, symbolListCommand, workspaceListCommand } = this.settings;
     const info = new InputInfo(input);
 
     if (input.length === 0) {
@@ -119,13 +123,14 @@ export class ModeHandler {
 
     const escSymbolCmd = escapeRegExp(symbolListCommand);
     const escEditorCmd = escapeRegExp(editorListCommand);
-    const prefixCmds = [`(?<sp>${escSymbolCmd})`, `(?<ep>${escEditorCmd})`].sort(
+    const escWorkspaceCmd = escapeRegExp(workspaceListCommand);
+    const prefixCmds = [`(?<ep>${escEditorCmd})`, `(?<wp>${escWorkspaceCmd})`].sort(
       (a, b) => b.length - a.length,
     );
 
-    // regex that matches symbol, editor prefixes, and embedded symbol command
+    // regex that matches editor, workspace prefixes, and embedded symbol command
     // as long as it's not preceded by another symbol command
-    // ^(?:(?<ep>edt )|(?<sp>@))|(?<!@.*)(?<se>@)
+    // ^(?:(?<ep>edt )|(?<wp>+))|(?<!@.*)(?<se>@)
     const re = new RegExp(
       `^(?:${prefixCmds[0]}|${prefixCmds[1]})|(?<!${escSymbolCmd}.*)(?<se>${escSymbolCmd})`,
       'g',
@@ -138,7 +143,9 @@ export class ModeHandler {
 
         if (groups.ep) {
           this.validateEditorCommand(info, index);
-        } else if (groups.sp || groups.se) {
+        } else if (groups.wp) {
+          this.wsHandler.validateCommand(info, index);
+        } else if (groups.se) {
           this.validateSymbolCommand(info, index, activeSuggestion, activeLeaf);
         }
       }

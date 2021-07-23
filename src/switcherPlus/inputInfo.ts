@@ -4,27 +4,30 @@ export interface ParsedCommand {
   isValidated: boolean;
   index: number;
   parsedInput: string;
+}
+
+export interface SymbolParsedCommand extends ParsedCommand {
   target: TargetInfo;
 }
 
 export class InputInfo {
   mode = Mode.Standard;
   hasSearchTerm = false;
-  symbolCmd: ParsedCommand;
-  editorCmd: Omit<ParsedCommand, 'target'>;
+  editorCmd: ParsedCommand;
+  workspaceCmd: ParsedCommand;
+  symbolCmd: SymbolParsedCommand;
+
+  private static get defaultParsedCommand(): ParsedCommand {
+    return {
+      isValidated: false,
+      index: -1,
+      parsedInput: null,
+    };
+  }
 
   constructor(public inputText = '') {
-    this.symbolCmd = {
-      isValidated: false,
-      index: -1,
-      parsedInput: null,
-      target: null,
-    };
-
-    this.editorCmd = {
-      isValidated: false,
-      index: -1,
-      parsedInput: null,
-    };
+    this.symbolCmd = { ...InputInfo.defaultParsedCommand, target: null };
+    this.editorCmd = InputInfo.defaultParsedCommand;
+    this.workspaceCmd = InputInfo.defaultParsedCommand;
   }
 }
