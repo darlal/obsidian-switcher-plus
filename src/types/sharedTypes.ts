@@ -4,6 +4,7 @@ import {
   FuzzyMatch,
   HeadingCache,
   LinkCache,
+  PreparedQuery,
   TagCache,
   TFile,
   WorkspaceLeaf,
@@ -69,12 +70,21 @@ export interface SymbolInfo {
   indentLevel?: number;
 }
 
+export interface WorkspaceInfo {
+  type: 'workspaceInfo';
+  id: string;
+}
+
 export interface SymbolSuggestion extends FuzzyMatch<SymbolInfo> {
   type: 'symbol';
 }
 
 export interface EditorSuggestion extends FuzzyMatch<WorkspaceLeaf> {
   type: 'editor';
+}
+
+export interface WorkspaceSuggestion extends FuzzyMatch<WorkspaceInfo> {
+  type: 'workspace';
 }
 
 export interface FileSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
@@ -93,8 +103,8 @@ export interface UnresolvedSuggestion extends Omit<FuzzyMatch<string>, 'item'> {
   type: 'unresolved';
 }
 
-export type AnyExSuggestionPayload = WorkspaceLeaf | SymbolInfo;
-export type AnyExSuggestion = SymbolSuggestion | EditorSuggestion;
+export type AnyExSuggestionPayload = WorkspaceLeaf | SymbolInfo | WorkspaceInfo;
+export type AnyExSuggestion = SymbolSuggestion | EditorSuggestion | WorkspaceSuggestion;
 export type AnySystemSuggestion = FileSuggestion | AliasSuggestion | UnresolvedSuggestion;
 export type AnySuggestion = AnyExSuggestion | AnySystemSuggestion;
 
@@ -109,4 +119,9 @@ export interface BuiltInSystemOptions {
   showAllFileTypes: boolean;
   showAttachments: boolean;
   showExistingOnly: boolean;
+}
+
+export interface SearchQuery {
+  hasSearchTerm: boolean;
+  prepQuery: PreparedQuery;
 }

@@ -1,32 +1,37 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Mode } from 'src/types';
+import { Mode, WorkspaceSuggestion } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { WorkspaceHandler, WORKSPACE_PLUGIN_ID } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
 import { workspaceTrigger } from 'src/__fixtures__/modeTrigger.fixture';
-import { App } from 'obsidian';
+import { App, fuzzySearch, PreparedQuery, prepareQuery } from 'obsidian';
+import { makePreparedQuery, makeFuzzyMatch } from 'src/__fixtures__/fixtureUtils';
 
 describe('workspaceHandler', () => {
+  let settings: SwitcherPlusSettings;
+  let workspaceCmdSpy: jest.SpyInstance;
+  let app: App;
+  let getPluginByIdSpy: jest.SpyInstance;
+  let sut: WorkspaceHandler;
+
+  beforeAll(() => {
+    app = new App();
+    settings = new SwitcherPlusSettings(null);
+    workspaceCmdSpy = jest
+      .spyOn(settings, 'workspaceListCommand', 'get')
+      .mockReturnValue(workspaceTrigger);
+
+    getPluginByIdSpy = jest.spyOn((app as any).internalPlugins, 'getPluginById');
+    sut = new WorkspaceHandler(app, settings);
+  });
+
   describe('validateCommand', () => {
     let inputText: string;
     let startIndex: number;
-    let settings: SwitcherPlusSettings;
-    let sut: WorkspaceHandler;
-    let getPluginByIdSpy: jest.SpyInstance;
-    let workspaceCmdSpy: jest.SpyInstance;
 
     beforeAll(() => {
-      const app = new App();
       inputText = `${workspaceTrigger}foo`;
       startIndex = workspaceTrigger.length;
-
-      getPluginByIdSpy = jest.spyOn((app as any).internalPlugins, 'getPluginById');
-      settings = new SwitcherPlusSettings(null);
-      workspaceCmdSpy = jest
-        .spyOn(settings, 'workspaceListCommand', 'get')
-        .mockReturnValue(workspaceTrigger);
-
-      sut = new WorkspaceHandler(app, settings);
     });
 
     it('should validate parsed input with workspace plugin enabled', () => {
@@ -55,6 +60,70 @@ describe('workspaceHandler', () => {
       expect(workspaceCmd.isValidated).toBe(false);
       expect(workspaceCmdSpy).toHaveBeenCalled();
       expect(getPluginByIdSpy).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);
+    });
+  });
+
+  describe('getSuggestions', () => {
+    test('with falsy input, it should return an empty array', () => {
+      const results = sut.getSuggestions(null);
+
+      expect(results).not.toBeNull();
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(0);
+    });
+
+    test('with default settings, it should return suggestions for workspace mode', () => {
+      const inputInfo = new InputInfo(workspaceTrigger);
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(results).not.toBeNull();
+      expect(results).toBeInstanceOf(Array);
+
+      const resultWorkspaceIds = new Set(results.map((sugg) => sugg.item.id));
+      const workspaceIds = Object.keys(
+        (app as any).internalPlugins.plugins.workspaces.instance.workspaces,
+      );
+
+      expect(results).toHaveLength(workspaceIds.length);
+      expect(workspaceIds.every((id) => resultWorkspaceIds.has(id))).toBe(true);
+      expect(results.every((sugg) => sugg.type === 'workspace')).toBe(true);
+      expect(getPluginByIdSpy).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);
+    });
+
+    test('with filter search term, it should return only matching suggestions for workspace mode', () => {
+      const expectedWorkspaces = { 'first workspace': {}, 'second workspace': {} };
+      const getPluginByIdSpy = jest
+        .spyOn((app as any).internalPlugins, 'getPluginById')
+        .mockReturnValueOnce({ instance: { workspaces: expectedWorkspaces } });
+
+      const filterText = 'first';
+      const mockPrepareQuery = prepareQuery as jest.MockedFunction<typeof prepareQuery>;
+      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
+
+      const mockFuzzySearch = fuzzySearch as jest.MockedFunction<typeof fuzzySearch>;
+      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
+        const match = makeFuzzyMatch([[0, 5]], -0.0115);
+        return text.startsWith(filterText) ? match : null;
+      });
+
+      const inputInfo = new InputInfo(`${workspaceTrigger}${filterText}`);
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(results).not.toBeNull();
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(1);
+
+      const onlyResult = results[0];
+      expect(onlyResult).toHaveProperty('type', 'workspace');
+      expect(Object.keys(expectedWorkspaces)).toContain(onlyResult.item.id);
+
+      expect(mockFuzzySearch).toHaveBeenCalled();
+      expect(mockPrepareQuery).toHaveBeenCalled();
+      expect(getPluginByIdSpy).toHaveBeenCalled();
+
+      mockFuzzySearch.mockRestore();
+      mockPrepareQuery.mockRestore();
+      getPluginByIdSpy.mockRestore();
     });
   });
 });

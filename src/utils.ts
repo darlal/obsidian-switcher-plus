@@ -1,4 +1,3 @@
-import { SymbolInfo } from './types/sharedTypes';
 import { App, HeadingCache, TagCache } from 'obsidian';
 import {
   SymbolSuggestion,
@@ -7,6 +6,9 @@ import {
   AliasSuggestion,
   UnresolvedSuggestion,
   AnySystemSuggestion,
+  SymbolInfo,
+  WorkspaceSuggestion,
+  WorkspaceInfo,
 } from 'src/types';
 
 export function isOfType<T>(
@@ -32,6 +34,10 @@ export function isSymbolSuggestion(obj: unknown): obj is SymbolSuggestion {
 
 export function isEditorSuggestion(obj: unknown): obj is EditorSuggestion {
   return isOfType<EditorSuggestion>(obj, 'type', 'editor');
+}
+
+export function isWorkspaceSuggestion(obj: unknown): obj is WorkspaceSuggestion {
+  return isOfType<WorkspaceSuggestion>(obj, 'type', 'workspace');
 }
 
 export function isFileSuggestion(obj: unknown): obj is FileSuggestion {
@@ -60,6 +66,10 @@ export function isTagCache(obj: unknown): obj is TagCache {
 
 export function isSymbolInfo(obj: unknown): obj is SymbolInfo {
   return isOfType<SymbolInfo>(obj, 'type', 'symbolInfo');
+}
+
+export function isWorkspaceInfo(obj: unknown): obj is WorkspaceInfo {
+  return isOfType<WorkspaceInfo>(obj, 'type', 'WorkspaceInfo');
 }
 
 export function escapeRegExp(str: string): string {

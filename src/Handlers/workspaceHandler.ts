@@ -1,10 +1,10 @@
 import { getInternalPluginById } from 'src/utils';
-import { Mode } from 'src/types';
+import { Mode, WorkspaceInfo, WorkspaceSuggestion } from 'src/types';
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo } from 'src/switcherPlus/inputInfo';
-import { App } from 'obsidian';
+import { App, fuzzySearch, SearchResult, sortSearchResults } from 'obsidian';
 
-export const WORKSPACE_PLUGIN_ID = 'workspace';
+export const WORKSPACE_PLUGIN_ID = 'workspaces';
 
 export class WorkspaceHandler {
   constructor(private app: App, private settings: SwitcherPlusSettings) {}
@@ -13,7 +13,7 @@ export class WorkspaceHandler {
     const { workspaceListCommand } = this.settings;
     const { workspaceCmd, inputText } = inputInfo;
 
-    if (this.isWorkspacePluginEnabled()) {
+    if (this.isWorkspacesPluginEnabled()) {
       inputInfo.mode = Mode.WorkspaceList;
       workspaceCmd.index = index;
       workspaceCmd.parsedInput = inputText.slice(workspaceListCommand.length);
@@ -21,8 +21,60 @@ export class WorkspaceHandler {
     }
   }
 
-  private isWorkspacePluginEnabled(): boolean {
-    const plugin = getInternalPluginById(this.app, WORKSPACE_PLUGIN_ID);
+  getSuggestions(inputInfo: InputInfo): WorkspaceSuggestion[] {
+    const suggestions: WorkspaceSuggestion[] = [];
+
+    if (inputInfo) {
+      inputInfo.buildSearchQuery();
+      const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
+      const items = this.getItems();
+
+      items.forEach((item) => {
+        let shouldPush = true;
+        let match: SearchResult = null;
+
+        if (hasSearchTerm) {
+          match = fuzzySearch(prepQuery, item.id);
+          shouldPush = !!match;
+        }
+
+        if (shouldPush) {
+          suggestions.push({ type: 'workspace', item, match });
+        }
+      });
+
+      if (hasSearchTerm) {
+        sortSearchResults(suggestions);
+      }
+    }
+
+    return suggestions;
+  }
+
+  onChooseSuggestion(sugg: WorkspaceSuggestion): void {}
+
+  private getItems(): WorkspaceInfo[] {
+    const items: WorkspaceInfo[] = [];
+    const workspaces = this.getSystemWorkspacesPluginInstance()?.workspaces;
+
+    if (workspaces) {
+      Object.keys(workspaces).forEach((id) => items.push({ id, type: 'workspaceInfo' }));
+    }
+
+    return items;
+  }
+
+  private isWorkspacesPluginEnabled(): boolean {
+    const plugin = this.getSystemWorkspacesPlugin();
     return plugin?.enabled as boolean;
+  }
+
+  private getSystemWorkspacesPlugin(): Record<string, unknown> {
+    return getInternalPluginById(this.app, WORKSPACE_PLUGIN_ID);
+  }
+
+  private getSystemWorkspacesPluginInstance(): Record<string, unknown> {
+    const workspacesPlugin = this.getSystemWorkspacesPlugin();
+    return workspacesPlugin?.instance as Record<string, unknown>;
   }
 }

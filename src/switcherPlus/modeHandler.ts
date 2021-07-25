@@ -9,6 +9,8 @@ import {
   escapeRegExp,
   isSymbolInfo,
   isTagCache,
+  isWorkspaceSuggestion,
+  isWorkspaceInfo,
 } from 'src/utils';
 import {
   View,
@@ -16,11 +18,9 @@ import {
   TFile,
   WorkspaceLeaf,
   Workspace,
-  prepareQuery,
   renderResults,
   fuzzySearch,
   sortSearchResults,
-  PreparedQuery,
   SearchResult,
   MetadataCache,
   App,
@@ -82,6 +82,8 @@ export class ModeHandler {
   onChooseSuggestion(sugg: AnyExSuggestion): void {
     if (isEditorSuggestion(sugg)) {
       this.activateEditorLeaf(sugg.item, false);
+    } else if (isWorkspaceSuggestion(sugg)) {
+      this.wsHandler.onChooseSuggestion(sugg);
     } else {
       this.navigateToSymbol(sugg);
     }
@@ -93,7 +95,7 @@ export class ModeHandler {
     if (isSymbolSuggestion(sugg)) {
       const { item } = sugg;
 
-      if (this.settings.symbolsInlineOrder && !this.inputInfo.hasSearchTerm) {
+      if (this.settings.symbolsInlineOrder && !this.inputInfo.searchQuery.hasSearchTerm) {
         parentEl.addClass(`qsp-symbol-l${item.indentLevel}`);
       }
 
@@ -248,9 +250,10 @@ export class ModeHandler {
     if (
       activeSuggestion &&
       !isSymbolSuggestion(activeSuggestion) &&
-      !isUnresolvedSuggestion(activeSuggestion)
+      !isUnresolvedSuggestion(activeSuggestion) &&
+      !isWorkspaceSuggestion(activeSuggestion)
     ) {
-      // Can't use a symbol suggestion, or unresolved (non-existent file) as
+      // Can't use a symbol, workspace, unresolved (non-existent file) suggestions as
       // the target for another symbol command
       isValidSymbolTarget = true;
 
@@ -266,29 +269,13 @@ export class ModeHandler {
     return { isValidSymbolTarget, leaf, file, suggestion: activeSuggestion };
   }
 
-  private static extractSearchQuery(inputInfo: InputInfo): PreparedQuery {
-    const { mode, symbolCmd, editorCmd } = inputInfo;
-    let input = '';
-
-    if (mode === Mode.SymbolList) {
-      input = symbolCmd.parsedInput;
-    } else if (mode === Mode.EditorList) {
-      input = editorCmd.parsedInput;
-    }
-
-    const queryStr = input.trim().toLowerCase();
-    const prepQuery = prepareQuery(queryStr);
-
-    return prepQuery;
-  }
-
   getSuggestions(inputInfo: InputInfo): AnyExSuggestion[] {
-    const suggestions: AnyExSuggestion[] = [];
+    let suggestions: AnyExSuggestion[] = [];
 
     const push = (item: AnyExSuggestionPayload, match: SearchResult) => {
       if (isSymbolInfo(item)) {
         suggestions.push({ type: 'symbol', item, match });
-      } else {
+      } else if (!isWorkspaceInfo(item)) {
         // item is workspace leaf
         suggestions.push({ type: 'editor', item, match });
       }
@@ -296,29 +283,32 @@ export class ModeHandler {
 
     if (inputInfo) {
       this.inputInfo = inputInfo;
-      const prepQuery = ModeHandler.extractSearchQuery(inputInfo);
-      const hasSearchTerm = prepQuery?.query?.length > 0;
+      inputInfo.buildSearchQuery();
+      const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
 
-      inputInfo.hasSearchTerm = hasSearchTerm;
-      const items = this.getItems(inputInfo);
+      if (inputInfo.mode === Mode.WorkspaceList) {
+        suggestions = this.wsHandler.getSuggestions(inputInfo);
+      } else {
+        const items = this.getItems(inputInfo);
 
-      items.forEach((item) => {
-        let match: SearchResult = null;
+        items.forEach((item) => {
+          let match: SearchResult = null;
+
+          if (hasSearchTerm) {
+            const text = ModeHandler.getItemText(item);
+            match = fuzzySearch(prepQuery, text);
+
+            if (match) {
+              push(item, match);
+            }
+          } else {
+            push(item, null);
+          }
+        });
 
         if (hasSearchTerm) {
-          const text = ModeHandler.getItemText(item);
-          match = fuzzySearch(prepQuery, text);
-
-          if (match) {
-            push(item, match);
-          }
-        } else {
-          push(item, null);
+          sortSearchResults(suggestions);
         }
-      });
-
-      if (hasSearchTerm) {
-        sortSearchResults(suggestions);
       }
     }
 
@@ -326,10 +316,10 @@ export class ModeHandler {
   }
 
   private getItems(inputInfo: InputInfo): AnyExSuggestionPayload[] {
-    let items: AnyExSuggestionPayload[];
+    let items: AnyExSuggestionPayload[] = [];
     const {
       mode,
-      hasSearchTerm,
+      searchQuery: { hasSearchTerm },
       symbolCmd: { target },
     } = inputInfo;
 
@@ -445,7 +435,7 @@ export class ModeHandler {
 
     if (isSymbolInfo(item)) {
       text = ModeHandler.getSuggestionTextForSymbol(item);
-    } else {
+    } else if (!isWorkspaceInfo(item)) {
       // item is workspace leaf
       text = item.getDisplayText();
     }

@@ -105,7 +105,7 @@ describe('determineRunMode', () => {
     const inputInfo = sut.determineRunMode(input, null, null);
 
     expect(inputInfo.mode).toBe(Mode.Standard);
-    expect(inputInfo.hasSearchTerm).toBe(false);
+    expect(inputInfo.searchQuery.hasSearchTerm).toBe(false);
     expect(inputInfo.inputText).toBe('');
     expect(spy).toHaveBeenCalled();
 
@@ -341,6 +341,7 @@ describe('getSuggestions', () => {
     settings = new SwitcherPlusSettings(null);
     jest.spyOn(settings, 'editorListCommand', 'get').mockReturnValue(editorTrigger);
     jest.spyOn(settings, 'symbolListCommand', 'get').mockReturnValue(symbolTrigger);
+    jest.spyOn(settings, 'workspaceListCommand', 'get').mockReturnValue(workspaceTrigger);
 
     app = new App();
     const { workspace } = app;
@@ -657,6 +658,19 @@ describe('getSuggestions', () => {
 
       mockGetFileCache.mockRestore();
       mockFuzzySearch.mockRestore();
+    });
+  });
+
+  describe('for workspace mode', () => {
+    test('with default settings, it should return suggestions for workspace mode', () => {
+      const sut = new ModeHandler(app, settings);
+      const inputInfo = sut.determineRunMode(workspaceTrigger, null, null);
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(sut.mode).toBe(Mode.WorkspaceList);
+      expect(results).not.toBeNull();
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(2);
     });
   });
 });

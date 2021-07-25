@@ -1,4 +1,5 @@
-import { Mode, TargetInfo } from 'src/types';
+import { prepareQuery } from 'obsidian';
+import { Mode, TargetInfo, SearchQuery } from 'src/types';
 
 export interface ParsedCommand {
   isValidated: boolean;
@@ -12,10 +13,10 @@ export interface SymbolParsedCommand extends ParsedCommand {
 
 export class InputInfo {
   mode = Mode.Standard;
-  hasSearchTerm = false;
   editorCmd: ParsedCommand;
   workspaceCmd: ParsedCommand;
   symbolCmd: SymbolParsedCommand;
+  searchQuery: SearchQuery;
 
   private static get defaultParsedCommand(): ParsedCommand {
     return {
@@ -29,5 +30,24 @@ export class InputInfo {
     this.symbolCmd = { ...InputInfo.defaultParsedCommand, target: null };
     this.editorCmd = InputInfo.defaultParsedCommand;
     this.workspaceCmd = InputInfo.defaultParsedCommand;
+    this.searchQuery = { hasSearchTerm: false, prepQuery: null };
+  }
+
+  buildSearchQuery(): void {
+    const { mode } = this;
+    let input = '';
+
+    if (mode === Mode.SymbolList) {
+      input = this.symbolCmd.parsedInput;
+    } else if (mode === Mode.EditorList) {
+      input = this.editorCmd.parsedInput;
+    } else if (mode === Mode.WorkspaceList) {
+      input = this.workspaceCmd.parsedInput;
+    }
+
+    const prepQuery = prepareQuery(input.trim().toLowerCase());
+    const hasSearchTerm = prepQuery?.query?.length > 0;
+
+    this.searchQuery = { prepQuery, hasSearchTerm };
   }
 }

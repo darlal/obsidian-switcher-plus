@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Chance } from 'chance';
 
 const chance = new Chance();
@@ -48,12 +49,28 @@ export const Workspace = jest.fn().mockImplementation(() => {
 });
 
 export const App = jest.fn().mockImplementation(() => {
+  const pluginList: Record<string, any> = {
+    workspaces: {
+      enabled: true,
+      instance: {
+        loadWorkspace: jest.fn(),
+        workspaces: {
+          'first workspace': {},
+          'second workspace': {},
+        },
+      },
+    },
+  };
+
+  const internalPlugins = {
+    plugins: pluginList,
+    getPluginById: (id: string) => pluginList[id],
+  };
+
   return {
     workspace: new Workspace(),
     metadataCache: new MetadataCache(),
-    internalPlugins: {
-      getPluginById: jest.fn(),
-    },
+    internalPlugins,
   };
 });
 
