@@ -18,7 +18,6 @@ import {
   PreparedQuery,
   prepareQuery,
   fuzzySearch,
-  SearchResult,
   App,
 } from 'obsidian';
 import {
@@ -33,8 +32,8 @@ import {
   rootSplitEditorFixtures,
   leftSplitEditorFixtures,
   rightSplitEditorFixtures,
-  makePreparedQuery,
 } from 'src/__fixtures__/editorFilter.fixture';
+import { makePreparedQuery, makeFuzzyMatch } from 'src/__fixtures__/fixtureUtils';
 
 describe('getCommandStringForMode', () => {
   let settings: SwitcherPlusSettings;
@@ -570,7 +569,7 @@ describe('getSuggestions', () => {
       mockGetFileCache.mockReturnValueOnce(leftFixture.cachedMetadata);
       mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
       mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match: SearchResult = { matches: [[0, 3]], score: -0.0104 };
+        const match = makeFuzzyMatch([[0, 3]], -0.0104);
         return text === 'tag1' || text === 'tag2' ? match : null;
       });
 
@@ -604,7 +603,7 @@ describe('getSuggestions', () => {
       let filterText = 'tag';
       mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
       mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match: SearchResult = { matches: [[0, 3]], score: -0.0104 };
+        const match = makeFuzzyMatch([[0, 3]], -0.0104);
         return text === 'tag1' || text === 'tag2' ? match : null;
       });
 
@@ -628,7 +627,7 @@ describe('getSuggestions', () => {
       filterText = 'tag2';
       mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
       mockFuzzySearch.mockImplementation((q: PreparedQuery, text: string) => {
-        const match: SearchResult = { matches: [[0, 4]], score: -0.0104 };
+        const match = makeFuzzyMatch([[0, 4]], -0.0104);
         return text === q.query ? match : null;
       });
 
