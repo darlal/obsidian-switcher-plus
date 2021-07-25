@@ -4,7 +4,7 @@ import { InputInfo } from 'src/switcherPlus';
 import { WorkspaceHandler, WORKSPACE_PLUGIN_ID } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
 import { workspaceTrigger } from 'src/__fixtures__/modeTrigger.fixture';
-import { App, fuzzySearch, PreparedQuery, prepareQuery } from 'obsidian';
+import { App, fuzzySearch, PreparedQuery, prepareQuery, renderResults } from 'obsidian';
 import { makePreparedQuery, makeFuzzyMatch } from 'src/__fixtures__/fixtureUtils';
 
 describe('workspaceHandler', () => {
@@ -13,6 +13,13 @@ describe('workspaceHandler', () => {
   let app: App;
   let getPluginByIdSpy: jest.SpyInstance;
   let sut: WorkspaceHandler;
+
+  const suggestionWorkspaceId = 'first workspace';
+  const suggestionInstance: WorkspaceSuggestion = {
+    type: 'workspace',
+    item: { type: 'workspaceInfo', id: suggestionWorkspaceId },
+    match: makeFuzzyMatch([[0, 5]], -0.0115),
+  };
 
   beforeAll(() => {
     app = new App();
@@ -124,6 +131,24 @@ describe('workspaceHandler', () => {
       mockFuzzySearch.mockRestore();
       mockPrepareQuery.mockRestore();
       getPluginByIdSpy.mockRestore();
+    });
+  });
+
+  describe('renderSuggestion', () => {
+    it('should render a suggestion with match offsets', () => {
+      const mockRenderResults = renderResults as jest.MockedFunction<
+        typeof renderResults
+      >;
+
+      sut.renderSuggestion(suggestionInstance, null);
+
+      const {
+        item: { id },
+        match,
+      } = suggestionInstance;
+      expect(mockRenderResults).toHaveBeenCalledWith(null, id, match);
+
+      mockRenderResults.mockRestore();
     });
   });
 });

@@ -2,7 +2,13 @@ import { getInternalPluginById } from 'src/utils';
 import { Mode, WorkspaceInfo, WorkspaceSuggestion } from 'src/types';
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo } from 'src/switcherPlus/inputInfo';
-import { App, fuzzySearch, SearchResult, sortSearchResults } from 'obsidian';
+import {
+  App,
+  fuzzySearch,
+  renderResults,
+  SearchResult,
+  sortSearchResults,
+} from 'obsidian';
 
 export const WORKSPACE_PLUGIN_ID = 'workspaces';
 
@@ -49,6 +55,12 @@ export class WorkspaceHandler {
     }
 
     return suggestions;
+  }
+
+  renderSuggestion(sugg: WorkspaceSuggestion, parentEl: HTMLElement): void {
+    if (sugg) {
+      renderResults(parentEl, sugg.item.id, sugg.match);
+    }
   }
 
   onChooseSuggestion(sugg: WorkspaceSuggestion): void {}

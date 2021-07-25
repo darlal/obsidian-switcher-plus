@@ -77,3 +77,4 @@ export const App = jest.fn().mockImplementation(() => {
 export const prepareQuery = jest.fn();
 export const fuzzySearch = jest.fn();
 export const sortSearchResults = jest.fn();
+export const renderResults = jest.fn();

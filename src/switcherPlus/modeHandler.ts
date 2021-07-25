@@ -106,8 +106,12 @@ export class ModeHandler {
       });
     }
 
-    const text = ModeHandler.getItemText(sugg.item);
-    renderResults(containerEl, text, sugg.match);
+    if (isWorkspaceSuggestion(sugg)) {
+      this.wsHandler.renderSuggestion(sugg, parentEl);
+    } else {
+      const text = ModeHandler.getItemText(sugg.item);
+      renderResults(containerEl, text, sugg.match);
+    }
   }
 
   determineRunMode(
