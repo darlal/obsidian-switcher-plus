@@ -25,6 +25,11 @@ export default class SwitcherPlusPlugin extends Plugin {
       'Open in Symbol Mode',
       Mode.SymbolList,
     );
+    this.registerCommand(
+      'switcher-plus:open-workspaces',
+      'Open in Workspaces Mode',
+      Mode.WorkspaceList,
+    );
   }
 
   onunload(): void {
