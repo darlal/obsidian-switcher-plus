@@ -63,7 +63,16 @@ export class WorkspaceHandler {
     }
   }
 
-  onChooseSuggestion(sugg: WorkspaceSuggestion): void {}
+  onChooseSuggestion(sugg: WorkspaceSuggestion): void {
+    if (sugg) {
+      const { id } = sugg.item;
+      const pluginInstance = this.getSystemWorkspacesPluginInstance();
+
+      if (typeof pluginInstance['loadWorkspace'] === 'function') {
+        pluginInstance.loadWorkspace(id);
+      }
+    }
+  }
 
   private getItems(): WorkspaceInfo[] {
     const items: WorkspaceInfo[] = [];

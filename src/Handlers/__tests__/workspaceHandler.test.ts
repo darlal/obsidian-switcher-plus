@@ -151,4 +151,21 @@ describe('workspaceHandler', () => {
       mockRenderResults.mockRestore();
     });
   });
+
+  describe('onChooseSuggestion', () => {
+    it('should tell the workspaces plugin to load the workspace with the chosen ID', () => {
+      const internalPlugins = (app as any).internalPlugins;
+      const workspacesPlugin = internalPlugins.plugins[WORKSPACE_PLUGIN_ID];
+      const getPluginByIdSpy = jest.spyOn(internalPlugins, 'getPluginById');
+      const loadWorkspaceSpy = jest.spyOn(workspacesPlugin.instance, 'loadWorkspace');
+
+      sut.onChooseSuggestion(suggestionInstance);
+
+      expect(getPluginByIdSpy).toHaveBeenCalled();
+      expect(loadWorkspaceSpy).toHaveBeenCalledWith(suggestionWorkspaceId);
+
+      getPluginByIdSpy.mockRestore();
+      loadWorkspaceSpy.mockRestore();
+    });
+  });
 });
