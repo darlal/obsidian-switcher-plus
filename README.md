@@ -12,6 +12,8 @@ Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](ht
   * [Configuration](#symbol-navigation-configuration)
 * [Navigate between open editors, and side panels](#navigate-between-open-editors)
   * [Configuration](#editor-navigation-configuration)
+* [Switch between configured Workspaces quickly](#switch-workspaces)
+  * [Configuration](#workspace-configuration)
 * [Global Commands for Hotkeys/Shortcuts](#global-commands-for-hotkeys)
 
 ## Demo
@@ -57,6 +59,18 @@ Editors/views from the side panels can be configured to be displayed in the list
 | Editor list mode trigger | Character that will trigger editor list mode in the switcher. | `edt ` |
 | Include side panel views | Show the specified view types from the side panels in the switcher. Add one view type per line. Leave empty to never display side panel editors in the switcher. | `backlink`<br />`image`<br />`markdown`<br />`pdf` |
 
+## Switch Workspaces
+
+View, filter, and switch between configured [Workspaces](https://help.obsidian.md/Plugins/Workspaces) quickly using the default `+` command.
+
+Note: the built-in system [Workspaces](https://help.obsidian.md/Plugins/Workspaces) plugin must be enabled for this mode to work.
+
+### Workspace configuration
+
+| Setting                  | Description | Default |
+|--------------------------|-------------|---------|
+| Workspace list mode trigger | Character that will trigger workspace list mode in the switcher. | `+` |
+
 ## Global Commands for Hotkeys
 
 The following Global Commands are registered by the plugin, which can be used for global hotkeys/shortcuts.
@@ -64,6 +78,7 @@ The following Global Commands are registered by the plugin, which can be used fo
 * `Quick Switcher++: Open`
 * `Quick Switcher++: Open in Editor Mode`
 * `Quick Switcher++: Open in Symbol Mode`
+* `Quick Switcher++: Open in Workspaces Mode`
 
 ## Installation
 
