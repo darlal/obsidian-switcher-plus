@@ -120,75 +120,88 @@ export class ModeHandler {
     activeLeaf: WorkspaceLeaf,
   ): InputInfo {
     const input = inputText ?? '';
-    const { editorListCommand, symbolListCommand, workspaceListCommand } = this.settings;
     const info = new InputInfo(input);
 
     if (input.length === 0) {
       this.reset();
     }
 
-    const escSymbolCmd = escapeRegExp(symbolListCommand);
-    const escEditorCmd = escapeRegExp(editorListCommand);
-    const escWorkspaceCmd = escapeRegExp(workspaceListCommand);
-    const prefixCmds = [`(?<ep>${escEditorCmd})`, `(?<wp>${escWorkspaceCmd})`].sort(
-      (a, b) => b.length - a.length,
-    );
-
-    // regex that matches editor, workspace prefixes, and embedded symbol command
-    // as long as it's not preceded by another symbol command
-    // ^(?:(?<ep>edt )|(?<wp>+))|(?<!@.*)(?<se>@)
-    const re = new RegExp(
-      `^(?:${prefixCmds[0]}|${prefixCmds[1]})|(?<!${escSymbolCmd}.*)(?<se>${escSymbolCmd})`,
-      'g',
-    );
-
-    const matches = input.matchAll(re);
-    for (const match of matches) {
-      if (match.groups) {
-        const { groups, index } = match;
-
-        if (groups.ep) {
-          this.validateEditorCommand(info, index);
-        } else if (groups.wp) {
-          this.wsHandler.validateCommand(info, index);
-        } else if (groups.se) {
-          this.validateSymbolCommand(info, index, activeSuggestion, activeLeaf);
-        }
-      }
-    }
+    this.validatePrefixCommands(info);
+    this.validateSymbolCommand(info, activeSuggestion, activeLeaf);
 
     return info;
   }
 
-  private validateEditorCommand(inputInfo: InputInfo, index: number): void {
-    const { editorListCommand } = this.settings;
-    const { editorCmd, inputText } = inputInfo;
+  private validatePrefixCommands(info: InputInfo): void {
+    const { inputText } = info;
+    const { editorListCommand, workspaceListCommand } = this.settings;
+    const escEditorCmd = escapeRegExp(editorListCommand);
+    const escWorkspaceCmd = escapeRegExp(workspaceListCommand);
+
+    // account for potential overlapping command strings
+    const prefixCmds = [`(?<ep>${escEditorCmd})`, `(?<wp>${escWorkspaceCmd})`].sort(
+      (a, b) => b.length - a.length,
+    );
+
+    // regex that matches editor, workspace prefixes, and extract filter text
+    // ^(?:(?<ep>edt )|(?<wp>+))(?<ft>.*)$
+    const match = inputText.match(`^(?:${prefixCmds[0]}|${prefixCmds[1]})(?<ft>.*)$`);
+    if (match?.groups) {
+      const {
+        index,
+        groups: { ep, wp, ft },
+      } = match;
+
+      if (ep) {
+        this.validateEditorCommand(info, index, ft);
+      } else if (wp) {
+        this.wsHandler.validateCommand(info, index, ft);
+      }
+    }
+  }
+
+  private validateEditorCommand(
+    inputInfo: InputInfo,
+    index: number,
+    filterText: string,
+  ): void {
+    const { editorCmd } = inputInfo;
 
     inputInfo.mode = Mode.EditorList;
     editorCmd.index = index;
-    editorCmd.parsedInput = inputText.slice(editorListCommand.length);
+    editorCmd.parsedInput = filterText;
     editorCmd.isValidated = true;
   }
 
   private validateSymbolCommand(
     inputInfo: InputInfo,
-    index: number,
     activeSuggestion: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
   ): void {
-    const { symbolListCommand } = this.settings;
     const { mode, symbolCmd, inputText } = inputInfo;
 
     // Both Standard and EditorList mode can have an embedded symbol command
     if (mode === Mode.Standard || mode === Mode.EditorList) {
-      const target = this.getSymbolTarget(activeSuggestion, activeLeaf, index === 0);
+      const { symbolListCommand } = this.settings;
+      const escSymbolCmd = escapeRegExp(symbolListCommand);
 
-      if (target) {
-        inputInfo.mode = Mode.SymbolList;
-        symbolCmd.target = target;
-        symbolCmd.index = index;
-        symbolCmd.parsedInput = inputText.slice(index + symbolListCommand.length);
-        symbolCmd.isValidated = true;
+      // regex that matches symbol command, and extract filter text
+      // @(?<ft>.*)$
+      const match = inputText.match(`${escSymbolCmd}(?<ft>.*)$`);
+      if (match?.groups) {
+        const {
+          index,
+          groups: { ft },
+        } = match;
+
+        const target = this.getSymbolTarget(activeSuggestion, activeLeaf, index === 0);
+        if (target) {
+          inputInfo.mode = Mode.SymbolList;
+          symbolCmd.target = target;
+          symbolCmd.index = index;
+          symbolCmd.parsedInput = ft;
+          symbolCmd.isValidated = true;
+        }
       }
     }
   }

@@ -15,14 +15,13 @@ export const WORKSPACE_PLUGIN_ID = 'workspaces';
 export class WorkspaceHandler {
   constructor(private app: App, private settings: SwitcherPlusSettings) {}
 
-  validateCommand(inputInfo: InputInfo, index: number): void {
-    const { workspaceListCommand } = this.settings;
-    const { workspaceCmd, inputText } = inputInfo;
+  validateCommand(inputInfo: InputInfo, index: number, filterText: string): void {
+    const { workspaceCmd } = inputInfo;
 
     if (this.isWorkspacesPluginEnabled()) {
       inputInfo.mode = Mode.WorkspaceList;
       workspaceCmd.index = index;
-      workspaceCmd.parsedInput = inputText.slice(workspaceListCommand.length);
+      workspaceCmd.parsedInput = filterText;
       workspaceCmd.isValidated = true;
     }
   }

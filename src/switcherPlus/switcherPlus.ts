@@ -43,7 +43,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
         this.openWithCommandStr = exMode.getCommandStringForMode(mode);
       }
 
-      this.open();
+      super.open();
     }
 
     onOpen(): void {

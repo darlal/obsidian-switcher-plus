@@ -9,7 +9,6 @@ import { makePreparedQuery, makeFuzzyMatch } from 'src/__fixtures__/fixtureUtils
 
 describe('workspaceHandler', () => {
   let settings: SwitcherPlusSettings;
-  let workspaceCmdSpy: jest.SpyInstance;
   let app: App;
   let getPluginByIdSpy: jest.SpyInstance;
   let sut: WorkspaceHandler;
@@ -24,9 +23,6 @@ describe('workspaceHandler', () => {
   beforeAll(() => {
     app = new App();
     settings = new SwitcherPlusSettings(null);
-    workspaceCmdSpy = jest
-      .spyOn(settings, 'workspaceListCommand', 'get')
-      .mockReturnValue(workspaceTrigger);
 
     getPluginByIdSpy = jest.spyOn((app as any).internalPlugins, 'getPluginById');
     sut = new WorkspaceHandler(app, settings);
@@ -35,9 +31,10 @@ describe('workspaceHandler', () => {
   describe('validateCommand', () => {
     let inputText: string;
     let startIndex: number;
+    const filterText = 'foo';
 
     beforeAll(() => {
-      inputText = `${workspaceTrigger}foo`;
+      inputText = `${workspaceTrigger}${filterText}`;
       startIndex = workspaceTrigger.length;
     });
 
@@ -45,13 +42,12 @@ describe('workspaceHandler', () => {
       getPluginByIdSpy.mockReturnValueOnce({ enabled: true });
       const inputInfo = new InputInfo(inputText);
 
-      sut.validateCommand(inputInfo, startIndex);
+      sut.validateCommand(inputInfo, startIndex, filterText);
       expect(inputInfo.mode).toBe(Mode.WorkspaceList);
 
       const { workspaceCmd } = inputInfo;
-      expect(workspaceCmd.parsedInput).toBe('foo');
+      expect(workspaceCmd.parsedInput).toBe(filterText);
       expect(workspaceCmd.isValidated).toBe(true);
-      expect(workspaceCmdSpy).toHaveBeenCalled();
       expect(getPluginByIdSpy).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);
     });
 
@@ -59,13 +55,12 @@ describe('workspaceHandler', () => {
       getPluginByIdSpy.mockReturnValueOnce({ enabled: false });
       const inputInfo = new InputInfo(inputText);
 
-      sut.validateCommand(inputInfo, startIndex);
+      sut.validateCommand(inputInfo, startIndex, filterText);
       expect(inputInfo.mode).toBe(Mode.Standard);
 
       const { workspaceCmd } = inputInfo;
       expect(workspaceCmd.parsedInput).toBe(null);
       expect(workspaceCmd.isValidated).toBe(false);
-      expect(workspaceCmdSpy).toHaveBeenCalled();
       expect(getPluginByIdSpy).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);
     });
   });
