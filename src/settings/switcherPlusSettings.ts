@@ -4,6 +4,7 @@ import type SwitcherPlusPlugin from 'src/main';
 
 interface SettingsData {
   alwaysNewPaneForSymbols: boolean;
+  useActivePaneForSymbolsOnMobile: boolean;
   symbolsInLineOrder: boolean;
   editorListCommand: string;
   symbolListCommand: string;
@@ -19,6 +20,7 @@ export class SwitcherPlusSettings {
   private static get defaultSettingsData(): SettingsData {
     return {
       alwaysNewPaneForSymbols: false,
+      useActivePaneForSymbolsOnMobile: false,
       symbolsInLineOrder: true,
       editorListCommand: 'edt ',
       symbolListCommand: '@',
@@ -54,6 +56,14 @@ export class SwitcherPlusSettings {
 
   set alwaysNewPaneForSymbols(value: boolean) {
     this.data.alwaysNewPaneForSymbols = value;
+  }
+
+  get useActivePaneForSymbolsOnMobile(): boolean {
+    return this.data.useActivePaneForSymbolsOnMobile;
+  }
+
+  set useActivePaneForSymbolsOnMobile(value: boolean) {
+    this.data.useActivePaneForSymbolsOnMobile = value;
   }
 
   get symbolsInlineOrder(): boolean {

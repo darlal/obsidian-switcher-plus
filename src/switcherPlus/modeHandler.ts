@@ -24,6 +24,7 @@ import {
   SearchResult,
   MetadataCache,
   App,
+  Platform,
 } from 'obsidian';
 import {
   Mode,
@@ -482,7 +483,10 @@ export class ModeHandler {
   }
 
   private navigateToSymbol(sugg: SymbolSuggestion): void {
-    const { workspace } = this;
+    const {
+      workspace,
+      settings: { alwaysNewPaneForSymbols, useActivePaneForSymbolsOnMobile },
+    } = this;
 
     // determine if the target is already open in a pane
     const {
@@ -507,11 +511,14 @@ export class ModeHandler {
       },
     };
 
-    if (leaf && !this.settings.alwaysNewPaneForSymbols) {
+    if (leaf && !alwaysNewPaneForSymbols) {
       this.activateEditorLeaf(leaf, true, eState);
     } else {
+      const { isDesktop, isMobile } = Platform;
+      const createNewLeaf = isDesktop || (isMobile && !useActivePaneForSymbolsOnMobile);
+
       workspace
-        .openLinkText(path, '', true, { eState })
+        .openLinkText(path, '', createNewLeaf, { eState })
         .catch(() => console.log('Switcher++: unable to navigate to symbol'));
     }
   }

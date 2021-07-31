@@ -39,6 +39,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     SwitcherPlusSettingTab.setSymbolListCommand(containerEl, settings);
     SwitcherPlusSettingTab.setSymbolsInLineOrder(containerEl, settings);
     SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols(containerEl, settings);
+    SwitcherPlusSettingTab.setUseActivePaneForSymbolsOnMobile(containerEl, settings);
   }
 
   private static setWorkspaceModeSettingsGroup(
@@ -62,6 +63,23 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(settings.alwaysNewPaneForSymbols).onChange((value) => {
           settings.alwaysNewPaneForSymbols = value;
+          settings.saveSettings();
+        }),
+      );
+  }
+
+  private static setUseActivePaneForSymbolsOnMobile(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl)
+      .setName('Open Symbols in active pane on mobile devices')
+      .setDesc(
+        'Enabled, navigate to the target file and symbol in the active editor pane. Disabled, open a new pane when navigating to Symbols, even on mobile devices.',
+      )
+      .addToggle((toggle) =>
+        toggle.setValue(settings.useActivePaneForSymbolsOnMobile).onChange((value) => {
+          settings.useActivePaneForSymbolsOnMobile = value;
           settings.saveSettings();
         }),
       );
