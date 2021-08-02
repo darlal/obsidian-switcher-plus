@@ -43,6 +43,7 @@ View, filter, and navigate to any symbol (Headings, Hashtags, Links, Embedding) 
 | Symbol list mode trigger         | Character that will trigger symbol list mode in the switcher. | `@` |
 | List symbols as indented outline | **Enabled**: symbols will be displayed in the (line) order they appear in the source text, indented under any preceding heading.<br />**Disabled**: symbols will be grouped by type: Headings, Tags, Links, Embeds. | true |
 | Open Symbols in new pane         | **Enabled**: always open a new pane when navigating to Symbols.<br />**Disabled**: navigate in an already open pane (if one exists). | false |
+| Open Symbols in active pane on mobile devices | **Enabled**: navigate to the target file and symbol in the active editor pane, in other words, don't create a new editor pane.<br />**Disabled**: open a new pane when navigating to Symbols, even on mobile devices. | false |
 
 ## Navigate between open editors
 
