@@ -51,6 +51,13 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     SwitcherPlusSettingTab.setWorkspaceListCommand(containerEl, settings);
   }
 
+  private static saveChanges(settings: SwitcherPlusSettings) {
+    settings.saveSettings().catch((e) => {
+      console.log('Switcher++: error saving changes to settings');
+      console.log(e);
+    });
+  }
+
   private static setAlwaysNewPaneForSymbols(
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
@@ -63,7 +70,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(settings.alwaysNewPaneForSymbols).onChange((value) => {
           settings.alwaysNewPaneForSymbols = value;
-          settings.saveSettings();
+          SwitcherPlusSettingTab.saveChanges(settings);
         }),
       );
   }
@@ -80,7 +87,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(settings.useActivePaneForSymbolsOnMobile).onChange((value) => {
           settings.useActivePaneForSymbolsOnMobile = value;
-          settings.saveSettings();
+          SwitcherPlusSettingTab.saveChanges(settings);
         }),
       );
   }
@@ -97,7 +104,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(settings.symbolsInlineOrder).onChange((value) => {
           settings.symbolsInlineOrder = value;
-          settings.saveSettings();
+          SwitcherPlusSettingTab.saveChanges(settings);
         }),
       );
   }
@@ -115,7 +122,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .setValue(settings.editorListCommand)
           .onChange(async (value) => {
             settings.editorListCommand = value;
-            settings.saveSettings();
+            SwitcherPlusSettingTab.saveChanges(settings);
           }),
       );
   }
@@ -133,7 +140,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .setValue(settings.symbolListCommand)
           .onChange(async (value) => {
             settings.symbolListCommand = value;
-            settings.saveSettings();
+            SwitcherPlusSettingTab.saveChanges(settings);
           }),
       );
   }
@@ -157,7 +164,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .setValue(settings.includeSidePanelViewTypes.join('\n'))
           .onChange(async (value) => {
             settings.includeSidePanelViewTypes = value.split('\n');
-            settings.saveSettings();
+            SwitcherPlusSettingTab.saveChanges(settings);
           }),
       );
   }
@@ -174,7 +181,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .setValue(settings.workspaceListCommand)
           .onChange(async (value) => {
             settings.workspaceListCommand = value;
-            settings.saveSettings();
+            SwitcherPlusSettingTab.saveChanges(settings);
           }),
       );
   }

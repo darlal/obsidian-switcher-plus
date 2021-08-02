@@ -1,18 +1,6 @@
-import { BuiltInSystemOptions } from 'src/types';
+import { BuiltInSystemOptions, SettingsData } from 'src/types';
 import { getSystemSwitcherInstance } from 'src/utils';
 import type SwitcherPlusPlugin from 'src/main';
-
-interface SettingsData {
-  alwaysNewPaneForSymbols: boolean;
-  useActivePaneForSymbolsOnMobile: boolean;
-  symbolsInLineOrder: boolean;
-  editorListCommand: string;
-  symbolListCommand: string;
-  workspaceListCommand: string;
-  excludeViewTypes: Array<string>;
-  referenceViews: Array<string>;
-  includeSidePanelViewTypes: Array<string>;
-}
 
 export class SwitcherPlusSettings {
   private data: SettingsData;
@@ -137,16 +125,12 @@ export class SwitcherPlusSettings {
 
   async loadSettings(): Promise<void> {
     const { plugin } = this;
-    const savedData = (await plugin.loadData()) as SettingsData;
+    const savedData = (await plugin?.loadData()) as SettingsData;
     this.data = { ...SwitcherPlusSettings.defaultSettingsData, ...savedData };
   }
 
-  saveSettings(): void {
+  async saveSettings(): Promise<void> {
     const { plugin, data } = this;
-    if (plugin && data) {
-      plugin.saveData(data).catch(() => {
-        console.log('Switcher++: Error saving settings data');
-      });
-    }
+    await plugin?.saveData(data);
   }
 }

@@ -115,6 +115,18 @@ export interface TargetInfo {
   isValidSymbolTarget: boolean;
 }
 
+export interface SettingsData {
+  alwaysNewPaneForSymbols: boolean;
+  useActivePaneForSymbolsOnMobile: boolean;
+  symbolsInLineOrder: boolean;
+  editorListCommand: string;
+  symbolListCommand: string;
+  workspaceListCommand: string;
+  excludeViewTypes: Array<string>;
+  referenceViews: Array<string>;
+  includeSidePanelViewTypes: Array<string>;
+}
+
 export interface BuiltInSystemOptions {
   showAllFileTypes: boolean;
   showAttachments: boolean;

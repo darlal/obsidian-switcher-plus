@@ -74,6 +74,18 @@ export const App = jest.fn().mockImplementation(() => {
   };
 });
 
+export const PluginSettingTab = jest.fn().mockImplementation(() => {
+  return {};
+});
+
+export const Plugin = jest.fn().mockImplementation((app, _) => {
+  return {
+    app,
+    loadData: jest.fn(),
+    saveData: jest.fn(),
+  };
+});
+
 export const prepareQuery = jest.fn();
 export const fuzzySearch = jest.fn();
 export const sortSearchResults = jest.fn();
