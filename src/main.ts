@@ -1,11 +1,10 @@
 import { Plugin } from 'obsidian';
 import { SwitcherPlusSettings, SwitcherPlusSettingTab } from 'src/settings';
 import { createSwitcherPlus } from 'src/switcherPlus';
-import { Mode, SwitcherPlus } from 'src/types';
+import { Mode } from 'src/types';
 
 export default class SwitcherPlusPlugin extends Plugin {
   public options: SwitcherPlusSettings;
-  private modal: SwitcherPlus;
 
   async onload(): Promise<void> {
     const options = new SwitcherPlusSettings(this);
@@ -30,10 +29,6 @@ export default class SwitcherPlusPlugin extends Plugin {
       'Open in Workspaces Mode',
       Mode.WorkspaceList,
     );
-  }
-
-  onunload(): void {
-    this.modal = null;
   }
 
   registerCommand(id: string, name: string, mode: Mode): void {

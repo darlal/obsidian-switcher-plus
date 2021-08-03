@@ -120,7 +120,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         text
           .setPlaceholder(settings.editorListPlaceholderText)
           .setValue(settings.editorListCommand)
-          .onChange(async (value) => {
+          .onChange((value) => {
             settings.editorListCommand = value;
             SwitcherPlusSettingTab.saveChanges(settings);
           }),
@@ -138,7 +138,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         text
           .setPlaceholder(settings.symbolListPlaceholderText)
           .setValue(settings.symbolListCommand)
-          .onChange(async (value) => {
+          .onChange((value) => {
             settings.symbolListCommand = value;
             SwitcherPlusSettingTab.saveChanges(settings);
           }),
@@ -162,7 +162,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         textArea
           .setPlaceholder(settings.includeSidePanelViewTypesPlaceholder)
           .setValue(settings.includeSidePanelViewTypes.join('\n'))
-          .onChange(async (value) => {
+          .onChange((value) => {
             settings.includeSidePanelViewTypes = value.split('\n');
             SwitcherPlusSettingTab.saveChanges(settings);
           }),
@@ -179,7 +179,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         text
           .setPlaceholder(settings.workspaceListPlaceholderText)
           .setValue(settings.workspaceListCommand)
-          .onChange(async (value) => {
+          .onChange((value) => {
             settings.workspaceListCommand = value;
             SwitcherPlusSettingTab.saveChanges(settings);
           }),
