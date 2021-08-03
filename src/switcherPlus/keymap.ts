@@ -17,15 +17,16 @@ export class Keymap {
     private scope: Scope,
     private chooser: any,
     private modalContainerEl: HTMLElement,
-  ) {}
+  ) {
+    this.registerBindings(scope);
+  }
 
-  registerBindings(): void {
-    const { scope } = this;
+  private registerBindings(scope: Scope): void {
     scope.register(['Ctrl'], 'n', this.navigateItems.bind(this));
     scope.register(['Ctrl'], 'p', this.navigateItems.bind(this));
   }
 
-  navigateItems(_evt: KeyboardEvent, ctx: KeymapContext): boolean | void {
+  private navigateItems(_evt: KeyboardEvent, ctx: KeymapContext): boolean | void {
     const { isOpen, chooser } = this;
 
     if (isOpen) {
