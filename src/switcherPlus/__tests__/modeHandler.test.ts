@@ -118,16 +118,16 @@ describe('determineRunMode', () => {
       ({ editorTrigger, symbolTrigger, input, expected: { mode, parsedInput } }) => {
         const s = new SwitcherPlusSettings(null);
         const mh = new ModeHandler(null, s);
-        let editorCmdSpy, symbolCmdSpy;
+        let cmdSpy: jest.SpyInstance;
 
         if (editorTrigger) {
-          editorCmdSpy = jest
+          cmdSpy = jest
             .spyOn(s, 'editorListCommand', 'get')
             .mockReturnValue(editorTrigger);
         }
 
         if (symbolTrigger) {
-          symbolCmdSpy = jest
+          cmdSpy = jest
             .spyOn(s, 'symbolListCommand', 'get')
             .mockReturnValue(symbolTrigger);
         }
@@ -145,12 +145,11 @@ describe('determineRunMode', () => {
         let parsed;
         if (mode === Mode.EditorList) {
           parsed = inputInfo.editorCmd.parsedInput;
-          expect(editorCmdSpy).toHaveBeenCalled();
         } else if (mode === Mode.SymbolList) {
           parsed = inputInfo.symbolCmd.parsedInput;
-          expect(symbolCmdSpy).toHaveBeenCalled();
         }
 
+        expect(cmdSpy).toHaveBeenCalled();
         expect(inputInfo.mode).toBe(mode);
         expect(parsed).toBe(parsedInput);
       },
