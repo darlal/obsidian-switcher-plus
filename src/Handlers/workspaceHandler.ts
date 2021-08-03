@@ -5,9 +5,11 @@ import { InputInfo } from 'src/switcherPlus/inputInfo';
 import {
   App,
   fuzzySearch,
+  InstalledPlugin,
   renderResults,
   SearchResult,
   sortSearchResults,
+  WorkspacesPluginInstance,
 } from 'obsidian';
 
 export const WORKSPACE_PLUGIN_ID = 'workspaces';
@@ -86,15 +88,15 @@ export class WorkspaceHandler {
 
   private isWorkspacesPluginEnabled(): boolean {
     const plugin = this.getSystemWorkspacesPlugin();
-    return plugin?.enabled as boolean;
+    return plugin?.enabled;
   }
 
-  private getSystemWorkspacesPlugin(): Record<string, unknown> {
+  private getSystemWorkspacesPlugin(): InstalledPlugin {
     return getInternalPluginById(this.app, WORKSPACE_PLUGIN_ID);
   }
 
-  private getSystemWorkspacesPluginInstance(): Record<string, unknown> {
+  private getSystemWorkspacesPluginInstance(): WorkspacesPluginInstance {
     const workspacesPlugin = this.getSystemWorkspacesPlugin();
-    return workspacesPlugin?.instance as Record<string, unknown>;
+    return workspacesPlugin?.instance as WorkspacesPluginInstance;
   }
 }

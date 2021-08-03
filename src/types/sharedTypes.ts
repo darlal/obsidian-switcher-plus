@@ -127,12 +127,6 @@ export interface SettingsData {
   includeSidePanelViewTypes: Array<string>;
 }
 
-export interface BuiltInSystemOptions {
-  showAllFileTypes: boolean;
-  showAttachments: boolean;
-  showExistingOnly: boolean;
-}
-
 export interface SearchQuery {
   hasSearchTerm: boolean;
   prepQuery: PreparedQuery;

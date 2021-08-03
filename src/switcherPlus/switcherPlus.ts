@@ -1,13 +1,12 @@
-import { BuiltInSystemOptions } from 'src/types';
 import { Keymap } from './keymap';
 import { isSystemSuggestion, getSystemSwitcherInstance } from 'src/utils';
 import { ModeHandler } from './modeHandler';
 import SwitcherPlusPlugin from 'src/main';
-import type { App } from 'obsidian';
+import type { App, QuickSwitcherOptions } from 'obsidian';
 import { SystemSwitcher, SwitcherPlus, AnySuggestion, Mode } from 'src/types';
 
 interface SystemSwitcherConstructor extends SystemSwitcher {
-  new (app: App, builtInOptions: BuiltInSystemOptions): SystemSwitcher;
+  new (app: App, builtInOptions: QuickSwitcherOptions): SystemSwitcher;
 }
 
 export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): SwitcherPlus {

@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { BuiltInSystemOptions } from 'src/types';
 import { SettingsData } from 'src/types';
 import SwitcherPlusPlugin from 'src/main';
 import { SwitcherPlusSettings } from 'src/settings';
 import { Chance } from 'chance';
-import { App } from 'obsidian';
+import { App, QuickSwitcherOptions } from 'obsidian';
 
 const chance = new Chance();
 
@@ -146,7 +145,7 @@ describe('SwitcherPlusSettings', () => {
   });
 
   it('should load built-in system switcher settings', () => {
-    const builtInOptions: BuiltInSystemOptions = {
+    const builtInOptions: QuickSwitcherOptions = {
       showAllFileTypes: chance.bool(),
       showAttachments: chance.bool(),
       showExistingOnly: chance.bool(),

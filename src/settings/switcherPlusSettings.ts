@@ -1,6 +1,7 @@
-import { BuiltInSystemOptions, SettingsData } from 'src/types';
+import { SettingsData } from 'src/types';
 import { getSystemSwitcherInstance } from 'src/utils';
 import type SwitcherPlusPlugin from 'src/main';
+import { QuickSwitcherOptions } from 'obsidian';
 
 export class SwitcherPlusSettings {
   private data: SettingsData;
@@ -19,8 +20,8 @@ export class SwitcherPlusSettings {
     };
   }
 
-  get builtInSystemOptions(): BuiltInSystemOptions {
-    return getSystemSwitcherInstance(this.plugin.app)?.options as BuiltInSystemOptions;
+  get builtInSystemOptions(): QuickSwitcherOptions {
+    return getSystemSwitcherInstance(this.plugin.app)?.options;
   }
 
   get showAllFileTypes(): boolean {
