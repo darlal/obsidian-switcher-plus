@@ -1,3 +1,6 @@
+const { pathsToModuleNameMapper } = require('ts-jest/utils');
+const { compilerOptions } = require('./tsconfig');
+
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -5,10 +8,7 @@ module.exports = {
   roots: ['<rootDir>/src/', 'node_modules'],
   modulePaths: ['<rootDir>', 'node_modules'],
   moduleDirectories: ['src', 'node_modules'],
-  moduleNameMapper: {
-    'src/(.*)': '<rootDir>/src/$1',
-    obsidian: '<rootDir>/node_modules/obsidian/obsidian.d.ts',
-  },
+  moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths),
   transform: {
     '^.+\\.js$': 'babel-jest',
     '^.+\\.(ts|tsx)$': 'ts-jest',
