@@ -1,8 +1,8 @@
-import { Mode } from 'src/types';
-import { Scope, KeymapContext } from 'obsidian';
+import { AnySuggestion, Mode } from 'src/types';
+import { Scope, KeymapContext, Chooser, Hotkey } from 'obsidian';
 
 export class Keymap {
-  private backupKeys: any[];
+  private backupKeys: Hotkey[];
   private _isOpen: boolean;
 
   get isOpen(): boolean {
@@ -15,7 +15,7 @@ export class Keymap {
 
   constructor(
     private scope: Scope,
-    private chooser: any,
+    private chooser: Chooser<AnySuggestion>,
     private modalContainerEl: HTMLElement,
   ) {
     this.registerBindings(scope);
@@ -31,7 +31,7 @@ export class Keymap {
 
     if (isOpen) {
       const isNext = ctx.key === 'n';
-      const index: number = chooser.selectedItem as number;
+      const index = chooser.selectedItem;
       chooser.setSelectedItem(isNext ? index + 1 : index - 1);
     }
 
@@ -48,7 +48,7 @@ export class Keymap {
   }
 
   updateKeymapForMode(mode: Mode): void {
-    const keys = (this.scope as any).keys;
+    const keys = this.scope.keys;
     let { backupKeys = [] } = this;
 
     Keymap.updateHelperTextForMode(mode, this.modalContainerEl);
@@ -63,10 +63,10 @@ export class Keymap {
       for (let i = keys.length - 1; i >= 0; --i) {
         const key = keys[i];
 
-        if (
-          key.key === 'Enter' &&
-          (key.modifiers === 'Meta' || key.modifiers === 'Shift')
-        ) {
+        // modifiers are serialized to string at run time, if they exist
+        const modifiers = key.modifiers?.toString();
+
+        if (key.key === 'Enter' && (modifiers === 'Meta' || modifiers === 'Shift')) {
           keys.splice(i, 1);
           backupKeys.push(key);
         }

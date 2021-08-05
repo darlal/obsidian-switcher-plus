@@ -1,9 +1,13 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { SettingsData } from 'src/types';
 import SwitcherPlusPlugin from 'src/main';
 import { SwitcherPlusSettings } from 'src/settings';
 import { Chance } from 'chance';
-import { App, QuickSwitcherOptions } from 'obsidian';
+import {
+  App,
+  QuickSwitcherOptions,
+  InstalledPlugin,
+  QuickSwitcherPluginInstance,
+} from 'obsidian';
 
 const chance = new Chance();
 
@@ -86,11 +90,13 @@ describe('SwitcherPlusSettings', () => {
     sut.workspaceListCommand = settings.workspaceListCommand;
     sut.includeSidePanelViewTypes = settings.includeSidePanelViewTypes;
 
-    let savedSettings = {};
-    const saveDataSpy = jest.spyOn(plugin, 'saveData').mockImplementationOnce((data) => {
-      savedSettings = data;
-      return Promise.resolve();
-    });
+    let savedSettings: SettingsData;
+    const saveDataSpy = jest
+      .spyOn(plugin, 'saveData')
+      .mockImplementationOnce((data: SettingsData) => {
+        savedSettings = data;
+        return Promise.resolve();
+      });
 
     await sut.saveSettings();
 
@@ -150,14 +156,18 @@ describe('SwitcherPlusSettings', () => {
       showAttachments: chance.bool(),
       showExistingOnly: chance.bool(),
     };
-    const builtInSwitcherPlugin = {
-      instance: {
-        options: builtInOptions,
-      },
+    const pluginInstance: QuickSwitcherPluginInstance = {
+      id: 'switcher',
+      options: builtInOptions,
+      QuickSwitcherModal: null,
+    };
+    const builtInSwitcherPlugin: InstalledPlugin = {
+      enabled: true,
+      instance: pluginInstance,
     };
 
     const getPluginByIdSpy = jest
-      .spyOn((app as any).internalPlugins, 'getPluginById')
+      .spyOn(app.internalPlugins, 'getPluginById')
       .mockReturnValue(builtInSwitcherPlugin);
 
     expect(sut.builtInSystemOptions).toMatchObject(builtInOptions);

@@ -213,7 +213,7 @@ describe('determineRunMode', () => {
 
         const { target } = symbolCmd;
         expect(target.isValidSymbolTarget).toBe(true);
-        expect(target.file).toBe((activeLeaf.view as any).file);
+        expect(target.file).toBe(activeLeaf.view.file);
         expect(target.leaf).toBe(activeLeaf);
         expect(target.suggestion).toBe(null);
       },
@@ -272,8 +272,7 @@ describe('determineRunMode', () => {
 
         const { target } = symbolCmd;
         expect(target.isValidSymbolTarget).toBe(true);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        expect(target.file).toBe((leaf.view as any).file);
+        expect(target.file).toBe(leaf.view.file);
         expect(target.leaf).toBe(leaf);
         expect(target.suggestion).toBe(editorSuggestion);
       },
@@ -281,18 +280,6 @@ describe('determineRunMode', () => {
   });
 
   describe('should parse as workspace mode', () => {
-    let getPluginByIdSpy: jest.SpyInstance;
-
-    beforeAll(() => {
-      getPluginByIdSpy = jest
-        .spyOn((app as any).internalPlugins, 'getPluginById')
-        .mockReturnValue({ enabled: true });
-    });
-
-    afterAll(() => {
-      getPluginByIdSpy.mockRestore();
-    });
-
     test.each(workspacePrefixOnlyInputFixture)(
       'for input: "$input" (array data index: $#)',
       ({ input, expected: { mode, isValidated, parsedInput } }) => {
@@ -362,7 +349,7 @@ describe('getSuggestions', () => {
 
     iterateAllLeavesSpy = jest
       .spyOn(workspace, 'iterateAllLeaves')
-      .mockImplementation((callback: (leaf: WorkspaceLeaf) => any) => {
+      .mockImplementation((callback: (leaf: WorkspaceLeaf) => void) => {
         const leaves = [rootSplitLeaf, leftSplitLeaf, rightSplitLeaf];
         leaves.forEach((leaf) => callback(leaf));
       });
@@ -552,7 +539,7 @@ describe('getSuggestions', () => {
       expect(results).toHaveLength(cached.length);
       expect(cached.every((item) => set.has(item))).toBe(true);
 
-      expect(mockGetFileCache).toHaveBeenCalledWith((rootSplitLeaf.view as any).file);
+      expect(mockGetFileCache).toHaveBeenCalledWith(rootSplitLeaf.view.file);
       expect(mockPrepareQuery).toHaveBeenCalled();
     });
 
@@ -560,10 +547,12 @@ describe('getSuggestions', () => {
       const filterText = 'tag';
       mockGetFileCache.mockReturnValueOnce(leftFixture.cachedMetadata);
       mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch([[0, 3]], -0.0104);
-        return text === 'tag1' || text === 'tag2' ? match : null;
-      });
+      mockFuzzySearch.mockImplementation(
+        (_q: PreparedQuery, text: string): SearchResult => {
+          const match = makeFuzzyMatch([[0, 3]], -0.0104);
+          return text === 'tag1' || text === 'tag2' ? match : null;
+        },
+      );
 
       const inputInfo = sut.determineRunMode(
         `${symbolTrigger}${filterText}`,
@@ -582,7 +571,7 @@ describe('getSuggestions', () => {
       const resTags = new Set(results.map((sugg) => sugg.item.symbol));
       expect(tags.every((tag) => resTags.has(tag))).toBe(true);
 
-      expect(mockGetFileCache).toHaveBeenCalledWith((leftSplitLeaf.view as any).file);
+      expect(mockGetFileCache).toHaveBeenCalledWith(leftSplitLeaf.view.file);
       expect(mockPrepareQuery).toHaveBeenCalled();
 
       mockFuzzySearch.mockRestore();
@@ -612,7 +601,7 @@ describe('getSuggestions', () => {
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(2);
       expect(results.every((sugg) => sugg.type === 'symbol')).toBe(true);
-      expect(mockGetFileCache).toHaveBeenCalledWith((leftSplitLeaf.view as any).file);
+      expect(mockGetFileCache).toHaveBeenCalledWith(leftSplitLeaf.view.file);
       mockFuzzySearch.mockRestore();
 
       // 2) setup second run, which refines the filterText from the first run
@@ -624,7 +613,7 @@ describe('getSuggestions', () => {
       });
 
       const tempLeaf = new WorkspaceLeaf();
-      const tempLeafFile = (tempLeaf.view as any).file;
+      const tempLeafFile = tempLeaf.view.file;
       inputInfo = sut.determineRunMode(
         `${symbolTrigger}${filterText}`,
         null,
@@ -644,7 +633,7 @@ describe('getSuggestions', () => {
 
       // getFileCache should be called with leftSplitLeaf.view.file both times
       expect(mockGetFileCache).not.toHaveBeenCalledWith(tempLeafFile);
-      expect(mockGetFileCache).toHaveBeenCalledWith((leftSplitLeaf.view as any).file);
+      expect(mockGetFileCache).toHaveBeenCalledWith(leftSplitLeaf.view.file);
       expect(mockPrepareQuery).toHaveBeenCalled();
 
       mockGetFileCache.mockRestore();

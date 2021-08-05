@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Mode, WorkspaceSuggestion } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { WorkspaceHandler, WORKSPACE_PLUGIN_ID } from 'src/Handlers';
@@ -17,20 +16,27 @@ describe('workspaceHandler', () => {
   let settings: SwitcherPlusSettings;
   let app: App;
   let getPluginByIdSpy: jest.SpyInstance;
+  let workspacesPluginInstance: WorkspacesPluginInstance;
   let sut: WorkspaceHandler;
-
-  const suggestionWorkspaceId = 'first workspace';
-  const suggestionInstance: WorkspaceSuggestion = {
-    type: 'workspace',
-    item: { type: 'workspaceInfo', id: suggestionWorkspaceId },
-    match: makeFuzzyMatch([[0, 5]], -0.0115),
-  };
+  let expectedWorkspaceIds: string[];
+  let suggestionInstance: WorkspaceSuggestion;
 
   beforeAll(() => {
     app = new App();
+    const { internalPlugins } = app;
     settings = new SwitcherPlusSettings(null);
 
-    getPluginByIdSpy = jest.spyOn((app as any).internalPlugins, 'getPluginById');
+    getPluginByIdSpy = jest.spyOn(internalPlugins, 'getPluginById');
+    workspacesPluginInstance = internalPlugins.plugins[WORKSPACE_PLUGIN_ID]
+      .instance as WorkspacesPluginInstance;
+
+    expectedWorkspaceIds = Object.keys(workspacesPluginInstance.workspaces);
+    suggestionInstance = {
+      type: 'workspace',
+      item: { type: 'workspaceInfo', id: expectedWorkspaceIds[0] },
+      match: makeFuzzyMatch([[0, 5]], -0.0115),
+    };
+
     sut = new WorkspaceHandler(app, settings);
   });
 
@@ -88,22 +94,14 @@ describe('workspaceHandler', () => {
       expect(results).toBeInstanceOf(Array);
 
       const resultWorkspaceIds = new Set(results.map((sugg) => sugg.item.id));
-      const workspaceIds = Object.keys(
-        (app as any).internalPlugins.plugins.workspaces.instance.workspaces,
-      );
 
-      expect(results).toHaveLength(workspaceIds.length);
-      expect(workspaceIds.every((id) => resultWorkspaceIds.has(id))).toBe(true);
+      expect(results).toHaveLength(expectedWorkspaceIds.length);
+      expect(expectedWorkspaceIds.every((id) => resultWorkspaceIds.has(id))).toBe(true);
       expect(results.every((sugg) => sugg.type === 'workspace')).toBe(true);
       expect(getPluginByIdSpy).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);
     });
 
     test('with filter search term, it should return only matching suggestions for workspace mode', () => {
-      const expectedWorkspaces = { 'first workspace': {}, 'second workspace': {} };
-      const getPluginByIdSpy = jest
-        .spyOn((app as any).internalPlugins, 'getPluginById')
-        .mockReturnValueOnce({ instance: { workspaces: expectedWorkspaces } });
-
       const filterText = 'first';
       const mockPrepareQuery = prepareQuery as jest.MockedFunction<typeof prepareQuery>;
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
@@ -123,7 +121,7 @@ describe('workspaceHandler', () => {
 
       const onlyResult = results[0];
       expect(onlyResult).toHaveProperty('type', 'workspace');
-      expect(Object.keys(expectedWorkspaces)).toContain(onlyResult.item.id);
+      expect(onlyResult.item.id).toBe(expectedWorkspaceIds[0]);
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
@@ -131,7 +129,6 @@ describe('workspaceHandler', () => {
 
       mockFuzzySearch.mockRestore();
       mockPrepareQuery.mockRestore();
-      getPluginByIdSpy.mockRestore();
     });
   });
 
@@ -155,17 +152,13 @@ describe('workspaceHandler', () => {
 
   describe('onChooseSuggestion', () => {
     it('should tell the workspaces plugin to load the workspace with the chosen ID', () => {
-      const internalPlugins = (app as any).internalPlugins;
-      const workspacesPlugin = internalPlugins.plugins[WORKSPACE_PLUGIN_ID];
-      const getPluginByIdSpy = jest.spyOn(internalPlugins, 'getPluginById');
-      const loadWorkspaceSpy = jest.spyOn(workspacesPlugin.instance, 'loadWorkspace');
+      const loadWorkspaceSpy = jest.spyOn(workspacesPluginInstance, 'loadWorkspace');
 
       sut.onChooseSuggestion(suggestionInstance);
 
       expect(getPluginByIdSpy).toHaveBeenCalled();
-      expect(loadWorkspaceSpy).toHaveBeenCalledWith(suggestionWorkspaceId);
+      expect(loadWorkspaceSpy).toHaveBeenCalledWith(suggestionInstance.item.id);
 
-      getPluginByIdSpy.mockRestore();
       loadWorkspaceSpy.mockRestore();
     });
   });

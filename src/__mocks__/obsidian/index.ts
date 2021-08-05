@@ -1,5 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Chance } from 'chance';
+import { InstalledPlugin, WorkspacesPluginInstance } from 'obsidian';
 
 const chance = new Chance();
 
@@ -49,16 +50,19 @@ export const Workspace = jest.fn().mockImplementation(() => {
 });
 
 export const App = jest.fn().mockImplementation(() => {
-  const pluginList: Record<string, any> = {
+  const workspacesPluginInstance: WorkspacesPluginInstance = {
+    id: 'workspaces',
+    workspaces: {
+      'first workspace': {},
+      'second workspace': {},
+    },
+    loadWorkspace: jest.fn(),
+  };
+
+  const pluginList: Record<string, InstalledPlugin> = {
     workspaces: {
       enabled: true,
-      instance: {
-        loadWorkspace: jest.fn(),
-        workspaces: {
-          'first workspace': {},
-          'second workspace': {},
-        },
-      },
+      instance: workspacesPluginInstance,
     },
   };
 

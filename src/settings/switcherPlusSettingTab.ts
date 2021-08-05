@@ -149,9 +149,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
   ): void {
-    const viewsListing = Object.keys((this.app as any).viewRegistry.viewByType)
-      .sort()
-      .join(' ');
+    const viewsListing = Object.keys(this.app.viewRegistry.viewByType).sort().join(' ');
 
     new Setting(containerEl)
       .setName('Include side panel views')

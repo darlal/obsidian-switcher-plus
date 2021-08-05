@@ -41,7 +41,7 @@ import {
 } from 'src/types';
 
 function fileFromView(view: View): TFile {
-  return (view as any)?.file;
+  return view?.file;
 }
 
 export class ModeHandler {
@@ -146,7 +146,10 @@ export class ModeHandler {
 
     // regex that matches editor, workspace prefixes, and extract filter text
     // ^(?:(?<ep>edt )|(?<wp>+))(?<ft>.*)$
-    const match = inputText.match(`^(?:${prefixCmds[0]}|${prefixCmds[1]})(?<ft>.*)$`);
+    const match = new RegExp(`^(?:${prefixCmds[0]}|${prefixCmds[1]})(?<ft>.*)$`).exec(
+      inputText,
+    );
+
     if (match?.groups) {
       const {
         index,
@@ -188,7 +191,7 @@ export class ModeHandler {
 
       // regex that matches symbol command, and extract filter text
       // @(?<ft>.*)$
-      const match = inputText.match(`${escSymbolCmd}(?<ft>.*)$`);
+      const match = new RegExp(`${escSymbolCmd}(?<ft>.*)$`).exec(inputText);
       if (match?.groups) {
         const {
           index,
