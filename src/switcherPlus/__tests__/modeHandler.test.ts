@@ -1,17 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
-import { ModeHandler } from 'src/switcherPlus/modeHandler';
-import {
-  editorTrigger,
-  symbolTrigger,
-  workspaceTrigger,
-} from 'src/__fixtures__/modeTrigger.fixture';
-import {
-  Mode,
-  FileSuggestion,
-  EditorSuggestion,
-  SymbolSuggestion,
-} from 'src/types/sharedTypes';
+import { SwitcherPlusSettings } from 'src/settings';
+import { Mode, FileSuggestion, EditorSuggestion, SymbolSuggestion } from 'src/types';
+import { ModeHandler } from 'src/switcherPlus';
 import {
   TFile,
   WorkspaceLeaf,
@@ -19,21 +8,24 @@ import {
   prepareQuery,
   fuzzySearch,
   App,
+  SearchResult,
 } from 'obsidian';
 import {
+  rootSplitEditorFixtures,
+  leftSplitEditorFixtures,
+  rightSplitEditorFixtures,
+  editorTrigger,
+  symbolTrigger,
+  workspaceTrigger,
+  makePreparedQuery,
+  makeFuzzyMatch,
   standardModeInputFixture,
   editorPrefixOnlyInputFixture,
   symbolPrefixOnlyInputFixture,
   symbolModeInputFixture,
   unicodeInputFixture,
   workspacePrefixOnlyInputFixture,
-} from 'src/__fixtures__/inputText.fixture';
-import {
-  rootSplitEditorFixtures,
-  leftSplitEditorFixtures,
-  rightSplitEditorFixtures,
-} from 'src/__fixtures__/editorFilter.fixture';
-import { makePreparedQuery, makeFuzzyMatch } from 'src/__fixtures__/fixtureUtils';
+} from '@fixtures';
 
 describe('getCommandStringForMode', () => {
   let settings: SwitcherPlusSettings;

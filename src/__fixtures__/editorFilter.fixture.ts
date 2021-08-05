@@ -1,7 +1,7 @@
 import { PreparedQuery, SearchMatches, SearchResult, CachedMetadata } from 'obsidian';
-import { editorTrigger } from 'src/__fixtures__/modeTrigger.fixture';
-import { getCachedMetadata, getTags } from 'src/__fixtures__/fileCachedMetadata.fixture';
-import { makePreparedQuery, makeFuzzyMatch } from 'src/__fixtures__/fixtureUtils';
+import { editorTrigger } from './modeTrigger.fixture';
+import { getCachedMetadata, getTags } from './fileCachedMetadata.fixture';
+import { makePreparedQuery, makeFuzzyMatch } from './fixtureUtils';
 
 interface EditorFixtureFilter {
   inputText: string;

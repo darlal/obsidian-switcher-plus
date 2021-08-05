@@ -3,9 +3,15 @@ import { Mode, WorkspaceSuggestion } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { WorkspaceHandler, WORKSPACE_PLUGIN_ID } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
-import { workspaceTrigger } from 'src/__fixtures__/modeTrigger.fixture';
-import { App, fuzzySearch, PreparedQuery, prepareQuery, renderResults } from 'obsidian';
-import { makePreparedQuery, makeFuzzyMatch } from 'src/__fixtures__/fixtureUtils';
+import {
+  App,
+  fuzzySearch,
+  PreparedQuery,
+  prepareQuery,
+  renderResults,
+  WorkspacesPluginInstance,
+} from 'obsidian';
+import { makePreparedQuery, makeFuzzyMatch, workspaceTrigger } from '@fixtures';
 
 describe('workspaceHandler', () => {
   let settings: SwitcherPlusSettings;

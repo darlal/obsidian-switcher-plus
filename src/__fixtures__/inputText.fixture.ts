@@ -1,9 +1,5 @@
 import { Mode } from 'src/types';
-import {
-  editorTrigger,
-  symbolTrigger,
-  workspaceTrigger,
-} from 'src/__fixtures__/modeTrigger.fixture';
+import { editorTrigger, symbolTrigger, workspaceTrigger } from './modeTrigger.fixture';
 
 interface InputExpectation {
   input: string;

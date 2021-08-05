@@ -2,9 +2,18 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "src": [ "src/*" ]
+      "src": [
+        "src/*"
+      ],
+      "@fixtures*": [
+        "src/__fixtures__",
+        "src/__fixtures__*"
+      ]
     },
-    "typeRoots": ["./src/types", "./node_modules/@types"],
+    "typeRoots": [
+      "./src/types",
+      "./node_modules/@types"
+    ],
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
