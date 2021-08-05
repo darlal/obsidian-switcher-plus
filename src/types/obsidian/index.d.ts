@@ -27,10 +27,31 @@ declare module 'obsidian' {
   }
 
   export interface InternalPlugins {
+    plugins: Record<string, InstalledPlugin>;
     getPluginById(id: string): InstalledPlugin;
+  }
+
+  export interface ViewRegistry {
+    viewByType: Record<string, unknown>;
   }
 
   export interface App {
     internalPlugins: InternalPlugins;
+    viewRegistry: ViewRegistry;
+  }
+
+  export interface Chooser<T> {
+    selectedItem: number;
+    values: T[];
+    setSelectedItem(index: number): void;
+    setSuggestions(suggestions: T[]): void;
+  }
+
+  export interface View {
+    file?: TFile;
+  }
+
+  export interface Scope {
+    keys: Hotkey[];
   }
 }
