@@ -18,6 +18,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     SwitcherPlusSettingTab.setSymbolModeSettingsGroup(containerEl, settings);
     this.setEditorModeSettingsGroup(containerEl, settings);
     SwitcherPlusSettingTab.setWorkspaceModeSettingsGroup(containerEl, settings);
+    SwitcherPlusSettingTab.setHeadingsModeSettingsGroup(containerEl, settings);
   }
 
   private setEditorModeSettingsGroup(
@@ -49,6 +50,17 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     new Setting(containerEl).setName('Workspace List Mode Settings').setHeading();
 
     SwitcherPlusSettingTab.setWorkspaceListCommand(containerEl, settings);
+  }
+
+  private static setHeadingsModeSettingsGroup(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl).setName('Headings List Mode Settings').setHeading();
+
+    SwitcherPlusSettingTab.setHeadingsListCommand(containerEl, settings);
+    SwitcherPlusSettingTab.setStrictHeadingsOnly(containerEl, settings);
+    SwitcherPlusSettingTab.setSearchAllHeadings(containerEl, settings);
   }
 
   private static saveChanges(settings: SwitcherPlusSettings) {
@@ -166,6 +178,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           }),
       );
   }
+
   private static setWorkspaceListCommand(
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
@@ -181,6 +194,58 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
             settings.workspaceListCommand = value;
             SwitcherPlusSettingTab.saveChanges(settings);
           }),
+      );
+  }
+
+  private static setHeadingsListCommand(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl)
+      .setName('Headings list mode trigger')
+      .setDesc('Character that will trigger headings list mode in the switcher')
+      .addText((text) =>
+        text
+          .setPlaceholder(settings.headingsListPlaceholderText)
+          .setValue(settings.headingsListCommand)
+          .onChange((value) => {
+            settings.headingsListCommand = value;
+            SwitcherPlusSettingTab.saveChanges(settings);
+          }),
+      );
+  }
+
+  private static setStrictHeadingsOnly(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl)
+      .setName('Show headings only')
+      .setDesc(
+        'Enabled, only show suggestions where there is a match in the first H1 contained in the file. Disabled, if there is not a match in the first H1, fallback to showing suggestions where there is a filename match.',
+      )
+      .addToggle((toggle) =>
+        toggle.setValue(settings.strictHeadingsOnly).onChange((value) => {
+          settings.strictHeadingsOnly = value;
+          SwitcherPlusSettingTab.saveChanges(settings);
+        }),
+      );
+  }
+
+  private static setSearchAllHeadings(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl)
+      .setName('Search all headings')
+      .setDesc(
+        'Enabled, search through all headings contained in each file. Disabled, only search through the first H1 in each file.',
+      )
+      .addToggle((toggle) =>
+        toggle.setValue(settings.searchAllHeadings).onChange((value) => {
+          settings.searchAllHeadings = value;
+          SwitcherPlusSettingTab.saveChanges(settings);
+        }),
       );
   }
 }

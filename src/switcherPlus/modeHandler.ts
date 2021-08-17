@@ -1,4 +1,4 @@
-import { WorkspaceHandler } from 'src/Handlers';
+import { WorkspaceHandler, HeadingsHandler } from 'src/Handlers';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
@@ -11,6 +11,7 @@ import {
   isTagCache,
   isWorkspaceSuggestion,
   isWorkspaceInfo,
+  isHeadingSuggestion,
 } from 'src/utils';
 import {
   View,
@@ -52,12 +53,14 @@ export class ModeHandler {
   private workspace: Workspace;
   private metadataCache: MetadataCache;
   private inputInfo: InputInfo;
-  private wsHandler;
+  private wsHandler: WorkspaceHandler;
+  private hsHandler: HeadingsHandler;
 
   constructor(app: App, private settings: SwitcherPlusSettings) {
     this.workspace = app?.workspace;
     this.metadataCache = app?.metadataCache;
     this.wsHandler = new WorkspaceHandler(app, settings);
+    this.hsHandler = new HeadingsHandler(app, settings);
     this.reset();
   }
 
@@ -67,24 +70,38 @@ export class ModeHandler {
 
   getCommandStringForMode(mode: Mode): string {
     let val = '';
-    const { editorListCommand, symbolListCommand, workspaceListCommand } = this.settings;
+    const {
+      editorListCommand,
+      symbolListCommand,
+      workspaceListCommand,
+      headingsListCommand,
+    } = this.settings;
 
-    if (mode === Mode.EditorList) {
-      val = editorListCommand;
-    } else if (mode === Mode.SymbolList) {
-      val = symbolListCommand;
-    } else if (mode === Mode.WorkspaceList) {
-      val = workspaceListCommand;
+    switch (mode) {
+      case Mode.EditorList:
+        val = editorListCommand;
+        break;
+      case Mode.SymbolList:
+        val = symbolListCommand;
+        break;
+      case Mode.WorkspaceList:
+        val = workspaceListCommand;
+        break;
+      case Mode.HeadingsList:
+        val = headingsListCommand;
+        break;
     }
 
     return val;
   }
 
-  onChooseSuggestion(sugg: AnyExSuggestion): void {
+  onChooseSuggestion(sugg: AnyExSuggestion, evt: MouseEvent | KeyboardEvent): void {
     if (isEditorSuggestion(sugg)) {
       this.activateEditorLeaf(sugg.item, false);
     } else if (isWorkspaceSuggestion(sugg)) {
       this.wsHandler.onChooseSuggestion(sugg);
+    } else if (isHeadingSuggestion(sugg)) {
+      this.hsHandler.onChooseSuggestion(sugg, evt);
     } else {
       this.navigateToSymbol(sugg);
     }
@@ -109,6 +126,8 @@ export class ModeHandler {
 
     if (isWorkspaceSuggestion(sugg)) {
       this.wsHandler.renderSuggestion(sugg, parentEl);
+    } else if (isHeadingSuggestion(sugg)) {
+      this.hsHandler.renderSuggestion(sugg, parentEl);
     } else {
       const text = ModeHandler.getItemText(sugg.item);
       renderResults(containerEl, text, sugg.match);
@@ -135,31 +154,37 @@ export class ModeHandler {
 
   private validatePrefixCommands(info: InputInfo): void {
     const { inputText } = info;
-    const { editorListCommand, workspaceListCommand } = this.settings;
+    const { editorListCommand, workspaceListCommand, headingsListCommand } =
+      this.settings;
     const escEditorCmd = escapeRegExp(editorListCommand);
     const escWorkspaceCmd = escapeRegExp(workspaceListCommand);
+    const escHeadingsCmd = escapeRegExp(headingsListCommand);
 
     // account for potential overlapping command strings
-    const prefixCmds = [`(?<ep>${escEditorCmd})`, `(?<wp>${escWorkspaceCmd})`].sort(
-      (a, b) => b.length - a.length,
-    );
+    const prefixCmds = [
+      `(?<ep>${escEditorCmd})`,
+      `(?<wp>${escWorkspaceCmd})`,
+      `(?<hp>${escHeadingsCmd})`,
+    ].sort((a, b) => b.length - a.length);
 
-    // regex that matches editor, workspace prefixes, and extract filter text
-    // ^(?:(?<ep>edt )|(?<wp>+))(?<ft>.*)$
-    const match = new RegExp(`^(?:${prefixCmds[0]}|${prefixCmds[1]})(?<ft>.*)$`).exec(
-      inputText,
-    );
+    // regex that matches editor, workspace, headings prefixes, and extract filter text
+    // ^(?:(?<ep>edt )|(?<wp>+)|(?<hp>#))(?<ft>.*)$
+    const match = new RegExp(
+      `^(?:${prefixCmds[0]}|${prefixCmds[1]}|${prefixCmds[2]})(?<ft>.*)$`,
+    ).exec(inputText);
 
     if (match?.groups) {
       const {
         index,
-        groups: { ep, wp, ft },
+        groups: { ep, wp, hp, ft },
       } = match;
 
       if (ep) {
         this.validateEditorCommand(info, index, ft);
       } else if (wp) {
         this.wsHandler.validateCommand(info, index, ft);
+      } else if (hp) {
+        this.hsHandler.validateCommand(info, index, ft);
       }
     }
   }
@@ -185,7 +210,11 @@ export class ModeHandler {
     const { mode, symbolCmd, inputText } = inputInfo;
 
     // Both Standard and EditorList mode can have an embedded symbol command
-    if (mode === Mode.Standard || mode === Mode.EditorList) {
+    if (
+      mode === Mode.Standard ||
+      mode === Mode.EditorList ||
+      mode === Mode.HeadingsList
+    ) {
       const { symbolListCommand } = this.settings;
       const escSymbolCmd = escapeRegExp(symbolListCommand);
 
@@ -282,7 +311,7 @@ export class ModeHandler {
         leaf = activeSuggestion.item;
         file = fileFromView(leaf.view);
       } else {
-        // this catches system File suggestion and Alias suggestion
+        // this catches system File suggestion, Heading, and Alias suggestion
         file = activeSuggestion.file;
       }
     }
@@ -290,8 +319,8 @@ export class ModeHandler {
     return { isValidSymbolTarget, leaf, file, suggestion: activeSuggestion };
   }
 
-  getSuggestions(inputInfo: InputInfo): AnyExSuggestion[] {
-    let suggestions: AnyExSuggestion[] = [];
+  getSuggestions(inputInfo: InputInfo): AnySuggestion[] {
+    let suggestions: AnySuggestion[] = [];
 
     const push = (item: AnyExSuggestionPayload, match: SearchResult) => {
       if (isSymbolInfo(item)) {
@@ -306,9 +335,12 @@ export class ModeHandler {
       this.inputInfo = inputInfo;
       inputInfo.buildSearchQuery();
       const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
+      const { mode } = inputInfo;
 
-      if (inputInfo.mode === Mode.WorkspaceList) {
+      if (mode === Mode.WorkspaceList) {
         suggestions = this.wsHandler.getSuggestions(inputInfo);
+      } else if (mode === Mode.HeadingsList) {
+        suggestions = this.hsHandler.getSuggestions(inputInfo);
       } else {
         const items = this.getItems(inputInfo);
 

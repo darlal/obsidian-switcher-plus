@@ -9,8 +9,12 @@ import {
   ReferenceCache,
 } from 'obsidian';
 
-function makeLoc(line: number, col: number, offset: number): Loc {
-  return { line, col, offset };
+export function makeLoc(line: number, col?: number, offset?: number): Loc {
+  return {
+    line,
+    col: col ?? 0,
+    offset: offset ?? 0,
+  };
 }
 
 function makePos(startLoc: Loc, endLoc: Loc): Pos {
@@ -42,14 +46,16 @@ function makeTag(tag: string, startLoc: Loc, endLoc: Loc): TagCache {
   };
 }
 
-function makeHeading(
+export function makeHeading(
   heading: string,
   level: number,
-  startLoc: Loc,
-  endLoc: Loc,
+  startLoc?: Loc,
+  endLoc?: Loc,
 ): HeadingCache {
+  const position = makePos(startLoc ?? makeLoc(0, 0, 0), endLoc ?? makeLoc(0, 0, 0));
+
   return {
-    position: makePos(startLoc, endLoc),
+    position,
     heading,
     level,
   };
@@ -97,6 +103,7 @@ export function getTags(): TagCache[] {
 function getHeadings(): HeadingCache[] {
   return [
     makeHeading('Title heading1', 1, makeLoc(8, 0, 65), makeLoc(8, 16, 81)),
+    makeHeading('another heading1', 1, makeLoc(9, 0, 83), makeLoc(9, 16, 89)),
     makeHeading('More headings2', 2, makeLoc(28, 0, 418), makeLoc(28, 17, 435)),
     makeHeading('heading3', 3, makeLoc(30, 0, 437), makeLoc(30, 12, 449)),
     makeHeading('heading4', 4, makeLoc(32, 0, 451), makeLoc(32, 13, 464)),

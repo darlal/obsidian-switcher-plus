@@ -17,6 +17,7 @@ export enum Mode {
   EditorList = 2,
   SymbolList = 4,
   WorkspaceList = 8,
+  HeadingsList = 16,
 }
 
 export enum SymbolType {
@@ -49,6 +50,7 @@ HeadingIndicators[5] = 'H₅';
 HeadingIndicators[6] = 'H₆';
 
 export declare class SystemSwitcher extends SuggestModal<AnySuggestion> {
+  shouldShowAlias: boolean;
   protected isOpen: boolean;
   protected chooser: Chooser<AnySuggestion>;
   constructor(app: App);
@@ -88,6 +90,11 @@ export interface WorkspaceSuggestion extends FuzzyMatch<WorkspaceInfo> {
   type: 'workspace';
 }
 
+export interface HeadingSuggestion extends FuzzyMatch<HeadingCache> {
+  file: TFile;
+  type: 'heading';
+}
+
 export interface FileSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
   file: TFile;
   type: 'file';
@@ -105,7 +112,11 @@ export interface UnresolvedSuggestion extends Omit<FuzzyMatch<string>, 'item'> {
 }
 
 export type AnyExSuggestionPayload = WorkspaceLeaf | SymbolInfo | WorkspaceInfo;
-export type AnyExSuggestion = SymbolSuggestion | EditorSuggestion | WorkspaceSuggestion;
+export type AnyExSuggestion =
+  | SymbolSuggestion
+  | EditorSuggestion
+  | WorkspaceSuggestion
+  | HeadingSuggestion;
 export type AnySystemSuggestion = FileSuggestion | AliasSuggestion | UnresolvedSuggestion;
 export type AnySuggestion = AnyExSuggestion | AnySystemSuggestion;
 
@@ -123,8 +134,12 @@ export interface SettingsData {
   editorListCommand: string;
   symbolListCommand: string;
   workspaceListCommand: string;
+  headingsListCommand: string;
+  strictHeadingsOnly: boolean;
+  searchAllHeadings: boolean;
   excludeViewTypes: Array<string>;
   referenceViews: Array<string>;
+  limit: number;
   includeSidePanelViewTypes: Array<string>;
 }
 

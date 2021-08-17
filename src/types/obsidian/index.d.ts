@@ -33,6 +33,7 @@ declare module 'obsidian' {
 
   export interface ViewRegistry {
     viewByType: Record<string, unknown>;
+    isExtensionRegistered(extension: string): boolean;
   }
 
   export interface App {

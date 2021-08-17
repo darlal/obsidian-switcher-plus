@@ -33,8 +33,12 @@ describe('SwitcherPlusSettings', () => {
       editorListCommand: 'edt ',
       symbolListCommand: '@',
       workspaceListCommand: '+',
+      headingsListCommand: '#',
+      strictHeadingsOnly: false,
+      searchAllHeadings: true,
       excludeViewTypes: ['empty'],
       referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'],
+      limit: 50,
       includeSidePanelViewTypes: ['backlink', 'image', 'markdown', 'pdf'],
     };
 
@@ -49,6 +53,10 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.symbolListPlaceholderText).toBe(defaults.symbolListCommand);
     expect(sut.workspaceListCommand).toBe(defaults.workspaceListCommand);
     expect(sut.workspaceListPlaceholderText).toBe(defaults.workspaceListCommand);
+    expect(sut.headingsListCommand).toBe(defaults.headingsListCommand);
+    expect(sut.headingsListPlaceholderText).toBe(defaults.headingsListCommand);
+    expect(sut.strictHeadingsOnly).toBe(defaults.strictHeadingsOnly);
+    expect(sut.searchAllHeadings).toBe(defaults.searchAllHeadings);
 
     expect(sut.excludeViewTypes).toHaveLength(defaults.excludeViewTypes.length);
     expect(sut.excludeViewTypes).toEqual(
@@ -57,6 +65,7 @@ describe('SwitcherPlusSettings', () => {
 
     expect(sut.referenceViews).toHaveLength(defaults.referenceViews.length);
     expect(sut.referenceViews).toEqual(expect.arrayContaining(defaults.referenceViews));
+    expect(sut.limit).toBe(defaults.limit);
 
     expect(sut.includeSidePanelViewTypes).toHaveLength(
       defaults.includeSidePanelViewTypes.length,
@@ -77,8 +86,12 @@ describe('SwitcherPlusSettings', () => {
       editorListCommand: chance.word(),
       symbolListCommand: chance.word(),
       workspaceListCommand: chance.word(),
+      headingsListCommand: chance.word(),
+      strictHeadingsOnly: chance.bool(),
+      searchAllHeadings: chance.bool(),
       excludeViewTypes: ['empty'], // no setter
       referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'], // No setter
+      limit: chance.integer(),
       includeSidePanelViewTypes: [chance.word()],
     };
 
@@ -88,7 +101,11 @@ describe('SwitcherPlusSettings', () => {
     sut.editorListCommand = settings.editorListCommand;
     sut.symbolListCommand = settings.symbolListCommand;
     sut.workspaceListCommand = settings.workspaceListCommand;
+    sut.headingsListCommand = settings.headingsListCommand;
+    sut.strictHeadingsOnly = settings.strictHeadingsOnly;
+    sut.searchAllHeadings = settings.searchAllHeadings;
     sut.includeSidePanelViewTypes = settings.includeSidePanelViewTypes;
+    sut.limit = settings.limit;
 
     let savedSettings: SettingsData;
     const saveDataSpy = jest
@@ -114,8 +131,12 @@ describe('SwitcherPlusSettings', () => {
       editorListCommand: chance.word(),
       symbolListCommand: chance.word(),
       workspaceListCommand: chance.word(),
+      headingsListCommand: chance.word(),
+      strictHeadingsOnly: chance.bool(),
+      searchAllHeadings: chance.bool(),
       excludeViewTypes: [],
       referenceViews: [chance.word(), chance.word(), chance.word()],
+      limit: chance.integer(),
       includeSidePanelViewTypes: [chance.word()],
     };
     const loadDataSpy = jest.spyOn(plugin, 'loadData').mockResolvedValueOnce(settings);
@@ -131,6 +152,9 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.editorListCommand).toBe(settings.editorListCommand);
     expect(sut.symbolListCommand).toBe(settings.symbolListCommand);
     expect(sut.workspaceListCommand).toBe(settings.workspaceListCommand);
+    expect(sut.headingsListCommand).toBe(settings.headingsListCommand);
+    expect(sut.strictHeadingsOnly).toBe(settings.strictHeadingsOnly);
+    expect(sut.searchAllHeadings).toBe(settings.searchAllHeadings);
 
     expect(sut.excludeViewTypes).toHaveLength(settings.excludeViewTypes.length);
     expect(sut.excludeViewTypes).toEqual(
@@ -139,6 +163,7 @@ describe('SwitcherPlusSettings', () => {
 
     expect(sut.referenceViews).toHaveLength(settings.referenceViews.length);
     expect(sut.referenceViews).toEqual(expect.arrayContaining(settings.referenceViews));
+    expect(sut.limit).toBe(settings.limit);
 
     expect(sut.includeSidePanelViewTypes).toHaveLength(
       settings.includeSidePanelViewTypes.length,

@@ -16,6 +16,7 @@ export class InputInfo {
   editorCmd: ParsedCommand;
   workspaceCmd: ParsedCommand;
   symbolCmd: SymbolParsedCommand;
+  headingsCmd: ParsedCommand;
   searchQuery: SearchQuery;
 
   private static get defaultParsedCommand(): ParsedCommand {
@@ -30,6 +31,7 @@ export class InputInfo {
     this.symbolCmd = { ...InputInfo.defaultParsedCommand, target: null };
     this.editorCmd = InputInfo.defaultParsedCommand;
     this.workspaceCmd = InputInfo.defaultParsedCommand;
+    this.headingsCmd = InputInfo.defaultParsedCommand;
     this.searchQuery = { hasSearchTerm: false, prepQuery: null };
   }
 
@@ -43,6 +45,8 @@ export class InputInfo {
       input = this.editorCmd.parsedInput;
     } else if (mode === Mode.WorkspaceList) {
       input = this.workspaceCmd.parsedInput;
+    } else if (mode === Mode.HeadingsList) {
+      input = this.headingsCmd.parsedInput;
     }
 
     const prepQuery = prepareQuery(input.trim().toLowerCase());

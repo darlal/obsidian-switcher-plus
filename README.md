@@ -8,6 +8,8 @@ Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](ht
 
 ## Features
 
+* [Find files by headings instead of filename](#search-headings-instead-of-filename)
+  * [Configuration](#search-headings-configuration)
 * [Navigate to symbols (Headings, Hashtags, Links, Embeddings) in your notes](#symbol-navigation-headings-hashtags-links-embeddings)
   * [Configuration](#symbol-navigation-configuration)
 * [Navigate between open editors, and side panels](#navigate-between-open-editors)
@@ -18,6 +20,10 @@ Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](ht
 
 ## Demo
 
+**Search Headings:** Launch Switcher++ using a shortcut, trigger Headings mode using the default `#` command, then enter the search text. Notice, different heading level matches are returned, along with Alias, Unresolved and regular filename matches.
+
+![Heading Mode gif](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/headings-mode.gif)
+
 **Symbol Navigation:** Launch Switcher++ using a shortcut, filter all files to find the `Format your notes` file, then trigger the symbol command (default `@`) to open the file directly to the `External links` section.
 
 ![Symbol Mode gif](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/symbol-mode.gif)
@@ -25,6 +31,21 @@ Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](ht
 **Editor Navigation:** Launch Switcher++ directly into editor mode using a shortcut, filter the currently open editors to find the `Format your notes` editor and make it active. Then use Switcher++ again to open the `backlinks` side panel.
 
 ![Symbol Mode gif](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/editor-mode.gif)
+
+## Search headings instead of filename
+
+Find the file you're looking for by searching through the headings contained in the file, instead of only searching the filename. This mode can be configured to search a) strictly through only the first H1 header, fallback to filename search if there's no match with the H1, b) through all headers, and c) respect the builtin Quick Switcher settings `Show existing only`, `Show attachments`, and `Show all file types`. By default, this mode will display the first top 50 results.
+
+![headings mode preview](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/headings-command.png)
+
+
+### Search headings configuration
+
+| Setting                  | Description | Default |
+|--------------------------|-------------|---------|
+| Headings list mode trigger | Character that will trigger headings list mode in the switcher. | `#` |
+| Show headings only | **Enabled**: strictly search through only the first H1 contained in the file. <br />**Disabled**: if there is not a match in the first H1, fallback to search against the filename. This will also search through Aliases, and Unresolved links. | disabled |
+| Search all headings | **Enabled**: search through all headings contained in the file. <br />**Disabled**: only search through the first H1 in each file. | enabled |
 
 ## Symbol Navigation (Headings, Hashtags, Links, Embeddings)
 
@@ -41,9 +62,9 @@ View, filter, and navigate to any symbol (Headings, Hashtags, Links, Embedding) 
 | Setting                          | Description | Default |
 |----------------------------------|-------------|---------|
 | Symbol list mode trigger         | Character that will trigger symbol list mode in the switcher. | `@` |
-| List symbols as indented outline | **Enabled**: symbols will be displayed in the (line) order they appear in the source text, indented under any preceding heading.<br />**Disabled**: symbols will be grouped by type: Headings, Tags, Links, Embeds. | true |
-| Open Symbols in new pane         | **Enabled**: always open a new pane when navigating to Symbols.<br />**Disabled**: navigate in an already open pane (if one exists). | false |
-| Open Symbols in active pane on mobile devices | **Enabled**: navigate to the target file and symbol in the active editor pane, in other words, don't create a new editor pane.<br />**Disabled**: open a new pane when navigating to Symbols, even on mobile devices. | false |
+| List symbols as indented outline | **Enabled**: symbols will be displayed in the (line) order they appear in the source text, indented under any preceding heading.<br />**Disabled**: symbols will be grouped by type: Headings, Tags, Links, Embeds. | enabled |
+| Open Symbols in new pane         | **Enabled**: always open a new pane when navigating to Symbols.<br />**Disabled**: navigate in an already open pane (if one exists). | disabled |
+| Open Symbols in active pane on mobile devices | **Enabled**: navigate to the target file and symbol in the active editor pane, in other words, don't create a new editor pane.<br />**Disabled**: open a new pane when navigating to Symbols, even on mobile devices. | disabled |
 
 ## Navigate between open editors
 
@@ -80,6 +101,7 @@ The following Global Commands are registered by the plugin, which can be used fo
 * `Quick Switcher++: Open in Editor Mode`
 * `Quick Switcher++: Open in Symbol Mode`
 * `Quick Switcher++: Open in Workspaces Mode`
+* `Quick Switcher++: Open in Headings Mode`
 
 ## Installation
 

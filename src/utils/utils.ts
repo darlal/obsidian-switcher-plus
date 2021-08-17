@@ -4,6 +4,7 @@ import {
   InstalledPlugin,
   QuickSwitcherPluginInstance,
   TagCache,
+  TFile,
 } from 'obsidian';
 import {
   SymbolSuggestion,
@@ -15,6 +16,7 @@ import {
   SymbolInfo,
   WorkspaceSuggestion,
   WorkspaceInfo,
+  HeadingSuggestion,
 } from 'src/types';
 
 export function isOfType<T>(
@@ -44,6 +46,10 @@ export function isEditorSuggestion(obj: unknown): obj is EditorSuggestion {
 
 export function isWorkspaceSuggestion(obj: unknown): obj is WorkspaceSuggestion {
   return isOfType<WorkspaceSuggestion>(obj, 'type', 'workspace');
+}
+
+export function isHeadingSuggestion(obj: unknown): obj is HeadingSuggestion {
+  return isOfType<HeadingSuggestion>(obj, 'type', 'heading');
 }
 
 export function isFileSuggestion(obj: unknown): obj is FileSuggestion {
@@ -78,6 +84,10 @@ export function isWorkspaceInfo(obj: unknown): obj is WorkspaceInfo {
   return isOfType<WorkspaceInfo>(obj, 'type', 'WorkspaceInfo');
 }
 
+export function isTFile(obj: unknown): obj is TFile {
+  return isOfType<TFile>(obj, 'extension');
+}
+
 export function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -89,4 +99,34 @@ export function getInternalPluginById(app: App, id: string): InstalledPlugin {
 export function getSystemSwitcherInstance(app: App): QuickSwitcherPluginInstance {
   const plugin = getInternalPluginById(app, 'switcher');
   return plugin?.instance as QuickSwitcherPluginInstance;
+}
+
+export function stripMDExtensionFromPath(file: TFile): string {
+  let retVal: string = null;
+
+  if (file) {
+    const { path } = file;
+    retVal = path;
+
+    if (file.extension === 'md') {
+      const index = path.lastIndexOf('.');
+
+      if (index !== -1 && index !== path.length - 1 && index !== 0) {
+        retVal = path.slice(0, index);
+      }
+    }
+  }
+
+  return retVal;
+}
+
+export function filenameFromPath(path: string): string {
+  let retVal = null;
+
+  if (path) {
+    const index = path.lastIndexOf('/');
+    retVal = index === -1 ? path : path.slice(index + 1);
+  }
+
+  return retVal;
 }

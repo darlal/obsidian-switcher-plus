@@ -28,6 +28,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
     constructor(app: App, public plugin: SwitcherPlusPlugin) {
       super(app, plugin.options.builtInSystemOptions);
 
+      plugin.options.shouldShowAlias = this.shouldShowAlias;
       this.exMode = new ModeHandler(app, plugin.options);
       this.exKeymap = new Keymap(this.scope, this.chooser, this.containerEl);
     }
@@ -92,7 +93,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       if (isSystemSuggestion(item) || useDefault) {
         super.onChooseSuggestion(item, evt);
       } else {
-        exMode.onChooseSuggestion(item);
+        exMode.onChooseSuggestion(item, evt);
       }
     }
 

@@ -14,11 +14,20 @@ export class SwitcherPlusSettings {
       editorListCommand: 'edt ',
       symbolListCommand: '@',
       workspaceListCommand: '+',
+      headingsListCommand: '#',
+      strictHeadingsOnly: false,
+      searchAllHeadings: true,
       excludeViewTypes: ['empty'],
       referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'],
+      limit: 50,
       includeSidePanelViewTypes: ['backlink', 'image', 'markdown', 'pdf'],
     };
   }
+
+  // this is a builtin system setting as well, but it's different from the others
+  // in that it's not a user option. It doesn't live on the plugin instance, instead
+  // it sourced from the switcher modal instance
+  public shouldShowAlias: boolean;
 
   get builtInSystemOptions(): QuickSwitcherOptions {
     return getSystemSwitcherInstance(this.plugin.app)?.options;
@@ -99,6 +108,34 @@ export class SwitcherPlusSettings {
     return SwitcherPlusSettings.defaultSettingsData.workspaceListCommand;
   }
 
+  get headingsListCommand(): string {
+    return this.data.headingsListCommand;
+  }
+
+  set headingsListCommand(value: string) {
+    this.data.headingsListCommand = value;
+  }
+
+  get headingsListPlaceholderText(): string {
+    return SwitcherPlusSettings.defaultSettingsData.headingsListCommand;
+  }
+
+  get strictHeadingsOnly(): boolean {
+    return this.data.strictHeadingsOnly;
+  }
+
+  set strictHeadingsOnly(value: boolean) {
+    this.data.strictHeadingsOnly = value;
+  }
+
+  get searchAllHeadings(): boolean {
+    return this.data.searchAllHeadings;
+  }
+
+  set searchAllHeadings(value: boolean) {
+    this.data.searchAllHeadings = value;
+  }
+
   get excludeViewTypes(): Array<string> {
     return this.data.excludeViewTypes;
   }
@@ -118,6 +155,14 @@ export class SwitcherPlusSettings {
 
   get includeSidePanelViewTypesPlaceholder(): string {
     return SwitcherPlusSettings.defaultSettingsData.includeSidePanelViewTypes.join('\n');
+  }
+
+  get limit(): number {
+    return this.data.limit;
+  }
+
+  set limit(value: number) {
+    this.data.limit = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

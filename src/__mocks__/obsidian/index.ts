@@ -6,7 +6,7 @@ const chance = new Chance();
 
 export const TFile = jest.fn().mockImplementation(() => {
   const basename = chance.word();
-  const extension = 'bar';
+  const extension = 'md';
   const name = `${basename}.${extension}`;
 
   return {
@@ -31,12 +31,16 @@ export const WorkspaceLeaf = jest.fn().mockImplementation(() => {
     view,
     getRoot: jest.fn(),
     getDisplayText: jest.fn(),
+    openFile: jest.fn(),
   };
 });
 
 export const MetadataCache = jest.fn().mockImplementation(() => {
+  const unresolvedLinks = {};
+
   return {
     getFileCache: jest.fn(),
+    unresolvedLinks,
   };
 });
 
@@ -46,6 +50,21 @@ export const Workspace = jest.fn().mockImplementation(() => {
     leftSplit: new WorkspaceSplit(),
     rightSplit: new WorkspaceSplit(),
     iterateAllLeaves: jest.fn(),
+    getLastOpenFiles: jest.fn(),
+    getLeaf: jest.fn(),
+  };
+});
+
+export const Vault = jest.fn().mockImplementation(() => {
+  return {
+    getAbstractFileByPath: jest.fn(),
+    getFiles: jest.fn(),
+  };
+});
+
+export const ViewRegistry = jest.fn().mockImplementation(() => {
+  return {
+    isExtensionRegistered: jest.fn(),
   };
 });
 
@@ -74,6 +93,8 @@ export const App = jest.fn().mockImplementation(() => {
   return {
     workspace: new Workspace(),
     metadataCache: new MetadataCache(),
+    vault: new Vault(),
+    viewRegistry: new ViewRegistry(),
     internalPlugins,
   };
 });

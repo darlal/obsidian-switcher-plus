@@ -25,6 +25,9 @@ import {
   symbolModeInputFixture,
   unicodeInputFixture,
   workspacePrefixOnlyInputFixture,
+  headingsTrigger,
+  headingsPrefixOnlyInputFixture,
+  getCachedMetadata,
 } from '@fixtures';
 
 describe('getCommandStringForMode', () => {
@@ -33,6 +36,7 @@ describe('getCommandStringForMode', () => {
   let editorCmdSpy: jest.SpyInstance;
   let symbolCmdSpy: jest.SpyInstance;
   let workspaceCmdSpy: jest.SpyInstance;
+  let headingsCmdSpy: jest.SpyInstance;
 
   beforeAll(() => {
     settings = new SwitcherPlusSettings(null);
@@ -46,6 +50,9 @@ describe('getCommandStringForMode', () => {
     workspaceCmdSpy = jest
       .spyOn(settings, 'workspaceListCommand', 'get')
       .mockReturnValue(workspaceTrigger);
+    headingsCmdSpy = jest
+      .spyOn(settings, 'headingsListCommand', 'get')
+      .mockReturnValue(headingsTrigger);
 
     sut = new ModeHandler(null, settings);
   });
@@ -73,6 +80,14 @@ describe('getCommandStringForMode', () => {
     expect(workspaceCmdSpy).toHaveBeenCalled();
     workspaceCmdSpy.mockRestore();
   });
+
+  it('should return headingsListCommand trigger', () => {
+    const value = sut.getCommandStringForMode(Mode.HeadingsList);
+
+    expect(value).toBe(headingsTrigger);
+    expect(headingsCmdSpy).toHaveBeenCalled();
+    headingsCmdSpy.mockRestore();
+  });
 });
 
 describe('determineRunMode', () => {
@@ -85,6 +100,7 @@ describe('determineRunMode', () => {
     jest.spyOn(settings, 'editorListCommand', 'get').mockReturnValue(editorTrigger);
     jest.spyOn(settings, 'symbolListCommand', 'get').mockReturnValue(symbolTrigger);
     jest.spyOn(settings, 'workspaceListCommand', 'get').mockReturnValue(workspaceTrigger);
+    jest.spyOn(settings, 'headingsListCommand', 'get').mockReturnValue(headingsTrigger);
 
     app = new App();
     sut = new ModeHandler(app, settings);
@@ -294,6 +310,22 @@ describe('determineRunMode', () => {
       },
     );
   });
+
+  describe('should parse as headings mode', () => {
+    test.each(headingsPrefixOnlyInputFixture)(
+      'for input: "$input" (array data index: $#)',
+      ({ input, expected: { mode, isValidated, parsedInput } }) => {
+        const inputInfo = sut.determineRunMode(input, null, null);
+
+        expect(inputInfo.mode).toBe(mode);
+        expect(inputInfo.inputText).toBe(input);
+
+        const { headingsCmd } = inputInfo;
+        expect(headingsCmd.isValidated).toBe(isValidated);
+        expect(headingsCmd.parsedInput).toBe(parsedInput);
+      },
+    );
+  });
 });
 
 describe('getSuggestions', () => {
@@ -320,6 +352,7 @@ describe('getSuggestions', () => {
     jest.spyOn(settings, 'editorListCommand', 'get').mockReturnValue(editorTrigger);
     jest.spyOn(settings, 'symbolListCommand', 'get').mockReturnValue(symbolTrigger);
     jest.spyOn(settings, 'workspaceListCommand', 'get').mockReturnValue(workspaceTrigger);
+    jest.spyOn(settings, 'headingsListCommand', 'get').mockReturnValue(headingsTrigger);
 
     app = new App();
     const { workspace } = app;
@@ -393,7 +426,7 @@ describe('getSuggestions', () => {
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(1);
 
-      const resultLeaves = new Set(results.map((sugg) => sugg.item));
+      const resultLeaves = new Set(results.map((sugg: EditorSuggestion) => sugg.item));
       expect(resultLeaves.has(rootSplitLeaf)).toBe(true);
       expect(resultLeaves.has(leftSplitLeaf)).toBe(false);
       expect(resultLeaves.has(rightSplitLeaf)).toBe(false);
@@ -430,7 +463,7 @@ describe('getSuggestions', () => {
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(2);
 
-      const resultLeaves = new Set(results.map((sugg) => sugg.item));
+      const resultLeaves = new Set(results.map((sugg: EditorSuggestion) => sugg.item));
       expect(resultLeaves.has(rootSplitLeaf)).toBe(true);
       expect(resultLeaves.has(leftSplitLeaf)).toBe(true);
       expect(resultLeaves.has(rightSplitLeaf)).toBe(false);
@@ -466,7 +499,7 @@ describe('getSuggestions', () => {
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(2);
 
-      const resultLeaves = new Set(results.map((sugg) => sugg.item));
+      const resultLeaves = new Set(results.map((sugg: EditorSuggestion) => sugg.item));
       expect(resultLeaves.has(rootSplitLeaf)).toBe(false);
       expect(resultLeaves.has(leftSplitLeaf)).toBe(true);
       expect(resultLeaves.has(rightSplitLeaf)).toBe(true);
@@ -493,7 +526,7 @@ describe('getSuggestions', () => {
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(3);
 
-      const resultLeaves = new Set(results.map((sugg) => sugg.item));
+      const resultLeaves = new Set(results.map((sugg: EditorSuggestion) => sugg.item));
       expect(resultLeaves.has(rootSplitLeaf)).toBe(true);
       expect(resultLeaves.has(leftSplitLeaf)).toBe(true);
       expect(resultLeaves.has(rightSplitLeaf)).toBe(true);
@@ -651,6 +684,62 @@ describe('getSuggestions', () => {
       expect(results).not.toBeNull();
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(2);
+    });
+  });
+
+  describe('for headings mode', () => {
+    test('with default settings, it should return suggestions for headings mode', () => {
+      const fileData: Record<string, TFile> = {};
+      let file = new TFile();
+      fileData[file.path] = file;
+
+      file = new TFile();
+      fileData[file.path] = file;
+
+      file = new TFile();
+      fileData[file.path] = file;
+
+      const fileDataKeys = Object.keys(fileData);
+      const getLastOpenFilesSpy = jest
+        .spyOn(app.workspace, 'getLastOpenFiles')
+        .mockReturnValueOnce(fileDataKeys);
+      const getAbstractFileByPathSpy = jest
+        .spyOn(app.vault, 'getAbstractFileByPath')
+        .mockImplementation((path: string) => fileData[path]);
+      const getFileCacheSpy = jest
+        .spyOn(app.metadataCache, 'getFileCache')
+        .mockReturnValue(getCachedMetadata());
+      const isExtensionRegisteredSpy = jest
+        .spyOn(app.viewRegistry, 'isExtensionRegistered')
+        .mockReturnValue(true);
+      const builtInSystemOptionsSpy = jest
+        .spyOn(settings, 'builtInSystemOptions', 'get')
+        .mockReturnValue({
+          showAllFileTypes: true,
+          showAttachments: true,
+          showExistingOnly: false,
+        });
+
+      const sut = new ModeHandler(app, settings);
+      const inputInfo = sut.determineRunMode(headingsTrigger, null, null);
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(sut.mode).toBe(Mode.HeadingsList);
+      expect(results).not.toBeNull();
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(fileDataKeys.length);
+
+      expect(getLastOpenFilesSpy).toHaveBeenCalled();
+      expect(getAbstractFileByPathSpy).toHaveBeenCalled();
+      expect(getFileCacheSpy).toHaveBeenCalled();
+      expect(builtInSystemOptionsSpy).toHaveBeenCalled();
+      expect(isExtensionRegisteredSpy).toHaveBeenCalled();
+
+      getLastOpenFilesSpy.mockRestore();
+      getAbstractFileByPathSpy.mockRestore();
+      getFileCacheSpy.mockRestore();
+      isExtensionRegisteredSpy.mockRestore();
+      builtInSystemOptionsSpy.mockRestore();
     });
   });
 });

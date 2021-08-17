@@ -1,5 +1,10 @@
 import { Mode } from 'src/types';
-import { editorTrigger, symbolTrigger, workspaceTrigger } from './modeTrigger.fixture';
+import {
+  editorTrigger,
+  symbolTrigger,
+  workspaceTrigger,
+  headingsTrigger,
+} from './modeTrigger.fixture';
 
 interface InputExpectation {
   input: string;
@@ -46,6 +51,13 @@ function workspaceExpectation(
   return makeInputExpectation(input, Mode.WorkspaceList, expectedParsedInput);
 }
 
+function headingsExpectation(
+  input: string,
+  expectedParsedInput?: string,
+): InputExpectation {
+  return makeInputExpectation(input, Mode.HeadingsList, expectedParsedInput);
+}
+
 interface InputExpectationStandard {
   input: string;
   expected: {
@@ -63,7 +75,7 @@ function standardExpectation(input: string): InputExpectationStandard {
 export const standardModeInputFixture = [
   standardExpectation('test string'),
   standardExpectation(`test${editorTrigger}string`),
-  standardExpectation(`test${editorTrigger}string`),
+  standardExpectation(`test${editorTrigger}$string`),
   standardExpectation(` ${editorTrigger}test string`),
   standardExpectation(`test string ${editorTrigger}`),
   standardExpectation(`     ${editorTrigger}test string ${editorTrigger}`),
@@ -85,11 +97,17 @@ export const standardModeInputFixture = [
   standardExpectation(`bar ${symbolTrigger}foo`),
   standardExpectation(`bar ${symbolTrigger} foo`),
   standardExpectation(`test${workspaceTrigger}string`),
-  standardExpectation(`test${workspaceTrigger}string`),
+  standardExpectation(`test${workspaceTrigger}$string`),
   standardExpectation(`^${workspaceTrigger}string`),
   standardExpectation(` ${workspaceTrigger}test string`),
   standardExpectation(`test string ${workspaceTrigger}`),
   standardExpectation(`     ${workspaceTrigger}test string ${workspaceTrigger}`),
+  standardExpectation(`test${headingsTrigger}string`),
+  standardExpectation(`test${headingsTrigger}$string`),
+  standardExpectation(`^${headingsTrigger}string`),
+  standardExpectation(` ${headingsTrigger}test string`),
+  standardExpectation(`test string ${headingsTrigger}`),
+  standardExpectation(`     ${headingsTrigger}test string ${headingsTrigger}`),
 ];
 
 // Used for editor mode tests
@@ -269,6 +287,43 @@ export const workspacePrefixOnlyInputFixture = [
   ),
   workspaceExpectation(
     `${workspaceTrigger}bar ${symbolTrigger} foo`,
+    `bar ${symbolTrigger} foo`,
+  ),
+];
+
+// Used for headings mode tests
+export const headingsPrefixOnlyInputFixture = [
+  headingsExpectation(`${headingsTrigger}`, ''),
+  headingsExpectation(`${headingsTrigger}test string`, 'test string'),
+  headingsExpectation(`${headingsTrigger}${symbolTrigger}`, `${symbolTrigger}`),
+  headingsExpectation(`${headingsTrigger} ${symbolTrigger}`, ` ${symbolTrigger}`),
+  headingsExpectation(`${headingsTrigger}${symbolTrigger}  `, `${symbolTrigger}  `),
+  headingsExpectation(`${headingsTrigger}${symbolTrigger}foo`, `${symbolTrigger}foo`),
+  headingsExpectation(`${headingsTrigger}${symbolTrigger} fooo`, `${symbolTrigger} fooo`),
+  headingsExpectation(`${headingsTrigger}bar${symbolTrigger}`, `bar${symbolTrigger}`),
+  headingsExpectation(
+    `${headingsTrigger}bar$${symbolTrigger}  `,
+    `bar$${symbolTrigger}  `,
+  ),
+  headingsExpectation(`${headingsTrigger}bar ${symbolTrigger}`, `bar ${symbolTrigger}`),
+  headingsExpectation(
+    `${headingsTrigger}bar ${symbolTrigger}   `,
+    `bar ${symbolTrigger}   `,
+  ),
+  headingsExpectation(
+    `${headingsTrigger}bar${symbolTrigger}foo`,
+    `bar${symbolTrigger}foo`,
+  ),
+  headingsExpectation(
+    `${headingsTrigger}bar${editorTrigger} foo`,
+    `bar${editorTrigger} foo`,
+  ),
+  headingsExpectation(
+    `${headingsTrigger}bar ${workspaceTrigger}foo  `,
+    `bar ${workspaceTrigger}foo  `,
+  ),
+  headingsExpectation(
+    `${headingsTrigger}bar ${symbolTrigger} foo`,
     `bar ${symbolTrigger} foo`,
   ),
 ];

@@ -29,6 +29,11 @@ export default class SwitcherPlusPlugin extends Plugin {
       'Open in Workspaces Mode',
       Mode.WorkspaceList,
     );
+    this.registerCommand(
+      'switcher-plus:open-headings',
+      'Open in Headings Mode',
+      Mode.HeadingsList,
+    );
   }
 
   registerCommand(id: string, name: string, mode: Mode): void {
