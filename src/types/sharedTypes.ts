@@ -141,6 +141,7 @@ export interface SettingsData {
   referenceViews: Array<string>;
   limit: number;
   includeSidePanelViewTypes: Array<string>;
+  enabledSymbolTypes: Record<SymbolType, boolean>;
 }
 
 export interface SearchQuery {

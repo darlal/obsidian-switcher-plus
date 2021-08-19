@@ -1,4 +1,5 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
+import { SymbolType } from 'src/types';
 import { SwitcherPlusSettings } from 'src/settings';
 import type SwitcherPlusPlugin from '../main';
 
@@ -41,6 +42,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     SwitcherPlusSettingTab.setSymbolsInLineOrder(containerEl, settings);
     SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols(containerEl, settings);
     SwitcherPlusSettingTab.setUseActivePaneForSymbolsOnMobile(containerEl, settings);
+    SwitcherPlusSettingTab.setEnabledSymbolTypes(containerEl, settings);
   }
 
   private static setWorkspaceModeSettingsGroup(
@@ -119,6 +121,43 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           SwitcherPlusSettingTab.saveChanges(settings);
         }),
       );
+  }
+
+  private static setEnabledSymbolTypes(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl).setName('Show Headings').addToggle((toggle) =>
+      toggle
+        .setValue(settings.isSymbolTypeEnabled(SymbolType.Heading))
+        .onChange((value) => {
+          settings.setSymbolTypeEnabled(SymbolType.Heading, value);
+          SwitcherPlusSettingTab.saveChanges(settings);
+        }),
+    );
+
+    new Setting(containerEl).setName('Show Tags').addToggle((toggle) =>
+      toggle.setValue(settings.isSymbolTypeEnabled(SymbolType.Tag)).onChange((value) => {
+        settings.setSymbolTypeEnabled(SymbolType.Tag, value);
+        SwitcherPlusSettingTab.saveChanges(settings);
+      }),
+    );
+
+    new Setting(containerEl).setName('Show Links').addToggle((toggle) =>
+      toggle.setValue(settings.isSymbolTypeEnabled(SymbolType.Link)).onChange((value) => {
+        settings.setSymbolTypeEnabled(SymbolType.Link, value);
+        SwitcherPlusSettingTab.saveChanges(settings);
+      }),
+    );
+
+    new Setting(containerEl).setName('Show Embeds').addToggle((toggle) =>
+      toggle
+        .setValue(settings.isSymbolTypeEnabled(SymbolType.Embed))
+        .onChange((value) => {
+          settings.setSymbolTypeEnabled(SymbolType.Embed, value);
+          SwitcherPlusSettingTab.saveChanges(settings);
+        }),
+    );
   }
 
   private static setEditorListCommand(

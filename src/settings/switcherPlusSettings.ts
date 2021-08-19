@@ -1,4 +1,4 @@
-import { SettingsData } from 'src/types';
+import { SettingsData, SymbolType } from 'src/types';
 import { getSystemSwitcherInstance } from 'src/utils';
 import type SwitcherPlusPlugin from 'src/main';
 import { QuickSwitcherOptions } from 'obsidian';
@@ -7,6 +7,12 @@ export class SwitcherPlusSettings {
   private data: SettingsData;
 
   private static get defaultSettingsData(): SettingsData {
+    const enabledSymbolTypes = {} as Record<SymbolType, boolean>;
+    enabledSymbolTypes[SymbolType.Link] = true;
+    enabledSymbolTypes[SymbolType.Embed] = true;
+    enabledSymbolTypes[SymbolType.Tag] = true;
+    enabledSymbolTypes[SymbolType.Heading] = true;
+
     return {
       alwaysNewPaneForSymbols: false,
       useActivePaneForSymbolsOnMobile: false,
@@ -21,6 +27,7 @@ export class SwitcherPlusSettings {
       referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'],
       limit: 50,
       includeSidePanelViewTypes: ['backlink', 'image', 'markdown', 'pdf'],
+      enabledSymbolTypes,
     };
   }
 
@@ -178,5 +185,13 @@ export class SwitcherPlusSettings {
   async saveSettings(): Promise<void> {
     const { plugin, data } = this;
     await plugin?.saveData(data);
+  }
+
+  isSymbolTypeEnabled(symbol: SymbolType): boolean {
+    return this.data.enabledSymbolTypes[symbol];
+  }
+
+  setSymbolTypeEnabled(symbol: SymbolType, isEnabled: boolean): void {
+    this.data.enabledSymbolTypes[symbol] = isEnabled;
   }
 }

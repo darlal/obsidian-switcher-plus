@@ -65,6 +65,11 @@ View, filter, and navigate to any symbol (Headings, Hashtags, Links, Embedding) 
 | List symbols as indented outline | **Enabled**: symbols will be displayed in the (line) order they appear in the source text, indented under any preceding heading.<br />**Disabled**: symbols will be grouped by type: Headings, Tags, Links, Embeds. | enabled |
 | Open Symbols in new pane         | **Enabled**: always open a new pane when navigating to Symbols.<br />**Disabled**: navigate in an already open pane (if one exists). | disabled |
 | Open Symbols in active pane on mobile devices | **Enabled**: navigate to the target file and symbol in the active editor pane, in other words, don't create a new editor pane.<br />**Disabled**: open a new pane when navigating to Symbols, even on mobile devices. | disabled |
+| Show Headings                    | **Enabled**: display Headings in the symbol list.<br />**Disabled**: don't show Headings in the symbol list | enabled |
+| Show Tags                        | **Enabled**: display Tags in the symbol list.<br />**Disabled**: don't show Tags in the symbol list | enabled |
+| Show Links                       | **Enabled**: display Links in the symbol list.<br />**Disabled**: don't show Links in the symbol list | enabled |
+| Show Embeds                      | **Enabled**: display Embeds in the symbol list.<br />**Disabled**: don't show Embeds in the symbol list | enabled |
+
 
 ## Navigate between open editors
 

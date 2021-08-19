@@ -434,18 +434,20 @@ export class ModeHandler {
     targetInfo: TargetInfo,
     orderByLineNumber: boolean,
   ): SymbolInfo[] {
-    const { metadataCache } = this;
+    const { metadataCache, settings } = this;
     const ret: SymbolInfo[] = [];
 
-    if (targetInfo && targetInfo.file) {
+    if (targetInfo?.file) {
       const file = targetInfo.file;
       const symbolData = metadataCache.getFileCache(file);
 
       if (symbolData) {
         const push = (symbols: AnySymbolInfoPayload[] = [], symbolType: SymbolType) => {
-          symbols.forEach((symbol) =>
-            ret.push({ type: 'symbolInfo', symbol, symbolType }),
-          );
+          if (settings.isSymbolTypeEnabled(symbolType)) {
+            symbols.forEach((symbol) =>
+              ret.push({ type: 'symbolInfo', symbol, symbolType }),
+            );
+          }
         };
 
         push(symbolData.headings, SymbolType.Heading);

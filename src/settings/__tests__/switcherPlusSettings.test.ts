@@ -1,4 +1,4 @@
-import { SettingsData } from 'src/types';
+import { SettingsData, SymbolType } from 'src/types';
 import SwitcherPlusPlugin from 'src/main';
 import { SwitcherPlusSettings } from 'src/settings';
 import { Chance } from 'chance';
@@ -26,6 +26,12 @@ describe('SwitcherPlusSettings', () => {
   });
 
   it('should return default settings', () => {
+    const enabledSymbolTypes = {} as Record<SymbolType, boolean>;
+    enabledSymbolTypes[SymbolType.Link] = true;
+    enabledSymbolTypes[SymbolType.Embed] = true;
+    enabledSymbolTypes[SymbolType.Tag] = true;
+    enabledSymbolTypes[SymbolType.Heading] = true;
+
     const defaults: SettingsData = {
       alwaysNewPaneForSymbols: false,
       useActivePaneForSymbolsOnMobile: false,
@@ -40,6 +46,7 @@ describe('SwitcherPlusSettings', () => {
       referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'],
       limit: 50,
       includeSidePanelViewTypes: ['backlink', 'image', 'markdown', 'pdf'],
+      enabledSymbolTypes,
     };
 
     expect(sut.alwaysNewPaneForSymbols).toBe(defaults.alwaysNewPaneForSymbols);
@@ -76,9 +83,28 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.includeSidePanelViewTypesPlaceholder).toBe(
       defaults.includeSidePanelViewTypes.join('\n'),
     );
+
+    expect(sut.isSymbolTypeEnabled(SymbolType.Embed)).toBe(
+      enabledSymbolTypes[SymbolType.Embed],
+    );
+    expect(sut.isSymbolTypeEnabled(SymbolType.Heading)).toBe(
+      enabledSymbolTypes[SymbolType.Heading],
+    );
+    expect(sut.isSymbolTypeEnabled(SymbolType.Link)).toBe(
+      enabledSymbolTypes[SymbolType.Link],
+    );
+    expect(sut.isSymbolTypeEnabled(SymbolType.Tag)).toBe(
+      enabledSymbolTypes[SymbolType.Tag],
+    );
   });
 
   it('should save settings modified settings', async () => {
+    const enabledSymbolTypes = {} as Record<SymbolType, boolean>;
+    enabledSymbolTypes[SymbolType.Link] = chance.bool();
+    enabledSymbolTypes[SymbolType.Embed] = chance.bool();
+    enabledSymbolTypes[SymbolType.Tag] = chance.bool();
+    enabledSymbolTypes[SymbolType.Heading] = chance.bool();
+
     const settings: SettingsData = {
       alwaysNewPaneForSymbols: chance.bool(),
       useActivePaneForSymbolsOnMobile: chance.bool(),
@@ -93,6 +119,7 @@ describe('SwitcherPlusSettings', () => {
       referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'], // No setter
       limit: chance.integer(),
       includeSidePanelViewTypes: [chance.word()],
+      enabledSymbolTypes,
     };
 
     sut.alwaysNewPaneForSymbols = settings.alwaysNewPaneForSymbols;
@@ -106,6 +133,19 @@ describe('SwitcherPlusSettings', () => {
     sut.searchAllHeadings = settings.searchAllHeadings;
     sut.includeSidePanelViewTypes = settings.includeSidePanelViewTypes;
     sut.limit = settings.limit;
+    sut.setSymbolTypeEnabled(
+      SymbolType.Heading,
+      settings.enabledSymbolTypes[SymbolType.Heading],
+    );
+    sut.setSymbolTypeEnabled(
+      SymbolType.Link,
+      settings.enabledSymbolTypes[SymbolType.Link],
+    );
+    sut.setSymbolTypeEnabled(SymbolType.Tag, settings.enabledSymbolTypes[SymbolType.Tag]);
+    sut.setSymbolTypeEnabled(
+      SymbolType.Embed,
+      settings.enabledSymbolTypes[SymbolType.Embed],
+    );
 
     let savedSettings: SettingsData;
     const saveDataSpy = jest
@@ -124,6 +164,12 @@ describe('SwitcherPlusSettings', () => {
   });
 
   it('should load saved settings', async () => {
+    const enabledSymbolTypes = {} as Record<SymbolType, boolean>;
+    enabledSymbolTypes[SymbolType.Link] = chance.bool();
+    enabledSymbolTypes[SymbolType.Embed] = chance.bool();
+    enabledSymbolTypes[SymbolType.Tag] = chance.bool();
+    enabledSymbolTypes[SymbolType.Heading] = chance.bool();
+
     const settings: SettingsData = {
       alwaysNewPaneForSymbols: chance.bool(),
       useActivePaneForSymbolsOnMobile: chance.bool(),
@@ -138,6 +184,7 @@ describe('SwitcherPlusSettings', () => {
       referenceViews: [chance.word(), chance.word(), chance.word()],
       limit: chance.integer(),
       includeSidePanelViewTypes: [chance.word()],
+      enabledSymbolTypes,
     };
     const loadDataSpy = jest.spyOn(plugin, 'loadData').mockResolvedValueOnce(settings);
 
@@ -164,6 +211,18 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.referenceViews).toHaveLength(settings.referenceViews.length);
     expect(sut.referenceViews).toEqual(expect.arrayContaining(settings.referenceViews));
     expect(sut.limit).toBe(settings.limit);
+    expect(sut.isSymbolTypeEnabled(SymbolType.Heading)).toBe(
+      settings.enabledSymbolTypes[SymbolType.Heading],
+    );
+    expect(sut.isSymbolTypeEnabled(SymbolType.Link)).toBe(
+      settings.enabledSymbolTypes[SymbolType.Link],
+    );
+    expect(sut.isSymbolTypeEnabled(SymbolType.Tag)).toBe(
+      settings.enabledSymbolTypes[SymbolType.Tag],
+    );
+    expect(sut.isSymbolTypeEnabled(SymbolType.Embed)).toBe(
+      settings.enabledSymbolTypes[SymbolType.Embed],
+    );
 
     expect(sut.includeSidePanelViewTypes).toHaveLength(
       settings.includeSidePanelViewTypes.length,
