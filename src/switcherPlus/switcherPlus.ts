@@ -2,8 +2,9 @@ import { Keymap } from './keymap';
 import { isSystemSuggestion, getSystemSwitcherInstance } from 'src/utils';
 import { ModeHandler } from './modeHandler';
 import SwitcherPlusPlugin from 'src/main';
-import type { App, QuickSwitcherOptions } from 'obsidian';
+import { App, debounce, Debouncer, QuickSwitcherOptions } from 'obsidian';
 import { SystemSwitcher, SwitcherPlus, AnySuggestion, Mode } from 'src/types';
+import { InputInfo } from './inputInfo';
 
 interface SystemSwitcherConstructor extends SystemSwitcher {
   new (app: App, builtInOptions: QuickSwitcherOptions): SystemSwitcher;
@@ -24,6 +25,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
     private exMode: ModeHandler;
     private exKeymap: Keymap;
     private openWithCommandStr: string = null;
+    private debouncedUpdateSuggestionsEx: Debouncer<[InputInfo]>;
 
     constructor(app: App, public plugin: SwitcherPlusPlugin) {
       super(app, plugin.options.builtInSystemOptions);
@@ -31,6 +33,11 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       plugin.options.shouldShowAlias = this.shouldShowAlias;
       this.exMode = new ModeHandler(app, plugin.options);
       this.exKeymap = new Keymap(this.scope, this.chooser, this.containerEl);
+      this.debouncedUpdateSuggestionsEx = debounce(
+        this.updateSuggestionsEx.bind(this),
+        400,
+        true,
+      );
     }
 
     openInMode(mode: Mode): void {
@@ -57,7 +64,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
     }
 
     protected updateSuggestions(): void {
-      const { exMode, exKeymap, chooser, openWithCommandStr } = this;
+      const { exMode, exKeymap, openWithCommandStr } = this;
 
       if (openWithCommandStr !== null && openWithCommandStr !== '') {
         // update UI with current command string in the case were openInMode was called
@@ -79,11 +86,20 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       if (mode === Mode.Standard) {
         super.updateSuggestions();
       } else {
-        chooser.setSuggestions([]);
-
-        const suggestions = exMode.getSuggestions(inputInfo);
-        chooser.setSuggestions(suggestions);
+        if (mode === Mode.HeadingsList && inputInfo.headingsCmd.parsedInput?.length) {
+          this.debouncedUpdateSuggestionsEx(inputInfo);
+        } else {
+          this.updateSuggestionsEx(inputInfo);
+        }
       }
+    }
+
+    private updateSuggestionsEx(inputInfo: InputInfo): void {
+      const { exMode, chooser } = this;
+      chooser.setSuggestions([]);
+
+      const suggestions = exMode.getSuggestions(inputInfo);
+      chooser.setSuggestions(suggestions);
     }
 
     onChooseSuggestion(item: AnySuggestion, evt: MouseEvent | KeyboardEvent) {
