@@ -22,9 +22,15 @@ export const WorkspaceSplit = jest.fn().mockImplementation(() => {
 });
 
 export const WorkspaceLeaf = jest.fn().mockImplementation(() => {
+  const editor = {
+    getCursor: jest.fn(),
+  };
+
   const view = {
+    editor,
     file: new TFile(),
     getViewType: () => 'markdown',
+    getMode: jest.fn(),
   };
 
   return {

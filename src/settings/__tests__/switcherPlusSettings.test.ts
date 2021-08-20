@@ -47,6 +47,7 @@ describe('SwitcherPlusSettings', () => {
       limit: 50,
       includeSidePanelViewTypes: ['backlink', 'image', 'markdown', 'pdf'],
       enabledSymbolTypes,
+      selectNearestHeading: true,
     };
 
     expect(sut.alwaysNewPaneForSymbols).toBe(defaults.alwaysNewPaneForSymbols);
@@ -96,6 +97,7 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.isSymbolTypeEnabled(SymbolType.Tag)).toBe(
       enabledSymbolTypes[SymbolType.Tag],
     );
+    expect(sut.selectNearestHeading).toBe(defaults.selectNearestHeading);
   });
 
   it('should save settings modified settings', async () => {
@@ -120,6 +122,7 @@ describe('SwitcherPlusSettings', () => {
       limit: chance.integer(),
       includeSidePanelViewTypes: [chance.word()],
       enabledSymbolTypes,
+      selectNearestHeading: chance.bool(),
     };
 
     sut.alwaysNewPaneForSymbols = settings.alwaysNewPaneForSymbols;
@@ -146,6 +149,7 @@ describe('SwitcherPlusSettings', () => {
       SymbolType.Embed,
       settings.enabledSymbolTypes[SymbolType.Embed],
     );
+    sut.selectNearestHeading = settings.selectNearestHeading;
 
     let savedSettings: SettingsData;
     const saveDataSpy = jest
@@ -185,6 +189,7 @@ describe('SwitcherPlusSettings', () => {
       limit: chance.integer(),
       includeSidePanelViewTypes: [chance.word()],
       enabledSymbolTypes,
+      selectNearestHeading: chance.bool(),
     };
     const loadDataSpy = jest.spyOn(plugin, 'loadData').mockResolvedValueOnce(settings);
 
@@ -230,6 +235,7 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.includeSidePanelViewTypes).toEqual(
       expect.arrayContaining(settings.includeSidePanelViewTypes),
     );
+    expect(sut.selectNearestHeading).toBe(settings.selectNearestHeading);
 
     loadDataSpy.mockRestore();
   });

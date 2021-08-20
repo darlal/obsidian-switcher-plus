@@ -1,9 +1,19 @@
 import { Keymap } from './keymap';
-import { isSystemSuggestion, getSystemSwitcherInstance } from 'src/utils';
+import {
+  isSystemSuggestion,
+  getSystemSwitcherInstance,
+  isSymbolSuggestion,
+} from 'src/utils';
 import { ModeHandler } from './modeHandler';
 import SwitcherPlusPlugin from 'src/main';
 import { App, debounce, Debouncer, QuickSwitcherOptions } from 'obsidian';
-import { SystemSwitcher, SwitcherPlus, AnySuggestion, Mode } from 'src/types';
+import {
+  SystemSwitcher,
+  SwitcherPlus,
+  AnySuggestion,
+  Mode,
+  SymbolSuggestion,
+} from 'src/types';
 import { InputInfo } from './inputInfo';
 
 interface SystemSwitcherConstructor extends SystemSwitcher {
@@ -100,6 +110,16 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
 
       const suggestions = exMode.getSuggestions(inputInfo);
       chooser.setSuggestions(suggestions);
+
+      if (inputInfo.mode === Mode.SymbolList) {
+        const index = suggestions
+          .filter((v): v is SymbolSuggestion => isSymbolSuggestion(v))
+          .findIndex((v) => v.item.isSelected === true);
+
+        if (index !== -1) {
+          chooser.setSelectedItem(index, true);
+        }
+      }
     }
 
     onChooseSuggestion(item: AnySuggestion, evt: MouseEvent | KeyboardEvent) {

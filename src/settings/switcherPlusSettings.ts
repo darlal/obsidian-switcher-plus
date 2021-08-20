@@ -28,6 +28,7 @@ export class SwitcherPlusSettings {
       limit: 50,
       includeSidePanelViewTypes: ['backlink', 'image', 'markdown', 'pdf'],
       enabledSymbolTypes,
+      selectNearestHeading: true,
     };
   }
 
@@ -170,6 +171,14 @@ export class SwitcherPlusSettings {
 
   set limit(value: number) {
     this.data.limit = value;
+  }
+
+  get selectNearestHeading(): boolean {
+    return this.data.selectNearestHeading;
+  }
+
+  set selectNearestHeading(value: boolean) {
+    this.data.selectNearestHeading = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

@@ -26,6 +26,8 @@ import {
   MetadataCache,
   App,
   Platform,
+  MarkdownView,
+  EditorPosition,
 } from 'obsidian';
 import {
   Mode,
@@ -271,17 +273,29 @@ export class ModeHandler {
 
   private getActiveEditorInfo(activeLeaf: WorkspaceLeaf): TargetInfo {
     const { excludeViewTypes } = this.settings;
-    let file: TFile = null,
-      isValidSymbolTarget = false;
+    let file: TFile = null;
+    let isValidSymbolTarget = false;
+    let cursor: EditorPosition = null;
 
     if (activeLeaf) {
       const { view } = activeLeaf;
       let isCurrentEditorValid = false;
 
       if (view) {
-        // determine if the current active editor pane is valid
-        isCurrentEditorValid = !excludeViewTypes.includes(view.getViewType());
+        const viewType = view.getViewType();
         file = fileFromView(view);
+
+        // determine if the current active editor pane is valid
+        isCurrentEditorValid = !excludeViewTypes.includes(viewType);
+
+        if (viewType === 'markdown') {
+          const md = view as MarkdownView;
+
+          if (md.getMode() !== 'preview') {
+            const { editor } = view as MarkdownView;
+            cursor = editor.getCursor('head');
+          }
+        }
       }
 
       // whether or not the current active editor can be used as the target for
@@ -289,7 +303,7 @@ export class ModeHandler {
       isValidSymbolTarget = isCurrentEditorValid && !!file;
     }
 
-    return { isValidSymbolTarget, leaf: activeLeaf, file, suggestion: null };
+    return { isValidSymbolTarget, leaf: activeLeaf, file, suggestion: null, cursor };
   }
 
   private static getActiveSuggestionInfo(activeSuggestion: AnySuggestion): TargetInfo {
@@ -379,11 +393,44 @@ export class ModeHandler {
     if (mode === Mode.EditorList) {
       items = this.getOpenRootSplits();
     } else if (mode === Mode.SymbolList) {
-      const orderByLineNumber = this.settings.symbolsInlineOrder && !hasSearchTerm;
-      items = this.getSymbolsForTarget(target, orderByLineNumber);
+      let symbolsInlineOrder = false;
+      let selectNearestHeading = false;
+
+      if (!hasSearchTerm) {
+        ({ selectNearestHeading, symbolsInlineOrder } = this.settings);
+      }
+
+      items = this.getSymbolsForTarget(target, symbolsInlineOrder);
+
+      if (selectNearestHeading) {
+        ModeHandler.FindNearestHeadingSymbol(items, target);
+      }
     }
 
     return items;
+  }
+
+  private static FindNearestHeadingSymbol(
+    items: AnyExSuggestionPayload[],
+    targetInfo: TargetInfo,
+  ): void {
+    const cursorLine = targetInfo?.cursor?.line;
+
+    // find the nearest heading to the current cursor pos, if applicable
+    if (cursorLine) {
+      const found = items
+        .filter((v): v is SymbolInfo => isSymbolInfo(v) && isHeadingCache(v.symbol))
+        .reduce((acc, curr) => {
+          const { line: currLine } = curr.symbol.position.start;
+          const accLine = acc ? acc.symbol.position.start.line : -1;
+
+          return currLine > accLine && currLine <= cursorLine ? curr : acc;
+        });
+
+      if (found) {
+        found.isSelected = true;
+      }
+    }
   }
 
   private getOpenRootSplits(): WorkspaceLeaf[] {

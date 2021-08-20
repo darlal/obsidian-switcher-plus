@@ -1,6 +1,7 @@
 import {
   App,
   Chooser,
+  EditorPosition,
   EmbedCache,
   FuzzyMatch,
   HeadingCache,
@@ -71,6 +72,7 @@ export interface SymbolInfo {
   symbol: AnySymbolInfoPayload;
   symbolType: SymbolType;
   indentLevel?: number;
+  isSelected?: boolean;
 }
 
 export interface WorkspaceInfo {
@@ -125,6 +127,7 @@ export interface TargetInfo {
   leaf: WorkspaceLeaf;
   suggestion: AnySuggestion;
   isValidSymbolTarget: boolean;
+  cursor?: EditorPosition;
 }
 
 export interface SettingsData {
@@ -142,6 +145,7 @@ export interface SettingsData {
   limit: number;
   includeSidePanelViewTypes: Array<string>;
   enabledSymbolTypes: Record<SymbolType, boolean>;
+  selectNearestHeading: boolean;
 }
 
 export interface SearchQuery {

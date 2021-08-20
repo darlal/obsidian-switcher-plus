@@ -42,6 +42,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     SwitcherPlusSettingTab.setSymbolsInLineOrder(containerEl, settings);
     SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols(containerEl, settings);
     SwitcherPlusSettingTab.setUseActivePaneForSymbolsOnMobile(containerEl, settings);
+    SwitcherPlusSettingTab.setSelectNearestHeading(containerEl, settings);
     SwitcherPlusSettingTab.setEnabledSymbolTypes(containerEl, settings);
   }
 
@@ -101,6 +102,23 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(settings.useActivePaneForSymbolsOnMobile).onChange((value) => {
           settings.useActivePaneForSymbolsOnMobile = value;
+          SwitcherPlusSettingTab.saveChanges(settings);
+        }),
+      );
+  }
+
+  private static setSelectNearestHeading(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl)
+      .setName('Auto-select nearest heading')
+      .setDesc(
+        'Enabled, in an unfiltered symbol list, select the closest preceding Heading to the current cursor position. Disabled, the first symbol in the list is selected.',
+      )
+      .addToggle((toggle) =>
+        toggle.setValue(settings.selectNearestHeading).onChange((value) => {
+          settings.selectNearestHeading = value;
           SwitcherPlusSettingTab.saveChanges(settings);
         }),
       );
