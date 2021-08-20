@@ -32,7 +32,7 @@ export class Keymap {
     if (isOpen) {
       const isNext = ctx.key === 'n';
       const index = chooser.selectedItem;
-      chooser.setSelectedItem(isNext ? index + 1 : index - 1);
+      chooser.setSelectedItem(isNext ? index + 1 : index - 1, true);
     }
 
     return false;

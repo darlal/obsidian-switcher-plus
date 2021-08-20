@@ -44,7 +44,7 @@ declare module 'obsidian' {
   export interface Chooser<T> {
     selectedItem: number;
     values: T[];
-    setSelectedItem(index: number): void;
+    setSelectedItem(index: number, scrollIntoView: boolean): void;
     setSuggestions(suggestions: T[]): void;
   }
 
