@@ -115,7 +115,7 @@ export class ModeHandler {
     if (isSymbolSuggestion(sugg)) {
       const { item } = sugg;
 
-      if (this.settings.symbolsInlineOrder && !this.inputInfo.searchQuery.hasSearchTerm) {
+      if (this.settings.symbolsInLineOrder && !this.inputInfo.searchQuery.hasSearchTerm) {
         parentEl.addClass(`qsp-symbol-l${item.indentLevel}`);
       }
 
@@ -393,14 +393,14 @@ export class ModeHandler {
     if (mode === Mode.EditorList) {
       items = this.getOpenRootSplits();
     } else if (mode === Mode.SymbolList) {
-      let symbolsInlineOrder = false;
+      let symbolsInLineOrder = false;
       let selectNearestHeading = false;
 
       if (!hasSearchTerm) {
-        ({ selectNearestHeading, symbolsInlineOrder } = this.settings);
+        ({ selectNearestHeading, symbolsInLineOrder } = this.settings);
       }
 
-      items = this.getSymbolsForTarget(target, symbolsInlineOrder);
+      items = this.getSymbolsForTarget(target, symbolsInLineOrder);
 
       if (selectNearestHeading) {
         ModeHandler.FindNearestHeadingSymbol(items, target);

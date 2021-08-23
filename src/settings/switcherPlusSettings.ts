@@ -6,7 +6,7 @@ import { QuickSwitcherOptions } from 'obsidian';
 export class SwitcherPlusSettings {
   private data: SettingsData;
 
-  private static get defaultSettingsData(): SettingsData {
+  private static get defaults(): SettingsData {
     const enabledSymbolTypes = {} as Record<SymbolType, boolean>;
     enabledSymbolTypes[SymbolType.Link] = true;
     enabledSymbolTypes[SymbolType.Embed] = true;
@@ -35,7 +35,7 @@ export class SwitcherPlusSettings {
   // this is a builtin system setting as well, but it's different from the others
   // in that it's not a user option. It doesn't live on the plugin instance, instead
   // it sourced from the switcher modal instance
-  public shouldShowAlias: boolean;
+  shouldShowAlias: boolean;
 
   get builtInSystemOptions(): QuickSwitcherOptions {
     return getSystemSwitcherInstance(this.plugin.app)?.options;
@@ -72,16 +72,16 @@ export class SwitcherPlusSettings {
     this.data.useActivePaneForSymbolsOnMobile = value;
   }
 
-  get symbolsInlineOrder(): boolean {
+  get symbolsInLineOrder(): boolean {
     return this.data.symbolsInLineOrder;
   }
 
-  set symbolsInlineOrder(value: boolean) {
+  set symbolsInLineOrder(value: boolean) {
     this.data.symbolsInLineOrder = value;
   }
 
   get editorListPlaceholderText(): string {
-    return SwitcherPlusSettings.defaultSettingsData.editorListCommand;
+    return SwitcherPlusSettings.defaults.editorListCommand;
   }
 
   get editorListCommand(): string {
@@ -93,7 +93,7 @@ export class SwitcherPlusSettings {
   }
 
   get symbolListPlaceholderText(): string {
-    return SwitcherPlusSettings.defaultSettingsData.symbolListCommand;
+    return SwitcherPlusSettings.defaults.symbolListCommand;
   }
 
   get symbolListCommand(): string {
@@ -113,7 +113,7 @@ export class SwitcherPlusSettings {
   }
 
   get workspaceListPlaceholderText(): string {
-    return SwitcherPlusSettings.defaultSettingsData.workspaceListCommand;
+    return SwitcherPlusSettings.defaults.workspaceListCommand;
   }
 
   get headingsListCommand(): string {
@@ -125,7 +125,7 @@ export class SwitcherPlusSettings {
   }
 
   get headingsListPlaceholderText(): string {
-    return SwitcherPlusSettings.defaultSettingsData.headingsListCommand;
+    return SwitcherPlusSettings.defaults.headingsListCommand;
   }
 
   get strictHeadingsOnly(): boolean {
@@ -152,6 +152,14 @@ export class SwitcherPlusSettings {
     return this.data.referenceViews;
   }
 
+  get limit(): number {
+    return this.data.limit;
+  }
+
+  set limit(value: number) {
+    this.data.limit = value;
+  }
+
   get includeSidePanelViewTypes(): Array<string> {
     return this.data.includeSidePanelViewTypes;
   }
@@ -162,15 +170,7 @@ export class SwitcherPlusSettings {
   }
 
   get includeSidePanelViewTypesPlaceholder(): string {
-    return SwitcherPlusSettings.defaultSettingsData.includeSidePanelViewTypes.join('\n');
-  }
-
-  get limit(): number {
-    return this.data.limit;
-  }
-
-  set limit(value: number) {
-    this.data.limit = value;
+    return SwitcherPlusSettings.defaults.includeSidePanelViewTypes.join('\n');
   }
 
   get selectNearestHeading(): boolean {
@@ -182,13 +182,23 @@ export class SwitcherPlusSettings {
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {
-    this.data = SwitcherPlusSettings.defaultSettingsData;
+    this.data = SwitcherPlusSettings.defaults;
   }
 
   async loadSettings(): Promise<void> {
     const { plugin } = this;
     const savedData = (await plugin?.loadData()) as SettingsData;
-    this.data = { ...SwitcherPlusSettings.defaultSettingsData, ...savedData };
+
+    const copy = <T>(source: T, target: T, keys: Array<keyof T>): void => {
+      for (const key of keys) {
+        if (key in source) {
+          target[key] = source[key];
+        }
+      }
+    };
+
+    const keys = Object.keys(SwitcherPlusSettings.defaults) as Array<keyof SettingsData>;
+    copy(savedData, this.data, keys);
   }
 
   async saveSettings(): Promise<void> {

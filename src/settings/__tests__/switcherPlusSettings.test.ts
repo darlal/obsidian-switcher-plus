@@ -11,6 +11,53 @@ import {
 
 const chance = new Chance();
 
+function transientSettingsData(useDefault: boolean): SettingsData {
+  const alwaysNewPaneForSymbols = useDefault ? false : chance.bool();
+  const useActivePaneForSymbolsOnMobile = useDefault ? false : chance.bool();
+  const symbolsInLineOrder = useDefault ? true : chance.bool();
+  const editorListCommand = useDefault ? 'edt ' : chance.word();
+  const symbolListCommand = useDefault ? '@' : chance.word();
+  const workspaceListCommand = useDefault ? '+' : chance.word();
+  const headingsListCommand = useDefault ? '#' : chance.word();
+  const strictHeadingsOnly = useDefault ? false : chance.bool();
+  const searchAllHeadings = useDefault ? true : chance.bool();
+  const excludeViewTypes = ['empty'];
+  const referenceViews = ['backlink', 'localgraph', 'outgoing-link', 'outline'];
+  const limit = useDefault ? 50 : chance.integer();
+  const selectNearestHeading = useDefault ? true : chance.bool();
+
+  const sidePanelOptions = ['backlink', 'image', 'markdown', 'pdf'];
+  const includeSidePanelViewTypes = useDefault
+    ? sidePanelOptions
+    : [chance.word(), chance.word(), chance.pickone(sidePanelOptions)];
+
+  const enabledSymbolTypes = {} as Record<SymbolType, boolean>;
+  enabledSymbolTypes[SymbolType.Link] = useDefault ? true : chance.bool();
+  enabledSymbolTypes[SymbolType.Embed] = useDefault ? true : chance.bool();
+  enabledSymbolTypes[SymbolType.Tag] = useDefault ? true : chance.bool();
+  enabledSymbolTypes[SymbolType.Heading] = useDefault ? true : chance.bool();
+
+  const data: SettingsData = {
+    alwaysNewPaneForSymbols,
+    useActivePaneForSymbolsOnMobile,
+    symbolsInLineOrder,
+    editorListCommand,
+    symbolListCommand,
+    workspaceListCommand,
+    headingsListCommand,
+    strictHeadingsOnly,
+    searchAllHeadings,
+    excludeViewTypes,
+    referenceViews,
+    limit,
+    includeSidePanelViewTypes,
+    enabledSymbolTypes,
+    selectNearestHeading,
+  };
+
+  return data;
+}
+
 describe('SwitcherPlusSettings', () => {
   let app: App;
   let plugin: SwitcherPlusPlugin;
@@ -26,61 +73,15 @@ describe('SwitcherPlusSettings', () => {
   });
 
   it('should return default settings', () => {
-    const enabledSymbolTypes = {} as Record<SymbolType, boolean>;
-    enabledSymbolTypes[SymbolType.Link] = true;
-    enabledSymbolTypes[SymbolType.Embed] = true;
-    enabledSymbolTypes[SymbolType.Tag] = true;
-    enabledSymbolTypes[SymbolType.Heading] = true;
+    // extract enabledSymbolTypes to handle separately, because it's not exposed
+    // on SwitcherPlusSettings directly
+    const { enabledSymbolTypes, ...defaults } = transientSettingsData(true);
 
-    const defaults: SettingsData = {
-      alwaysNewPaneForSymbols: false,
-      useActivePaneForSymbolsOnMobile: false,
-      symbolsInLineOrder: true,
-      editorListCommand: 'edt ',
-      symbolListCommand: '@',
-      workspaceListCommand: '+',
-      headingsListCommand: '#',
-      strictHeadingsOnly: false,
-      searchAllHeadings: true,
-      excludeViewTypes: ['empty'],
-      referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'],
-      limit: 50,
-      includeSidePanelViewTypes: ['backlink', 'image', 'markdown', 'pdf'],
-      enabledSymbolTypes,
-      selectNearestHeading: true,
-    };
-
-    expect(sut.alwaysNewPaneForSymbols).toBe(defaults.alwaysNewPaneForSymbols);
-    expect(sut.useActivePaneForSymbolsOnMobile).toBe(
-      defaults.useActivePaneForSymbolsOnMobile,
-    );
-    expect(sut.symbolsInlineOrder).toBe(defaults.symbolsInLineOrder);
-    expect(sut.editorListCommand).toBe(defaults.editorListCommand);
+    expect(sut).toEqual(expect.objectContaining(defaults));
     expect(sut.editorListPlaceholderText).toBe(defaults.editorListCommand);
-    expect(sut.symbolListCommand).toBe(defaults.symbolListCommand);
     expect(sut.symbolListPlaceholderText).toBe(defaults.symbolListCommand);
-    expect(sut.workspaceListCommand).toBe(defaults.workspaceListCommand);
     expect(sut.workspaceListPlaceholderText).toBe(defaults.workspaceListCommand);
-    expect(sut.headingsListCommand).toBe(defaults.headingsListCommand);
     expect(sut.headingsListPlaceholderText).toBe(defaults.headingsListCommand);
-    expect(sut.strictHeadingsOnly).toBe(defaults.strictHeadingsOnly);
-    expect(sut.searchAllHeadings).toBe(defaults.searchAllHeadings);
-
-    expect(sut.excludeViewTypes).toHaveLength(defaults.excludeViewTypes.length);
-    expect(sut.excludeViewTypes).toEqual(
-      expect.arrayContaining(defaults.excludeViewTypes),
-    );
-
-    expect(sut.referenceViews).toHaveLength(defaults.referenceViews.length);
-    expect(sut.referenceViews).toEqual(expect.arrayContaining(defaults.referenceViews));
-    expect(sut.limit).toBe(defaults.limit);
-
-    expect(sut.includeSidePanelViewTypes).toHaveLength(
-      defaults.includeSidePanelViewTypes.length,
-    );
-    expect(sut.includeSidePanelViewTypes).toEqual(
-      expect.arrayContaining(defaults.includeSidePanelViewTypes),
-    );
     expect(sut.includeSidePanelViewTypesPlaceholder).toBe(
       defaults.includeSidePanelViewTypes.join('\n'),
     );
@@ -97,37 +98,14 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.isSymbolTypeEnabled(SymbolType.Tag)).toBe(
       enabledSymbolTypes[SymbolType.Tag],
     );
-    expect(sut.selectNearestHeading).toBe(defaults.selectNearestHeading);
   });
 
-  it('should save settings modified settings', async () => {
-    const enabledSymbolTypes = {} as Record<SymbolType, boolean>;
-    enabledSymbolTypes[SymbolType.Link] = chance.bool();
-    enabledSymbolTypes[SymbolType.Embed] = chance.bool();
-    enabledSymbolTypes[SymbolType.Tag] = chance.bool();
-    enabledSymbolTypes[SymbolType.Heading] = chance.bool();
-
-    const settings: SettingsData = {
-      alwaysNewPaneForSymbols: chance.bool(),
-      useActivePaneForSymbolsOnMobile: chance.bool(),
-      symbolsInLineOrder: chance.bool(),
-      editorListCommand: chance.word(),
-      symbolListCommand: chance.word(),
-      workspaceListCommand: chance.word(),
-      headingsListCommand: chance.word(),
-      strictHeadingsOnly: chance.bool(),
-      searchAllHeadings: chance.bool(),
-      excludeViewTypes: ['empty'], // no setter
-      referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'], // No setter
-      limit: chance.integer(),
-      includeSidePanelViewTypes: [chance.word()],
-      enabledSymbolTypes,
-      selectNearestHeading: chance.bool(),
-    };
+  it('should save modified settings', async () => {
+    const settings = transientSettingsData(false);
 
     sut.alwaysNewPaneForSymbols = settings.alwaysNewPaneForSymbols;
     sut.useActivePaneForSymbolsOnMobile = settings.useActivePaneForSymbolsOnMobile;
-    sut.symbolsInlineOrder = settings.symbolsInLineOrder;
+    sut.symbolsInLineOrder = settings.symbolsInLineOrder;
     sut.editorListCommand = settings.editorListCommand;
     sut.symbolListCommand = settings.symbolListCommand;
     sut.workspaceListCommand = settings.workspaceListCommand;
@@ -161,81 +139,64 @@ describe('SwitcherPlusSettings', () => {
 
     await sut.saveSettings();
 
-    expect(savedSettings).toMatchObject(settings);
+    expect(savedSettings).toEqual(expect.objectContaining(settings));
     expect(saveDataSpy).toHaveBeenCalled();
 
     saveDataSpy.mockRestore();
   });
 
   it('should load saved settings', async () => {
-    const enabledSymbolTypes = {} as Record<SymbolType, boolean>;
-    enabledSymbolTypes[SymbolType.Link] = chance.bool();
-    enabledSymbolTypes[SymbolType.Embed] = chance.bool();
-    enabledSymbolTypes[SymbolType.Tag] = chance.bool();
-    enabledSymbolTypes[SymbolType.Heading] = chance.bool();
-
-    const settings: SettingsData = {
-      alwaysNewPaneForSymbols: chance.bool(),
-      useActivePaneForSymbolsOnMobile: chance.bool(),
-      symbolsInLineOrder: chance.bool(),
-      editorListCommand: chance.word(),
-      symbolListCommand: chance.word(),
-      workspaceListCommand: chance.word(),
-      headingsListCommand: chance.word(),
-      strictHeadingsOnly: chance.bool(),
-      searchAllHeadings: chance.bool(),
-      excludeViewTypes: [],
-      referenceViews: [chance.word(), chance.word(), chance.word()],
-      limit: chance.integer(),
-      includeSidePanelViewTypes: [chance.word()],
-      enabledSymbolTypes,
-      selectNearestHeading: chance.bool(),
-    };
+    const settings = transientSettingsData(false);
+    const { enabledSymbolTypes, ...prunedSettings } = settings;
     const loadDataSpy = jest.spyOn(plugin, 'loadData').mockResolvedValueOnce(settings);
 
     await sut.loadSettings();
 
-    expect(loadDataSpy).toHaveBeenCalled();
-    expect(sut.alwaysNewPaneForSymbols).toBe(settings.alwaysNewPaneForSymbols);
-    expect(sut.useActivePaneForSymbolsOnMobile).toBe(
-      settings.useActivePaneForSymbolsOnMobile,
-    );
-    expect(sut.symbolsInlineOrder).toBe(settings.symbolsInLineOrder);
-    expect(sut.editorListCommand).toBe(settings.editorListCommand);
-    expect(sut.symbolListCommand).toBe(settings.symbolListCommand);
-    expect(sut.workspaceListCommand).toBe(settings.workspaceListCommand);
-    expect(sut.headingsListCommand).toBe(settings.headingsListCommand);
-    expect(sut.strictHeadingsOnly).toBe(settings.strictHeadingsOnly);
-    expect(sut.searchAllHeadings).toBe(settings.searchAllHeadings);
-
-    expect(sut.excludeViewTypes).toHaveLength(settings.excludeViewTypes.length);
-    expect(sut.excludeViewTypes).toEqual(
-      expect.arrayContaining(settings.excludeViewTypes),
-    );
-
-    expect(sut.referenceViews).toHaveLength(settings.referenceViews.length);
-    expect(sut.referenceViews).toEqual(expect.arrayContaining(settings.referenceViews));
-    expect(sut.limit).toBe(settings.limit);
+    expect(sut).toEqual(expect.objectContaining(prunedSettings));
     expect(sut.isSymbolTypeEnabled(SymbolType.Heading)).toBe(
-      settings.enabledSymbolTypes[SymbolType.Heading],
+      enabledSymbolTypes[SymbolType.Heading],
     );
     expect(sut.isSymbolTypeEnabled(SymbolType.Link)).toBe(
-      settings.enabledSymbolTypes[SymbolType.Link],
+      enabledSymbolTypes[SymbolType.Link],
     );
     expect(sut.isSymbolTypeEnabled(SymbolType.Tag)).toBe(
-      settings.enabledSymbolTypes[SymbolType.Tag],
+      enabledSymbolTypes[SymbolType.Tag],
     );
     expect(sut.isSymbolTypeEnabled(SymbolType.Embed)).toBe(
-      settings.enabledSymbolTypes[SymbolType.Embed],
+      enabledSymbolTypes[SymbolType.Embed],
     );
 
-    expect(sut.includeSidePanelViewTypes).toHaveLength(
-      settings.includeSidePanelViewTypes.length,
+    expect(loadDataSpy).toHaveBeenCalled();
+
+    loadDataSpy.mockRestore();
+  });
+
+  it('should load saved settings, even with missing data keys', async () => {
+    const defaults = transientSettingsData(true);
+    const settings = transientSettingsData(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { enabledSymbolTypes, ...prunedSettings } = settings;
+    const loadDataSpy = jest
+      .spyOn(plugin, 'loadData')
+      .mockResolvedValueOnce(prunedSettings);
+
+    await sut.loadSettings();
+
+    expect(sut).toEqual(expect.objectContaining(prunedSettings));
+    expect(sut.isSymbolTypeEnabled(SymbolType.Heading)).toBe(
+      defaults.enabledSymbolTypes[SymbolType.Heading],
     );
-    expect(sut.includeSidePanelViewTypes).toEqual(
-      expect.arrayContaining(settings.includeSidePanelViewTypes),
+    expect(sut.isSymbolTypeEnabled(SymbolType.Link)).toBe(
+      defaults.enabledSymbolTypes[SymbolType.Link],
     );
-    expect(sut.selectNearestHeading).toBe(settings.selectNearestHeading);
+    expect(sut.isSymbolTypeEnabled(SymbolType.Tag)).toBe(
+      defaults.enabledSymbolTypes[SymbolType.Tag],
+    );
+    expect(sut.isSymbolTypeEnabled(SymbolType.Embed)).toBe(
+      defaults.enabledSymbolTypes[SymbolType.Embed],
+    );
+
+    expect(loadDataSpy).toHaveBeenCalled();
 
     loadDataSpy.mockRestore();
   });

@@ -134,8 +134,8 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         'Enabled, symbols will be displayed in the (line) order they appear in the source text, indented under any preceding heading. Disabled, symbols will be grouped by type: Headings, Tags, Links, Embeds.',
       )
       .addToggle((toggle) =>
-        toggle.setValue(settings.symbolsInlineOrder).onChange((value) => {
-          settings.symbolsInlineOrder = value;
+        toggle.setValue(settings.symbolsInLineOrder).onChange((value) => {
+          settings.symbolsInLineOrder = value;
           SwitcherPlusSettingTab.saveChanges(settings);
         }),
       );
