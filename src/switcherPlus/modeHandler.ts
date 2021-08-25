@@ -1,4 +1,4 @@
-import { WorkspaceHandler, HeadingsHandler } from 'src/Handlers';
+import { WorkspaceHandler, HeadingsHandler, EditorHandler } from 'src/Handlers';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
@@ -10,8 +10,9 @@ import {
   isSymbolInfo,
   isTagCache,
   isWorkspaceSuggestion,
-  isWorkspaceInfo,
   isHeadingSuggestion,
+  activateLeaf,
+  getOpenLeaves,
 } from 'src/utils';
 import {
   View,
@@ -57,12 +58,14 @@ export class ModeHandler {
   private inputInfo: InputInfo;
   private wsHandler: WorkspaceHandler;
   private hsHandler: HeadingsHandler;
+  private editorHandler: EditorHandler;
 
   constructor(app: App, private settings: SwitcherPlusSettings) {
     this.workspace = app?.workspace;
     this.metadataCache = app?.metadataCache;
     this.wsHandler = new WorkspaceHandler(app, settings);
     this.hsHandler = new HeadingsHandler(app, settings);
+    this.editorHandler = new EditorHandler(app, settings);
     this.reset();
   }
 
@@ -99,7 +102,7 @@ export class ModeHandler {
 
   onChooseSuggestion(sugg: AnyExSuggestion, evt: MouseEvent | KeyboardEvent): void {
     if (isEditorSuggestion(sugg)) {
-      this.activateEditorLeaf(sugg.item, false);
+      this.editorHandler.onChooseSuggestion(sugg);
     } else if (isWorkspaceSuggestion(sugg)) {
       this.wsHandler.onChooseSuggestion(sugg);
     } else if (isHeadingSuggestion(sugg)) {
@@ -124,15 +127,15 @@ export class ModeHandler {
         cls: 'qsp-symbol-text',
         parent: containerEl,
       });
-    }
 
-    if (isWorkspaceSuggestion(sugg)) {
+      const text = ModeHandler.getSuggestionTextForSymbol(item);
+      renderResults(containerEl, text, sugg.match);
+    } else if (isWorkspaceSuggestion(sugg)) {
       this.wsHandler.renderSuggestion(sugg, parentEl);
     } else if (isHeadingSuggestion(sugg)) {
       this.hsHandler.renderSuggestion(sugg, parentEl);
-    } else {
-      const text = ModeHandler.getItemText(sugg.item);
-      renderResults(containerEl, text, sugg.match);
+    } else if (isEditorSuggestion(sugg)) {
+      this.editorHandler.renderSuggestion(sugg, containerEl);
     }
   }
 
@@ -182,26 +185,13 @@ export class ModeHandler {
       } = match;
 
       if (ep) {
-        this.validateEditorCommand(info, index, ft);
+        this.editorHandler.validateCommand(info, index, ft);
       } else if (wp) {
         this.wsHandler.validateCommand(info, index, ft);
       } else if (hp) {
         this.hsHandler.validateCommand(info, index, ft);
       }
     }
-  }
-
-  private validateEditorCommand(
-    inputInfo: InputInfo,
-    index: number,
-    filterText: string,
-  ): void {
-    const { editorCmd } = inputInfo;
-
-    inputInfo.mode = Mode.EditorList;
-    editorCmd.index = index;
-    editorCmd.parsedInput = filterText;
-    editorCmd.isValidated = true;
   }
 
   private validateSymbolCommand(
@@ -211,7 +201,7 @@ export class ModeHandler {
   ): void {
     const { mode, symbolCmd, inputText } = inputInfo;
 
-    // Both Standard and EditorList mode can have an embedded symbol command
+    // Standard, Headings, and EditorList mode can have an embedded symbol command
     if (
       mode === Mode.Standard ||
       mode === Mode.EditorList ||
@@ -336,40 +326,32 @@ export class ModeHandler {
   getSuggestions(inputInfo: InputInfo): AnySuggestion[] {
     let suggestions: AnySuggestion[] = [];
 
-    const push = (item: AnyExSuggestionPayload, match: SearchResult) => {
-      if (isSymbolInfo(item)) {
-        suggestions.push({ type: 'symbol', item, match });
-      } else if (!isWorkspaceInfo(item)) {
-        // item is workspace leaf
-        suggestions.push({ type: 'editor', item, match });
-      }
-    };
-
     if (inputInfo) {
       this.inputInfo = inputInfo;
-      inputInfo.buildSearchQuery();
-      const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
       const { mode } = inputInfo;
 
       if (mode === Mode.WorkspaceList) {
         suggestions = this.wsHandler.getSuggestions(inputInfo);
       } else if (mode === Mode.HeadingsList) {
         suggestions = this.hsHandler.getSuggestions(inputInfo);
+      } else if (mode === Mode.EditorList) {
+        suggestions = this.editorHandler.getSuggestions(inputInfo);
       } else {
+        inputInfo.buildSearchQuery();
+        const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
         const items = this.getItems(inputInfo);
 
         items.forEach((item) => {
+          let shouldPush = true;
           let match: SearchResult = null;
 
           if (hasSearchTerm) {
-            const text = ModeHandler.getItemText(item);
-            match = fuzzySearch(prepQuery, text);
+            match = fuzzySearch(prepQuery, ModeHandler.getSuggestionTextForSymbol(item));
+            shouldPush = !!match;
+          }
 
-            if (match) {
-              push(item, match);
-            }
-          } else {
-            push(item, null);
+          if (shouldPush) {
+            suggestions.push({ type: 'symbol', item, match });
           }
         });
 
@@ -382,29 +364,24 @@ export class ModeHandler {
     return suggestions;
   }
 
-  private getItems(inputInfo: InputInfo): AnyExSuggestionPayload[] {
-    let items: AnyExSuggestionPayload[] = [];
+  private getItems(inputInfo: InputInfo): SymbolInfo[] {
+    let items: SymbolInfo[] = [];
     const {
-      mode,
       searchQuery: { hasSearchTerm },
       symbolCmd: { target },
     } = inputInfo;
 
-    if (mode === Mode.EditorList) {
-      items = this.getOpenRootSplits();
-    } else if (mode === Mode.SymbolList) {
-      let symbolsInLineOrder = false;
-      let selectNearestHeading = false;
+    let symbolsInLineOrder = false;
+    let selectNearestHeading = false;
 
-      if (!hasSearchTerm) {
-        ({ selectNearestHeading, symbolsInLineOrder } = this.settings);
-      }
+    if (!hasSearchTerm) {
+      ({ selectNearestHeading, symbolsInLineOrder } = this.settings);
+    }
 
-      items = this.getSymbolsForTarget(target, symbolsInLineOrder);
+    items = this.getSymbolsForTarget(target, symbolsInLineOrder);
 
-      if (selectNearestHeading) {
-        ModeHandler.FindNearestHeadingSymbol(items, target);
-      }
+    if (selectNearestHeading) {
+      ModeHandler.FindNearestHeadingSymbol(items, target);
     }
 
     return items;
@@ -431,50 +408,6 @@ export class ModeHandler {
         found.isSelected = true;
       }
     }
-  }
-
-  private getOpenRootSplits(): WorkspaceLeaf[] {
-    const {
-      workspace,
-      settings: { excludeViewTypes, includeSidePanelViewTypes },
-    } = this;
-    const leaves: WorkspaceLeaf[] = [];
-
-    const saveLeaf = (l: WorkspaceLeaf) => {
-      const viewType = l.view?.getViewType();
-
-      if (this.isMainPanelLeaf(l)) {
-        if (!excludeViewTypes.includes(viewType)) {
-          leaves.push(l);
-        }
-      } else if (includeSidePanelViewTypes.includes(viewType)) {
-        leaves.push(l);
-      }
-    };
-
-    workspace.iterateAllLeaves(saveLeaf);
-    return leaves;
-  }
-
-  private isMainPanelLeaf(leaf: WorkspaceLeaf): boolean {
-    return leaf?.getRoot() === this.workspace.rootSplit;
-  }
-
-  private activateEditorLeaf(
-    leaf: WorkspaceLeaf,
-    pushHistory?: boolean,
-    eState?: Record<string, unknown>,
-  ) {
-    const { workspace } = this;
-    const isInSidePanel = !this.isMainPanelLeaf(leaf);
-    const state = { focus: true, ...eState };
-
-    if (isInSidePanel) {
-      workspace.revealLeaf(leaf);
-    }
-
-    workspace.setActiveLeaf(leaf, pushHistory);
-    leaf.view.setEphemeralState(state);
   }
 
   private getSymbolsForTarget(
@@ -532,19 +465,6 @@ export class ModeHandler {
     return sorted;
   }
 
-  private static getItemText(item: AnyExSuggestionPayload): string {
-    let text;
-
-    if (isSymbolInfo(item)) {
-      text = ModeHandler.getSuggestionTextForSymbol(item);
-    } else if (!isWorkspaceInfo(item)) {
-      // item is workspace leaf
-      text = item.getDisplayText();
-    }
-
-    return text;
-  }
-
   private static getSuggestionTextForSymbol(symbolInfo: SymbolInfo): string {
     const { symbol } = symbolInfo;
     let text;
@@ -596,7 +516,7 @@ export class ModeHandler {
     };
 
     if (leaf && !alwaysNewPaneForSymbols) {
-      this.activateEditorLeaf(leaf, true, eState);
+      activateLeaf(workspace, leaf, true, eState);
     } else {
       const { isDesktop, isMobile } = Platform;
       const createNewLeaf = isDesktop || (isMobile && !useActivePaneForSymbolsOnMobile);
@@ -608,7 +528,7 @@ export class ModeHandler {
   }
 
   private findOpenEditorMatchingSymbolTarget(): TargetInfo {
-    const { referenceViews } = this.settings;
+    const { referenceViews, excludeViewTypes, includeSidePanelViewTypes } = this.settings;
     const { file, leaf } = this.inputInfo.symbolCmd.target;
     const isTargetLeaf = !!leaf;
 
@@ -626,7 +546,12 @@ export class ModeHandler {
       return val;
     };
 
-    const l = this.getOpenRootSplits().find(predicate);
+    const l = getOpenLeaves(
+      this.workspace,
+      excludeViewTypes,
+      includeSidePanelViewTypes,
+    ).find(predicate);
+
     return { leaf: l, file, suggestion: null, isValidSymbolTarget: false };
   }
 

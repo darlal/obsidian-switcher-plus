@@ -13,7 +13,18 @@ export function makePreparedQuery(filterText: string): PreparedQuery {
   };
 }
 
-export function makeFuzzyMatch(matches: SearchMatches, score: number): SearchResult {
+export function makePreparedQueryEmpty(): PreparedQuery {
+  return {
+    query: '',
+    tokens: [],
+    fuzzy: [],
+  };
+}
+
+export function makeFuzzyMatch(
+  matches: SearchMatches = [[0, 5]],
+  score = -0.0115,
+): SearchResult {
   return {
     matches,
     score,

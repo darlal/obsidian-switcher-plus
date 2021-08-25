@@ -12,7 +12,6 @@ export interface SymbolParsedCommand extends ParsedCommand {
 }
 
 export class InputInfo {
-  mode = Mode.Standard;
   editorCmd: ParsedCommand;
   workspaceCmd: ParsedCommand;
   symbolCmd: SymbolParsedCommand;
@@ -27,7 +26,7 @@ export class InputInfo {
     };
   }
 
-  constructor(public inputText = '') {
+  constructor(public inputText = '', public mode = Mode.Standard) {
     this.symbolCmd = { ...InputInfo.defaultParsedCommand, target: null };
     this.editorCmd = InputInfo.defaultParsedCommand;
     this.workspaceCmd = InputInfo.defaultParsedCommand;
@@ -37,7 +36,7 @@ export class InputInfo {
 
   buildSearchQuery(): void {
     const { mode } = this;
-    let input = '';
+    let input: string;
 
     if (mode === Mode.SymbolList) {
       input = this.symbolCmd.parsedInput;
@@ -49,7 +48,7 @@ export class InputInfo {
       input = this.headingsCmd.parsedInput;
     }
 
-    const prepQuery = prepareQuery(input.trim().toLowerCase());
+    const prepQuery = prepareQuery((input ?? '').trim().toLowerCase());
     const hasSearchTerm = prepQuery?.query?.length > 0;
 
     this.searchQuery = { prepQuery, hasSearchTerm };

@@ -31,6 +31,7 @@ export const WorkspaceLeaf = jest.fn().mockImplementation(() => {
     file: new TFile(),
     getViewType: () => 'markdown',
     getMode: jest.fn(),
+    setEphemeralState: jest.fn(),
   };
 
   return {
@@ -58,6 +59,8 @@ export const Workspace = jest.fn().mockImplementation(() => {
     iterateAllLeaves: jest.fn(),
     getLastOpenFiles: jest.fn(),
     getLeaf: jest.fn(),
+    revealLeaf: jest.fn(),
+    setActiveLeaf: jest.fn(),
   };
 });
 
