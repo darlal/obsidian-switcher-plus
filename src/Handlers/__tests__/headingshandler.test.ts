@@ -447,6 +447,10 @@ describe('headingsHandler', () => {
   });
 
   describe('renderSuggestion', () => {
+    it('should not throw an error with a null suggestion', () => {
+      expect(() => sut.renderSuggestion(null, null)).not.toThrow();
+    });
+
     test.todo('with HeadingCache, it should render a suggestion with match offsets');
   });
 

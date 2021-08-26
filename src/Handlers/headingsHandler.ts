@@ -76,20 +76,24 @@ export class HeadingsHandler {
   }
 
   renderSuggestion(sugg: HeadingSuggestion, parentEl: HTMLElement): void {
-    const { item } = sugg;
-    renderResults(parentEl, item.heading, sugg.match);
+    if (sugg) {
+      const { item } = sugg;
+      renderResults(parentEl, item.heading, sugg.match);
 
-    parentEl.createSpan(
-      {
-        cls: 'suggestion-flair',
-        prepend: true,
-      },
-      (el: HTMLSpanElement) => {
-        el.appendText(HeadingIndicators[item.level]);
-      },
-    );
+      parentEl.createSpan(
+        {
+          cls: 'suggestion-flair',
+          prepend: true,
+        },
+        (el: HTMLSpanElement) => {
+          el.appendText(HeadingIndicators[item.level]);
+        },
+      );
 
-    parentEl.createDiv('suggestion-note').appendText(stripMDExtensionFromPath(sugg.file));
+      parentEl
+        .createDiv('suggestion-note')
+        .appendText(stripMDExtensionFromPath(sugg.file));
+    }
   }
 
   getSuggestions(inputInfo: InputInfo): SupportedSuggestionTypes[] {

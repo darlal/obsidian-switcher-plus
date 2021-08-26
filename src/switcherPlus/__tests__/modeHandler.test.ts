@@ -1,15 +1,22 @@
-jest.mock('src/Handlers/editorHandler', () => {
-  const actual = jest.requireActual<EditorHandler>('src/Handlers/editorHandler');
+// jest.mock('src/Handlers/editorHandler', () => {
+//   const actual = jest.requireActual<EditorHandler>('src/Handlers/editorHandler');
 
-  return {
-    ...actual,
-  };
-});
+//   return {
+//     ...actual,
+//   };
+// });
 
 import { SwitcherPlusSettings } from 'src/settings';
-import { Mode, FileSuggestion, EditorSuggestion, SymbolSuggestion } from 'src/types';
+import {
+  Mode,
+  FileSuggestion,
+  EditorSuggestion,
+  SymbolSuggestion,
+  WorkspaceSuggestion,
+  HeadingSuggestion,
+} from 'src/types';
 import { InputInfo, ModeHandler } from 'src/switcherPlus';
-import { EditorHandler } from 'src/Handlers';
+import { EditorHandler, HeadingsHandler, WorkspaceHandler } from 'src/Handlers';
 import {
   TFile,
   WorkspaceLeaf,
@@ -35,7 +42,7 @@ import {
   workspacePrefixOnlyInputFixture,
   headingsTrigger,
   headingsPrefixOnlyInputFixture,
-  getCachedMetadata,
+  makeHeading,
 } from '@fixtures';
 
 describe('getCommandStringForMode', () => {
@@ -363,6 +370,10 @@ describe('getSuggestions', () => {
     mockFuzzySearch = fuzzySearch as jest.MockedFunction<typeof fuzzySearch>;
   });
 
+  beforeEach(() => {
+    jest.resetModules();
+  });
+
   test('with falsy input, it should return an empty array', () => {
     const sut = new ModeHandler(app, settings);
 
@@ -376,6 +387,14 @@ describe('getSuggestions', () => {
 
   describe('for editor mode', () => {
     it('should get suggestions from the EditorHandler', () => {
+      jest.doMock('src/Handlers/editorHandler', () => {
+        const actual = jest.requireActual<EditorHandler>('src/Handlers/editorHandler');
+
+        return {
+          ...actual,
+        };
+      });
+
       const sut = new ModeHandler(app, settings);
       const inputInfo = new InputInfo(editorTrigger, Mode.EditorList);
       const sugg: EditorSuggestion = {
@@ -533,71 +552,74 @@ describe('getSuggestions', () => {
   });
 
   describe('for workspace mode', () => {
-    test('with default settings, it should return suggestions for workspace mode', () => {
+    it('should get suggestions from the WorkspaceHandler', () => {
+      jest.doMock('src/Handlers/workspaceHandler', () => {
+        const actual = jest.requireActual<WorkspaceHandler>(
+          'src/Handlers/workspaceHandler',
+        );
+
+        return {
+          ...actual,
+        };
+      });
+
       const sut = new ModeHandler(app, settings);
-      const inputInfo = sut.determineRunMode(workspaceTrigger, null, null);
+      const inputInfo = new InputInfo(workspaceTrigger, Mode.WorkspaceList);
+      const sugg: WorkspaceSuggestion = {
+        type: 'workspace',
+        item: {
+          type: 'workspaceInfo',
+          id: 'foo',
+        },
+        match: null,
+      };
+
+      const workspaceGetSuggestionSpy = jest
+        .spyOn(WorkspaceHandler.prototype, 'getSuggestions')
+        .mockReturnValue([sugg]);
+
       const results = sut.getSuggestions(inputInfo);
 
-      expect(sut.mode).toBe(Mode.WorkspaceList);
-      expect(results).not.toBeNull();
-      expect(results).toBeInstanceOf(Array);
-      expect(results).toHaveLength(2);
+      expect(results).toHaveLength(1);
+      expect(results[0]).toBe(sugg);
+      expect(workspaceGetSuggestionSpy).toHaveBeenCalledWith(inputInfo);
+
+      workspaceGetSuggestionSpy.mockRestore();
     });
   });
 
   describe('for headings mode', () => {
-    test('with default settings, it should return suggestions for headings mode', () => {
-      const fileData: Record<string, TFile> = {};
-      let file = new TFile();
-      fileData[file.path] = file;
+    it('should get suggestions from the HeadingsHandler', () => {
+      jest.doMock('src/Handlers/headingsHandler', () => {
+        const actual = jest.requireActual<HeadingsHandler>(
+          'src/Handlers/headingsHandler',
+        );
 
-      file = new TFile();
-      fileData[file.path] = file;
-
-      file = new TFile();
-      fileData[file.path] = file;
-
-      const fileDataKeys = Object.keys(fileData);
-      const getLastOpenFilesSpy = jest
-        .spyOn(app.workspace, 'getLastOpenFiles')
-        .mockReturnValueOnce(fileDataKeys);
-      const getAbstractFileByPathSpy = jest
-        .spyOn(app.vault, 'getAbstractFileByPath')
-        .mockImplementation((path: string) => fileData[path]);
-      const getFileCacheSpy = jest
-        .spyOn(app.metadataCache, 'getFileCache')
-        .mockReturnValue(getCachedMetadata());
-      const isExtensionRegisteredSpy = jest
-        .spyOn(app.viewRegistry, 'isExtensionRegistered')
-        .mockReturnValue(true);
-      const builtInSystemOptionsSpy = jest
-        .spyOn(settings, 'builtInSystemOptions', 'get')
-        .mockReturnValue({
-          showAllFileTypes: true,
-          showAttachments: true,
-          showExistingOnly: false,
-        });
+        return {
+          ...actual,
+        };
+      });
 
       const sut = new ModeHandler(app, settings);
-      const inputInfo = sut.determineRunMode(headingsTrigger, null, null);
+      const inputInfo = new InputInfo(editorTrigger, Mode.HeadingsList);
+      const sugg: HeadingSuggestion = {
+        type: 'heading',
+        item: makeHeading('foo', 1),
+        file: null,
+        match: null,
+      };
+
+      const headingsGetSuggestionSpy = jest
+        .spyOn(HeadingsHandler.prototype, 'getSuggestions')
+        .mockReturnValue([sugg]);
+
       const results = sut.getSuggestions(inputInfo);
 
-      expect(sut.mode).toBe(Mode.HeadingsList);
-      expect(results).not.toBeNull();
-      expect(results).toBeInstanceOf(Array);
-      expect(results).toHaveLength(fileDataKeys.length);
+      expect(results).toHaveLength(1);
+      expect(results[0]).toBe(sugg);
+      expect(headingsGetSuggestionSpy).toHaveBeenCalledWith(inputInfo);
 
-      expect(getLastOpenFilesSpy).toHaveBeenCalled();
-      expect(getAbstractFileByPathSpy).toHaveBeenCalled();
-      expect(getFileCacheSpy).toHaveBeenCalled();
-      expect(builtInSystemOptionsSpy).toHaveBeenCalled();
-      expect(isExtensionRegisteredSpy).toHaveBeenCalled();
-
-      getLastOpenFilesSpy.mockRestore();
-      getAbstractFileByPathSpy.mockRestore();
-      getFileCacheSpy.mockRestore();
-      isExtensionRegisteredSpy.mockRestore();
-      builtInSystemOptionsSpy.mockRestore();
+      headingsGetSuggestionSpy.mockRestore();
     });
   });
 });

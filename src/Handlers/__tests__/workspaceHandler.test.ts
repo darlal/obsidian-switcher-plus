@@ -133,6 +133,10 @@ describe('workspaceHandler', () => {
   });
 
   describe('renderSuggestion', () => {
+    it('should not throw an error with a null suggestion', () => {
+      expect(() => sut.renderSuggestion(null, null)).not.toThrow();
+    });
+
     it('should render a suggestion with match offsets', () => {
       const mockRenderResults = renderResults as jest.MockedFunction<
         typeof renderResults
@@ -151,6 +155,10 @@ describe('workspaceHandler', () => {
   });
 
   describe('onChooseSuggestion', () => {
+    it('should not throw an error with a null suggestion', () => {
+      expect(() => sut.onChooseSuggestion(null)).not.toThrow();
+    });
+
     it('should tell the workspaces plugin to load the workspace with the chosen ID', () => {
       const loadWorkspaceSpy = jest.spyOn(workspacesPluginInstance, 'loadWorkspace');
 
