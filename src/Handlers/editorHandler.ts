@@ -14,9 +14,9 @@ export class EditorHandler {
   constructor(private app: App, private settings: SwitcherPlusSettings) {}
 
   validateCommand(inputInfo: InputInfo, index: number, filterText: string): void {
-    const { editorCmd } = inputInfo;
-
     inputInfo.mode = Mode.EditorList;
+
+    const editorCmd = inputInfo.parsedCommand(Mode.EditorList);
     editorCmd.index = index;
     editorCmd.parsedInput = filterText;
     editorCmd.isValidated = true;

@@ -57,7 +57,7 @@ describe('workspaceHandler', () => {
       sut.validateCommand(inputInfo, startIndex, filterText);
       expect(inputInfo.mode).toBe(Mode.WorkspaceList);
 
-      const { workspaceCmd } = inputInfo;
+      const workspaceCmd = inputInfo.parsedCommand();
       expect(workspaceCmd.parsedInput).toBe(filterText);
       expect(workspaceCmd.isValidated).toBe(true);
       expect(getPluginByIdSpy).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);
@@ -70,7 +70,7 @@ describe('workspaceHandler', () => {
       sut.validateCommand(inputInfo, startIndex, filterText);
       expect(inputInfo.mode).toBe(Mode.Standard);
 
-      const { workspaceCmd } = inputInfo;
+      const workspaceCmd = inputInfo.parsedCommand();
       expect(workspaceCmd.parsedInput).toBe(null);
       expect(workspaceCmd.isValidated).toBe(false);
       expect(getPluginByIdSpy).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);

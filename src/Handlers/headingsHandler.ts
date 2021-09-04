@@ -37,9 +37,9 @@ export class HeadingsHandler {
   constructor(private app: App, private settings: SwitcherPlusSettings) {}
 
   validateCommand(inputInfo: InputInfo, index: number, filterText: string): void {
-    const { headingsCmd } = inputInfo;
-
     inputInfo.mode = Mode.HeadingsList;
+
+    const headingsCmd = inputInfo.parsedCommand(Mode.HeadingsList);
     headingsCmd.index = index;
     headingsCmd.parsedInput = filterText;
     headingsCmd.isValidated = true;

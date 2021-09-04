@@ -18,10 +18,10 @@ export class WorkspaceHandler {
   constructor(private app: App, private settings: SwitcherPlusSettings) {}
 
   validateCommand(inputInfo: InputInfo, index: number, filterText: string): void {
-    const { workspaceCmd } = inputInfo;
-
     if (this.isWorkspacesPluginEnabled()) {
       inputInfo.mode = Mode.WorkspaceList;
+
+      const workspaceCmd = inputInfo.parsedCommand(Mode.WorkspaceList);
       workspaceCmd.index = index;
       workspaceCmd.parsedInput = filterText;
       workspaceCmd.isValidated = true;

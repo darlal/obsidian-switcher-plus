@@ -1,11 +1,3 @@
-// jest.mock('src/Handlers/editorHandler', () => {
-//   const actual = jest.requireActual<EditorHandler>('src/Handlers/editorHandler');
-
-//   return {
-//     ...actual,
-//   };
-// });
-
 import { SwitcherPlusSettings } from 'src/settings';
 import {
   Mode,
@@ -15,7 +7,7 @@ import {
   WorkspaceSuggestion,
   HeadingSuggestion,
 } from 'src/types';
-import { InputInfo, ModeHandler } from 'src/switcherPlus';
+import { InputInfo, ModeHandler, SymbolParsedCommand } from 'src/switcherPlus';
 import { EditorHandler, HeadingsHandler, WorkspaceHandler } from 'src/Handlers';
 import {
   TFile,
@@ -128,7 +120,7 @@ describe('determineRunMode', () => {
     const inputInfo = sut.determineRunMode(input, null, null);
 
     expect(inputInfo.mode).toBe(Mode.Standard);
-    expect(inputInfo.searchQuery.hasSearchTerm).toBe(false);
+    expect(inputInfo.searchQuery).toBeFalsy();
     expect(inputInfo.inputText).toBe('');
     expect(spy).toHaveBeenCalled();
 
@@ -163,14 +155,9 @@ describe('determineRunMode', () => {
             matches: [[0, 0]],
           },
         };
-        const inputInfo = mh.determineRunMode(input, es, new WorkspaceLeaf());
 
-        let parsed;
-        if (mode === Mode.EditorList) {
-          parsed = inputInfo.editorCmd.parsedInput;
-        } else if (mode === Mode.SymbolList) {
-          parsed = inputInfo.symbolCmd.parsedInput;
-        }
+        const inputInfo = mh.determineRunMode(input, es, new WorkspaceLeaf());
+        const parsed = inputInfo.parsedCommand().parsedInput;
 
         expect(cmdSpy).toHaveBeenCalled();
         expect(inputInfo.mode).toBe(mode);
@@ -221,7 +208,7 @@ describe('determineRunMode', () => {
         expect(inputInfo.mode).toBe(mode);
         expect(inputInfo.inputText).toBe(input);
 
-        const { editorCmd } = inputInfo;
+        const editorCmd = inputInfo.parsedCommand();
         expect(editorCmd.isValidated).toBe(isValidated);
         expect(editorCmd.parsedInput).toBe(parsedInput);
       },
@@ -238,7 +225,7 @@ describe('determineRunMode', () => {
         expect(inputInfo.mode).toBe(mode);
         expect(inputInfo.inputText).toBe(input);
 
-        const { symbolCmd } = inputInfo;
+        const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
         expect(symbolCmd.isValidated).toBe(isValidated);
         expect(symbolCmd.parsedInput).toBe(parsedInput);
 
@@ -267,7 +254,7 @@ describe('determineRunMode', () => {
         expect(inputInfo.mode).toBe(mode);
         expect(inputInfo.inputText).toBe(input);
 
-        const { symbolCmd } = inputInfo;
+        const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
         expect(symbolCmd.isValidated).toBe(isValidated);
         expect(symbolCmd.parsedInput).toBe(parsedInput);
 
@@ -297,7 +284,7 @@ describe('determineRunMode', () => {
         expect(inputInfo.mode).toBe(mode);
         expect(inputInfo.inputText).toBe(input);
 
-        const { symbolCmd } = inputInfo;
+        const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
         expect(symbolCmd.isValidated).toBe(isValidated);
         expect(symbolCmd.parsedInput).toBe(parsedInput);
 
@@ -319,7 +306,7 @@ describe('determineRunMode', () => {
         expect(inputInfo.mode).toBe(mode);
         expect(inputInfo.inputText).toBe(input);
 
-        const { workspaceCmd } = inputInfo;
+        const workspaceCmd = inputInfo.parsedCommand();
         expect(workspaceCmd.isValidated).toBe(isValidated);
         expect(workspaceCmd.parsedInput).toBe(parsedInput);
       },
@@ -335,7 +322,7 @@ describe('determineRunMode', () => {
         expect(inputInfo.mode).toBe(mode);
         expect(inputInfo.inputText).toBe(input);
 
-        const { headingsCmd } = inputInfo;
+        const headingsCmd = inputInfo.parsedCommand();
         expect(headingsCmd.isValidated).toBe(isValidated);
         expect(headingsCmd.parsedInput).toBe(parsedInput);
       },

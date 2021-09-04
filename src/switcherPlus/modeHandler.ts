@@ -1,5 +1,5 @@
 import { WorkspaceHandler, HeadingsHandler, EditorHandler } from 'src/Handlers';
-import { InputInfo } from './inputInfo';
+import { InputInfo, SymbolParsedCommand } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
   isSymbolSuggestion,
@@ -199,7 +199,7 @@ export class ModeHandler {
     activeSuggestion: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
   ): void {
-    const { mode, symbolCmd, inputText } = inputInfo;
+    const { mode, inputText } = inputInfo;
 
     // Standard, Headings, and EditorList mode can have an embedded symbol command
     if (
@@ -222,6 +222,11 @@ export class ModeHandler {
         const target = this.getSymbolTarget(activeSuggestion, activeLeaf, index === 0);
         if (target) {
           inputInfo.mode = Mode.SymbolList;
+
+          const symbolCmd = inputInfo.parsedCommand(
+            Mode.SymbolList,
+          ) as SymbolParsedCommand;
+
           symbolCmd.target = target;
           symbolCmd.index = index;
           symbolCmd.parsedInput = ft;
@@ -241,7 +246,7 @@ export class ModeHandler {
     let prevTarget: TargetInfo = null;
     let hasPrevSymbolTarget = false;
 
-    prevTarget = prevInputInfo.symbolCmd?.target;
+    prevTarget = (prevInputInfo.parsedCommand() as SymbolParsedCommand).target;
     hasPrevSymbolTarget = prevInputInfo.mode === Mode.SymbolList && !!prevTarget;
 
     const activeSuggInfo = ModeHandler.getActiveSuggestionInfo(activeSuggestion);
@@ -339,7 +344,8 @@ export class ModeHandler {
       } else {
         inputInfo.buildSearchQuery();
         const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
-        const items = this.getItems(inputInfo);
+        const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+        const items = this.getItems(symbolCmd.target, hasSearchTerm);
 
         items.forEach((item) => {
           let shouldPush = true;
@@ -364,12 +370,8 @@ export class ModeHandler {
     return suggestions;
   }
 
-  private getItems(inputInfo: InputInfo): SymbolInfo[] {
+  private getItems(target: TargetInfo, hasSearchTerm: boolean): SymbolInfo[] {
     let items: SymbolInfo[] = [];
-    const {
-      searchQuery: { hasSearchTerm },
-      symbolCmd: { target },
-    } = inputInfo;
 
     let symbolsInLineOrder = false;
     let selectNearestHeading = false;
@@ -529,7 +531,8 @@ export class ModeHandler {
 
   private findOpenEditorMatchingSymbolTarget(): TargetInfo {
     const { referenceViews, excludeViewTypes, includeSidePanelViewTypes } = this.settings;
-    const { file, leaf } = this.inputInfo.symbolCmd.target;
+    const symbolCmd = this.inputInfo.parsedCommand() as SymbolParsedCommand;
+    const { file, leaf } = symbolCmd.target;
     const isTargetLeaf = !!leaf;
 
     const predicate = (l: WorkspaceLeaf) => {

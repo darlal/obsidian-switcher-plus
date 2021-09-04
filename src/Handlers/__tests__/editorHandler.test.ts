@@ -62,7 +62,7 @@ describe('editorHandler', () => {
       sut.validateCommand(inputInfo, startIndex, filterText);
       expect(inputInfo.mode).toBe(Mode.EditorList);
 
-      const { editorCmd } = inputInfo;
+      const editorCmd = inputInfo.parsedCommand();
       expect(editorCmd.parsedInput).toBe(filterText);
       expect(editorCmd.isValidated).toBe(true);
     });

@@ -53,7 +53,7 @@ describe('headingsHandler', () => {
       sut.validateCommand(inputInfo, startIndex, filterText);
       expect(inputInfo.mode).toBe(Mode.HeadingsList);
 
-      const { headingsCmd } = inputInfo;
+      const headingsCmd = inputInfo.parsedCommand();
       expect(headingsCmd.parsedInput).toBe(filterText);
       expect(headingsCmd.isValidated).toBe(true);
     });

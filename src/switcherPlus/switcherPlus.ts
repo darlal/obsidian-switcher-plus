@@ -90,13 +90,14 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
         activeSugg,
         this.app.workspace.activeLeaf,
       );
+
       const { mode } = inputInfo;
       exKeymap.updateKeymapForMode(mode);
 
       if (mode === Mode.Standard) {
         super.updateSuggestions();
       } else {
-        if (mode === Mode.HeadingsList && inputInfo.headingsCmd.parsedInput?.length) {
+        if (mode === Mode.HeadingsList && inputInfo.parsedCommand().parsedInput?.length) {
           this.debouncedUpdateSuggestionsEx(inputInfo);
         } else {
           this.updateSuggestionsEx(inputInfo);

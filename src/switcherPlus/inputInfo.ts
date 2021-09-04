@@ -12,11 +12,8 @@ export interface SymbolParsedCommand extends ParsedCommand {
 }
 
 export class InputInfo {
-  editorCmd: ParsedCommand;
-  workspaceCmd: ParsedCommand;
-  symbolCmd: SymbolParsedCommand;
-  headingsCmd: ParsedCommand;
-  searchQuery: SearchQuery;
+  private parsedCommands: Record<Mode, ParsedCommand>;
+  private _searchQuery: SearchQuery;
 
   private static get defaultParsedCommand(): ParsedCommand {
     return {
@@ -26,31 +23,36 @@ export class InputInfo {
     };
   }
 
+  get searchQuery(): SearchQuery {
+    return this._searchQuery;
+  }
+
   constructor(public inputText = '', public mode = Mode.Standard) {
-    this.symbolCmd = { ...InputInfo.defaultParsedCommand, target: null };
-    this.editorCmd = InputInfo.defaultParsedCommand;
-    this.workspaceCmd = InputInfo.defaultParsedCommand;
-    this.headingsCmd = InputInfo.defaultParsedCommand;
-    this.searchQuery = { hasSearchTerm: false, prepQuery: null };
+    const sc: SymbolParsedCommand = {
+      ...InputInfo.defaultParsedCommand,
+      target: null,
+    };
+
+    const pcs = {} as Record<Mode, ParsedCommand>;
+    pcs[Mode.SymbolList] = sc;
+    pcs[Mode.Standard] = InputInfo.defaultParsedCommand;
+    pcs[Mode.EditorList] = InputInfo.defaultParsedCommand;
+    pcs[Mode.WorkspaceList] = InputInfo.defaultParsedCommand;
+    pcs[Mode.HeadingsList] = InputInfo.defaultParsedCommand;
+    this.parsedCommands = pcs;
   }
 
   buildSearchQuery(): void {
     const { mode } = this;
-    let input: string;
-
-    if (mode === Mode.SymbolList) {
-      input = this.symbolCmd.parsedInput;
-    } else if (mode === Mode.EditorList) {
-      input = this.editorCmd.parsedInput;
-    } else if (mode === Mode.WorkspaceList) {
-      input = this.workspaceCmd.parsedInput;
-    } else if (mode === Mode.HeadingsList) {
-      input = this.headingsCmd.parsedInput;
-    }
-
-    const prepQuery = prepareQuery((input ?? '').trim().toLowerCase());
+    const input = this.parsedCommands[mode].parsedInput ?? '';
+    const prepQuery = prepareQuery(input.trim().toLowerCase());
     const hasSearchTerm = prepQuery?.query?.length > 0;
 
-    this.searchQuery = { prepQuery, hasSearchTerm };
+    this._searchQuery = { prepQuery, hasSearchTerm };
+  }
+
+  parsedCommand(mode?: Mode): ParsedCommand {
+    mode = mode ?? this.mode;
+    return this.parsedCommands[mode];
   }
 }
