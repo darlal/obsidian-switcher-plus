@@ -1,71 +1,37 @@
-import { WorkspaceHandler, HeadingsHandler, EditorHandler } from 'src/Handlers';
-import { InputInfo, SymbolParsedCommand } from './inputInfo';
-import { SwitcherPlusSettings } from 'src/settings';
+import {
+  WorkspaceHandler,
+  HeadingsHandler,
+  EditorHandler,
+  SymbolHandler,
+} from 'src/Handlers';
 import {
   isSymbolSuggestion,
   isEditorSuggestion,
-  isHeadingCache,
-  isUnresolvedSuggestion,
   escapeRegExp,
-  isSymbolInfo,
-  isTagCache,
   isWorkspaceSuggestion,
   isHeadingSuggestion,
-  activateLeaf,
-  getOpenLeaves,
 } from 'src/utils';
-import {
-  View,
-  ReferenceCache,
-  TFile,
-  WorkspaceLeaf,
-  Workspace,
-  renderResults,
-  fuzzySearch,
-  sortSearchResults,
-  SearchResult,
-  MetadataCache,
-  App,
-  Platform,
-  MarkdownView,
-  EditorPosition,
-} from 'obsidian';
-import {
-  Mode,
-  SymbolType,
-  SymbolIndicators,
-  HeadingIndicators,
-  AnySuggestion,
-  SymbolSuggestion,
-  SymbolInfo,
-  AnySymbolInfoPayload,
-  AnyExSuggestionPayload,
-  AnyExSuggestion,
-  TargetInfo,
-} from 'src/types';
-
-function fileFromView(view: View): TFile {
-  return view?.file;
-}
+import { InputInfo } from './inputInfo';
+import { SwitcherPlusSettings } from 'src/settings';
+import { WorkspaceLeaf, App } from 'obsidian';
+import { Mode, AnySuggestion, AnyExSuggestion } from 'src/types';
 
 export class ModeHandler {
   public get mode(): Mode {
     return this.inputInfo.mode;
   }
 
-  private workspace: Workspace;
-  private metadataCache: MetadataCache;
   private inputInfo: InputInfo;
   private wsHandler: WorkspaceHandler;
   private hsHandler: HeadingsHandler;
   private editorHandler: EditorHandler;
+  private symbolHandler: SymbolHandler;
 
   constructor(app: App, private settings: SwitcherPlusSettings) {
-    this.workspace = app?.workspace;
-    this.metadataCache = app?.metadataCache;
     this.wsHandler = new WorkspaceHandler(app, settings);
     this.hsHandler = new HeadingsHandler(app, settings);
     this.editorHandler = new EditorHandler(app, settings);
+    this.symbolHandler = new SymbolHandler(app, settings);
     this.reset();
   }
 
@@ -100,6 +66,39 @@ export class ModeHandler {
     return val;
   }
 
+  getSuggestions(inputInfo: InputInfo): AnySuggestion[] {
+    let suggestions: AnySuggestion[] = [];
+
+    if (inputInfo) {
+      this.inputInfo = inputInfo;
+      const { mode } = inputInfo;
+
+      if (mode === Mode.WorkspaceList) {
+        suggestions = this.wsHandler.getSuggestions(inputInfo);
+      } else if (mode === Mode.HeadingsList) {
+        suggestions = this.hsHandler.getSuggestions(inputInfo);
+      } else if (mode === Mode.EditorList) {
+        suggestions = this.editorHandler.getSuggestions(inputInfo);
+      } else if (mode === Mode.SymbolList) {
+        suggestions = this.symbolHandler.getSuggestions(inputInfo);
+      }
+    }
+
+    return suggestions;
+  }
+
+  renderSuggestion(sugg: AnyExSuggestion, parentEl: HTMLElement): void {
+    if (isSymbolSuggestion(sugg)) {
+      this.symbolHandler.renderSuggestion(sugg, parentEl);
+    } else if (isWorkspaceSuggestion(sugg)) {
+      this.wsHandler.renderSuggestion(sugg, parentEl);
+    } else if (isHeadingSuggestion(sugg)) {
+      this.hsHandler.renderSuggestion(sugg, parentEl);
+    } else {
+      this.editorHandler.renderSuggestion(sugg, parentEl);
+    }
+  }
+
   onChooseSuggestion(sugg: AnyExSuggestion, evt: MouseEvent | KeyboardEvent): void {
     if (isEditorSuggestion(sugg)) {
       this.editorHandler.onChooseSuggestion(sugg);
@@ -108,34 +107,7 @@ export class ModeHandler {
     } else if (isHeadingSuggestion(sugg)) {
       this.hsHandler.onChooseSuggestion(sugg, evt);
     } else {
-      this.navigateToSymbol(sugg);
-    }
-  }
-
-  renderSuggestion(sugg: AnyExSuggestion, parentEl: HTMLElement): void {
-    let containerEl = parentEl;
-
-    if (isSymbolSuggestion(sugg)) {
-      const { item } = sugg;
-
-      if (this.settings.symbolsInLineOrder && !this.inputInfo.searchQuery.hasSearchTerm) {
-        parentEl.addClass(`qsp-symbol-l${item.indentLevel}`);
-      }
-
-      ModeHandler.addSymbolIndicator(item, containerEl);
-      containerEl = createSpan({
-        cls: 'qsp-symbol-text',
-        parent: containerEl,
-      });
-
-      const text = ModeHandler.getSuggestionTextForSymbol(item);
-      renderResults(containerEl, text, sugg.match);
-    } else if (isWorkspaceSuggestion(sugg)) {
-      this.wsHandler.renderSuggestion(sugg, parentEl);
-    } else if (isHeadingSuggestion(sugg)) {
-      this.hsHandler.renderSuggestion(sugg, parentEl);
-    } else if (isEditorSuggestion(sugg)) {
-      this.editorHandler.renderSuggestion(sugg, containerEl);
+      this.symbolHandler.onChooseSuggestion(sugg, evt);
     }
   }
 
@@ -219,359 +191,14 @@ export class ModeHandler {
           groups: { ft },
         } = match;
 
-        const target = this.getSymbolTarget(activeSuggestion, activeLeaf, index === 0);
-        if (target) {
-          inputInfo.mode = Mode.SymbolList;
-
-          const symbolCmd = inputInfo.parsedCommand(
-            Mode.SymbolList,
-          ) as SymbolParsedCommand;
-
-          symbolCmd.target = target;
-          symbolCmd.index = index;
-          symbolCmd.parsedInput = ft;
-          symbolCmd.isValidated = true;
-        }
+        this.symbolHandler.validateCommand(
+          inputInfo,
+          index,
+          ft,
+          activeSuggestion,
+          activeLeaf,
+        );
       }
     }
-  }
-
-  private getSymbolTarget(
-    activeSuggestion: AnySuggestion,
-    activeLeaf: WorkspaceLeaf,
-    isSymbolCmdPrefix: boolean,
-  ): TargetInfo {
-    // figure out if the previous operation was a symbol operation
-    const prevInputInfo = this.inputInfo;
-    let prevTarget: TargetInfo = null;
-    let hasPrevSymbolTarget = false;
-
-    prevTarget = (prevInputInfo.parsedCommand() as SymbolParsedCommand).target;
-    hasPrevSymbolTarget = prevInputInfo.mode === Mode.SymbolList && !!prevTarget;
-
-    const activeSuggInfo = ModeHandler.getActiveSuggestionInfo(activeSuggestion);
-    const activeEditorInfo = this.getActiveEditorInfo(activeLeaf);
-
-    // Pick the target for a potential symbol operation, prioritizing
-    // any pre-existing symbol operation that was in progress
-    let target: TargetInfo = null;
-    if (hasPrevSymbolTarget) {
-      target = prevTarget;
-    } else if (activeSuggInfo.isValidSymbolTarget) {
-      target = activeSuggInfo;
-    } else if (activeEditorInfo.isValidSymbolTarget && isSymbolCmdPrefix) {
-      target = activeEditorInfo;
-    }
-
-    return target;
-  }
-
-  private getActiveEditorInfo(activeLeaf: WorkspaceLeaf): TargetInfo {
-    const { excludeViewTypes } = this.settings;
-    let file: TFile = null;
-    let isValidSymbolTarget = false;
-    let cursor: EditorPosition = null;
-
-    if (activeLeaf) {
-      const { view } = activeLeaf;
-      let isCurrentEditorValid = false;
-
-      if (view) {
-        const viewType = view.getViewType();
-        file = fileFromView(view);
-
-        // determine if the current active editor pane is valid
-        isCurrentEditorValid = !excludeViewTypes.includes(viewType);
-
-        if (viewType === 'markdown') {
-          const md = view as MarkdownView;
-
-          if (md.getMode() !== 'preview') {
-            const { editor } = view as MarkdownView;
-            cursor = editor.getCursor('head');
-          }
-        }
-      }
-
-      // whether or not the current active editor can be used as the target for
-      // symbol search
-      isValidSymbolTarget = isCurrentEditorValid && !!file;
-    }
-
-    return { isValidSymbolTarget, leaf: activeLeaf, file, suggestion: null, cursor };
-  }
-
-  private static getActiveSuggestionInfo(activeSuggestion: AnySuggestion): TargetInfo {
-    let file: TFile = null,
-      leaf: WorkspaceLeaf = null,
-      isValidSymbolTarget = false;
-
-    if (
-      activeSuggestion &&
-      !isSymbolSuggestion(activeSuggestion) &&
-      !isUnresolvedSuggestion(activeSuggestion) &&
-      !isWorkspaceSuggestion(activeSuggestion)
-    ) {
-      // Can't use a symbol, workspace, unresolved (non-existent file) suggestions as
-      // the target for another symbol command
-      isValidSymbolTarget = true;
-
-      if (isEditorSuggestion(activeSuggestion)) {
-        leaf = activeSuggestion.item;
-        file = fileFromView(leaf.view);
-      } else {
-        // this catches system File suggestion, Heading, and Alias suggestion
-        file = activeSuggestion.file;
-      }
-    }
-
-    return { isValidSymbolTarget, leaf, file, suggestion: activeSuggestion };
-  }
-
-  getSuggestions(inputInfo: InputInfo): AnySuggestion[] {
-    let suggestions: AnySuggestion[] = [];
-
-    if (inputInfo) {
-      this.inputInfo = inputInfo;
-      const { mode } = inputInfo;
-
-      if (mode === Mode.WorkspaceList) {
-        suggestions = this.wsHandler.getSuggestions(inputInfo);
-      } else if (mode === Mode.HeadingsList) {
-        suggestions = this.hsHandler.getSuggestions(inputInfo);
-      } else if (mode === Mode.EditorList) {
-        suggestions = this.editorHandler.getSuggestions(inputInfo);
-      } else {
-        inputInfo.buildSearchQuery();
-        const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
-        const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
-        const items = this.getItems(symbolCmd.target, hasSearchTerm);
-
-        items.forEach((item) => {
-          let shouldPush = true;
-          let match: SearchResult = null;
-
-          if (hasSearchTerm) {
-            match = fuzzySearch(prepQuery, ModeHandler.getSuggestionTextForSymbol(item));
-            shouldPush = !!match;
-          }
-
-          if (shouldPush) {
-            suggestions.push({ type: 'symbol', item, match });
-          }
-        });
-
-        if (hasSearchTerm) {
-          sortSearchResults(suggestions);
-        }
-      }
-    }
-
-    return suggestions;
-  }
-
-  private getItems(target: TargetInfo, hasSearchTerm: boolean): SymbolInfo[] {
-    let items: SymbolInfo[] = [];
-
-    let symbolsInLineOrder = false;
-    let selectNearestHeading = false;
-
-    if (!hasSearchTerm) {
-      ({ selectNearestHeading, symbolsInLineOrder } = this.settings);
-    }
-
-    items = this.getSymbolsForTarget(target, symbolsInLineOrder);
-
-    if (selectNearestHeading) {
-      ModeHandler.FindNearestHeadingSymbol(items, target);
-    }
-
-    return items;
-  }
-
-  private static FindNearestHeadingSymbol(
-    items: AnyExSuggestionPayload[],
-    targetInfo: TargetInfo,
-  ): void {
-    const cursorLine = targetInfo?.cursor?.line;
-
-    // find the nearest heading to the current cursor pos, if applicable
-    if (cursorLine) {
-      const found = items
-        .filter((v): v is SymbolInfo => isSymbolInfo(v) && isHeadingCache(v.symbol))
-        .reduce((acc, curr) => {
-          const { line: currLine } = curr.symbol.position.start;
-          const accLine = acc ? acc.symbol.position.start.line : -1;
-
-          return currLine > accLine && currLine <= cursorLine ? curr : acc;
-        });
-
-      if (found) {
-        found.isSelected = true;
-      }
-    }
-  }
-
-  private getSymbolsForTarget(
-    targetInfo: TargetInfo,
-    orderByLineNumber: boolean,
-  ): SymbolInfo[] {
-    const { metadataCache, settings } = this;
-    const ret: SymbolInfo[] = [];
-
-    if (targetInfo?.file) {
-      const file = targetInfo.file;
-      const symbolData = metadataCache.getFileCache(file);
-
-      if (symbolData) {
-        const push = (symbols: AnySymbolInfoPayload[] = [], symbolType: SymbolType) => {
-          if (settings.isSymbolTypeEnabled(symbolType)) {
-            symbols.forEach((symbol) =>
-              ret.push({ type: 'symbolInfo', symbol, symbolType }),
-            );
-          }
-        };
-
-        push(symbolData.headings, SymbolType.Heading);
-        push(symbolData.tags, SymbolType.Tag);
-        push(symbolData.links, SymbolType.Link);
-        push(symbolData.embeds, SymbolType.Embed);
-      }
-    }
-
-    return orderByLineNumber ? ModeHandler.orderSymbolsByLineNumber(ret) : ret;
-  }
-
-  private static orderSymbolsByLineNumber(symbols: SymbolInfo[] = []): SymbolInfo[] {
-    const sorted = symbols.sort((a: SymbolInfo, b: SymbolInfo) => {
-      const { start: aStart } = a.symbol.position;
-      const { start: bStart } = b.symbol.position;
-      const lineDiff = aStart.line - bStart.line;
-      return lineDiff === 0 ? aStart.col - bStart.col : lineDiff;
-    });
-
-    let currIndentLevel = 0;
-
-    sorted.forEach((si) => {
-      let indentLevel = 0;
-      if (isHeadingCache(si.symbol)) {
-        currIndentLevel = si.symbol.level;
-        indentLevel = si.symbol.level - 1;
-      } else {
-        indentLevel = currIndentLevel;
-      }
-
-      si.indentLevel = indentLevel;
-    });
-
-    return sorted;
-  }
-
-  private static getSuggestionTextForSymbol(symbolInfo: SymbolInfo): string {
-    const { symbol } = symbolInfo;
-    let text;
-
-    if (isHeadingCache(symbol)) {
-      text = symbol.heading;
-    } else if (isTagCache(symbol)) {
-      text = symbol.tag.slice(1);
-    } else {
-      const refCache = symbol as ReferenceCache;
-      ({ link: text } = refCache);
-      const { displayText } = refCache;
-
-      if (displayText && displayText !== text) {
-        text += `|${displayText}`;
-      }
-    }
-
-    return text;
-  }
-
-  private navigateToSymbol(sugg: SymbolSuggestion): void {
-    const {
-      workspace,
-      settings: { alwaysNewPaneForSymbols, useActivePaneForSymbolsOnMobile },
-    } = this;
-
-    // determine if the target is already open in a pane
-    const {
-      leaf,
-      file: { path },
-    } = this.findOpenEditorMatchingSymbolTarget();
-
-    const {
-      start: { line, col },
-      end: endLoc,
-    } = sugg.item.symbol.position;
-
-    // object containing the state information for the target editor,
-    // start with the range to highlight in target editor
-    const eState = {
-      startLoc: { line, col },
-      endLoc,
-      line,
-      cursor: {
-        from: { line, ch: col },
-        to: { line, ch: col },
-      },
-    };
-
-    if (leaf && !alwaysNewPaneForSymbols) {
-      activateLeaf(workspace, leaf, true, eState);
-    } else {
-      const { isDesktop, isMobile } = Platform;
-      const createNewLeaf = isDesktop || (isMobile && !useActivePaneForSymbolsOnMobile);
-
-      workspace
-        .openLinkText(path, '', createNewLeaf, { eState })
-        .catch(() => console.log('Switcher++: unable to navigate to symbol'));
-    }
-  }
-
-  private findOpenEditorMatchingSymbolTarget(): TargetInfo {
-    const { referenceViews, excludeViewTypes, includeSidePanelViewTypes } = this.settings;
-    const symbolCmd = this.inputInfo.parsedCommand() as SymbolParsedCommand;
-    const { file, leaf } = symbolCmd.target;
-    const isTargetLeaf = !!leaf;
-
-    const predicate = (l: WorkspaceLeaf) => {
-      let val = false;
-      const isRefView = referenceViews.includes(l.view.getViewType());
-      const isTargetRefView =
-        isTargetLeaf && referenceViews.includes(leaf.view.getViewType());
-
-      if (!isRefView) {
-        val =
-          isTargetLeaf && !isTargetRefView ? l === leaf : fileFromView(l.view) === file;
-      }
-
-      return val;
-    };
-
-    const l = getOpenLeaves(
-      this.workspace,
-      excludeViewTypes,
-      includeSidePanelViewTypes,
-    ).find(predicate);
-
-    return { leaf: l, file, suggestion: null, isValidSymbolTarget: false };
-  }
-
-  private static addSymbolIndicator(symbolInfo: SymbolInfo, parentEl: HTMLElement): void {
-    const { symbolType, symbol } = symbolInfo;
-    let indicator: string;
-
-    if (isHeadingCache(symbol)) {
-      indicator = HeadingIndicators[symbol.level];
-    } else {
-      indicator = SymbolIndicators[symbolType];
-    }
-
-    createDiv({
-      text: indicator,
-      cls: 'qsp-symbol-indicator',
-      parent: parentEl,
-    });
   }
 }

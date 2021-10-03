@@ -4,6 +4,11 @@ import { InstalledPlugin, WorkspacesPluginInstance } from 'obsidian';
 
 const chance = new Chance();
 
+export const Platform = {
+  isDesktop: true,
+  isMobile: false,
+};
+
 export const TFile = jest.fn().mockImplementation(() => {
   const basename = chance.word();
   const extension = 'md';
@@ -61,6 +66,7 @@ export const Workspace = jest.fn().mockImplementation(() => {
     getLeaf: jest.fn(),
     revealLeaf: jest.fn(),
     setActiveLeaf: jest.fn(),
+    openLinkText: jest.fn(),
   };
 });
 

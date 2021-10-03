@@ -100,7 +100,7 @@ export function getTags(): TagCache[] {
   ];
 }
 
-function getHeadings(): HeadingCache[] {
+export function getHeadings(): HeadingCache[] {
   return [
     makeHeading('Title heading1', 1, makeLoc(8, 0, 65), makeLoc(8, 16, 81)),
     makeHeading('another heading1', 1, makeLoc(9, 0, 83), makeLoc(9, 16, 89)),
