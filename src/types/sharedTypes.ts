@@ -12,6 +12,7 @@ import {
   WorkspaceLeaf,
 } from 'obsidian';
 import type { SuggestModal } from 'obsidian';
+import type { InputInfo } from 'src/switcherPlus/inputInfo';
 
 export enum Mode {
   Standard = 1,
@@ -151,4 +152,20 @@ export interface SettingsData {
 export interface SearchQuery {
   hasSearchTerm: boolean;
   prepQuery: PreparedQuery;
+}
+
+export interface Handler<T> {
+  get commandString(): string;
+
+  validateCommand(
+    inputInfo: InputInfo,
+    index: number,
+    filterText: string,
+    activeSuggestion: AnySuggestion,
+    activeLeaf: WorkspaceLeaf,
+  ): void;
+
+  getSuggestions(inputInfo: InputInfo): T[];
+  renderSuggestion(sugg: T, parentEl: HTMLElement): void;
+  onChooseSuggestion(sugg: T, evt: MouseEvent | KeyboardEvent): void;
 }

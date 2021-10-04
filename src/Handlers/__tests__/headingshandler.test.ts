@@ -38,9 +38,16 @@ describe('headingsHandler', () => {
   let sut: HeadingsHandler;
 
   beforeAll(() => {
-    settings = new SwitcherPlusSettings(null);
     app = new App();
+    settings = new SwitcherPlusSettings(null);
+    jest.spyOn(settings, 'headingsListCommand', 'get').mockReturnValue(headingsTrigger);
     sut = new HeadingsHandler(app, settings);
+  });
+
+  describe('commandString', () => {
+    it('should return headingsListCommand trigger', () => {
+      expect(sut.commandString).toBe(headingsTrigger);
+    });
   });
 
   describe('validateCommand', () => {
@@ -50,7 +57,7 @@ describe('headingsHandler', () => {
       const startIndex = headingsTrigger.length;
       const inputInfo = new InputInfo(inputText);
 
-      sut.validateCommand(inputInfo, startIndex, filterText);
+      sut.validateCommand(inputInfo, startIndex, filterText, null, null);
       expect(inputInfo.mode).toBe(Mode.HeadingsList);
 
       const headingsCmd = inputInfo.parsedCommand();
@@ -161,7 +168,7 @@ describe('headingsHandler', () => {
       });
 
       const inputInfo = new InputInfo(`${headingsTrigger}${filterText}`);
-      sut.validateCommand(inputInfo, 0, filterText);
+      sut.validateCommand(inputInfo, 0, filterText, null, null);
 
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(2);
@@ -214,7 +221,7 @@ describe('headingsHandler', () => {
       });
 
       const inputInfo = new InputInfo(`${headingsTrigger}${filterText}`);
-      sut.validateCommand(inputInfo, 0, filterText);
+      sut.validateCommand(inputInfo, 0, filterText, null, null);
 
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(1);
@@ -261,7 +268,7 @@ describe('headingsHandler', () => {
       });
 
       const inputInfo = new InputInfo(`${headingsTrigger}${filterText}`);
-      sut.validateCommand(inputInfo, 0, filterText);
+      sut.validateCommand(inputInfo, 0, filterText, null, null);
 
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(1);
@@ -300,7 +307,7 @@ describe('headingsHandler', () => {
       });
 
       const inputInfo = new InputInfo(`${headingsTrigger}${filterText}`);
-      sut.validateCommand(inputInfo, 0, filterText);
+      sut.validateCommand(inputInfo, 0, filterText, null, null);
 
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(1);
@@ -348,7 +355,7 @@ describe('headingsHandler', () => {
       });
 
       const inputInfo = new InputInfo(`${headingsTrigger}${filterText}`);
-      sut.validateCommand(inputInfo, 0, filterText);
+      sut.validateCommand(inputInfo, 0, filterText, null, null);
 
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(1);
@@ -390,7 +397,7 @@ describe('headingsHandler', () => {
       });
 
       const inputInfo = new InputInfo(`${headingsTrigger}${filterText}`);
-      sut.validateCommand(inputInfo, 0, filterText);
+      sut.validateCommand(inputInfo, 0, filterText, null, null);
 
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(1);
@@ -427,7 +434,7 @@ describe('headingsHandler', () => {
         .mockReturnValue(true);
 
       const inputInfo = new InputInfo(`${headingsTrigger}${filterText}`);
-      sut.validateCommand(inputInfo, 0, filterText);
+      sut.validateCommand(inputInfo, 0, filterText, null, null);
 
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(0);

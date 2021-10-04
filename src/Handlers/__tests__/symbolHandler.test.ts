@@ -63,6 +63,12 @@ describe('symbolHandler', () => {
     sut = new SymbolHandler(app, settings);
   });
 
+  describe('commandString', () => {
+    it('should return symbolListCommand trigger', () => {
+      expect(sut.commandString).toBe(symbolTrigger);
+    });
+  });
+
   describe('validateCommand', () => {
     filterText = 'foo';
 

@@ -25,6 +25,7 @@ describe('workspaceHandler', () => {
     app = new App();
     const { internalPlugins } = app;
     settings = new SwitcherPlusSettings(null);
+    jest.spyOn(settings, 'workspaceListCommand', 'get').mockReturnValue(workspaceTrigger);
 
     getPluginByIdSpy = jest.spyOn(internalPlugins, 'getPluginById');
     workspacesPluginInstance = internalPlugins.plugins[WORKSPACE_PLUGIN_ID]
@@ -38,6 +39,12 @@ describe('workspaceHandler', () => {
     };
 
     sut = new WorkspaceHandler(app, settings);
+  });
+
+  describe('commandString', () => {
+    it('should return workspaceListCommand trigger', () => {
+      expect(sut.commandString).toBe(workspaceTrigger);
+    });
   });
 
   describe('validateCommand', () => {
@@ -54,7 +61,7 @@ describe('workspaceHandler', () => {
       getPluginByIdSpy.mockReturnValueOnce({ enabled: true });
       const inputInfo = new InputInfo(inputText);
 
-      sut.validateCommand(inputInfo, startIndex, filterText);
+      sut.validateCommand(inputInfo, startIndex, filterText, null, null);
       expect(inputInfo.mode).toBe(Mode.WorkspaceList);
 
       const workspaceCmd = inputInfo.parsedCommand();
@@ -67,7 +74,7 @@ describe('workspaceHandler', () => {
       getPluginByIdSpy.mockReturnValueOnce({ enabled: false });
       const inputInfo = new InputInfo(inputText);
 
-      sut.validateCommand(inputInfo, startIndex, filterText);
+      sut.validateCommand(inputInfo, startIndex, filterText, null, null);
       expect(inputInfo.mode).toBe(Mode.Standard);
 
       const workspaceCmd = inputInfo.parsedCommand();
@@ -156,13 +163,13 @@ describe('workspaceHandler', () => {
 
   describe('onChooseSuggestion', () => {
     it('should not throw an error with a null suggestion', () => {
-      expect(() => sut.onChooseSuggestion(null)).not.toThrow();
+      expect(() => sut.onChooseSuggestion(null, null)).not.toThrow();
     });
 
     it('should tell the workspaces plugin to load the workspace with the chosen ID', () => {
       const loadWorkspaceSpy = jest.spyOn(workspacesPluginInstance, 'loadWorkspace');
 
-      sut.onChooseSuggestion(suggestionInstance);
+      sut.onChooseSuggestion(suggestionInstance, null);
 
       expect(getPluginByIdSpy).toHaveBeenCalled();
       expect(loadWorkspaceSpy).toHaveBeenCalledWith(suggestionInstance.item.id);

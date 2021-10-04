@@ -36,60 +36,76 @@ describe('modeHandler', () => {
   let app: App;
   let settings: SwitcherPlusSettings;
   let sut: ModeHandler;
-  let editorCmdSpy: jest.SpyInstance;
-  let symbolCmdSpy: jest.SpyInstance;
-  let workspaceCmdSpy: jest.SpyInstance;
-  let headingsCmdSpy: jest.SpyInstance;
 
   beforeAll(() => {
     app = new App();
     settings = new SwitcherPlusSettings(null);
 
-    editorCmdSpy = jest
-      .spyOn(settings, 'editorListCommand', 'get')
-      .mockReturnValue(editorTrigger);
-    symbolCmdSpy = jest
-      .spyOn(settings, 'symbolListCommand', 'get')
-      .mockReturnValue(symbolTrigger);
-    workspaceCmdSpy = jest
-      .spyOn(settings, 'workspaceListCommand', 'get')
-      .mockReturnValue(workspaceTrigger);
-    headingsCmdSpy = jest
-      .spyOn(settings, 'headingsListCommand', 'get')
-      .mockReturnValue(headingsTrigger);
+    jest.spyOn(settings, 'editorListCommand', 'get').mockReturnValue(editorTrigger);
+    jest.spyOn(settings, 'symbolListCommand', 'get').mockReturnValue(symbolTrigger);
+    jest.spyOn(settings, 'workspaceListCommand', 'get').mockReturnValue(workspaceTrigger);
+    jest.spyOn(settings, 'headingsListCommand', 'get').mockReturnValue(headingsTrigger);
   });
 
   describe('getCommandStringForMode', () => {
+    jest.doMock('src/Handlers/symbolHandler');
+    jest.doMock('src/Handlers/editorHandler');
+    jest.doMock('src/Handlers/workspaceHandler');
+    jest.doMock('src/Handlers/headingsHandler');
+    let commandStringSpy: jest.SpyInstance;
+
     beforeAll(() => {
       sut = new ModeHandler(app, settings);
     });
 
+    it('should return empty string for Standard mode', () => {
+      const value = sut.getCommandStringForMode(Mode.Standard);
+
+      expect(value).toBe('');
+    });
+
     it('should return editorListCommand trigger', () => {
+      commandStringSpy = jest
+        .spyOn(EditorHandler.prototype, 'commandString', 'get')
+        .mockReturnValue(editorTrigger);
+
       const value = sut.getCommandStringForMode(Mode.EditorList);
 
       expect(value).toBe(editorTrigger);
-      expect(editorCmdSpy).toHaveBeenCalled();
+      expect(commandStringSpy).toHaveBeenCalled();
     });
 
     it('should return symbolListCommand trigger', () => {
+      commandStringSpy = jest
+        .spyOn(EditorHandler.prototype, 'commandString', 'get')
+        .mockReturnValue(symbolTrigger);
+
       const value = sut.getCommandStringForMode(Mode.SymbolList);
 
       expect(value).toBe(symbolTrigger);
-      expect(symbolCmdSpy).toHaveBeenCalled();
+      expect(commandStringSpy).toHaveBeenCalled();
     });
 
     it('should return workspaceListCommand trigger', () => {
+      commandStringSpy = jest
+        .spyOn(EditorHandler.prototype, 'commandString', 'get')
+        .mockReturnValue(workspaceTrigger);
+
       const value = sut.getCommandStringForMode(Mode.WorkspaceList);
 
       expect(value).toBe(workspaceTrigger);
-      expect(workspaceCmdSpy).toHaveBeenCalled();
+      expect(commandStringSpy).toHaveBeenCalled();
     });
 
     it('should return headingsListCommand trigger', () => {
+      commandStringSpy = jest
+        .spyOn(EditorHandler.prototype, 'commandString', 'get')
+        .mockReturnValue(headingsTrigger);
+
       const value = sut.getCommandStringForMode(Mode.HeadingsList);
 
       expect(value).toBe(headingsTrigger);
-      expect(headingsCmdSpy).toHaveBeenCalled();
+      expect(commandStringSpy).toHaveBeenCalled();
     });
   });
 
@@ -364,7 +380,14 @@ describe('modeHandler', () => {
         const results = sut.getSuggestions(null);
 
         expect(sut.mode).toBe(Mode.Standard);
-        expect(results).not.toBeNull();
+        expect(results).toBeInstanceOf(Array);
+        expect(results).toHaveLength(0);
+      });
+
+      test('for standard mode, it should return an empty array', () => {
+        const results = sut.getSuggestions(new InputInfo());
+
+        expect(sut.mode).toBe(Mode.Standard);
         expect(results).toBeInstanceOf(Array);
         expect(results).toHaveLength(0);
       });
@@ -494,7 +517,7 @@ describe('modeHandler', () => {
 
         sut.onChooseSuggestion(editorSugg, evt);
 
-        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(editorSugg);
+        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(editorSugg, evt);
 
         onChooseSuggestionSpy.mockRestore();
       });
@@ -530,7 +553,7 @@ describe('modeHandler', () => {
 
         sut.onChooseSuggestion(workspaceSugg, evt);
 
-        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(workspaceSugg);
+        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(workspaceSugg, evt);
 
         onChooseSuggestionSpy.mockRestore();
       });

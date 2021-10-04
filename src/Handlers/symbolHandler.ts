@@ -21,6 +21,7 @@ import {
   SymbolType,
   HeadingIndicators,
   SymbolIndicators,
+  Handler,
 } from 'src/types';
 import {
   activateLeaf,
@@ -35,8 +36,12 @@ import {
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo, SymbolParsedCommand } from 'src/switcherPlus';
 
-export class SymbolHandler {
+export class SymbolHandler implements Handler<SymbolSuggestion> {
   private inputInfo: InputInfo;
+
+  get commandString(): string {
+    return this.settings?.symbolListCommand;
+  }
 
   constructor(private app: App, private settings: SwitcherPlusSettings) {}
 

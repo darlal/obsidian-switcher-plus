@@ -1,5 +1,11 @@
 import { getInternalPluginById } from 'src/utils';
-import { Mode, WorkspaceInfo, WorkspaceSuggestion } from 'src/types';
+import {
+  AnySuggestion,
+  Handler,
+  Mode,
+  WorkspaceInfo,
+  WorkspaceSuggestion,
+} from 'src/types';
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo } from 'src/switcherPlus/inputInfo';
 import {
@@ -9,15 +15,26 @@ import {
   renderResults,
   SearchResult,
   sortSearchResults,
+  WorkspaceLeaf,
   WorkspacesPluginInstance,
 } from 'obsidian';
 
 export const WORKSPACE_PLUGIN_ID = 'workspaces';
 
-export class WorkspaceHandler {
+export class WorkspaceHandler implements Handler<WorkspaceSuggestion> {
+  get commandString(): string {
+    return this.settings?.workspaceListCommand;
+  }
+
   constructor(private app: App, private settings: SwitcherPlusSettings) {}
 
-  validateCommand(inputInfo: InputInfo, index: number, filterText: string): void {
+  validateCommand(
+    inputInfo: InputInfo,
+    index: number,
+    filterText: string,
+    _activeSuggestion: AnySuggestion,
+    _activeLeaf: WorkspaceLeaf,
+  ): void {
     if (this.isWorkspacesPluginEnabled()) {
       inputInfo.mode = Mode.WorkspaceList;
 
@@ -64,7 +81,7 @@ export class WorkspaceHandler {
     }
   }
 
-  onChooseSuggestion(sugg: WorkspaceSuggestion): void {
+  onChooseSuggestion(sugg: WorkspaceSuggestion, _evt: MouseEvent | KeyboardEvent): void {
     if (sugg) {
       const { id } = sugg.item;
       const pluginInstance = this.getSystemWorkspacesPluginInstance();

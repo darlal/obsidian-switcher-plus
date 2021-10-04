@@ -14,7 +14,7 @@ import {
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import { WorkspaceLeaf, App } from 'obsidian';
-import { Mode, AnySuggestion, AnyExSuggestion } from 'src/types';
+import { Mode, AnySuggestion, AnyExSuggestion, Handler } from 'src/types';
 
 export class ModeHandler {
   public get mode(): Mode {
@@ -22,16 +22,16 @@ export class ModeHandler {
   }
 
   private inputInfo: InputInfo;
-  private wsHandler: WorkspaceHandler;
-  private hsHandler: HeadingsHandler;
-  private editorHandler: EditorHandler;
-  private symbolHandler: SymbolHandler;
+  private handlersByMode: Map<Omit<Mode, 'Standard'>, Handler<AnySuggestion>>;
 
   constructor(app: App, private settings: SwitcherPlusSettings) {
-    this.wsHandler = new WorkspaceHandler(app, settings);
-    this.hsHandler = new HeadingsHandler(app, settings);
-    this.editorHandler = new EditorHandler(app, settings);
-    this.symbolHandler = new SymbolHandler(app, settings);
+    const handlersByMode = new Map<Omit<Mode, 'Standard'>, Handler<AnySuggestion>>();
+    handlersByMode.set(Mode.SymbolList, new SymbolHandler(app, settings));
+    handlersByMode.set(Mode.WorkspaceList, new WorkspaceHandler(app, settings));
+    handlersByMode.set(Mode.HeadingsList, new HeadingsHandler(app, settings));
+    handlersByMode.set(Mode.EditorList, new EditorHandler(app, settings));
+
+    this.handlersByMode = handlersByMode;
     this.reset();
   }
 
@@ -41,26 +41,9 @@ export class ModeHandler {
 
   getCommandStringForMode(mode: Mode): string {
     let val = '';
-    const {
-      editorListCommand,
-      symbolListCommand,
-      workspaceListCommand,
-      headingsListCommand,
-    } = this.settings;
 
-    switch (mode) {
-      case Mode.EditorList:
-        val = editorListCommand;
-        break;
-      case Mode.SymbolList:
-        val = symbolListCommand;
-        break;
-      case Mode.WorkspaceList:
-        val = workspaceListCommand;
-        break;
-      case Mode.HeadingsList:
-        val = headingsListCommand;
-        break;
+    if (mode !== Mode.Standard) {
+      val = this.getHandler(mode).commandString;
     }
 
     return val;
@@ -73,14 +56,8 @@ export class ModeHandler {
       this.inputInfo = inputInfo;
       const { mode } = inputInfo;
 
-      if (mode === Mode.WorkspaceList) {
-        suggestions = this.wsHandler.getSuggestions(inputInfo);
-      } else if (mode === Mode.HeadingsList) {
-        suggestions = this.hsHandler.getSuggestions(inputInfo);
-      } else if (mode === Mode.EditorList) {
-        suggestions = this.editorHandler.getSuggestions(inputInfo);
-      } else if (mode === Mode.SymbolList) {
-        suggestions = this.symbolHandler.getSuggestions(inputInfo);
+      if (mode !== Mode.Standard) {
+        suggestions = this.getHandler(mode).getSuggestions(inputInfo);
       }
     }
 
@@ -88,27 +65,11 @@ export class ModeHandler {
   }
 
   renderSuggestion(sugg: AnyExSuggestion, parentEl: HTMLElement): void {
-    if (isSymbolSuggestion(sugg)) {
-      this.symbolHandler.renderSuggestion(sugg, parentEl);
-    } else if (isWorkspaceSuggestion(sugg)) {
-      this.wsHandler.renderSuggestion(sugg, parentEl);
-    } else if (isHeadingSuggestion(sugg)) {
-      this.hsHandler.renderSuggestion(sugg, parentEl);
-    } else {
-      this.editorHandler.renderSuggestion(sugg, parentEl);
-    }
+    this.getHandler(sugg).renderSuggestion(sugg, parentEl);
   }
 
   onChooseSuggestion(sugg: AnyExSuggestion, evt: MouseEvent | KeyboardEvent): void {
-    if (isEditorSuggestion(sugg)) {
-      this.editorHandler.onChooseSuggestion(sugg);
-    } else if (isWorkspaceSuggestion(sugg)) {
-      this.wsHandler.onChooseSuggestion(sugg);
-    } else if (isHeadingSuggestion(sugg)) {
-      this.hsHandler.onChooseSuggestion(sugg, evt);
-    } else {
-      this.symbolHandler.onChooseSuggestion(sugg, evt);
-    }
+    this.getHandler(sugg).onChooseSuggestion(sugg, evt);
   }
 
   determineRunMode(
@@ -123,14 +84,18 @@ export class ModeHandler {
       this.reset();
     }
 
-    this.validatePrefixCommands(info);
+    this.validatePrefixCommands(info, activeSuggestion, activeLeaf);
     this.validateSymbolCommand(info, activeSuggestion, activeLeaf);
 
     return info;
   }
 
-  private validatePrefixCommands(info: InputInfo): void {
-    const { inputText } = info;
+  private validatePrefixCommands(
+    inputInfo: InputInfo,
+    activeSuggestion: AnySuggestion,
+    activeLeaf: WorkspaceLeaf,
+  ): void {
+    const { inputText } = inputInfo;
     const { editorListCommand, workspaceListCommand, headingsListCommand } =
       this.settings;
     const escEditorCmd = escapeRegExp(editorListCommand);
@@ -151,18 +116,27 @@ export class ModeHandler {
     ).exec(inputText);
 
     if (match?.groups) {
+      let mode: Mode;
       const {
         index,
         groups: { ep, wp, hp, ft },
       } = match;
 
       if (ep) {
-        this.editorHandler.validateCommand(info, index, ft);
+        mode = Mode.EditorList;
       } else if (wp) {
-        this.wsHandler.validateCommand(info, index, ft);
+        mode = Mode.WorkspaceList;
       } else if (hp) {
-        this.hsHandler.validateCommand(info, index, ft);
+        mode = Mode.HeadingsList;
       }
+
+      this.getHandler(mode).validateCommand(
+        inputInfo,
+        index,
+        ft,
+        activeSuggestion,
+        activeLeaf,
+      );
     }
   }
 
@@ -191,7 +165,7 @@ export class ModeHandler {
           groups: { ft },
         } = match;
 
-        this.symbolHandler.validateCommand(
+        this.getHandler(Mode.SymbolList).validateCommand(
           inputInfo,
           index,
           ft,
@@ -200,5 +174,27 @@ export class ModeHandler {
         );
       }
     }
+  }
+
+  private getHandler(
+    kind: Omit<Mode, 'Standard'> | AnyExSuggestion,
+  ): Handler<AnySuggestion> {
+    let mode: Mode;
+
+    if (typeof kind === 'number') {
+      mode = kind;
+    } else {
+      if (isEditorSuggestion(kind)) {
+        mode = Mode.EditorList;
+      } else if (isWorkspaceSuggestion(kind)) {
+        mode = Mode.WorkspaceList;
+      } else if (isHeadingSuggestion(kind)) {
+        mode = Mode.HeadingsList;
+      } else if (isSymbolSuggestion(kind)) {
+        mode = Mode.SymbolList;
+      }
+    }
+
+    return this.handlersByMode.get(mode);
   }
 }

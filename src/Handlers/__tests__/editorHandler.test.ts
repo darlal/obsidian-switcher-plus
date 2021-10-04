@@ -46,6 +46,12 @@ describe('editorHandler', () => {
     jest.spyOn(settings, 'editorListCommand', 'get').mockReturnValue(editorTrigger);
   });
 
+  describe('commandString', () => {
+    it('should return editorListCommand trigger', () => {
+      expect(sut.commandString).toBe(editorTrigger);
+    });
+  });
+
   describe('validateCommand', () => {
     let inputText: string;
     let startIndex: number;
@@ -59,7 +65,7 @@ describe('editorHandler', () => {
     it('should validate parsed input', () => {
       const inputInfo = new InputInfo(inputText);
 
-      sut.validateCommand(inputInfo, startIndex, filterText);
+      sut.validateCommand(inputInfo, startIndex, filterText, null, null);
       expect(inputInfo.mode).toBe(Mode.EditorList);
 
       const editorCmd = inputInfo.parsedCommand();
@@ -289,7 +295,7 @@ describe('editorHandler', () => {
 
   describe('onChooseSuggestion', () => {
     it('should not throw an error with a null suggestion', () => {
-      expect(() => sut.onChooseSuggestion(null)).not.toThrow();
+      expect(() => sut.onChooseSuggestion(null, null)).not.toThrow();
     });
 
     it('should activate the selected leaf', () => {
@@ -300,7 +306,7 @@ describe('editorHandler', () => {
         match: makeFuzzyMatch(),
       };
 
-      sut.onChooseSuggestion(sugg);
+      sut.onChooseSuggestion(sugg, null);
 
       expect(activateLeaf).toHaveBeenCalledWith(workspace, sugg.item, false);
     });

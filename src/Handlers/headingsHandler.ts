@@ -9,6 +9,7 @@ import {
   TAbstractFile,
   renderResults,
   sortSearchResults,
+  WorkspaceLeaf,
 } from 'obsidian';
 import { InputInfo } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings/';
@@ -19,6 +20,8 @@ import {
   AliasSuggestion,
   UnresolvedSuggestion,
   HeadingIndicators,
+  Handler,
+  AnySuggestion,
 } from 'src/types';
 import {
   isTFile,
@@ -33,10 +36,20 @@ type SupportedSuggestionTypes =
   | AliasSuggestion
   | UnresolvedSuggestion;
 
-export class HeadingsHandler {
+export class HeadingsHandler implements Handler<SupportedSuggestionTypes> {
+  get commandString(): string {
+    return this.settings?.headingsListCommand;
+  }
+
   constructor(private app: App, private settings: SwitcherPlusSettings) {}
 
-  validateCommand(inputInfo: InputInfo, index: number, filterText: string): void {
+  validateCommand(
+    inputInfo: InputInfo,
+    index: number,
+    filterText: string,
+    _activeSuggestion: AnySuggestion,
+    _activeLeaf: WorkspaceLeaf,
+  ): void {
     inputInfo.mode = Mode.HeadingsList;
 
     const headingsCmd = inputInfo.parsedCommand(Mode.HeadingsList);
