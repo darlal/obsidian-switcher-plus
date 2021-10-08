@@ -41,6 +41,7 @@
     "eslint-plugin-jest": "^24.4.0",
     "eslint-plugin-prettier": "^3.4.0",
     "jest": "^27.0.6",
+    "jest-mock-extended": "^2.0.4",
     "npm-run-all": "^4.1.5",
     "obsidian": "^0.12.11",
     "onchange": "^7.1.0",

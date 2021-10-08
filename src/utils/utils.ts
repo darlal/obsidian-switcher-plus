@@ -17,6 +17,8 @@ import {
   WorkspaceSuggestion,
   WorkspaceInfo,
   HeadingSuggestion,
+  AnySuggestion,
+  AnyExSuggestion,
 } from 'src/types';
 
 export function isOfType<T>(
@@ -66,6 +68,10 @@ export function isUnresolvedSuggestion(obj: unknown): obj is UnresolvedSuggestio
 
 export function isSystemSuggestion(obj: unknown): obj is AnySystemSuggestion {
   return isFileSuggestion(obj) || isUnresolvedSuggestion(obj) || isAliasSuggestion(obj);
+}
+
+export function isExSuggestion(sugg: AnySuggestion): sugg is AnyExSuggestion {
+  return sugg && !isSystemSuggestion(sugg);
 }
 
 export function isHeadingCache(obj: unknown): obj is HeadingCache {

@@ -1,3 +1,4 @@
+import { mock, MockProxy } from 'jest-mock-extended';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
   Mode,
@@ -7,15 +8,16 @@ import {
   HeadingSuggestion,
   SymbolSuggestion,
   SymbolType,
+  AnySuggestion,
 } from 'src/types';
-import { InputInfo, ModeHandler, SymbolParsedCommand } from 'src/switcherPlus';
+import { Keymap, ModeHandler, SymbolParsedCommand } from 'src/switcherPlus';
 import {
   EditorHandler,
   HeadingsHandler,
   SymbolHandler,
   WorkspaceHandler,
 } from 'src/Handlers';
-import { TFile, WorkspaceLeaf, App } from 'obsidian';
+import { TFile, WorkspaceLeaf, App, Chooser, debounce } from 'obsidian';
 import {
   editorTrigger,
   symbolTrigger,
@@ -47,85 +49,81 @@ describe('modeHandler', () => {
     jest.spyOn(settings, 'headingsListCommand', 'get').mockReturnValue(headingsTrigger);
   });
 
-  describe('getCommandStringForMode', () => {
-    jest.doMock('src/Handlers/symbolHandler');
-    jest.doMock('src/Handlers/editorHandler');
-    jest.doMock('src/Handlers/workspaceHandler');
-    jest.doMock('src/Handlers/headingsHandler');
+  describe('Starting sessions with explicit command string', () => {
     let commandStringSpy: jest.SpyInstance;
 
     beforeAll(() => {
-      sut = new ModeHandler(app, settings);
+      sut = new ModeHandler(app, settings, null);
     });
 
-    it('should return empty string for Standard mode', () => {
-      const value = sut.getCommandStringForMode(Mode.Standard);
+    describe('setSessionOpenMode', () => {
+      it('should save the command string for any Ex modes', () => {
+        commandStringSpy = jest
+          .spyOn(EditorHandler.prototype, 'commandString', 'get')
+          .mockReturnValueOnce(editorTrigger);
 
-      expect(value).toBe('');
+        sut.setSessionOpenMode(Mode.EditorList, null);
+
+        expect(commandStringSpy).toHaveBeenCalled();
+
+        commandStringSpy.mockRestore();
+      });
+
+      it('should not save the command string for any Ex modes', () => {
+        const sSpy = jest.spyOn(SymbolHandler.prototype, 'commandString', 'get');
+        const eSpy = jest.spyOn(EditorHandler.prototype, 'commandString', 'get');
+        const wSpy = jest.spyOn(WorkspaceHandler.prototype, 'commandString', 'get');
+        const hSpy = jest.spyOn(HeadingsHandler.prototype, 'commandString', 'get');
+
+        sut.setSessionOpenMode(Mode.Standard, null);
+
+        expect(sSpy).not.toHaveBeenCalled();
+        expect(eSpy).not.toHaveBeenCalled();
+        expect(wSpy).not.toHaveBeenCalled();
+        expect(hSpy).not.toHaveBeenCalled();
+
+        sSpy.mockRestore();
+        eSpy.mockRestore();
+        wSpy.mockRestore();
+        hSpy.mockRestore();
+      });
     });
 
-    it('should return editorListCommand trigger', () => {
-      commandStringSpy = jest
-        .spyOn(EditorHandler.prototype, 'commandString', 'get')
-        .mockReturnValue(editorTrigger);
+    describe('insertSessionOpenModeCommandString', () => {
+      const mockInputEl = mock<HTMLInputElement>();
 
-      const value = sut.getCommandStringForMode(Mode.EditorList);
+      it('should insert the command string into the input element', () => {
+        mockInputEl.value = '';
+        sut.setSessionOpenMode(Mode.EditorList, null);
 
-      expect(value).toBe(editorTrigger);
-      expect(commandStringSpy).toHaveBeenCalled();
-    });
+        sut.insertSessionOpenModeCommandString(mockInputEl);
 
-    it('should return symbolListCommand trigger', () => {
-      commandStringSpy = jest
-        .spyOn(EditorHandler.prototype, 'commandString', 'get')
-        .mockReturnValue(symbolTrigger);
+        expect(mockInputEl).toHaveProperty('value', editorTrigger);
+      });
 
-      const value = sut.getCommandStringForMode(Mode.SymbolList);
+      it('should do nothing when sessionOpenModeString is falsy', () => {
+        mockInputEl.value = '';
+        sut.setSessionOpenMode(Mode.Standard, null);
 
-      expect(value).toBe(symbolTrigger);
-      expect(commandStringSpy).toHaveBeenCalled();
-    });
+        sut.insertSessionOpenModeCommandString(mockInputEl);
 
-    it('should return workspaceListCommand trigger', () => {
-      commandStringSpy = jest
-        .spyOn(EditorHandler.prototype, 'commandString', 'get')
-        .mockReturnValue(workspaceTrigger);
-
-      const value = sut.getCommandStringForMode(Mode.WorkspaceList);
-
-      expect(value).toBe(workspaceTrigger);
-      expect(commandStringSpy).toHaveBeenCalled();
-    });
-
-    it('should return headingsListCommand trigger', () => {
-      commandStringSpy = jest
-        .spyOn(EditorHandler.prototype, 'commandString', 'get')
-        .mockReturnValue(headingsTrigger);
-
-      const value = sut.getCommandStringForMode(Mode.HeadingsList);
-
-      expect(value).toBe(headingsTrigger);
-      expect(commandStringSpy).toHaveBeenCalled();
+        expect(mockInputEl).toHaveProperty('value', '');
+      });
     });
   });
 
   describe('determineRunMode', () => {
     beforeAll(() => {
-      sut = new ModeHandler(app, settings);
+      sut = new ModeHandler(app, settings, null);
     });
 
     it('should reset on falsy input', () => {
-      const spy = jest.spyOn(sut, 'reset');
-
       const input: string = null;
       const inputInfo = sut.determineRunMode(input, null, null);
 
       expect(inputInfo.mode).toBe(Mode.Standard);
       expect(inputInfo.searchQuery).toBeFalsy();
       expect(inputInfo.inputText).toBe('');
-      expect(spy).toHaveBeenCalled();
-
-      spy.mockRestore();
     });
 
     describe('should identify unicode triggers', () => {
@@ -133,7 +131,7 @@ describe('modeHandler', () => {
         'for input: "$input" (array data index: $#)',
         ({ editorTrigger, symbolTrigger, input, expected: { mode, parsedInput } }) => {
           const s = new SwitcherPlusSettings(null);
-          const mh = new ModeHandler(null, s);
+          const mh = new ModeHandler(null, s, null);
           let cmdSpy: jest.SpyInstance;
 
           if (editorTrigger) {
@@ -332,11 +330,6 @@ describe('modeHandler', () => {
   });
 
   describe('managing suggestions', () => {
-    jest.doMock('src/Handlers/symbolHandler');
-    jest.doMock('src/Handlers/editorHandler');
-    jest.doMock('src/Handlers/workspaceHandler');
-    jest.doMock('src/Handlers/headingsHandler');
-
     const editorSugg: EditorSuggestion = {
       type: 'editor',
       item: new WorkspaceLeaf(),
@@ -349,6 +342,7 @@ describe('modeHandler', () => {
         type: 'symbolInfo',
         symbol: getHeadings()[0],
         symbolType: SymbolType.Heading,
+        isSelected: false,
       },
       match: null,
     };
@@ -370,86 +364,165 @@ describe('modeHandler', () => {
     };
 
     beforeAll(() => {
-      sut = new ModeHandler(app, settings);
+      sut = new ModeHandler(app, settings, mock<Keymap>());
     });
 
-    describe('getSuggestions', () => {
+    describe('updateSuggestions', () => {
+      let mockChooser: MockProxy<Chooser<AnySuggestion>>;
+      const mockSetSuggestion = jest.fn();
       let getSuggestionSpy: jest.SpyInstance;
 
-      test('with falsy input, it should return an empty array', () => {
-        const results = sut.getSuggestions(null);
-
-        expect(sut.mode).toBe(Mode.Standard);
-        expect(results).toBeInstanceOf(Array);
-        expect(results).toHaveLength(0);
+      beforeAll(() => {
+        mockChooser = mock<Chooser<AnySuggestion>>({
+          setSuggestions: mockSetSuggestion,
+        });
       });
 
-      test('for standard mode, it should return an empty array', () => {
-        const results = sut.getSuggestions(new InputInfo());
+      test('with falsy input (Standard mode), it should return not handled', () => {
+        const results = sut.updateSuggestions(null, null);
+        expect(results).toBe(false);
+      });
 
-        expect(sut.mode).toBe(Mode.Standard);
-        expect(results).toBeInstanceOf(Array);
-        expect(results).toHaveLength(0);
+      it('should debounce in Headings mode with filter text', () => {
+        const validateCommandSpy = jest
+          .spyOn(HeadingsHandler.prototype, 'validateCommand')
+          .mockImplementation((inputInfo) => {
+            inputInfo.mode = Mode.HeadingsList;
+            const cmd = inputInfo.parsedCommand(Mode.HeadingsList);
+            cmd.parsedInput = 'foo';
+          });
+
+        const mockDebouncedFn = jest.fn();
+        const mockDebounce = debounce as jest.Mock;
+        mockDebounce.mockImplementation(() => mockDebouncedFn);
+        sut = new ModeHandler(app, settings, mock<Keymap>());
+
+        const results = sut.updateSuggestions(headingsTrigger, mockChooser);
+
+        expect(results).toBe(true);
+        expect(mockDebounce).toHaveBeenCalled();
+        expect(mockDebouncedFn).toHaveBeenCalled();
+        expect(validateCommandSpy).toHaveBeenCalled();
+
+        validateCommandSpy.mockRestore();
+        mockDebounce.mockReset();
       });
 
       it('should get suggestions for Editor Mode', () => {
-        const inputInfo = new InputInfo(editorTrigger, Mode.EditorList);
+        const expectedSuggestions = [editorSugg];
         getSuggestionSpy = jest
           .spyOn(EditorHandler.prototype, 'getSuggestions')
-          .mockReturnValue([editorSugg]);
+          .mockReturnValue(expectedSuggestions);
 
-        const results = sut.getSuggestions(inputInfo);
+        const results = sut.updateSuggestions(editorTrigger, mockChooser);
 
-        expect(results).toHaveLength(1);
-        expect(results[0]).toBe(editorSugg);
-        expect(getSuggestionSpy).toHaveBeenCalledWith(inputInfo);
+        expect(results).toBe(true);
+        expect(getSuggestionSpy).toHaveBeenCalled();
+        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
 
         getSuggestionSpy.mockRestore();
+        mockSetSuggestion.mockReset();
       });
 
       it('should get suggestions for Symbol Mode', () => {
-        const inputInfo = new InputInfo(symbolTrigger, Mode.SymbolList);
+        const expectedSuggestions = [symbolSugg];
         getSuggestionSpy = jest
           .spyOn(SymbolHandler.prototype, 'getSuggestions')
-          .mockReturnValue([symbolSugg]);
+          .mockReturnValue(expectedSuggestions);
 
-        const results = sut.getSuggestions(inputInfo);
+        const validateCommandSpy = jest
+          .spyOn(SymbolHandler.prototype, 'validateCommand')
+          .mockImplementation((inputInfo) => {
+            inputInfo.mode = Mode.SymbolList;
+          });
 
-        expect(results).toHaveLength(1);
-        expect(results[0]).toBe(symbolSugg);
-        expect(getSuggestionSpy).toHaveBeenCalledWith(inputInfo);
+        const mockSetSelectedItem = mockChooser.setSelectedItem.mockImplementation();
+        mockChooser.values = expectedSuggestions;
+
+        const results = sut.updateSuggestions(symbolTrigger, mockChooser);
+
+        expect(results).toBe(true);
+        expect(getSuggestionSpy).toHaveBeenCalled();
+        expect(validateCommandSpy).toHaveBeenCalled();
+        expect(mockSetSelectedItem).not.toHaveBeenCalled();
+        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
 
         getSuggestionSpy.mockRestore();
+        validateCommandSpy.mockRestore();
+        mockSetSelectedItem.mockRestore();
+        mockSetSuggestion.mockReset();
+      });
+
+      it('should set the active suggestion in Symbol Mode', () => {
+        const symbolSugg2: SymbolSuggestion = {
+          type: 'symbol',
+          item: {
+            type: 'symbolInfo',
+            symbol: getHeadings()[0],
+            symbolType: SymbolType.Heading,
+            isSelected: true, // <-- here
+          },
+          match: null,
+        };
+
+        const expectedSuggestions = [symbolSugg2];
+        getSuggestionSpy = jest
+          .spyOn(SymbolHandler.prototype, 'getSuggestions')
+          .mockReturnValue(expectedSuggestions);
+
+        const validateCommandSpy = jest
+          .spyOn(SymbolHandler.prototype, 'validateCommand')
+          .mockImplementation((inputInfo) => {
+            inputInfo.mode = Mode.SymbolList;
+          });
+
+        const mockSetSelectedItem = mockChooser.setSelectedItem.mockImplementation();
+        mockChooser.values = expectedSuggestions;
+
+        const results = sut.updateSuggestions(symbolTrigger, mockChooser);
+
+        expect(results).toBe(true);
+        expect(getSuggestionSpy).toHaveBeenCalled();
+        expect(validateCommandSpy).toHaveBeenCalled();
+        expect(mockSetSelectedItem).toHaveBeenCalledWith(0, true); // <-- here
+        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
+
+        getSuggestionSpy.mockRestore();
+        validateCommandSpy.mockRestore();
+        mockSetSelectedItem.mockRestore();
+        mockSetSuggestion.mockReset();
       });
 
       it('should get suggestions for Workspace Mode', () => {
-        const inputInfo = new InputInfo(workspaceTrigger, Mode.WorkspaceList);
+        const expectedSuggestions = [workspaceSugg];
         getSuggestionSpy = jest
           .spyOn(WorkspaceHandler.prototype, 'getSuggestions')
-          .mockReturnValue([workspaceSugg]);
+          .mockReturnValue(expectedSuggestions);
 
-        const results = sut.getSuggestions(inputInfo);
+        const results = sut.updateSuggestions(workspaceTrigger, mockChooser);
 
-        expect(results).toHaveLength(1);
-        expect(results[0]).toBe(workspaceSugg);
-        expect(getSuggestionSpy).toHaveBeenCalledWith(inputInfo);
+        expect(results).toBe(true);
+        expect(getSuggestionSpy).toHaveBeenCalled();
+        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
 
         getSuggestionSpy.mockRestore();
+        mockSetSuggestion.mockReset();
       });
 
       it('should get suggestions for Headings Mode', () => {
-        const inputInfo = new InputInfo(editorTrigger, Mode.HeadingsList);
+        const expectedSuggestions = [headingsSugg];
         getSuggestionSpy = jest
           .spyOn(HeadingsHandler.prototype, 'getSuggestions')
-          .mockReturnValue([headingsSugg]);
+          .mockReturnValue(expectedSuggestions);
 
-        const results = sut.getSuggestions(inputInfo);
+        const results = sut.updateSuggestions(headingsTrigger, mockChooser);
 
-        expect(results).toHaveLength(1);
-        expect(results[0]).toBe(headingsSugg);
-        expect(getSuggestionSpy).toHaveBeenCalledWith(inputInfo);
+        expect(results).toBe(true);
+        expect(getSuggestionSpy).toHaveBeenCalled();
+        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
 
         getSuggestionSpy.mockRestore();
+        mockSetSuggestion.mockReset();
       });
     });
 
@@ -457,13 +530,19 @@ describe('modeHandler', () => {
       const parentElObj = {} as HTMLElement;
       let renderSuggestionSpy: jest.SpyInstance;
 
+      it('should return false with falsy input', () => {
+        const result = sut.renderSuggestion(null, null);
+        expect(result).toBe(false);
+      });
+
       it('should render suggestions for Editor Mode', () => {
         renderSuggestionSpy = jest
           .spyOn(EditorHandler.prototype, 'renderSuggestion')
           .mockImplementation();
 
-        sut.renderSuggestion(editorSugg, parentElObj);
+        const result = sut.renderSuggestion(editorSugg, parentElObj);
 
+        expect(result).toBe(true);
         expect(renderSuggestionSpy).toHaveBeenCalledWith(editorSugg, parentElObj);
 
         renderSuggestionSpy.mockRestore();
@@ -474,8 +553,9 @@ describe('modeHandler', () => {
           .spyOn(SymbolHandler.prototype, 'renderSuggestion')
           .mockImplementation();
 
-        sut.renderSuggestion(symbolSugg, parentElObj);
+        const result = sut.renderSuggestion(symbolSugg, parentElObj);
 
+        expect(result).toBe(true);
         expect(renderSuggestionSpy).toHaveBeenCalledWith(symbolSugg, parentElObj);
 
         renderSuggestionSpy.mockRestore();
@@ -486,8 +566,9 @@ describe('modeHandler', () => {
           .spyOn(HeadingsHandler.prototype, 'renderSuggestion')
           .mockImplementation();
 
-        sut.renderSuggestion(headingsSugg, parentElObj);
+        const result = sut.renderSuggestion(headingsSugg, parentElObj);
 
+        expect(result).toBe(true);
         expect(renderSuggestionSpy).toHaveBeenCalledWith(headingsSugg, parentElObj);
 
         renderSuggestionSpy.mockRestore();
@@ -498,8 +579,9 @@ describe('modeHandler', () => {
           .spyOn(WorkspaceHandler.prototype, 'renderSuggestion')
           .mockImplementation();
 
-        sut.renderSuggestion(workspaceSugg, parentElObj);
+        const result = sut.renderSuggestion(workspaceSugg, parentElObj);
 
+        expect(result).toBe(true);
         expect(renderSuggestionSpy).toHaveBeenCalledWith(workspaceSugg, parentElObj);
 
         renderSuggestionSpy.mockRestore();
@@ -510,13 +592,19 @@ describe('modeHandler', () => {
       const evt = {} as MouseEvent;
       let onChooseSuggestionSpy: jest.SpyInstance;
 
+      it('should return false with falsy input', () => {
+        const result = sut.onChooseSuggestion(null, null);
+        expect(result).toBe(false);
+      });
+
       it('should action suggestions for Editor Mode', () => {
         onChooseSuggestionSpy = jest
           .spyOn(EditorHandler.prototype, 'onChooseSuggestion')
           .mockImplementation();
 
-        sut.onChooseSuggestion(editorSugg, evt);
+        const result = sut.onChooseSuggestion(editorSugg, evt);
 
+        expect(result).toBe(true);
         expect(onChooseSuggestionSpy).toHaveBeenCalledWith(editorSugg, evt);
 
         onChooseSuggestionSpy.mockRestore();
@@ -527,8 +615,9 @@ describe('modeHandler', () => {
           .spyOn(SymbolHandler.prototype, 'onChooseSuggestion')
           .mockImplementation();
 
-        sut.onChooseSuggestion(symbolSugg, evt);
+        const result = sut.onChooseSuggestion(symbolSugg, evt);
 
+        expect(result).toBe(true);
         expect(onChooseSuggestionSpy).toHaveBeenCalledWith(symbolSugg, evt);
 
         onChooseSuggestionSpy.mockRestore();
@@ -539,8 +628,9 @@ describe('modeHandler', () => {
           .spyOn(HeadingsHandler.prototype, 'onChooseSuggestion')
           .mockImplementation();
 
-        sut.onChooseSuggestion(headingsSugg, evt);
+        const result = sut.onChooseSuggestion(headingsSugg, evt);
 
+        expect(result).toBe(true);
         expect(onChooseSuggestionSpy).toHaveBeenCalledWith(headingsSugg, evt);
 
         onChooseSuggestionSpy.mockRestore();
@@ -551,8 +641,9 @@ describe('modeHandler', () => {
           .spyOn(WorkspaceHandler.prototype, 'onChooseSuggestion')
           .mockImplementation();
 
-        sut.onChooseSuggestion(workspaceSugg, evt);
+        const result = sut.onChooseSuggestion(workspaceSugg, evt);
 
+        expect(result).toBe(true);
         expect(onChooseSuggestionSpy).toHaveBeenCalledWith(workspaceSugg, evt);
 
         onChooseSuggestionSpy.mockRestore();

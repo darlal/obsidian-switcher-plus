@@ -10,89 +10,147 @@ import {
   escapeRegExp,
   isWorkspaceSuggestion,
   isHeadingSuggestion,
+  isExSuggestion,
 } from 'src/utils';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
-import { WorkspaceLeaf, App } from 'obsidian';
-import { Mode, AnySuggestion, AnyExSuggestion, Handler } from 'src/types';
+import { WorkspaceLeaf, App, Chooser, Debouncer, debounce } from 'obsidian';
+import {
+  Mode,
+  AnySuggestion,
+  AnyExSuggestion,
+  Handler,
+  SymbolSuggestion,
+} from 'src/types';
+import { Keymap } from './keymap';
 
 export class ModeHandler {
-  public get mode(): Mode {
-    return this.inputInfo.mode;
-  }
-
   private inputInfo: InputInfo;
   private handlersByMode: Map<Omit<Mode, 'Standard'>, Handler<AnySuggestion>>;
+  private debouncedGetSuggestions: Debouncer<[InputInfo, Chooser<AnySuggestion>]>;
+  private sessionOpenModeString: string;
 
-  constructor(app: App, private settings: SwitcherPlusSettings) {
+  constructor(
+    private app: App,
+    private settings: SwitcherPlusSettings,
+    public exKeymap: Keymap,
+  ) {
     const handlersByMode = new Map<Omit<Mode, 'Standard'>, Handler<AnySuggestion>>();
+    this.handlersByMode = handlersByMode;
     handlersByMode.set(Mode.SymbolList, new SymbolHandler(app, settings));
     handlersByMode.set(Mode.WorkspaceList, new WorkspaceHandler(app, settings));
     handlersByMode.set(Mode.HeadingsList, new HeadingsHandler(app, settings));
     handlersByMode.set(Mode.EditorList, new EditorHandler(app, settings));
 
-    this.handlersByMode = handlersByMode;
+    this.debouncedGetSuggestions = debounce(this.getSuggestions.bind(this), 400, true);
     this.reset();
   }
 
-  reset(): void {
-    this.inputInfo = new InputInfo();
-  }
-
-  getCommandStringForMode(mode: Mode): string {
-    let val = '';
+  setSessionOpenMode(mode: Mode, chooser: Chooser<AnySuggestion>): void {
+    this.reset();
+    chooser?.setSuggestions([]);
 
     if (mode !== Mode.Standard) {
-      val = this.getHandler(mode).commandString;
+      this.sessionOpenModeString = this.getHandler(mode).commandString;
     }
-
-    return val;
   }
 
-  getSuggestions(inputInfo: InputInfo): AnySuggestion[] {
-    let suggestions: AnySuggestion[] = [];
+  insertSessionOpenModeCommandString(inputEl: HTMLInputElement): void {
+    const { sessionOpenModeString } = this;
 
-    if (inputInfo) {
-      this.inputInfo = inputInfo;
-      const { mode } = inputInfo;
+    if (sessionOpenModeString !== null && sessionOpenModeString !== '') {
+      // update UI with current command string in the case were openInMode was called
+      inputEl.value = sessionOpenModeString;
 
-      if (mode !== Mode.Standard) {
-        suggestions = this.getHandler(mode).getSuggestions(inputInfo);
+      // reset to null so user input is not overridden the next time onInput is called
+      this.sessionOpenModeString = null;
+    }
+  }
+
+  updateSuggestions(query: string, chooser: Chooser<AnySuggestion>): boolean {
+    let handled = false;
+    const {
+      exKeymap,
+      app: {
+        workspace: { activeLeaf },
+      },
+    } = this;
+
+    const activeSugg = ModeHandler.getActiveSuggestion(chooser);
+    const inputInfo = this.determineRunMode(query, activeSugg, activeLeaf);
+
+    const { mode } = inputInfo;
+    exKeymap.updateKeymapForMode(mode);
+
+    if (mode !== Mode.Standard) {
+      if (mode === Mode.HeadingsList && inputInfo.parsedCommand().parsedInput?.length) {
+        // if headings mode and user is typing a query, delay getting suggestions
+        this.debouncedGetSuggestions(inputInfo, chooser);
+      } else {
+        this.getSuggestions(inputInfo, chooser);
       }
+
+      handled = true;
     }
 
-    return suggestions;
+    return handled;
   }
 
-  renderSuggestion(sugg: AnyExSuggestion, parentEl: HTMLElement): void {
-    this.getHandler(sugg).renderSuggestion(sugg, parentEl);
+  renderSuggestion(sugg: AnySuggestion, parentEl: HTMLElement): boolean {
+    let handled = false;
+
+    if (isExSuggestion(sugg)) {
+      this.getHandler(sugg).renderSuggestion(sugg, parentEl);
+      handled = true;
+    }
+
+    return handled;
   }
 
-  onChooseSuggestion(sugg: AnyExSuggestion, evt: MouseEvent | KeyboardEvent): void {
-    this.getHandler(sugg).onChooseSuggestion(sugg, evt);
+  onChooseSuggestion(sugg: AnySuggestion, evt: MouseEvent | KeyboardEvent): boolean {
+    let handled = false;
+
+    if (isExSuggestion(sugg)) {
+      this.getHandler(sugg).onChooseSuggestion(sugg, evt);
+      handled = true;
+    }
+
+    return handled;
   }
 
   determineRunMode(
-    inputText: string,
-    activeSuggestion: AnySuggestion,
+    query: string,
+    activeSugg: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
   ): InputInfo {
-    const input = inputText ?? '';
+    const input = query ?? '';
     const info = new InputInfo(input);
 
     if (input.length === 0) {
       this.reset();
     }
 
-    this.validatePrefixCommands(info, activeSuggestion, activeLeaf);
-    this.validateSymbolCommand(info, activeSuggestion, activeLeaf);
+    this.validatePrefixCommands(info, activeSugg, activeLeaf);
+    this.validateSymbolCommand(info, activeSugg, activeLeaf);
 
     return info;
   }
 
+  private getSuggestions(inputInfo: InputInfo, chooser: Chooser<AnySuggestion>): void {
+    this.inputInfo = inputInfo;
+    const { mode } = inputInfo;
+
+    chooser.setSuggestions([]);
+
+    const suggestions = this.getHandler(mode).getSuggestions(inputInfo);
+
+    chooser.setSuggestions(suggestions);
+    ModeHandler.setActiveSuggestion(mode, chooser);
+  }
+
   private validatePrefixCommands(
     inputInfo: InputInfo,
-    activeSuggestion: AnySuggestion,
+    activeSugg: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
   ): void {
     const { inputText } = inputInfo;
@@ -130,19 +188,13 @@ export class ModeHandler {
         mode = Mode.HeadingsList;
       }
 
-      this.getHandler(mode).validateCommand(
-        inputInfo,
-        index,
-        ft,
-        activeSuggestion,
-        activeLeaf,
-      );
+      this.getHandler(mode).validateCommand(inputInfo, index, ft, activeSugg, activeLeaf);
     }
   }
 
   private validateSymbolCommand(
     inputInfo: InputInfo,
-    activeSuggestion: AnySuggestion,
+    activeSugg: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
   ): void {
     const { mode, inputText } = inputInfo;
@@ -169,11 +221,39 @@ export class ModeHandler {
           inputInfo,
           index,
           ft,
-          activeSuggestion,
+          activeSugg,
           activeLeaf,
         );
       }
     }
+  }
+
+  private static setActiveSuggestion(mode: Mode, chooser: Chooser<AnySuggestion>): void {
+    // only symbol mode currently sets an active selection
+    if (mode === Mode.SymbolList) {
+      const index = chooser.values
+        .filter((v): v is SymbolSuggestion => isSymbolSuggestion(v))
+        .findIndex((v) => v.item.isSelected);
+
+      if (index !== -1) {
+        chooser.setSelectedItem(index, true);
+      }
+    }
+  }
+
+  private static getActiveSuggestion(chooser: Chooser<AnySuggestion>): AnySuggestion {
+    let activeSuggestion: AnySuggestion = null;
+
+    if (chooser?.values) {
+      activeSuggestion = chooser.values[chooser.selectedItem];
+    }
+
+    return activeSuggestion;
+  }
+
+  private reset(): void {
+    this.inputInfo = new InputInfo();
+    this.sessionOpenModeString = null;
   }
 
   private getHandler(
