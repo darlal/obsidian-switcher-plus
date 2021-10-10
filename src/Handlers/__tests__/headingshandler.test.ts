@@ -492,10 +492,9 @@ describe('headingsHandler', () => {
 
     it('should catch and log errors to the console', () => {
       const workspaceLeaf = new WorkspaceLeaf();
-      const file = new TFile();
       const sugg: HeadingSuggestion = {
         item: makeHeading('foo heading', 1),
-        file,
+        file: new TFile(),
         match: null,
         type: 'heading',
       };
@@ -503,17 +502,51 @@ describe('headingsHandler', () => {
       const getLeafSpy = jest
         .spyOn(app.workspace, 'getLeaf')
         .mockImplementation((_newLeaf) => workspaceLeaf);
+
+      // Promise used to trigger the error condition
+      const openFilePromise = Promise.resolve();
       const openFileSpy = jest
         .spyOn(workspaceLeaf, 'openFile')
-        .mockRejectedValue('fail test');
+        .mockImplementation((_f, _o) => {
+          // throw to simulate openFile() failing. This happens first
+          return openFilePromise.then(() => {
+            throw new Error('openFile() unit test error');
+          });
+        });
 
+      let consoleLogPromiseResolveFn: (value: void | PromiseLike<void>) => void;
+
+      // Promise used to track the call to console.log
+      const consoleLogPromise = new Promise<void>((resolve, _reject) => {
+        consoleLogPromiseResolveFn = resolve;
+      });
+
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation((message: string) => {
+          if (message.startsWith('Switcher++: unable to open file')) {
+            // resolve the consoleLogPromise. This happens second and will allow
+            // allPromises to resolve itself
+            consoleLogPromiseResolveFn();
+          }
+        });
+
+      // wait for the other promises to resolve before this promise can resolve
+      const allPromises = Promise.all([openFilePromise, consoleLogPromise]);
+
+      // internally calls openFile(), which the spy will cause to fail, and then will call console.log
       sut.onChooseSuggestion(sugg, null);
 
-      expect(getLeafSpy).toHaveBeenCalled();
-      expect(openFileSpy).toHaveBeenCalled();
+      // when all the promises are resolved check expectations and clean up
+      return allPromises.finally(() => {
+        expect(getLeafSpy).toHaveBeenCalled();
+        expect(openFileSpy).toHaveBeenCalled();
+        expect(consoleLogSpy).toHaveBeenCalled();
 
-      getLeafSpy.mockRestore();
-      openFileSpy.mockRestore();
+        getLeafSpy.mockRestore();
+        openFileSpy.mockRestore();
+        consoleLogSpy.mockRestore();
+      });
     });
   });
 });
