@@ -13,9 +13,7 @@ import {
   AliasSuggestion,
   UnresolvedSuggestion,
   AnySystemSuggestion,
-  SymbolInfo,
   WorkspaceSuggestion,
-  WorkspaceInfo,
   HeadingSuggestion,
   AnySuggestion,
   AnyExSuggestion,
@@ -80,14 +78,6 @@ export function isHeadingCache(obj: unknown): obj is HeadingCache {
 
 export function isTagCache(obj: unknown): obj is TagCache {
   return isOfType<TagCache>(obj, 'tag');
-}
-
-export function isSymbolInfo(obj: unknown): obj is SymbolInfo {
-  return isOfType<SymbolInfo>(obj, 'type', 'symbolInfo');
-}
-
-export function isWorkspaceInfo(obj: unknown): obj is WorkspaceInfo {
-  return isOfType<WorkspaceInfo>(obj, 'type', 'WorkspaceInfo');
 }
 
 export function isTFile(obj: unknown): obj is TFile {
