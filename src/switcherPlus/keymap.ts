@@ -30,9 +30,9 @@ export class Keymap {
     const { isOpen, chooser } = this;
 
     if (isOpen) {
-      const isNext = ctx.key === 'n';
-      const index = chooser.selectedItem;
-      chooser.setSelectedItem(isNext ? index + 1 : index - 1, true);
+      let index = chooser.selectedItem;
+      index = ctx.key === 'n' ? ++index : --index;
+      chooser.setSelectedItem(index, true);
     }
 
     return false;
