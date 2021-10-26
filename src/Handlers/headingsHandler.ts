@@ -93,19 +93,16 @@ export class HeadingsHandler implements Handler<SupportedSuggestionTypes> {
       const { item } = sugg;
       renderResults(parentEl, item.heading, sugg.match);
 
-      parentEl.createSpan(
-        {
-          cls: 'suggestion-flair',
-          prepend: true,
-        },
-        (el: HTMLSpanElement) => {
-          el.appendText(HeadingIndicators[item.level]);
-        },
-      );
+      parentEl.createSpan({
+        cls: 'suggestion-flair',
+        text: HeadingIndicators[item.level],
+        prepend: true,
+      });
 
-      parentEl
-        .createDiv('suggestion-note')
-        .appendText(stripMDExtensionFromPath(sugg.file));
+      parentEl.createDiv({
+        cls: 'suggestion-note',
+        text: stripMDExtensionFromPath(sugg.file),
+      });
     }
   }
 

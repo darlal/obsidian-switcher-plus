@@ -2,9 +2,14 @@ import {
   App,
   CachedMetadata,
   fuzzySearch,
+  MetadataCache,
   PreparedQuery,
   prepareQuery,
+  renderResults,
   TFile,
+  Vault,
+  ViewRegistry,
+  Workspace,
   WorkspaceLeaf,
 } from 'obsidian';
 import { HeadingsHandler } from 'src/Handlers';
@@ -19,6 +24,7 @@ import {
 } from '@fixtures';
 import { InputInfo } from 'src/switcherPlus';
 import {
+  HeadingIndicators,
   HeadingSuggestion,
   FileSuggestion,
   Mode,
@@ -30,22 +36,31 @@ import {
   isFileSuggestion,
   isHeadingSuggestion,
   isUnresolvedSuggestion,
+  stripMDExtensionFromPath,
 } from 'src/utils';
+import { mock, MockProxy } from 'jest-mock-extended';
+import { mocked } from 'ts-jest/dist/utils/testing';
 
 describe('headingsHandler', () => {
   let settings: SwitcherPlusSettings;
-  let app: App;
-  let sut: HeadingsHandler;
+  let headingSugg: HeadingSuggestion;
 
   beforeAll(() => {
-    app = new App();
     settings = new SwitcherPlusSettings(null);
+
     jest.spyOn(settings, 'headingsListCommand', 'get').mockReturnValue(headingsTrigger);
-    sut = new HeadingsHandler(app, settings);
+
+    headingSugg = {
+      item: makeHeading('foo heading', 1),
+      file: new TFile(),
+      match: null,
+      type: 'heading',
+    };
   });
 
   describe('commandString', () => {
     it('should return headingsListCommand trigger', () => {
+      const sut = new HeadingsHandler(mock<App>(), settings);
       expect(sut.commandString).toBe(headingsTrigger);
     });
   });
@@ -57,6 +72,7 @@ describe('headingsHandler', () => {
       const startIndex = headingsTrigger.length;
       const inputInfo = new InputInfo(inputText);
 
+      const sut = new HeadingsHandler(mock<App>(), settings);
       sut.validateCommand(inputInfo, startIndex, filterText, null, null);
       expect(inputInfo.mode).toBe(Mode.HeadingsList);
 
@@ -67,23 +83,31 @@ describe('headingsHandler', () => {
   });
 
   describe('getSuggestions', () => {
-    const mockPrepareQuery = prepareQuery as jest.MockedFunction<typeof prepareQuery>;
-    const mockFuzzySearch = fuzzySearch as jest.MockedFunction<typeof fuzzySearch>;
-    let getLastOpenFilesSpy: jest.SpyInstance;
-    let getAbstractFileByPathSpy: jest.SpyInstance;
-    let getFilesSpy: jest.SpyInstance;
-    let isExtensionRegisteredSpy: jest.SpyInstance;
-    let getFileCacheSpy: jest.SpyInstance;
+    const mockPrepareQuery = mocked<typeof prepareQuery>(prepareQuery);
+    const mockFuzzySearch = mocked<typeof fuzzySearch>(fuzzySearch);
+    let sut: HeadingsHandler;
+    let mockWorkspace: MockProxy<Workspace>;
+    let mockVault: MockProxy<Vault>;
+    let mockMetadataCache: MockProxy<MetadataCache>;
+    let mockViewRegistry: MockProxy<ViewRegistry>;
     let builtInSystemOptionsSpy: jest.SpyInstance;
 
     beforeAll(() => {
-      getLastOpenFilesSpy = jest.spyOn(app.workspace, 'getLastOpenFiles');
-      getAbstractFileByPathSpy = jest.spyOn(app.vault, 'getAbstractFileByPath');
-      getFilesSpy = jest.spyOn(app.vault, 'getFiles');
-      getFileCacheSpy = jest.spyOn(app.metadataCache, 'getFileCache');
-      isExtensionRegisteredSpy = jest
-        .spyOn(app.viewRegistry, 'isExtensionRegistered')
-        .mockReturnValue(true);
+      mockWorkspace = mock<Workspace>();
+      mockVault = mock<Vault>();
+      mockMetadataCache = mock<MetadataCache>();
+      mockViewRegistry = mock<ViewRegistry>();
+      mockViewRegistry.isExtensionRegistered.mockReturnValue(true);
+
+      const mockApp = mock<App>({
+        workspace: mockWorkspace,
+        vault: mockVault,
+        metadataCache: mockMetadataCache,
+        viewRegistry: mockViewRegistry,
+      });
+
+      sut = new HeadingsHandler(mockApp, settings);
+
       builtInSystemOptionsSpy = jest
         .spyOn(settings, 'builtInSystemOptions', 'get')
         .mockReturnValue({
@@ -113,9 +137,11 @@ describe('headingsHandler', () => {
       fileData[file.path] = file;
 
       const fileDataKeys = Object.keys(fileData);
-      getLastOpenFilesSpy.mockReturnValueOnce(fileDataKeys);
-      getAbstractFileByPathSpy.mockImplementation((path: string) => fileData[path]);
-      getFileCacheSpy.mockImplementation((f: TFile) => {
+      mockWorkspace.getLastOpenFiles.mockReturnValueOnce(fileDataKeys);
+      mockVault.getAbstractFileByPath.mockImplementation(
+        (path: string) => fileData[path],
+      );
+      mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
         return f === file ? {} : getCachedMetadata();
       });
 
@@ -128,24 +154,26 @@ describe('headingsHandler', () => {
       const headingSuggestions = results.filter((sugg) =>
         isHeadingSuggestion(sugg),
       ) as HeadingSuggestion[];
+
       expect(headingSuggestions).toHaveLength(2);
       expect(headingSuggestions.every((sugg) => expectedFiles.has(sugg.file))).toBe(true);
 
       const fileSuggestions = results.filter((sugg) =>
         isFileSuggestion(sugg),
       ) as FileSuggestion[];
+
       expect(fileSuggestions).toHaveLength(1);
       expect(fileSuggestions.every((sugg) => expectedFiles.has(sugg.file))).toBe(true);
 
-      expect(getLastOpenFilesSpy).toHaveBeenCalled();
-      expect(getAbstractFileByPathSpy).toHaveBeenCalled();
-      expect(getFileCacheSpy).toHaveBeenCalled();
+      expect(mockWorkspace.getLastOpenFiles).toHaveBeenCalled();
+      expect(mockVault.getAbstractFileByPath).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
-      expect(isExtensionRegisteredSpy).toHaveBeenCalled();
+      expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
 
-      getLastOpenFilesSpy.mockRestore();
-      getAbstractFileByPathSpy.mockRestore();
-      getFileCacheSpy.mockRestore();
+      mockWorkspace.getLastOpenFiles.mockReset();
+      mockVault.getAbstractFileByPath.mockReset();
+      mockMetadataCache.getFileCache.mockReset();
     });
 
     test('with filter search term, it should return matching suggestions for all headings', () => {
@@ -156,14 +184,14 @@ describe('headingsHandler', () => {
       const filterText = 'foo';
 
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
-      getFilesSpy.mockReturnValue(files);
+      mockVault.getFiles.mockReturnValue(files);
 
-      getFileCacheSpy.mockImplementation((f: TFile) => {
+      mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
         return f === expected ? { headings: [h1, h2] } : getCachedMetadata();
       });
 
       mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch([[0, 5]], -0.0115);
+        const match = makeFuzzyMatch();
         return text.startsWith(filterText) ? match : null;
       });
 
@@ -174,25 +202,25 @@ describe('headingsHandler', () => {
       expect(results).toHaveLength(2);
 
       expect(results.every((r) => isHeadingSuggestion(r))).toBe(true);
+
       expect(
         results.every((r: HeadingSuggestion) => r.item === h1 || r.item === h2),
       ).toBe(true);
 
-      let result = results[0];
-      result = result as HeadingSuggestion;
+      const result = results[0] as HeadingSuggestion;
       expect(result.file).toBe(expected);
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(getFilesSpy).toHaveBeenCalled();
-      expect(getFileCacheSpy).toHaveBeenCalled();
+      expect(mockVault.getFiles).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
-      expect(isExtensionRegisteredSpy).toHaveBeenCalled();
+      expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
 
-      getFilesSpy.mockRestore();
-      getFileCacheSpy.mockRestore();
-      mockFuzzySearch.mockRestore();
-      mockPrepareQuery.mockRestore();
+      mockVault.getFiles.mockReset();
+      mockMetadataCache.getFileCache.mockReset();
+      mockFuzzySearch.mockReset();
+      mockPrepareQuery.mockReset();
     });
 
     test('with filter search term, and searchAllHeadings set to false, it should return only matching suggestions using first H1 in file', () => {
@@ -207,16 +235,16 @@ describe('headingsHandler', () => {
         .mockReturnValue(false);
 
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
-      getFilesSpy.mockReturnValue(files);
+      mockVault.getFiles.mockReturnValue(files);
 
-      getFileCacheSpy.mockImplementation((f: TFile) => {
+      mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
         return f === expected
           ? { headings: [expectedHeading, heading2] }
           : getCachedMetadata();
       });
 
       mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch([[0, 5]], -0.0115);
+        const match = makeFuzzyMatch();
         return text.startsWith(filterText) ? match : null;
       });
 
@@ -235,16 +263,16 @@ describe('headingsHandler', () => {
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(getFilesSpy).toHaveBeenCalled();
-      expect(getFileCacheSpy).toHaveBeenCalled();
+      expect(mockVault.getFiles).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
-      expect(isExtensionRegisteredSpy).toHaveBeenCalled();
+      expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
 
-      getFilesSpy.mockRestore();
-      getFileCacheSpy.mockRestore();
-      mockFuzzySearch.mockRestore();
-      mockPrepareQuery.mockRestore();
-      searchAllHeadingsSpy.mockRestore();
+      mockVault.getFiles.mockReset();
+      mockMetadataCache.getFileCache.mockReset();
+      mockFuzzySearch.mockReset();
+      mockPrepareQuery.mockReset();
+      searchAllHeadingsSpy.mockReset();
     });
 
     test("with filter search term, it should return only matching suggestions using file name (leaf segment) when H1 doesn't exist", () => {
@@ -255,15 +283,15 @@ describe('headingsHandler', () => {
       const filterText = 'foo';
 
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
-      getFilesSpy.mockReturnValue(files);
+      mockVault.getFiles.mockReturnValue(files);
 
-      getFileCacheSpy.mockImplementation((f: TFile) => {
+      mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
         // don't return any heading metadata for expected
         return f === expected ? {} : getCachedMetadata();
       });
 
       mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch([[0, 5]], -0.0115);
+        const match = makeFuzzyMatch();
         return text.startsWith(filterText) ? match : null;
       });
 
@@ -279,15 +307,15 @@ describe('headingsHandler', () => {
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(getFilesSpy).toHaveBeenCalled();
-      expect(getFileCacheSpy).toHaveBeenCalled();
+      expect(mockVault.getFiles).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
-      expect(isExtensionRegisteredSpy).toHaveBeenCalled();
+      expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
 
-      getFilesSpy.mockRestore();
-      getFileCacheSpy.mockRestore();
-      mockFuzzySearch.mockRestore();
-      mockPrepareQuery.mockRestore();
+      mockVault.getFiles.mockReset();
+      mockMetadataCache.getFileCache.mockReset();
+      mockFuzzySearch.mockReset();
+      mockPrepareQuery.mockReset();
     });
 
     test('with filter search term, it should fallback match against file path when there is no H1 and no match against the filename (leaf segment)', () => {
@@ -298,11 +326,11 @@ describe('headingsHandler', () => {
       const filterText = 'foo';
 
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
-      getFilesSpy.mockReturnValue(files);
-      getFileCacheSpy.mockReturnValue({});
+      mockVault.getFiles.mockReturnValue(files);
+      mockMetadataCache.getFileCache.mockReturnValue({});
 
       mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch([[0, 5]], -0.0115);
+        const match = makeFuzzyMatch();
         return text.startsWith(filterText) ? match : null;
       });
 
@@ -318,15 +346,15 @@ describe('headingsHandler', () => {
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(getFilesSpy).toHaveBeenCalled();
-      expect(getFileCacheSpy).toHaveBeenCalled();
+      expect(mockVault.getFiles).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
-      expect(isExtensionRegisteredSpy).toHaveBeenCalled();
+      expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
 
-      getFilesSpy.mockRestore();
-      getFileCacheSpy.mockRestore();
-      mockFuzzySearch.mockRestore();
-      mockPrepareQuery.mockRestore();
+      mockVault.getFiles.mockReset();
+      mockMetadataCache.getFileCache.mockReset();
+      mockFuzzySearch.mockReset();
+      mockPrepareQuery.mockReset();
     });
 
     test('with filter search term and shouldShowAlias set to true, it should match against aliases', () => {
@@ -335,7 +363,7 @@ describe('headingsHandler', () => {
       const filterText = 'foo';
 
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
-      getFilesSpy.mockReturnValue(files);
+      mockVault.getFiles.mockReturnValue(files);
       settings.shouldShowAlias = true;
 
       const fm: CachedMetadata = {
@@ -345,12 +373,12 @@ describe('headingsHandler', () => {
         },
       };
 
-      getFileCacheSpy.mockImplementation((f: TFile) => {
+      mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
         return f === expected ? fm : getCachedMetadata();
       });
 
       mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch([[0, 5]], -0.0115);
+        const match = makeFuzzyMatch();
         return text.startsWith(filterText) ? match : null;
       });
 
@@ -366,16 +394,16 @@ describe('headingsHandler', () => {
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(getFilesSpy).toHaveBeenCalled();
-      expect(getFileCacheSpy).toHaveBeenCalled();
+      expect(mockVault.getFiles).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
-      expect(isExtensionRegisteredSpy).toHaveBeenCalled();
+      expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
 
       settings.shouldShowAlias = false;
-      getFilesSpy.mockRestore();
-      getFileCacheSpy.mockRestore();
-      mockFuzzySearch.mockRestore();
-      mockPrepareQuery.mockRestore();
+      mockVault.getFiles.mockReset();
+      mockMetadataCache.getFileCache.mockReset();
+      mockFuzzySearch.mockReset();
+      mockPrepareQuery.mockReset();
     });
 
     test('with filter search term and showExistingOnly set to false, it should match against unresolved linktext', () => {
@@ -384,15 +412,15 @@ describe('headingsHandler', () => {
       const filterText = 'foo';
 
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
-      getFilesSpy.mockReturnValue(files);
+      mockVault.getFiles.mockReturnValue(files);
 
-      app.metadataCache.unresolvedLinks[expected.path] = {
+      mockMetadataCache.unresolvedLinks[expected.path] = {
         'foo link noexist': 1,
         'another link': 1,
       };
 
       mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch([[0, 5]], -0.0115);
+        const match = makeFuzzyMatch();
         return text.startsWith(filterText) ? match : null;
       });
 
@@ -408,14 +436,14 @@ describe('headingsHandler', () => {
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(getFilesSpy).toHaveBeenCalled();
+      expect(mockVault.getFiles).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
-      expect(isExtensionRegisteredSpy).toHaveBeenCalled();
+      expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
 
-      getFilesSpy.mockRestore();
-      mockFuzzySearch.mockRestore();
-      mockPrepareQuery.mockRestore();
-      app.metadataCache.unresolvedLinks = {};
+      mockVault.getFiles.mockReset();
+      mockFuzzySearch.mockReset();
+      mockPrepareQuery.mockReset();
+      mockMetadataCache.unresolvedLinks = {};
     });
 
     test('with filter search term and strictHeadingsOnly enabled, it should not match against file name, or path when there is no H1', () => {
@@ -426,8 +454,8 @@ describe('headingsHandler', () => {
       const filterText = 'foo';
 
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
-      getFilesSpy.mockReturnValue(files);
-      getFileCacheSpy.mockReturnValue({});
+      mockVault.getFiles.mockReturnValue(files);
+      mockMetadataCache.getFileCache.mockReturnValue({});
 
       const strictHeadingsOnlySpy = jest
         .spyOn(settings, 'strictHeadingsOnly', 'get')
@@ -440,50 +468,90 @@ describe('headingsHandler', () => {
       expect(results).toHaveLength(0);
 
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(getFilesSpy).toHaveBeenCalled();
-      expect(getFileCacheSpy).toHaveBeenCalled();
+      expect(mockVault.getFiles).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
-      expect(isExtensionRegisteredSpy).toHaveBeenCalled();
+      expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
       expect(strictHeadingsOnlySpy).toHaveBeenCalled();
 
-      getFilesSpy.mockRestore();
-      getFileCacheSpy.mockRestore();
-      mockPrepareQuery.mockRestore();
-      strictHeadingsOnlySpy.mockRestore();
+      mockVault.getFiles.mockReset();
+      mockMetadataCache.getFileCache.mockReset();
+      mockPrepareQuery.mockReset();
+      strictHeadingsOnlySpy.mockReset();
     });
   });
 
   describe('renderSuggestion', () => {
+    let sut: HeadingsHandler;
+    let mockParentEl: MockProxy<HTMLElement>;
+
+    beforeAll(() => {
+      sut = new HeadingsHandler(mock<App>(), settings);
+      mockParentEl = mock<HTMLElement>();
+    });
+
     it('should not throw an error with a null suggestion', () => {
       expect(() => sut.renderSuggestion(null, null)).not.toThrow();
     });
 
-    test.todo('with HeadingCache, it should render a suggestion with match offsets');
+    it('should render a span with the heading level indicator', () => {
+      sut.renderSuggestion(headingSugg, mockParentEl);
+
+      expect(mockParentEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: 'suggestion-flair',
+          text: HeadingIndicators[headingSugg.item.level],
+          prepend: true,
+        }),
+      );
+    });
+
+    test('with HeadingCache, it should render a suggestion with match offsets', () => {
+      const mockRenderResults = mocked<typeof renderResults>(renderResults);
+
+      sut.renderSuggestion(headingSugg, mockParentEl);
+
+      expect(mockRenderResults).toHaveBeenCalledWith(
+        mockParentEl,
+        headingSugg.item.heading,
+        headingSugg.match,
+      );
+    });
+
+    it('should render a div element with the text of the suggestion file path', () => {
+      sut.renderSuggestion(headingSugg, mockParentEl);
+
+      expect(mockParentEl.createDiv).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: 'suggestion-note',
+          text: stripMDExtensionFromPath(headingSugg.file),
+        }),
+      );
+    });
   });
 
   describe('onChooseSuggestion', () => {
+    let sut: HeadingsHandler;
+    let mockWorkspace: MockProxy<Workspace>;
+
+    beforeAll(() => {
+      mockWorkspace = mock<Workspace>();
+      const mockApp = mock<App>({
+        workspace: mockWorkspace,
+      });
+
+      sut = new HeadingsHandler(mockApp, settings);
+    });
+
     it('should open the file associated with the suggestion', () => {
-      const workspaceLeaf = new WorkspaceLeaf();
-      const file = new TFile();
-      const sugg: HeadingSuggestion = {
-        item: makeHeading('foo heading', 1),
-        file,
-        match: null,
-        type: 'heading',
-      };
+      const mockLeaf = mock<WorkspaceLeaf>();
+      mockLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      const getLeafSpy = jest
-        .spyOn(app.workspace, 'getLeaf')
-        .mockImplementation((_newLeaf) => workspaceLeaf);
-      const openFileSpy = jest.spyOn(workspaceLeaf, 'openFile').mockResolvedValue();
+      sut.onChooseSuggestion(headingSugg, null);
 
-      sut.onChooseSuggestion(sugg, null);
-
-      expect(getLeafSpy).toHaveBeenCalled();
-      expect(openFileSpy).toHaveBeenCalled();
-
-      getLeafSpy.mockRestore();
-      openFileSpy.mockRestore();
+      expect(mockWorkspace.getLeaf).toHaveBeenCalled();
+      expect(mockLeaf.openFile).toHaveBeenCalled();
     });
 
     it('should not throw an error with a null suggestion', () => {
@@ -491,7 +559,7 @@ describe('headingsHandler', () => {
     });
 
     it('should catch and log errors to the console', () => {
-      const workspaceLeaf = new WorkspaceLeaf();
+      const mockLeaf = mock<WorkspaceLeaf>();
       const sugg: HeadingSuggestion = {
         item: makeHeading('foo heading', 1),
         file: new TFile(),
@@ -499,20 +567,17 @@ describe('headingsHandler', () => {
         type: 'heading',
       };
 
-      const getLeafSpy = jest
-        .spyOn(app.workspace, 'getLeaf')
-        .mockImplementation((_newLeaf) => workspaceLeaf);
+      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
       // Promise used to trigger the error condition
       const openFilePromise = Promise.resolve();
-      const openFileSpy = jest
-        .spyOn(workspaceLeaf, 'openFile')
-        .mockImplementation((_f, _o) => {
-          // throw to simulate openFile() failing. This happens first
-          return openFilePromise.then(() => {
-            throw new Error('openFile() unit test error');
-          });
+
+      mockLeaf.openFile.mockImplementation(() => {
+        // throw to simulate openFile() failing. This happens first
+        return openFilePromise.then(() => {
+          throw new Error('openFile() unit test mock error');
         });
+      });
 
       let consoleLogPromiseResolveFn: (value: void | PromiseLike<void>) => void;
 
@@ -539,12 +604,10 @@ describe('headingsHandler', () => {
 
       // when all the promises are resolved check expectations and clean up
       return allPromises.finally(() => {
-        expect(getLeafSpy).toHaveBeenCalled();
-        expect(openFileSpy).toHaveBeenCalled();
+        expect(mockWorkspace.getLeaf).toHaveBeenCalled();
+        expect(mockLeaf.openFile).toHaveBeenCalled();
         expect(consoleLogSpy).toHaveBeenCalled();
 
-        getLeafSpy.mockRestore();
-        openFileSpy.mockRestore();
         consoleLogSpy.mockRestore();
       });
     });

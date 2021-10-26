@@ -1,3 +1,4 @@
+import { mocked } from 'ts-jest/dist/utils/testing';
 import { Mode, WorkspaceSuggestion } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { WorkspaceHandler, WORKSPACE_PLUGIN_ID } from 'src/Handlers';
@@ -5,40 +6,75 @@ import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
 import {
   App,
   fuzzySearch,
+  InstalledPlugin,
+  InternalPlugins,
   PreparedQuery,
   prepareQuery,
   renderResults,
   WorkspacesPluginInstance,
 } from 'obsidian';
 import { makePreparedQuery, makeFuzzyMatch, workspaceTrigger } from '@fixtures';
+import { mock, MockProxy } from 'jest-mock-extended';
+
+function makeWorkspacesPluginInstall(): MockProxy<InstalledPlugin> {
+  const mockInstance = mock<WorkspacesPluginInstance>({
+    id: WORKSPACE_PLUGIN_ID,
+    workspaces: {
+      'first workspace': {},
+      'second workspace': {},
+    },
+  });
+
+  return mock<InstalledPlugin>({
+    enabled: true,
+    instance: mockInstance,
+  });
+}
+
+function makeInternalPluginList(
+  workspacePlugin: MockProxy<InstalledPlugin>,
+): MockProxy<InternalPlugins> {
+  const mockPlugins = mock<Record<string, InstalledPlugin>>({
+    workspaces: workspacePlugin,
+  });
+
+  const mockInternalPlugins = mock<InternalPlugins>({ plugins: mockPlugins });
+
+  mockInternalPlugins.getPluginById.mockImplementation((id) => mockPlugins[id]);
+
+  return mockInternalPlugins;
+}
 
 describe('workspaceHandler', () => {
   let settings: SwitcherPlusSettings;
-  let app: App;
-  let getPluginByIdSpy: jest.SpyInstance;
-  let workspacesPluginInstance: WorkspacesPluginInstance;
+  let mockApp: MockProxy<App>;
+  let mockInternalPlugins: MockProxy<InternalPlugins>;
+  let mockWsPluginInstance: MockProxy<WorkspacesPluginInstance>;
   let sut: WorkspaceHandler;
   let expectedWorkspaceIds: string[];
   let suggestionInstance: WorkspaceSuggestion;
 
   beforeAll(() => {
-    app = new App();
-    const { internalPlugins } = app;
+    const workspacePluginInstall = makeWorkspacesPluginInstall();
+    mockWsPluginInstance =
+      workspacePluginInstall.instance as MockProxy<WorkspacesPluginInstance>;
+
+    mockInternalPlugins = makeInternalPluginList(workspacePluginInstall);
+    mockApp = mock<App>({
+      internalPlugins: mockInternalPlugins,
+    });
+
     settings = new SwitcherPlusSettings(null);
     jest.spyOn(settings, 'workspaceListCommand', 'get').mockReturnValue(workspaceTrigger);
 
-    getPluginByIdSpy = jest.spyOn(internalPlugins, 'getPluginById');
-    workspacesPluginInstance = internalPlugins.plugins[WORKSPACE_PLUGIN_ID]
-      .instance as WorkspacesPluginInstance;
-
-    expectedWorkspaceIds = Object.keys(workspacesPluginInstance.workspaces);
+    expectedWorkspaceIds = Object.keys(mockWsPluginInstance.workspaces);
     suggestionInstance = {
       type: 'workspace',
       item: { type: 'workspaceInfo', id: expectedWorkspaceIds[0] },
-      match: makeFuzzyMatch([[0, 5]], -0.0115),
+      match: makeFuzzyMatch(),
     };
 
-    sut = new WorkspaceHandler(app, settings);
+    sut = new WorkspaceHandler(mockApp, settings);
   });
 
   describe('commandString', () => {
@@ -58,7 +94,6 @@ describe('workspaceHandler', () => {
     });
 
     it('should validate parsed input with workspace plugin enabled', () => {
-      getPluginByIdSpy.mockReturnValueOnce({ enabled: true });
       const inputInfo = new InputInfo(inputText);
 
       sut.validateCommand(inputInfo, startIndex, filterText, null, null);
@@ -67,11 +102,17 @@ describe('workspaceHandler', () => {
       const workspaceCmd = inputInfo.parsedCommand();
       expect(workspaceCmd.parsedInput).toBe(filterText);
       expect(workspaceCmd.isValidated).toBe(true);
-      expect(getPluginByIdSpy).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);
+      expect(mockApp.internalPlugins.getPluginById).toHaveBeenCalledWith(
+        WORKSPACE_PLUGIN_ID,
+      );
     });
 
     it('should not validate parsed input with workspace plugin disabled', () => {
-      getPluginByIdSpy.mockReturnValueOnce({ enabled: false });
+      mockInternalPlugins.getPluginById.mockReturnValueOnce({
+        enabled: false,
+        instance: null,
+      });
+
       const inputInfo = new InputInfo(inputText);
 
       sut.validateCommand(inputInfo, startIndex, filterText, null, null);
@@ -80,7 +121,7 @@ describe('workspaceHandler', () => {
       const workspaceCmd = inputInfo.parsedCommand();
       expect(workspaceCmd.parsedInput).toBe(null);
       expect(workspaceCmd.isValidated).toBe(false);
-      expect(getPluginByIdSpy).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);
+      expect(mockInternalPlugins.getPluginById).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);
     });
   });
 
@@ -105,17 +146,17 @@ describe('workspaceHandler', () => {
       expect(results).toHaveLength(expectedWorkspaceIds.length);
       expect(expectedWorkspaceIds.every((id) => resultWorkspaceIds.has(id))).toBe(true);
       expect(results.every((sugg) => sugg.type === 'workspace')).toBe(true);
-      expect(getPluginByIdSpy).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);
+      expect(mockInternalPlugins.getPluginById).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);
     });
 
     test('with filter search term, it should return only matching suggestions for workspace mode', () => {
       const filterText = 'first';
-      const mockPrepareQuery = prepareQuery as jest.MockedFunction<typeof prepareQuery>;
-      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
+      const mockPrepareQuery = mocked<typeof prepareQuery>(prepareQuery);
+      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
 
-      const mockFuzzySearch = fuzzySearch as jest.MockedFunction<typeof fuzzySearch>;
+      const mockFuzzySearch = mocked<typeof fuzzySearch>(fuzzySearch);
       mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch([[0, 5]], -0.0115);
+        const match = makeFuzzyMatch();
         return text.startsWith(filterText) ? match : null;
       });
 
@@ -132,10 +173,9 @@ describe('workspaceHandler', () => {
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(getPluginByIdSpy).toHaveBeenCalled();
+      expect(mockInternalPlugins.getPluginById).toHaveBeenCalled();
 
-      mockFuzzySearch.mockRestore();
-      mockPrepareQuery.mockRestore();
+      mockFuzzySearch.mockReset();
     });
   });
 
@@ -145,19 +185,16 @@ describe('workspaceHandler', () => {
     });
 
     it('should render a suggestion with match offsets', () => {
-      const mockRenderResults = renderResults as jest.MockedFunction<
-        typeof renderResults
-      >;
+      const mockParentEl = mock<HTMLElement>();
+      const mockRenderResults = mocked<typeof renderResults>(renderResults);
 
-      sut.renderSuggestion(suggestionInstance, null);
+      sut.renderSuggestion(suggestionInstance, mockParentEl);
 
       const {
         item: { id },
         match,
       } = suggestionInstance;
-      expect(mockRenderResults).toHaveBeenCalledWith(null, id, match);
-
-      mockRenderResults.mockRestore();
+      expect(mockRenderResults).toHaveBeenCalledWith(mockParentEl, id, match);
     });
   });
 
@@ -167,14 +204,12 @@ describe('workspaceHandler', () => {
     });
 
     it('should tell the workspaces plugin to load the workspace with the chosen ID', () => {
-      const loadWorkspaceSpy = jest.spyOn(workspacesPluginInstance, 'loadWorkspace');
-
       sut.onChooseSuggestion(suggestionInstance, null);
 
-      expect(getPluginByIdSpy).toHaveBeenCalled();
-      expect(loadWorkspaceSpy).toHaveBeenCalledWith(suggestionInstance.item.id);
-
-      loadWorkspaceSpy.mockRestore();
+      expect(mockInternalPlugins.getPluginById).toHaveBeenCalled();
+      expect(mockWsPluginInstance.loadWorkspace).toHaveBeenCalledWith(
+        suggestionInstance.item.id,
+      );
     });
   });
 });

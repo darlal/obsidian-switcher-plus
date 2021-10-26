@@ -114,9 +114,8 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
       const text = SymbolHandler.getSuggestionTextForSymbol(item);
 
       SymbolHandler.addSymbolIndicator(item, containerEl);
-      containerEl = createSpan({
+      containerEl = parentEl.createSpan({
         cls: 'qsp-symbol-text',
-        parent: containerEl,
       });
 
       renderResults(containerEl, text, sugg.match);
@@ -354,10 +353,9 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
       indicator = SymbolIndicators[symbolType];
     }
 
-    createDiv({
+    parentEl.createDiv({
       text: indicator,
       cls: 'qsp-symbol-indicator',
-      parent: parentEl,
     });
   }
 

@@ -19,6 +19,9 @@ import {
   App,
   Workspace,
   renderResults,
+  View,
+  WorkspaceItem,
+  WorkspaceSplit,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -26,24 +29,42 @@ import {
   rightSplitEditorFixtures,
   editorTrigger,
   makeFuzzyMatch,
-  makePreparedQueryEmpty,
 } from '@fixtures';
 import { EditorHandler } from 'src/Handlers';
 import { activateLeaf } from 'src/utils';
+import { mock, MockProxy } from 'jest-mock-extended';
+import { mocked } from 'ts-jest/utils';
+
+function makeLeaf(text: string, root: WorkspaceItem): MockProxy<WorkspaceLeaf> {
+  const mockView = mock<View>();
+  mockView.getViewType.mockImplementation(() => 'markdown');
+
+  const mockLeaf = mock<WorkspaceLeaf>({ view: mockView });
+  mockLeaf.getDisplayText.mockImplementation(() => text);
+  mockLeaf.getRoot.mockImplementation(() => root);
+
+  return mockLeaf;
+}
 
 describe('editorHandler', () => {
   let settings: SwitcherPlusSettings;
-  let app: App;
-  let workspace: Workspace;
+  let mockApp: MockProxy<App>;
+  let mockWorkspace: MockProxy<Workspace>;
   let sut: EditorHandler;
 
   beforeAll(() => {
-    app = new App();
+    mockWorkspace = mock<Workspace>({
+      rootSplit: mock<WorkspaceSplit>(),
+      leftSplit: mock<WorkspaceSplit>(),
+      rightSplit: mock<WorkspaceSplit>(),
+    });
+
+    mockApp = mock<App>({ workspace: mockWorkspace });
     settings = new SwitcherPlusSettings(null);
-    sut = new EditorHandler(app, settings);
-    ({ workspace } = app);
 
     jest.spyOn(settings, 'editorListCommand', 'get').mockReturnValue(editorTrigger);
+
+    sut = new EditorHandler(mockApp, settings);
   });
 
   describe('commandString', () => {
@@ -75,57 +96,28 @@ describe('editorHandler', () => {
   });
 
   describe('getSuggestions', () => {
+    const mockPrepareQuery = mocked<typeof prepareQuery>(prepareQuery);
+    const mockFuzzySearch = mocked<typeof fuzzySearch>(fuzzySearch);
     const rootFixture = rootSplitEditorFixtures[0];
     const leftFixture = leftSplitEditorFixtures[0];
     const rightFixture = rightSplitEditorFixtures[0];
-    let rootSplitLeaf: WorkspaceLeaf;
-    let leftSplitLeaf: WorkspaceLeaf;
-    let rightSplitLeaf: WorkspaceLeaf;
-    let rootSplitGetRootSpy: jest.SpyInstance;
-    let leftSplitGetRootSpy: jest.SpyInstance;
-    let rightSplitGetRootSpy: jest.SpyInstance;
-    let rootSplitGetDisplayTextSpy: jest.SpyInstance;
-    let leftSplitGetDisplayTextSpy: jest.SpyInstance;
-    let rightSplitGetDisplayTextSpy: jest.SpyInstance;
-    let iterateAllLeavesSpy: jest.SpyInstance;
-    let mockPrepareQuery: jest.MockedFunction<typeof prepareQuery>;
-    let mockFuzzySearch: jest.MockedFunction<typeof fuzzySearch>;
+    let mockRootSplitLeaf: MockProxy<WorkspaceLeaf>;
+    let mockLeftSplitLeaf: MockProxy<WorkspaceLeaf>;
+    let mockRightSplitLeaf: MockProxy<WorkspaceLeaf>;
 
     beforeAll(() => {
-      rootSplitLeaf = new WorkspaceLeaf();
-      leftSplitLeaf = new WorkspaceLeaf();
-      rightSplitLeaf = new WorkspaceLeaf();
-
-      rootSplitGetRootSpy = jest
-        .spyOn(rootSplitLeaf, 'getRoot')
-        .mockReturnValue(workspace.rootSplit);
-      leftSplitGetRootSpy = jest
-        .spyOn(leftSplitLeaf, 'getRoot')
-        .mockReturnValue(workspace.leftSplit);
-      rightSplitGetRootSpy = jest
-        .spyOn(rightSplitLeaf, 'getRoot')
-        .mockReturnValue(workspace.rightSplit);
-
-      rootSplitGetDisplayTextSpy = jest
-        .spyOn(rootSplitLeaf, 'getDisplayText')
-        .mockReturnValue(rootFixture.displayText);
-      leftSplitGetDisplayTextSpy = jest
-        .spyOn(leftSplitLeaf, 'getDisplayText')
-        .mockReturnValue(leftFixture.displayText);
-      rightSplitGetDisplayTextSpy = jest
-        .spyOn(rightSplitLeaf, 'getDisplayText')
-        .mockReturnValue(rightFixture.displayText);
-
-      iterateAllLeavesSpy = jest
-        .spyOn(workspace, 'iterateAllLeaves')
-        .mockImplementation((callback: (leaf: WorkspaceLeaf) => void) => {
-          const leaves = [rootSplitLeaf, leftSplitLeaf, rightSplitLeaf];
+      mockWorkspace.iterateAllLeaves.mockImplementation(
+        (callback: (leaf: WorkspaceLeaf) => void) => {
+          const leaves = [mockRootSplitLeaf, mockLeftSplitLeaf, mockRightSplitLeaf];
           leaves.forEach((leaf) => callback(leaf));
-        });
+        },
+      );
+    });
 
-      mockPrepareQuery = prepareQuery as jest.MockedFunction<typeof prepareQuery>;
-      mockPrepareQuery.mockReturnValue(makePreparedQueryEmpty());
-      mockFuzzySearch = fuzzySearch as jest.MockedFunction<typeof fuzzySearch>;
+    beforeEach(() => {
+      mockRootSplitLeaf = makeLeaf(rootFixture.displayText, mockWorkspace.rootSplit);
+      mockLeftSplitLeaf = makeLeaf(leftFixture.displayText, mockWorkspace.leftSplit);
+      mockRightSplitLeaf = makeLeaf(rightFixture.displayText, mockWorkspace.rightSplit);
     });
 
     test('with falsy input, it should return an empty array', () => {
@@ -145,16 +137,16 @@ describe('editorHandler', () => {
       expect(results).toHaveLength(3);
 
       const resultLeaves = new Set(results.map((sugg: EditorSuggestion) => sugg.item));
-      expect(resultLeaves.has(rootSplitLeaf)).toBe(true);
-      expect(resultLeaves.has(leftSplitLeaf)).toBe(true);
-      expect(resultLeaves.has(rightSplitLeaf)).toBe(true);
+      expect(resultLeaves.has(mockRootSplitLeaf)).toBe(true);
+      expect(resultLeaves.has(mockLeftSplitLeaf)).toBe(true);
+      expect(resultLeaves.has(mockRightSplitLeaf)).toBe(true);
       expect(results.every((sugg) => sugg.type === 'editor')).toBe(true);
 
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(iterateAllLeavesSpy).toHaveBeenCalled();
-      expect(rootSplitGetRootSpy).toHaveBeenCalled();
-      expect(leftSplitGetRootSpy).toHaveBeenCalled();
-      expect(rightSplitGetRootSpy).toHaveBeenCalled();
+      expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
+      expect(mockRootSplitLeaf.getRoot).toHaveBeenCalled();
+      expect(mockLeftSplitLeaf.getRoot).toHaveBeenCalled();
+      expect(mockRightSplitLeaf.getRoot).toHaveBeenCalled();
     });
 
     test('with filter search term, it should return only matching suggestions for editor mode', () => {
@@ -172,22 +164,22 @@ describe('editorHandler', () => {
       expect(results).toHaveLength(1);
 
       const resultLeaves = new Set(results.map((sugg: EditorSuggestion) => sugg.item));
-      expect(resultLeaves.has(rootSplitLeaf)).toBe(true);
-      expect(resultLeaves.has(leftSplitLeaf)).toBe(false);
-      expect(resultLeaves.has(rightSplitLeaf)).toBe(false);
+      expect(resultLeaves.has(mockRootSplitLeaf)).toBe(true);
+      expect(resultLeaves.has(mockLeftSplitLeaf)).toBe(false);
+      expect(resultLeaves.has(mockRightSplitLeaf)).toBe(false);
       expect(results[0]).toHaveProperty('type', 'editor');
 
       expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockFuzzySearch).toHaveBeenCalled();
-      expect(iterateAllLeavesSpy).toHaveBeenCalled();
-      expect(rootSplitGetRootSpy).toHaveBeenCalled();
-      expect(leftSplitGetRootSpy).toHaveBeenCalled();
-      expect(rightSplitGetRootSpy).toHaveBeenCalled();
-      expect(rootSplitGetDisplayTextSpy).toHaveBeenCalled();
-      expect(leftSplitGetDisplayTextSpy).toHaveBeenCalled();
-      expect(rightSplitGetDisplayTextSpy).toHaveBeenCalled();
+      expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
+      expect(mockRootSplitLeaf.getRoot).toHaveBeenCalled();
+      expect(mockLeftSplitLeaf.getRoot).toHaveBeenCalled();
+      expect(mockRightSplitLeaf.getRoot).toHaveBeenCalled();
+      expect(mockRootSplitLeaf.getDisplayText).toHaveBeenCalled();
+      expect(mockLeftSplitLeaf.getDisplayText).toHaveBeenCalled();
+      expect(mockRightSplitLeaf.getDisplayText).toHaveBeenCalled();
 
-      mockFuzzySearch.mockRestore();
+      mockFuzzySearch.mockReset();
     });
 
     test('with INCLUDED side view type, it should return included side panel editor suggestions for editor mode', () => {
@@ -196,9 +188,8 @@ describe('editorHandler', () => {
         .spyOn(settings, 'includeSidePanelViewTypes', 'get')
         .mockReturnValue([includeViewType]);
 
-      const getViewTypeSpy = jest
-        .spyOn(leftSplitLeaf.view, 'getViewType')
-        .mockReturnValue(includeViewType);
+      const mockView = mockLeftSplitLeaf.view as MockProxy<View>;
+      mockView.getViewType.mockReturnValue(includeViewType);
 
       const inputInfo = new InputInfo(editorTrigger, Mode.EditorList);
       const results = sut.getSuggestions(inputInfo);
@@ -208,21 +199,20 @@ describe('editorHandler', () => {
       expect(results).toHaveLength(2);
 
       const resultLeaves = new Set(results.map((sugg: EditorSuggestion) => sugg.item));
-      expect(resultLeaves.has(rootSplitLeaf)).toBe(true);
-      expect(resultLeaves.has(leftSplitLeaf)).toBe(true);
-      expect(resultLeaves.has(rightSplitLeaf)).toBe(false);
+      expect(resultLeaves.has(mockRootSplitLeaf)).toBe(true);
+      expect(resultLeaves.has(mockLeftSplitLeaf)).toBe(true);
+      expect(resultLeaves.has(mockRightSplitLeaf)).toBe(false);
       expect(results.every((sugg) => sugg.type === 'editor')).toBe(true);
 
       expect(includeViewTypesSpy).toHaveBeenCalled();
-      expect(getViewTypeSpy).toHaveBeenCalled();
+      expect(mockView.getViewType).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(iterateAllLeavesSpy).toHaveBeenCalled();
-      expect(rootSplitGetRootSpy).toHaveBeenCalled();
-      expect(leftSplitGetRootSpy).toHaveBeenCalled();
-      expect(rightSplitGetRootSpy).toHaveBeenCalled();
+      expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
+      expect(mockRootSplitLeaf.getRoot).toHaveBeenCalled();
+      expect(mockLeftSplitLeaf.getRoot).toHaveBeenCalled();
+      expect(mockRightSplitLeaf.getRoot).toHaveBeenCalled();
 
       includeViewTypesSpy.mockRestore();
-      getViewTypeSpy.mockRestore();
     });
 
     test('with EXCLUDED main view type, it should not return excluded main panel editor suggestions for editor mode', () => {
@@ -231,9 +221,8 @@ describe('editorHandler', () => {
         .spyOn(settings, 'excludeViewTypes', 'get')
         .mockReturnValue([excludeViewType]);
 
-      const getViewTypeSpy = jest
-        .spyOn(rootSplitLeaf.view, 'getViewType')
-        .mockReturnValue(excludeViewType);
+      const mockView = mockRootSplitLeaf.view as MockProxy<View>;
+      mockView.getViewType.mockReturnValue(excludeViewType);
 
       const inputInfo = new InputInfo(editorTrigger, Mode.EditorList);
       const results = sut.getSuggestions(inputInfo);
@@ -243,21 +232,20 @@ describe('editorHandler', () => {
       expect(results).toHaveLength(2);
 
       const resultLeaves = new Set(results.map((sugg: EditorSuggestion) => sugg.item));
-      expect(resultLeaves.has(rootSplitLeaf)).toBe(false);
-      expect(resultLeaves.has(leftSplitLeaf)).toBe(true);
-      expect(resultLeaves.has(rightSplitLeaf)).toBe(true);
+      expect(resultLeaves.has(mockRootSplitLeaf)).toBe(false);
+      expect(resultLeaves.has(mockLeftSplitLeaf)).toBe(true);
+      expect(resultLeaves.has(mockRightSplitLeaf)).toBe(true);
       expect(results.every((sugg) => sugg.type === 'editor')).toBe(true);
 
       expect(excludeViewTypesSpy).toHaveBeenCalled();
-      expect(getViewTypeSpy).toHaveBeenCalled();
+      expect(mockView.getViewType).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(iterateAllLeavesSpy).toHaveBeenCalled();
-      expect(rootSplitGetRootSpy).toHaveBeenCalled();
-      expect(leftSplitGetRootSpy).toHaveBeenCalled();
-      expect(rightSplitGetRootSpy).toHaveBeenCalled();
+      expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
+      expect(mockRootSplitLeaf.getRoot).toHaveBeenCalled();
+      expect(mockLeftSplitLeaf.getRoot).toHaveBeenCalled();
+      expect(mockRightSplitLeaf.getRoot).toHaveBeenCalled();
 
       excludeViewTypesSpy.mockRestore();
-      getViewTypeSpy.mockRestore();
     });
   });
 
@@ -267,29 +255,25 @@ describe('editorHandler', () => {
     });
 
     it('should render a suggestion with match offsets', () => {
-      const leaf = new WorkspaceLeaf();
+      const mockParentEl = mock<HTMLElement>();
       const displayText = 'foo';
-      const mockRenderResults = renderResults as jest.MockedFunction<
-        typeof renderResults
-      >;
-
-      const leafGetDisplayTextSpy = jest
-        .spyOn(leaf, 'getDisplayText')
-        .mockReturnValue(displayText);
+      const mockLeaf = makeLeaf(displayText, null);
+      const mockRenderResults = mocked<typeof renderResults>(renderResults);
 
       const sugg: EditorSuggestion = {
         type: 'editor',
-        item: leaf,
+        item: mockLeaf,
         match: makeFuzzyMatch(),
       };
 
-      sut.renderSuggestion(sugg, null);
+      sut.renderSuggestion(sugg, mockParentEl);
 
-      expect(mockRenderResults).toHaveBeenCalledWith(null, displayText, sugg.match);
-      expect(leafGetDisplayTextSpy).toHaveBeenCalled();
-
-      mockRenderResults.mockRestore();
-      leafGetDisplayTextSpy.mockRestore();
+      expect(mockRenderResults).toHaveBeenCalledWith(
+        mockParentEl,
+        displayText,
+        sugg.match,
+      );
+      expect(mockLeaf.getDisplayText).toHaveBeenCalled();
     });
   });
 
@@ -299,16 +283,16 @@ describe('editorHandler', () => {
     });
 
     it('should activate the selected leaf', () => {
-      const leaf = new WorkspaceLeaf();
+      const mockLeaf = makeLeaf(null, null);
       const sugg: EditorSuggestion = {
         type: 'editor',
-        item: leaf,
+        item: mockLeaf,
         match: makeFuzzyMatch(),
       };
 
       sut.onChooseSuggestion(sugg, null);
 
-      expect(activateLeaf).toHaveBeenCalledWith(workspace, sugg.item, false);
+      expect(activateLeaf).toHaveBeenCalledWith(mockWorkspace, sugg.item, false);
     });
   });
 });

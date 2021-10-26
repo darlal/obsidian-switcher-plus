@@ -1,82 +1,67 @@
 import { isMainPanelLeaf, activateLeaf, getOpenLeaves } from 'src/utils';
-import { App, Workspace, WorkspaceLeaf } from 'obsidian';
+import { View, Workspace, WorkspaceLeaf, WorkspaceSplit } from 'obsidian';
+import { mock, MockProxy } from 'jest-mock-extended';
+
+function makeLeaf(): MockProxy<WorkspaceLeaf> {
+  return mock<WorkspaceLeaf>({ view: mock<View>() });
+}
 
 describe('panelUtils', () => {
-  let app: App;
-  let workspace: Workspace;
-  let leaf: WorkspaceLeaf;
-  let getRootSpy: jest.SpyInstance;
+  let mockWorkspace: MockProxy<Workspace>;
 
   beforeAll(() => {
-    app = new App();
-    ({ workspace } = app);
+    mockWorkspace = mock<Workspace>({
+      rootSplit: mock<WorkspaceSplit>(),
+      leftSplit: mock<WorkspaceSplit>(),
+      rightSplit: mock<WorkspaceSplit>(),
+    });
   });
 
   describe('isMainPanelLeaf', () => {
-    beforeAll(() => {
-      leaf = new WorkspaceLeaf();
-      getRootSpy = jest.spyOn(leaf, 'getRoot');
-    });
+    const mockLeaf = makeLeaf();
 
     it('should return true for main panel leaf', () => {
-      getRootSpy.mockReturnValue(workspace.rootSplit);
+      mockLeaf.getRoot.mockReturnValueOnce(mockWorkspace.rootSplit);
 
-      const result = isMainPanelLeaf(workspace, leaf);
+      const result = isMainPanelLeaf(mockWorkspace, mockLeaf);
 
       expect(result).toBe(true);
-      expect(getRootSpy).toHaveBeenCalled();
-
-      getRootSpy.mockRestore();
+      expect(mockLeaf.getRoot).toHaveBeenCalled();
     });
 
     it('should return false for side panel leaf', () => {
-      getRootSpy.mockReturnValue(workspace.leftSplit);
+      mockLeaf.getRoot.mockReturnValueOnce(mockWorkspace.leftSplit);
 
-      const result = isMainPanelLeaf(workspace, leaf);
+      const result = isMainPanelLeaf(mockWorkspace, mockLeaf);
 
       expect(result).toBe(false);
-      expect(getRootSpy).toHaveBeenCalled();
-
-      getRootSpy.mockRestore();
+      expect(mockLeaf.getRoot).toHaveBeenCalled();
     });
   });
 
   describe('activateLeaf', () => {
-    let setActiveLeafSpy: jest.SpyInstance;
-    let setEphemeralStateSpy: jest.SpyInstance;
-
-    beforeAll(() => {
-      leaf = new WorkspaceLeaf();
-      getRootSpy = jest.spyOn(leaf, 'getRoot');
-      setActiveLeafSpy = jest.spyOn(workspace, 'setActiveLeaf');
-      setEphemeralStateSpy = jest.spyOn(leaf.view, 'setEphemeralState');
-    });
+    const mockLeaf = makeLeaf();
+    const mockView = mockLeaf.view as MockProxy<View>;
 
     it('should activate main panel leaf', () => {
-      getRootSpy.mockReturnValue(workspace.rootSplit);
+      mockLeaf.getRoot.mockReturnValueOnce(mockWorkspace.rootSplit);
 
-      activateLeaf(workspace, leaf, true);
+      activateLeaf(mockWorkspace, mockLeaf, true);
 
-      expect(getRootSpy).toHaveBeenCalled();
-      expect(setActiveLeafSpy).toHaveBeenCalledWith(leaf, true);
-      expect(setEphemeralStateSpy).toHaveBeenCalled();
-
-      getRootSpy.mockRestore();
+      expect(mockLeaf.getRoot).toHaveBeenCalled();
+      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, true);
+      expect(mockView.setEphemeralState).toHaveBeenCalled();
     });
 
     it('should activate side panel leaf', () => {
-      const revealLeafSpy = jest.spyOn(workspace, 'revealLeaf');
-      getRootSpy.mockReturnValue(workspace.rightSplit);
+      mockLeaf.getRoot.mockReturnValueOnce(mockWorkspace.rightSplit);
 
-      activateLeaf(workspace, leaf, true);
+      activateLeaf(mockWorkspace, mockLeaf, true);
 
-      expect(getRootSpy).toHaveBeenCalled();
-      expect(setActiveLeafSpy).toHaveBeenCalledWith(leaf, true);
-      expect(setEphemeralStateSpy).toHaveBeenCalled();
-      expect(revealLeafSpy).toHaveBeenCalledWith(leaf);
-
-      getRootSpy.mockRestore();
-      revealLeafSpy.mockRestore();
+      expect(mockLeaf.getRoot).toHaveBeenCalled();
+      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, true);
+      expect(mockView.setEphemeralState).toHaveBeenCalled();
+      expect(mockWorkspace.revealLeaf).toHaveBeenCalledWith(mockLeaf);
     });
   });
 
@@ -84,35 +69,35 @@ describe('panelUtils', () => {
     it('should return all leaves', () => {
       const excludeMainViewTypes = ['exclude'];
       const includeSideViewTypes = ['include'];
-      const l1 = new WorkspaceLeaf();
-      jest.spyOn(l1, 'getRoot').mockReturnValue(workspace.rootSplit);
 
-      const l2 = new WorkspaceLeaf();
-      jest.spyOn(l2, 'getRoot').mockReturnValue(workspace.rootSplit);
-      jest.spyOn(l2.view, 'getViewType').mockReturnValue(excludeMainViewTypes[0]);
+      const l1 = makeLeaf();
+      l1.getRoot.mockReturnValue(mockWorkspace.rootSplit);
 
-      const l3 = new WorkspaceLeaf();
-      jest.spyOn(l3, 'getRoot').mockReturnValue(workspace.rightSplit);
-      jest.spyOn(l3.view, 'getViewType').mockReturnValue(includeSideViewTypes[0]);
+      const l2 = makeLeaf();
+      l2.getRoot.mockReturnValue(mockWorkspace.rootSplit);
+      (l2.view as MockProxy<View>).getViewType.mockReturnValue(excludeMainViewTypes[0]);
 
-      const iterateAllLeavesSpy = jest
-        .spyOn(workspace, 'iterateAllLeaves')
-        .mockImplementation((callback) => {
-          const leaves = [l1, l2, l3];
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-          leaves.forEach((l) => callback(l));
-        });
+      const l3 = makeLeaf();
+      l3.getRoot.mockReturnValue(mockWorkspace.rightSplit);
+      (l3.view as MockProxy<View>).getViewType.mockReturnValue(includeSideViewTypes[0]);
+
+      mockWorkspace.iterateAllLeaves.mockImplementation((callback) => {
+        const leaves = [l1, l2, l3];
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        leaves.forEach((l) => callback(l));
+      });
 
       const results = getOpenLeaves(
-        workspace,
+        mockWorkspace,
         excludeMainViewTypes,
         includeSideViewTypes,
       );
 
       expect(results).toHaveLength(2);
       expect(results).toContain(l1);
+      expect(results).not.toContain(l2);
       expect(results).toContain(l3);
-      expect(iterateAllLeavesSpy).toHaveBeenCalled();
+      expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
     });
   });
 });

@@ -61,7 +61,7 @@ export function makeHeading(
   };
 }
 
-function getLinks(): LinkCache[] {
+export function getLinks(): LinkCache[] {
   const l1 = makeLink(
     'Format your notes#^e476cc',
     '[[Format your notes#^e476cc]]',

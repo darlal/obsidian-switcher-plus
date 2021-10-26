@@ -1,5 +1,5 @@
 import { SwitcherPlusSettings } from 'src/settings';
-import { Mode, SymbolSuggestion, SymbolType } from 'src/types';
+import { Mode, SymbolSuggestion, SymbolType, HeadingIndicators } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { SymbolHandler } from 'src/Handlers';
 import {
@@ -12,6 +12,14 @@ import {
   MarkdownView,
   EditorRange,
   Loc,
+  renderResults,
+  HeadingCache,
+  TagCache,
+  ReferenceCache,
+  MetadataCache,
+  Editor,
+  Workspace,
+  TFile,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -19,48 +27,66 @@ import {
   symbolTrigger,
   makePreparedQuery,
   makeFuzzyMatch,
-  makePreparedQueryEmpty,
   getHeadings,
+  getTags,
+  getLinks,
 } from '@fixtures';
+import { mock, MockProxy } from 'jest-mock-extended';
+import { mocked } from 'ts-jest/dist/utils/testing';
+
+function makeLeaf(): MockProxy<WorkspaceLeaf> {
+  const mockView = mock<MarkdownView>({
+    file: new TFile(),
+    editor: mock<Editor>(),
+  });
+
+  mockView.getViewType.mockImplementation(() => 'markdown');
+
+  return mock<WorkspaceLeaf>({
+    view: mockView,
+  });
+}
 
 describe('symbolHandler', () => {
   const rootFixture = rootSplitEditorFixtures[0];
   const leftFixture = leftSplitEditorFixtures[0];
   let settings: SwitcherPlusSettings;
-  let app: App;
+  let mockApp: MockProxy<App>;
   let sut: SymbolHandler;
-  let mockGetFileCache: jest.SpyInstance;
-  let mockPrepareQuery: jest.MockedFunction<typeof prepareQuery>;
-  let mockFuzzySearch: jest.MockedFunction<typeof fuzzySearch>;
-  let rootSplitLeaf: WorkspaceLeaf;
-  let leftSplitLeaf: WorkspaceLeaf;
+  let mockMetadataCache: MockProxy<MetadataCache>;
+  let mockRootSplitLeaf: MockProxy<WorkspaceLeaf>;
+  let mockLeftSplitLeaf: MockProxy<WorkspaceLeaf>;
   let inputText: string;
   let startIndex: number;
   let filterText: string;
+  let symbolSugg: SymbolSuggestion;
 
   beforeAll(() => {
-    app = new App();
+    mockMetadataCache = mock<MetadataCache>();
+    mockMetadataCache.getFileCache.mockImplementation((_f) => rootFixture.cachedMetadata);
+
+    mockApp = mock<App>({ metadataCache: mockMetadataCache });
 
     settings = new SwitcherPlusSettings(null);
     jest.spyOn(settings, 'symbolListCommand', 'get').mockReturnValue(symbolTrigger);
 
-    mockGetFileCache = jest
-      .spyOn(app.metadataCache, 'getFileCache')
-      .mockImplementation(() => {
-        return rootFixture.cachedMetadata;
-      });
+    mockRootSplitLeaf = makeLeaf();
+    mockLeftSplitLeaf = makeLeaf();
 
-    mockPrepareQuery = prepareQuery as jest.MockedFunction<typeof prepareQuery>;
-    mockPrepareQuery.mockReturnValue(makePreparedQueryEmpty());
-
-    mockFuzzySearch = fuzzySearch as jest.MockedFunction<typeof fuzzySearch>;
-    rootSplitLeaf = new WorkspaceLeaf();
-    leftSplitLeaf = new WorkspaceLeaf();
+    symbolSugg = {
+      type: 'symbol',
+      item: {
+        type: 'symbolInfo',
+        symbol: getHeadings()[0],
+        symbolType: SymbolType.Heading,
+      },
+      match: null,
+    };
   });
 
   beforeEach(() => {
     // reset for each test because symbol mode will use saved data from previous runs
-    sut = new SymbolHandler(app, settings);
+    sut = new SymbolHandler(mockApp, settings);
   });
 
   describe('commandString', () => {
@@ -80,7 +106,7 @@ describe('symbolHandler', () => {
     it('should validate parsed input in symbol prefix (active editor) mode', () => {
       const inputInfo = new InputInfo(inputText);
 
-      sut.validateCommand(inputInfo, startIndex, filterText, null, rootSplitLeaf);
+      sut.validateCommand(inputInfo, startIndex, filterText, null, mockRootSplitLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       const symbolCmd = inputInfo.parsedCommand();
@@ -90,6 +116,9 @@ describe('symbolHandler', () => {
   });
 
   describe('getSuggestions', () => {
+    const mockPrepareQuery = mocked<typeof prepareQuery>(prepareQuery);
+    const mockFuzzySearch = mocked<typeof fuzzySearch>(fuzzySearch);
+
     test('with falsy input, it should return an empty array', () => {
       const results = sut.getSuggestions(null);
 
@@ -100,7 +129,7 @@ describe('symbolHandler', () => {
 
     test('with default settings, it should return symbol suggestions', () => {
       const inputInfo = new InputInfo(symbolTrigger);
-      sut.validateCommand(inputInfo, 0, '', null, rootSplitLeaf);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       const results = sut.getSuggestions(inputInfo);
@@ -114,7 +143,9 @@ describe('symbolHandler', () => {
       expect(results).toHaveLength(cached.length);
       expect(cached.every((item) => set.has(item))).toBe(true);
 
-      expect(mockGetFileCache).toHaveBeenCalledWith(rootSplitLeaf.view.file);
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
+        mockRootSplitLeaf.view.file,
+      );
       expect(mockPrepareQuery).toHaveBeenCalled();
     });
 
@@ -130,17 +161,16 @@ describe('symbolHandler', () => {
       );
       expect(expectedSelectedHeading).not.toBeNull();
 
-      const getCursorSpy = jest.spyOn(
-        (rootSplitLeaf.view as MarkdownView).editor,
-        'getCursor',
-      );
-      getCursorSpy.mockReturnValueOnce({
+      const mockEditor = (mockRootSplitLeaf.view as MarkdownView)
+        .editor as MockProxy<Editor>;
+
+      mockEditor.getCursor.mockReturnValueOnce({
         line: expectedHeadingStartLineNumber + 1,
         ch: 0,
       });
 
       const inputInfo = new InputInfo(symbolTrigger);
-      sut.validateCommand(inputInfo, 0, '', null, rootSplitLeaf);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       const results = sut.getSuggestions(inputInfo);
@@ -153,14 +183,16 @@ describe('symbolHandler', () => {
       expect(selectedSuggestions).toHaveLength(1);
       expect(selectedSuggestions[0].item.symbol).toBe(expectedSelectedHeading);
 
-      expect(mockGetFileCache).toHaveBeenCalledWith(rootSplitLeaf.view.file);
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
+        mockRootSplitLeaf.view.file,
+      );
       expect(mockPrepareQuery).toHaveBeenCalled();
 
-      selectNearestHeadingSpy.mockRestore();
+      selectNearestHeadingSpy.mockReset();
     });
 
     test('with filter search term, it should return only matching symbol suggestions', () => {
-      mockGetFileCache.mockReturnValueOnce(leftFixture.cachedMetadata);
+      mockMetadataCache.getFileCache.mockReturnValueOnce(leftFixture.cachedMetadata);
       mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
       mockFuzzySearch.mockImplementation(
         (_q: PreparedQuery, text: string): SearchResult => {
@@ -173,7 +205,7 @@ describe('symbolHandler', () => {
       inputText = `${symbolTrigger}${filterText}`;
       startIndex = 0;
       const inputInfo = new InputInfo(inputText);
-      sut.validateCommand(inputInfo, startIndex, filterText, null, leftSplitLeaf);
+      sut.validateCommand(inputInfo, startIndex, filterText, null, mockLeftSplitLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       const results = sut.getSuggestions(inputInfo);
@@ -187,15 +219,17 @@ describe('symbolHandler', () => {
       const resTags = new Set(results.map((sugg) => sugg.item.symbol));
       expect(tags.every((tag) => resTags.has(tag))).toBe(true);
 
-      expect(mockGetFileCache).toHaveBeenCalledWith(leftSplitLeaf.view.file);
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
+        mockLeftSplitLeaf.view.file,
+      );
       expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockFuzzySearch).toHaveBeenCalled();
 
-      mockFuzzySearch.mockRestore();
+      mockFuzzySearch.mockReset();
     });
 
     test('with existing filter search term, it should continue refining suggestions for the previous target', () => {
-      mockGetFileCache.mockReturnValue(leftFixture.cachedMetadata);
+      mockMetadataCache.getFileCache.mockReturnValue(leftFixture.cachedMetadata);
 
       // 1) setup first initial run
       filterText = 'tag';
@@ -211,7 +245,7 @@ describe('symbolHandler', () => {
 
       let inputInfo = new InputInfo(inputText);
 
-      sut.validateCommand(inputInfo, startIndex, filterText, null, leftSplitLeaf);
+      sut.validateCommand(inputInfo, startIndex, filterText, null, mockLeftSplitLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       let results = sut.getSuggestions(inputInfo);
@@ -220,8 +254,10 @@ describe('symbolHandler', () => {
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(2);
       expect(results.every((sugg) => sugg.type === 'symbol')).toBe(true);
-      expect(mockGetFileCache).toHaveBeenCalledWith(leftSplitLeaf.view.file);
-      mockFuzzySearch.mockRestore();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
+        mockLeftSplitLeaf.view.file,
+      );
+      mockFuzzySearch.mockReset();
 
       // 2) setup second run, which refines the filterText from the first run
       filterText = 'tag2';
@@ -232,14 +268,14 @@ describe('symbolHandler', () => {
         return text === q.query ? match : null;
       });
 
-      const tempLeaf = new WorkspaceLeaf();
-      const tempLeafFile = tempLeaf.view.file;
+      const mockTempLeaf = makeLeaf();
+      const mockTempLeafFile = mockTempLeaf.view.file;
 
       inputText = `${symbolTrigger}${filterText}`;
       inputInfo = new InputInfo(inputText);
 
       // note the use of a different leaf than the first run
-      sut.validateCommand(inputInfo, startIndex, filterText, null, tempLeaf);
+      sut.validateCommand(inputInfo, startIndex, filterText, null, mockTempLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       results = sut.getSuggestions(inputInfo);
@@ -253,32 +289,125 @@ describe('symbolHandler', () => {
       expect(results[0]).toHaveProperty('item.symbol', tag);
 
       // getFileCache should be called with leftSplitLeaf.view.file both times
-      expect(mockGetFileCache).not.toHaveBeenCalledWith(tempLeafFile);
-      expect(mockGetFileCache).toHaveBeenCalledWith(leftSplitLeaf.view.file);
+      expect(mockMetadataCache.getFileCache).not.toHaveBeenCalledWith(mockTempLeafFile);
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
+        mockLeftSplitLeaf.view.file,
+      );
       expect(mockPrepareQuery).toHaveBeenCalled();
 
-      mockGetFileCache.mockRestore();
-      mockFuzzySearch.mockRestore();
+      mockMetadataCache.getFileCache.mockReset();
+      mockFuzzySearch.mockReset();
     });
   });
 
   describe('renderSuggestion', () => {
+    const mockRenderResults = mocked<typeof renderResults>(renderResults);
+    let mockTextSpan: MockProxy<HTMLSpanElement>;
+    let mockParentEl: MockProxy<HTMLElement>;
+
+    beforeAll(() => {
+      mockTextSpan = mock<HTMLSpanElement>();
+      mockParentEl = mock<HTMLElement>();
+      mockParentEl.createSpan.mockImplementation(() => mockTextSpan);
+    });
+
     it('should not throw an error with a null suggestion', () => {
       expect(() => sut.renderSuggestion(null, null)).not.toThrow();
+    });
+
+    it('should render Heading suggestion', () => {
+      sut.renderSuggestion(symbolSugg, mockParentEl);
+
+      expect(mockRenderResults).toHaveBeenCalledWith(
+        mockTextSpan,
+        (symbolSugg.item.symbol as HeadingCache).heading,
+        symbolSugg.match,
+      );
+
+      expect(mockParentEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({ cls: 'qsp-symbol-text' }),
+      );
+    });
+
+    it('should render Tag suggestion', () => {
+      const tagSugg: SymbolSuggestion = {
+        type: 'symbol',
+        item: {
+          type: 'symbolInfo',
+          symbol: getTags()[0],
+          symbolType: SymbolType.Tag,
+        },
+        match: null,
+      };
+
+      sut.renderSuggestion(tagSugg, mockParentEl);
+
+      expect(mockRenderResults).toHaveBeenCalledWith(
+        mockTextSpan,
+        (tagSugg.item.symbol as TagCache).tag.slice(1),
+        tagSugg.match,
+      );
+
+      expect(mockParentEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({ cls: 'qsp-symbol-text' }),
+      );
+    });
+
+    it('should render Link suggestion', () => {
+      const linkSugg: SymbolSuggestion = {
+        type: 'symbol',
+        item: {
+          type: 'symbolInfo',
+          symbol: getLinks()[1],
+          symbolType: SymbolType.Link,
+        },
+        match: null,
+      };
+
+      sut.renderSuggestion(linkSugg, mockParentEl);
+
+      const { link, displayText } = linkSugg.item.symbol as ReferenceCache;
+      expect(mockRenderResults).toHaveBeenCalledWith(
+        mockTextSpan,
+        `${link}|${displayText}`,
+        linkSugg.match,
+      );
+
+      expect(mockParentEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({ cls: 'qsp-symbol-text' }),
+      );
+    });
+
+    it('should add a symbol indicator', () => {
+      sut.renderSuggestion(symbolSugg, mockParentEl);
+
+      expect(mockParentEl.createDiv).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: HeadingIndicators[(symbolSugg.item.symbol as HeadingCache).level],
+          cls: 'qsp-symbol-indicator',
+        }),
+      );
+    });
+
+    test('with symbolsInLineOrder enabled and no search term, it should indent symbols', () => {
+      const settings = new SwitcherPlusSettings(null);
+      jest.spyOn(settings, 'symbolsInLineOrder', 'get').mockReturnValue(true);
+
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, 'foo', null, mockRootSplitLeaf);
+
+      sut = new SymbolHandler(mockApp, settings);
+      sut.getSuggestions(inputInfo);
+
+      sut.renderSuggestion(symbolSugg, mockParentEl);
+
+      expect(mockParentEl.addClass).toHaveBeenCalledWith(
+        `qsp-symbol-l${symbolSugg.item.indentLevel}`,
+      );
     });
   });
 
   describe('onChooseSuggestion', () => {
-    const symbolSugg: SymbolSuggestion = {
-      type: 'symbol',
-      item: {
-        type: 'symbolInfo',
-        symbol: getHeadings()[0],
-        symbolType: SymbolType.Heading,
-      },
-      match: null,
-    };
-
     type eState = {
       startLoc: Omit<Loc, 'offset'>;
       focus?: boolean;
@@ -286,6 +415,8 @@ describe('symbolHandler', () => {
       line: number;
       cursor: EditorRange;
     };
+
+    let mockWorkspace: MockProxy<Workspace>;
 
     const getExpectedEphemeralState = (
       sugg: SymbolSuggestion,
@@ -313,85 +444,68 @@ describe('symbolHandler', () => {
       return state;
     };
 
+    beforeAll(() => {
+      mockWorkspace = mock<Workspace>();
+      mockApp.workspace = mockWorkspace;
+    });
+
     it('should not throw an error with a null suggestion', () => {
       expect(() => sut.onChooseSuggestion(null, null)).not.toThrow();
     });
 
     it('should activate the existing workspaceLeaf that contains the target symbol and scroll that view via eState', () => {
       const expectedState = getExpectedEphemeralState(symbolSugg, true);
-      const iterateAllLeavesSpy = jest
-        .spyOn(app.workspace, 'iterateAllLeaves')
-        .mockImplementation((callback: (leaf: WorkspaceLeaf) => void) => {
-          callback(rootSplitLeaf);
-        });
-
-      const setActiveLeafSpy = jest.spyOn(app.workspace, 'setActiveLeaf');
-      const setEphemeralStateSpy = jest.spyOn(rootSplitLeaf.view, 'setEphemeralState');
+      mockWorkspace.iterateAllLeaves.mockImplementation((callback) => {
+        callback(mockRootSplitLeaf);
+      });
 
       const inputInfo = new InputInfo(symbolTrigger);
-      sut.validateCommand(inputInfo, 0, '', null, rootSplitLeaf);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
       sut.getSuggestions(inputInfo);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       sut.onChooseSuggestion(symbolSugg, null);
 
-      expect(iterateAllLeavesSpy).toHaveBeenCalled();
-      expect(setEphemeralStateSpy).toHaveBeenCalledWith(expectedState);
-      expect(setActiveLeafSpy).toHaveBeenCalledWith(rootSplitLeaf, true);
+      expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
+      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockRootSplitLeaf, true);
+      expect(mockRootSplitLeaf.view.setEphemeralState).toHaveBeenCalledWith(
+        expectedState,
+      );
 
-      iterateAllLeavesSpy.mockRestore();
-      setActiveLeafSpy.mockRestore();
-      setEphemeralStateSpy.mockRestore();
+      mockWorkspace.iterateAllLeaves.mockReset();
     });
 
     it('should create a new workspaceLeaf for the target file that contains the symbol, and scroll via eState', () => {
       const expectedState = getExpectedEphemeralState(symbolSugg);
-      const iterateAllLeavesSpy = jest
-        .spyOn(app.workspace, 'iterateAllLeaves')
-        .mockImplementation((_callback: (leaf: WorkspaceLeaf) => void) => {
-          // noop, simulates no open workspace leaves open/found
-        });
-
-      const openLinkTextSpy = jest
-        .spyOn(app.workspace, 'openLinkText')
-        .mockResolvedValue();
+      mockWorkspace.openLinkText.mockResolvedValue();
 
       const inputInfo = new InputInfo(symbolTrigger);
-      sut.validateCommand(inputInfo, 0, '', null, rootSplitLeaf);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
       sut.getSuggestions(inputInfo);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       sut.onChooseSuggestion(symbolSugg, null);
 
-      expect(iterateAllLeavesSpy).toHaveBeenCalled();
-      expect(openLinkTextSpy).toHaveBeenCalledWith(
-        rootSplitLeaf.view.file.path,
+      expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
+        mockRootSplitLeaf.view.file.path,
         '',
         true,
         { eState: expectedState },
       );
 
-      iterateAllLeavesSpy.mockRestore();
-      openLinkTextSpy.mockRestore();
+      mockWorkspace.openLinkText.mockReset();
     });
 
     it('should catch errors while opening new workspaceLeaf and log it to the console', () => {
-      const iterateAllLeavesSpy = jest
-        .spyOn(app.workspace, 'iterateAllLeaves')
-        .mockImplementation((_callback: (leaf: WorkspaceLeaf) => void) => {
-          // noop, simulates no open workspace leaves open/found
-        });
-
       // Promise used to trigger the error condition
       const openLinkTextPromise = Promise.resolve();
-      const openLinkTextSpy = jest
-        .spyOn(app.workspace, 'openLinkText')
-        .mockImplementation((_linktext, _sourcePath, _newLeaf?, _state?) => {
-          // throw to simulate openLinkText() failing. This happens first
-          return openLinkTextPromise.then(() => {
-            throw new Error('openLinkText() unit test error');
-          });
+
+      mockWorkspace.openLinkText.mockImplementation(() => {
+        // throw to simulate openLinkText() failing. This happens first
+        return openLinkTextPromise.then(() => {
+          throw new Error('openLinkText() unit test mock error');
         });
+      });
 
       // Promise used to track the call to console.log
       let consoleLogPromiseResolveFn: (value: void | PromiseLike<void>) => void;
@@ -413,7 +527,7 @@ describe('symbolHandler', () => {
       const allPromises = Promise.all([openLinkTextPromise, consoleLogPromise]);
 
       const inputInfo = new InputInfo(symbolTrigger);
-      sut.validateCommand(inputInfo, 0, '', null, rootSplitLeaf);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
       sut.getSuggestions(inputInfo);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
@@ -423,12 +537,11 @@ describe('symbolHandler', () => {
 
       // when all the promises are resolved check expectations and clean up
       return allPromises.finally(() => {
-        expect(iterateAllLeavesSpy).toHaveBeenCalled();
-        expect(openLinkTextSpy).toHaveBeenCalled();
+        expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
+        expect(mockWorkspace.openLinkText).toHaveBeenCalled();
         expect(consoleLogSpy).toHaveBeenCalled();
 
-        iterateAllLeavesSpy.mockRestore();
-        openLinkTextSpy.mockRestore();
+        mockWorkspace.openLinkText.mockReset();
         consoleLogSpy.mockRestore();
       });
     });

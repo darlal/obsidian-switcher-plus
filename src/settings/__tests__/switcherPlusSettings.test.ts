@@ -7,7 +7,9 @@ import {
   QuickSwitcherOptions,
   InstalledPlugin,
   QuickSwitcherPluginInstance,
+  InternalPlugins,
 } from 'obsidian';
+import { mock, MockProxy } from 'jest-mock-extended';
 
 const chance = new Chance();
 
@@ -59,17 +61,17 @@ function transientSettingsData(useDefault: boolean): SettingsData {
 }
 
 describe('SwitcherPlusSettings', () => {
-  let app: App;
-  let plugin: SwitcherPlusPlugin;
+  let mockApp: MockProxy<App>;
+  let mockPlugin: MockProxy<SwitcherPlusPlugin>;
   let sut: SwitcherPlusSettings;
 
   beforeAll(() => {
-    app = new App();
-    plugin = new SwitcherPlusPlugin(app, null);
+    mockApp = mock<App>({ internalPlugins: mock<InternalPlugins>() });
+    mockPlugin = mock<SwitcherPlusPlugin>({ app: mockApp });
   });
 
   beforeEach(() => {
-    sut = new SwitcherPlusSettings(plugin);
+    sut = new SwitcherPlusSettings(mockPlugin);
   });
 
   it('should return default settings', () => {
@@ -114,41 +116,43 @@ describe('SwitcherPlusSettings', () => {
     sut.searchAllHeadings = settings.searchAllHeadings;
     sut.includeSidePanelViewTypes = settings.includeSidePanelViewTypes;
     sut.limit = settings.limit;
+    sut.selectNearestHeading = settings.selectNearestHeading;
+
     sut.setSymbolTypeEnabled(
       SymbolType.Heading,
       settings.enabledSymbolTypes[SymbolType.Heading],
     );
+
     sut.setSymbolTypeEnabled(
       SymbolType.Link,
       settings.enabledSymbolTypes[SymbolType.Link],
     );
+
     sut.setSymbolTypeEnabled(SymbolType.Tag, settings.enabledSymbolTypes[SymbolType.Tag]);
+
     sut.setSymbolTypeEnabled(
       SymbolType.Embed,
       settings.enabledSymbolTypes[SymbolType.Embed],
     );
-    sut.selectNearestHeading = settings.selectNearestHeading;
 
     let savedSettings: SettingsData;
-    const saveDataSpy = jest
-      .spyOn(plugin, 'saveData')
-      .mockImplementationOnce((data: SettingsData) => {
-        savedSettings = data;
-        return Promise.resolve();
-      });
+    mockPlugin.saveData.mockImplementationOnce((data: SettingsData) => {
+      savedSettings = data;
+      return Promise.resolve();
+    });
 
     await sut.saveSettings();
 
     expect(savedSettings).toEqual(expect.objectContaining(settings));
-    expect(saveDataSpy).toHaveBeenCalled();
+    expect(mockPlugin.saveData).toHaveBeenCalled();
 
-    saveDataSpy.mockRestore();
+    mockPlugin.saveData.mockReset();
   });
 
   it('should load saved settings', async () => {
     const settings = transientSettingsData(false);
     const { enabledSymbolTypes, ...prunedSettings } = settings;
-    const loadDataSpy = jest.spyOn(plugin, 'loadData').mockResolvedValueOnce(settings);
+    mockPlugin.loadData.mockResolvedValueOnce(settings);
 
     await sut.loadSettings();
 
@@ -166,19 +170,18 @@ describe('SwitcherPlusSettings', () => {
       enabledSymbolTypes[SymbolType.Embed],
     );
 
-    expect(loadDataSpy).toHaveBeenCalled();
+    expect(mockPlugin.loadData).toHaveBeenCalled();
 
-    loadDataSpy.mockRestore();
+    mockPlugin.loadData.mockReset();
   });
 
   it('should load saved settings, even with missing data keys', async () => {
     const defaults = transientSettingsData(true);
     const settings = transientSettingsData(false);
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { enabledSymbolTypes, ...prunedSettings } = settings;
-    const loadDataSpy = jest
-      .spyOn(plugin, 'loadData')
-      .mockResolvedValueOnce(prunedSettings);
+    mockPlugin.loadData.mockResolvedValueOnce(prunedSettings);
 
     await sut.loadSettings();
 
@@ -196,37 +199,38 @@ describe('SwitcherPlusSettings', () => {
       defaults.enabledSymbolTypes[SymbolType.Embed],
     );
 
-    expect(loadDataSpy).toHaveBeenCalled();
+    expect(mockPlugin.loadData).toHaveBeenCalled();
 
-    loadDataSpy.mockRestore();
+    mockPlugin.loadData.mockReset();
   });
 
   it('should load built-in system switcher settings', () => {
-    const builtInOptions: QuickSwitcherOptions = {
+    const builtInOptions = mock<QuickSwitcherOptions>({
       showAllFileTypes: chance.bool(),
       showAttachments: chance.bool(),
       showExistingOnly: chance.bool(),
-    };
-    const pluginInstance: QuickSwitcherPluginInstance = {
+    });
+
+    const pluginInstance = mock<QuickSwitcherPluginInstance>({
       id: 'switcher',
       options: builtInOptions,
       QuickSwitcherModal: null,
-    };
-    const builtInSwitcherPlugin: InstalledPlugin = {
+    });
+
+    const builtInSwitcherPlugin = mock<InstalledPlugin>({
       enabled: true,
       instance: pluginInstance,
-    };
+    });
 
-    const getPluginByIdSpy = jest
-      .spyOn(app.internalPlugins, 'getPluginById')
-      .mockReturnValue(builtInSwitcherPlugin);
+    const mockInternalPlugins = mockApp.internalPlugins as MockProxy<InternalPlugins>;
+    mockInternalPlugins.getPluginById.mockReturnValue(builtInSwitcherPlugin);
 
     expect(sut.builtInSystemOptions).toMatchObject(builtInOptions);
     expect(sut.showAllFileTypes).toBe(builtInOptions.showAllFileTypes);
     expect(sut.showAttachments).toBe(builtInOptions.showAttachments);
     expect(sut.showExistingOnly).toBe(builtInOptions.showExistingOnly);
-    expect(getPluginByIdSpy).toHaveBeenCalled();
+    expect(mockInternalPlugins.getPluginById).toHaveBeenCalled();
 
-    getPluginByIdSpy.mockRestore();
+    mockInternalPlugins.getPluginById.mockReset();
   });
 });

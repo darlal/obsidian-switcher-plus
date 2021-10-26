@@ -1,23 +1,23 @@
 import { PreparedQuery, SearchMatches, SearchResult } from 'obsidian';
 
-export function makePreparedQuery(filterText: string): PreparedQuery {
+export function makePreparedQuery(filterText = ''): PreparedQuery {
   // WARNING: this is obviously not a faithful representation of the core obsidian
   // function that generates search tokens. Care should be taken here, only the simple
   // search text will work
-  const tokens = [filterText];
+  let query = '';
+  let tokens: string[] = [];
+  let fuzzy: string[] = [];
+
+  if (filterText.length) {
+    query = filterText;
+    tokens = [filterText];
+    fuzzy = filterText.toLowerCase().split('');
+  }
 
   return {
-    query: filterText,
+    query,
     tokens,
-    fuzzy: filterText.toLowerCase().split(''),
-  };
-}
-
-export function makePreparedQueryEmpty(): PreparedQuery {
-  return {
-    query: '',
-    tokens: [],
-    fuzzy: [],
+    fuzzy,
   };
 }
 
