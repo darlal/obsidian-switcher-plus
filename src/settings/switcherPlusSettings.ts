@@ -186,9 +186,6 @@ export class SwitcherPlusSettings {
   }
 
   async loadSettings(): Promise<void> {
-    const { plugin } = this;
-    const savedData = (await plugin?.loadData()) as SettingsData;
-
     const copy = <T>(source: T, target: T, keys: Array<keyof T>): void => {
       for (const key of keys) {
         if (key in source) {
@@ -197,8 +194,17 @@ export class SwitcherPlusSettings {
       }
     };
 
-    const keys = Object.keys(SwitcherPlusSettings.defaults) as Array<keyof SettingsData>;
-    copy(savedData, this.data, keys);
+    try {
+      const savedData = (await this.plugin?.loadData()) as SettingsData;
+      if (savedData) {
+        const keys = Object.keys(SwitcherPlusSettings.defaults) as Array<
+          keyof SettingsData
+        >;
+        copy(savedData, this.data, keys);
+      }
+    } catch (err) {
+      console.log('Switcher++: error loading settings, using defaults. ', err);
+    }
   }
 
   async saveSettings(): Promise<void> {

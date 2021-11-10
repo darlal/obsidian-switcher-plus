@@ -204,6 +204,37 @@ describe('SwitcherPlusSettings', () => {
     mockPlugin.loadData.mockReset();
   });
 
+  it('should use default data if settings cannot be loaded', async () => {
+    const { enabledSymbolTypes, ...defaults } = transientSettingsData(true);
+    mockPlugin.loadData.mockResolvedValueOnce(null);
+
+    await sut.loadSettings();
+
+    expect(sut).toEqual(expect.objectContaining(defaults));
+    expect(sut.editorListPlaceholderText).toBe(defaults.editorListCommand);
+    expect(sut.symbolListPlaceholderText).toBe(defaults.symbolListCommand);
+    expect(sut.workspaceListPlaceholderText).toBe(defaults.workspaceListCommand);
+    expect(sut.headingsListPlaceholderText).toBe(defaults.headingsListCommand);
+    expect(sut.includeSidePanelViewTypesPlaceholder).toBe(
+      defaults.includeSidePanelViewTypes.join('\n'),
+    );
+
+    expect(sut.isSymbolTypeEnabled(SymbolType.Embed)).toBe(
+      enabledSymbolTypes[SymbolType.Embed],
+    );
+    expect(sut.isSymbolTypeEnabled(SymbolType.Heading)).toBe(
+      enabledSymbolTypes[SymbolType.Heading],
+    );
+    expect(sut.isSymbolTypeEnabled(SymbolType.Link)).toBe(
+      enabledSymbolTypes[SymbolType.Link],
+    );
+    expect(sut.isSymbolTypeEnabled(SymbolType.Tag)).toBe(
+      enabledSymbolTypes[SymbolType.Tag],
+    );
+
+    expect(mockPlugin.loadData).toHaveBeenCalled();
+  });
+
   it('should load built-in system switcher settings', () => {
     const builtInOptions = mock<QuickSwitcherOptions>({
       showAllFileTypes: chance.bool(),
