@@ -1,5 +1,11 @@
 import { SwitcherPlusSettings } from 'src/settings';
-import { Mode, SymbolSuggestion, SymbolType, HeadingIndicators } from 'src/types';
+import {
+  Mode,
+  SymbolSuggestion,
+  SymbolType,
+  HeadingIndicators,
+  AnySymbolInfoPayload,
+} from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { SymbolHandler } from 'src/Handlers';
 import {
@@ -139,7 +145,12 @@ describe('symbolHandler', () => {
       expect(results.every((sugg) => sugg.type === 'symbol')).toBe(true);
 
       const set = new Set(results.map((sugg) => sugg.item.symbol));
-      const cached = Object.values(rootFixture.cachedMetadata).flat();
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const cached: AnySymbolInfoPayload[] = Object.values(
+        rootFixture.cachedMetadata,
+      ).flat();
+
       expect(results).toHaveLength(cached.length);
       expect(cached.every((item) => set.has(item))).toBe(true);
 

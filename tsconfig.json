@@ -20,6 +20,7 @@
     "target": "es2020",
     "allowJs": true,
     "noImplicitAny": true,
+    "strictBindCallApply": true,
     "esModuleInterop": true,
     "moduleResolution": "node",
     "importHelpers": true,
