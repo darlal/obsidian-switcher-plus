@@ -128,6 +128,10 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     }
   }
 
+  reset(): void {
+    this.inputInfo = null;
+  }
+
   private getSymbolTarget(
     activeSuggestion: AnySuggestion,
     activeLeaf: WorkspaceLeaf,

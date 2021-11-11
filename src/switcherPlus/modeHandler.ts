@@ -254,6 +254,7 @@ export class ModeHandler {
   private reset(): void {
     this.inputInfo = new InputInfo();
     this.sessionOpenModeString = null;
+    (this.getHandler(Mode.SymbolList) as SymbolHandler).reset();
   }
 
   private getHandler(
