@@ -126,3 +126,31 @@ export function filenameFromPath(path: string): string {
 
   return retVal;
 }
+
+export function matcherFnForRegExList(
+  regExStrings: string[],
+): (input: string) => boolean {
+  regExStrings = regExStrings ?? [];
+  const regExList: RegExp[] = [];
+
+  for (const str of regExStrings) {
+    try {
+      const rx = new RegExp(str);
+      regExList.push(rx);
+    } catch (err) {
+      console.log(`Switcher++: error creating RegExp from string: ${str}`, err);
+    }
+  }
+
+  const isMatchFn: (input: string) => boolean = (input) => {
+    for (const rx of regExList) {
+      if (rx.test(input)) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  return isMatchFn;
+}

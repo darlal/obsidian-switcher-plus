@@ -29,6 +29,7 @@ export class SwitcherPlusSettings {
       includeSidePanelViewTypes: ['backlink', 'image', 'markdown', 'pdf'],
       enabledSymbolTypes,
       selectNearestHeading: true,
+      excludeFolders: [],
     };
   }
 
@@ -179,6 +180,15 @@ export class SwitcherPlusSettings {
 
   set selectNearestHeading(value: boolean) {
     this.data.selectNearestHeading = value;
+  }
+
+  get excludeFolders(): Array<string> {
+    return this.data.excludeFolders;
+  }
+
+  set excludeFolders(value: Array<string>) {
+    // remove any duplicates before storing
+    this.data.excludeFolders = [...new Set(value)];
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

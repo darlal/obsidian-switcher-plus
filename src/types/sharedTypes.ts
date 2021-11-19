@@ -147,6 +147,7 @@ export interface SettingsData {
   includeSidePanelViewTypes: Array<string>;
   enabledSymbolTypes: Record<SymbolType, boolean>;
   selectNearestHeading: boolean;
+  excludeFolders: Array<string>;
 }
 
 export interface SearchQuery {

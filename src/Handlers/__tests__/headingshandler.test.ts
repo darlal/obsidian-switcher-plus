@@ -6,7 +6,9 @@ import {
   PreparedQuery,
   prepareQuery,
   renderResults,
+  TAbstractFile,
   TFile,
+  TFolder,
   Vault,
   ViewRegistry,
   Workspace,
@@ -40,6 +42,33 @@ import {
 } from 'src/utils';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { mocked } from 'ts-jest/dist/utils/testing';
+
+function makeFileTree(expectedFile: TFile, parentFolderName = 'l2Folder2'): TFolder {
+  const mockFolder = jest.fn<
+    TFolder,
+    [name: string, path: string, children: Array<TAbstractFile>]
+  >((name, path, children = []) => {
+    return {
+      vault: null,
+      parent: null,
+      isRoot: undefined,
+      name,
+      path,
+      children,
+    };
+  });
+
+  const root = new mockFolder('', '/', [
+    new TFile(),
+    new mockFolder('l1Folder1', 'l1Folder1', [
+      new TFile(),
+      new mockFolder('l2Folder1', 'l1Folder1/l2Folder1', [new TFile()]),
+      new mockFolder(parentFolderName, `l1Folder1/${parentFolderName}`, [expectedFile]),
+    ]),
+  ]);
+
+  return root;
+}
 
 describe('headingsHandler', () => {
   let settings: SwitcherPlusSettings;
@@ -178,13 +207,12 @@ describe('headingsHandler', () => {
 
     test('with filter search term, it should return matching suggestions for all headings', () => {
       const expected = new TFile();
-      const files = [new TFile(), new TFile(), expected];
       const h1 = makeHeading('foo heading H1', 1, makeLoc(1));
       const h2 = makeHeading('foo heading H2', 2, makeLoc(2));
       const filterText = 'foo';
 
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
-      mockVault.getFiles.mockReturnValue(files);
+      mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
 
       mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
         return f === expected ? { headings: [h1, h2] } : getCachedMetadata();
@@ -212,12 +240,11 @@ describe('headingsHandler', () => {
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(mockVault.getFiles).toHaveBeenCalled();
+      expect(mockVault.getRoot).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
       expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
 
-      mockVault.getFiles.mockReset();
       mockMetadataCache.getFileCache.mockReset();
       mockFuzzySearch.mockReset();
       mockPrepareQuery.mockReset();
@@ -225,7 +252,6 @@ describe('headingsHandler', () => {
 
     test('with filter search term, and searchAllHeadings set to false, it should return only matching suggestions using first H1 in file', () => {
       const expected = new TFile();
-      const files = [new TFile(), new TFile(), expected];
       const expectedHeading = makeHeading('foo heading H1', 1, makeLoc(1));
       const heading2 = makeHeading('foo heading H1', 1, makeLoc(2));
       const filterText = 'foo';
@@ -235,7 +261,7 @@ describe('headingsHandler', () => {
         .mockReturnValue(false);
 
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
-      mockVault.getFiles.mockReturnValue(files);
+      mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
 
       mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
         return f === expected
@@ -263,27 +289,24 @@ describe('headingsHandler', () => {
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(mockVault.getFiles).toHaveBeenCalled();
+      expect(mockVault.getRoot).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
       expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
 
-      mockVault.getFiles.mockReset();
       mockMetadataCache.getFileCache.mockReset();
       mockFuzzySearch.mockReset();
       mockPrepareQuery.mockReset();
-      searchAllHeadingsSpy.mockReset();
+      searchAllHeadingsSpy.mockRestore();
     });
 
     test("with filter search term, it should return only matching suggestions using file name (leaf segment) when H1 doesn't exist", () => {
+      const filterText = 'foo';
       const expected = new TFile();
       expected.path = 'path/to/bar/foo filename.md'; // only path matters for this test
 
-      const files = [new TFile(), new TFile(), expected];
-      const filterText = 'foo';
-
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
-      mockVault.getFiles.mockReturnValue(files);
+      mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
 
       mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
         // don't return any heading metadata for expected
@@ -307,26 +330,23 @@ describe('headingsHandler', () => {
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(mockVault.getFiles).toHaveBeenCalled();
+      expect(mockVault.getRoot).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
       expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
 
-      mockVault.getFiles.mockReset();
       mockMetadataCache.getFileCache.mockReset();
       mockFuzzySearch.mockReset();
       mockPrepareQuery.mockReset();
     });
 
     test('with filter search term, it should fallback match against file path when there is no H1 and no match against the filename (leaf segment)', () => {
+      const filterText = 'foo';
       const expected = new TFile();
       expected.path = 'foo/path/to/filename.md'; // only path matters for this test
 
-      const files = [new TFile(), new TFile(), expected];
-      const filterText = 'foo';
-
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
-      mockVault.getFiles.mockReturnValue(files);
+      mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
       mockMetadataCache.getFileCache.mockReturnValue({});
 
       mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
@@ -346,12 +366,11 @@ describe('headingsHandler', () => {
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(mockVault.getFiles).toHaveBeenCalled();
+      expect(mockVault.getRoot).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
       expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
 
-      mockVault.getFiles.mockReset();
       mockMetadataCache.getFileCache.mockReset();
       mockFuzzySearch.mockReset();
       mockPrepareQuery.mockReset();
@@ -359,11 +378,10 @@ describe('headingsHandler', () => {
 
     test('with filter search term and shouldShowAlias set to true, it should match against aliases', () => {
       const expected = new TFile();
-      const files = [new TFile(), new TFile(), expected];
       const filterText = 'foo';
 
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
-      mockVault.getFiles.mockReturnValue(files);
+      mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
       settings.shouldShowAlias = true;
 
       const fm: CachedMetadata = {
@@ -394,13 +412,12 @@ describe('headingsHandler', () => {
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(mockVault.getFiles).toHaveBeenCalled();
+      expect(mockVault.getRoot).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
       expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
 
       settings.shouldShowAlias = false;
-      mockVault.getFiles.mockReset();
       mockMetadataCache.getFileCache.mockReset();
       mockFuzzySearch.mockReset();
       mockPrepareQuery.mockReset();
@@ -408,11 +425,10 @@ describe('headingsHandler', () => {
 
     test('with filter search term and showExistingOnly set to false, it should match against unresolved linktext', () => {
       const expected = new TFile();
-      const files = [new TFile(), new TFile(), expected];
       const filterText = 'foo';
 
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
-      mockVault.getFiles.mockReturnValue(files);
+      mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
 
       mockMetadataCache.unresolvedLinks[expected.path] = {
         'foo link noexist': 1,
@@ -436,25 +452,22 @@ describe('headingsHandler', () => {
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(mockVault.getFiles).toHaveBeenCalled();
+      expect(mockVault.getRoot).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
       expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
 
-      mockVault.getFiles.mockReset();
       mockFuzzySearch.mockReset();
       mockPrepareQuery.mockReset();
       mockMetadataCache.unresolvedLinks = {};
     });
 
     test('with filter search term and strictHeadingsOnly enabled, it should not match against file name, or path when there is no H1', () => {
+      const filterText = 'foo';
       const expected = new TFile();
       expected.path = 'foo/path/to/filename.md'; // only path matters for this test
 
-      const files = [new TFile(), new TFile(), expected];
-      const filterText = 'foo';
-
       mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
-      mockVault.getFiles.mockReturnValue(files);
+      mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
       mockMetadataCache.getFileCache.mockReturnValue({});
 
       const strictHeadingsOnlySpy = jest
@@ -468,16 +481,57 @@ describe('headingsHandler', () => {
       expect(results).toHaveLength(0);
 
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(mockVault.getFiles).toHaveBeenCalled();
+      expect(mockVault.getRoot).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
       expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
       expect(strictHeadingsOnlySpy).toHaveBeenCalled();
 
-      mockVault.getFiles.mockReset();
       mockMetadataCache.getFileCache.mockReset();
       mockPrepareQuery.mockReset();
-      strictHeadingsOnlySpy.mockReset();
+      strictHeadingsOnlySpy.mockRestore();
+    });
+
+    it('should not return suggestions from excluded folders', () => {
+      const filterText = 'foo';
+      const excludedFolderName = 'ignored';
+      const h1 = makeHeading('foo heading H1', 1, makeLoc(1));
+      const expected = new TFile();
+      expected.path = 'foo/path/to/foo filename.md';
+
+      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
+      mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected, excludedFolderName));
+
+      mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
+        return f === expected ? { headings: [h1] } : {};
+      });
+
+      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
+        const match = makeFuzzyMatch();
+        return text.startsWith(filterText) ? match : null;
+      });
+
+      const excludeFoldersSpy = jest
+        .spyOn(settings, 'excludeFolders', 'get')
+        .mockReturnValue([excludedFolderName]);
+
+      const inputInfo = new InputInfo(`${headingsTrigger}${filterText}`);
+      sut.validateCommand(inputInfo, 0, filterText, null, null);
+
+      const results = sut.getSuggestions(inputInfo);
+      expect(results).toHaveLength(0);
+
+      expect(mockFuzzySearch).toHaveBeenCalled();
+      expect(mockPrepareQuery).toHaveBeenCalled();
+      expect(mockVault.getRoot).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
+      expect(builtInSystemOptionsSpy).toHaveBeenCalled();
+      expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
+
+      mockMetadataCache.getFileCache.mockReset();
+      mockFuzzySearch.mockReset();
+      mockPrepareQuery.mockReset();
+      excludeFoldersSpy.mockRestore();
     });
   });
 

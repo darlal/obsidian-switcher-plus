@@ -39,6 +39,13 @@ function transientSettingsData(useDefault: boolean): SettingsData {
   enabledSymbolTypes[SymbolType.Tag] = useDefault ? true : chance.bool();
   enabledSymbolTypes[SymbolType.Heading] = useDefault ? true : chance.bool();
 
+  const excludedFolders = [
+    `path/to/${chance.word()}`,
+    `${chance.word()}`,
+    `/${chance.word()}`,
+  ];
+  const excludeFolders = useDefault ? [] : excludedFolders;
+
   const data: SettingsData = {
     alwaysNewPaneForSymbols,
     useActivePaneForSymbolsOnMobile,
@@ -55,6 +62,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     includeSidePanelViewTypes,
     enabledSymbolTypes,
     selectNearestHeading,
+    excludeFolders,
   };
 
   return data;
@@ -117,6 +125,7 @@ describe('SwitcherPlusSettings', () => {
     sut.includeSidePanelViewTypes = settings.includeSidePanelViewTypes;
     sut.limit = settings.limit;
     sut.selectNearestHeading = settings.selectNearestHeading;
+    sut.excludeFolders = settings.excludeFolders;
 
     sut.setSymbolTypeEnabled(
       SymbolType.Heading,

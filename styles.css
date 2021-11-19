@@ -36,3 +36,6 @@
 .qsp-symbol-l6 {
     padding-left: calc(var(--symbol-base-padding) + (6 * var(--symbol-indent-padding)))
 }
+.qsp-warning {
+    color: var(--text-error);
+  }

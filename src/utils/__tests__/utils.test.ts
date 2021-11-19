@@ -4,6 +4,7 @@ import {
   filenameFromPath,
   stripMDExtensionFromPath,
   isSystemSuggestion,
+  matcherFnForRegExList,
 } from 'src/utils';
 
 describe('utils', () => {
@@ -93,6 +94,52 @@ describe('utils', () => {
       const leaf = 'foo';
       const result = filenameFromPath(`path/to/${leaf}`);
       expect(result).toBe(leaf);
+    });
+  });
+
+  describe('matcherFnForRegExList', () => {
+    it('should not throw on falsy input', () => {
+      expect(() => matcherFnForRegExList(null)).not.toThrow();
+      expect(matcherFnForRegExList(null)).toBeInstanceOf(Function);
+    });
+
+    it('should log invalid regex strings to the console', () => {
+      let wasLogged = false;
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation((message: string) => {
+          if (message.startsWith('Switcher++: error creating RegExp from string')) {
+            wasLogged = true;
+          }
+        });
+
+      matcherFnForRegExList(['*']); // invalid regex
+
+      expect(consoleLogSpy).toHaveBeenCalled();
+      expect(wasLogged).toBe(true);
+
+      consoleLogSpy.mockRestore();
+    });
+
+    test('that matcher function does not throw on falsy input', () => {
+      const fn = matcherFnForRegExList(null);
+      expect(() => fn(null)).not.toThrow();
+      expect(fn(null)).toBe(false);
+      expect(fn('')).toBe(false);
+    });
+
+    test('that matcher function returns true for any match', () => {
+      const list = ['foo', 'bar', 'baz$'];
+      const fn = matcherFnForRegExList(list);
+
+      expect(fn('Lorem ipsum dolor baz')).toBe(true);
+    });
+
+    test('that matcher function returns false when there are no matches', () => {
+      const list = ['foo', 'bar', 'baz$'];
+      const fn = matcherFnForRegExList(list);
+
+      expect(fn('Lorem ipsum dolor')).toBe(false);
     });
   });
 });

@@ -10,6 +10,7 @@ import {
   renderResults,
   sortSearchResults,
   WorkspaceLeaf,
+  TFolder,
 } from 'obsidian';
 import { InputInfo } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings/';
@@ -28,6 +29,7 @@ import {
   FrontMatterParser,
   stripMDExtensionFromPath,
   filenameFromPath,
+  matcherFnForRegExList,
 } from 'src/utils';
 
 type SupportedSuggestionTypes =
@@ -133,18 +135,23 @@ export class HeadingsHandler implements Handler<SupportedSuggestionTypes> {
     const suggestions: SupportedSuggestionTypes[] = [];
     const {
       app: { vault },
-      settings,
+      settings: { strictHeadingsOnly, showExistingOnly, excludeFolders },
     } = this;
 
-    const allFiles = vault.getFiles();
-    let i = allFiles.length;
+    const isExcludedFolder = matcherFnForRegExList(excludeFolders);
+    let nodes: TAbstractFile[] = [vault.getRoot()];
 
-    while (i--) {
-      const file = allFiles[i];
-      this.processFile(suggestions, file, prepQuery);
+    while (nodes.length > 0) {
+      const node = nodes.pop();
+
+      if (isTFile(node)) {
+        this.processFile(suggestions, node, prepQuery);
+      } else if (!isExcludedFolder(node.path)) {
+        nodes = nodes.concat((node as TFolder).children);
+      }
     }
 
-    if (!settings.strictHeadingsOnly && !settings.showExistingOnly) {
+    if (!strictHeadingsOnly && !showExistingOnly) {
       this.addUnresolvedSuggestions(suggestions as UnresolvedSuggestion[], prepQuery);
     }
 

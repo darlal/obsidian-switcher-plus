@@ -46,6 +46,7 @@ Find the file you're looking for by searching through the headings contained in 
 | Headings list mode trigger | Character that will trigger headings list mode in the switcher. | `#` |
 | Show headings only | **Enabled**: strictly search through only the first H1 contained in the file. <br />**Disabled**: if there is not a match in the first H1, fallback to search against the filename. This will also search through Aliases, and Unresolved links. | disabled |
 | Search all headings | **Enabled**: search through all headings contained in the file. <br />**Disabled**: only search through the first H1 in each file. | enabled |
+| Exclude folders | List of folder path regex that will be used to exclude folders and their sub-directories from suggestion search. One per line. | None |
 
 ## Symbol Navigation (Headings, Hashtags, Links, Embeddings)
 

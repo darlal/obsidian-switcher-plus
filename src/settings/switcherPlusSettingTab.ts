@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, Modal, PluginSettingTab, Setting } from 'obsidian';
 import { SymbolType } from 'src/types';
 import { SwitcherPlusSettings } from 'src/settings';
 import type SwitcherPlusPlugin from '../main';
@@ -19,7 +19,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     SwitcherPlusSettingTab.setSymbolModeSettingsGroup(containerEl, settings);
     this.setEditorModeSettingsGroup(containerEl, settings);
     SwitcherPlusSettingTab.setWorkspaceModeSettingsGroup(containerEl, settings);
-    SwitcherPlusSettingTab.setHeadingsModeSettingsGroup(containerEl, settings);
+    this.setHeadingsModeSettingsGroup(containerEl, settings);
   }
 
   private setEditorModeSettingsGroup(
@@ -55,7 +55,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     SwitcherPlusSettingTab.setWorkspaceListCommand(containerEl, settings);
   }
 
-  private static setHeadingsModeSettingsGroup(
+  private setHeadingsModeSettingsGroup(
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
   ): void {
@@ -64,12 +64,12 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     SwitcherPlusSettingTab.setHeadingsListCommand(containerEl, settings);
     SwitcherPlusSettingTab.setStrictHeadingsOnly(containerEl, settings);
     SwitcherPlusSettingTab.setSearchAllHeadings(containerEl, settings);
+    this.setExcludeFolders(containerEl, settings);
   }
 
   private static saveChanges(settings: SwitcherPlusSettings) {
     settings.saveSettings().catch((e) => {
-      console.log('Switcher++: error saving changes to settings');
-      console.log(e);
+      console.log('Switcher++: error saving changes to settings', e);
     });
   }
 
@@ -304,5 +304,55 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           SwitcherPlusSettingTab.saveChanges(settings);
         }),
       );
+  }
+
+  private setExcludeFolders(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    const settingName = 'Exclude folders';
+    new Setting(containerEl)
+      .setName(settingName)
+      .setDesc(
+        `When in Headings list mode, folder path that match any regex listed here will not be searched for suggestions. Path should start from the Vault Root. Add one path per line.`,
+      )
+      .addTextArea((textArea) => {
+        textArea.setValue(settings.excludeFolders.join('\n'));
+        textArea.inputEl.addEventListener('blur', () => {
+          const excludes = textArea
+            .getValue()
+            .split('\n')
+            .filter((v) => v.length > 0);
+
+          if (this.validateExcludeFolderList(settingName, excludes)) {
+            settings.excludeFolders = excludes;
+            SwitcherPlusSettingTab.saveChanges(settings);
+          }
+        });
+      });
+  }
+
+  private validateExcludeFolderList(settingName: string, excludes: string[]) {
+    let isValid = true;
+    let failedMsg = '';
+
+    for (const str of excludes) {
+      try {
+        new RegExp(str);
+      } catch (err) {
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        failedMsg += `<span class="qsp-warning">${str}</span><br/>${err}<br/><br/>`;
+        isValid = false;
+      }
+    }
+
+    if (!isValid) {
+      const popup = new Modal(this.app);
+      popup.titleEl.setText(settingName);
+      popup.contentEl.innerHTML = `Changes not saved. The following regex contain errors:<br/><br/>${failedMsg}`;
+      popup.open();
+    }
+
+    return isValid;
   }
 }
