@@ -26,7 +26,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
   ): void {
-    new Setting(containerEl).setName('Editor List Mode Settings').setHeading();
+    containerEl.createEl('h2', { text: 'Editor List Mode Settings' });
 
     SwitcherPlusSettingTab.setEditorListCommand(containerEl, settings);
     this.setIncludeSidePanelViews(containerEl, settings);
@@ -36,7 +36,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
   ): void {
-    new Setting(containerEl).setName('Symbol List Mode Settings').setHeading();
+    containerEl.createEl('h2', { text: 'Symbol List Mode Settings' });
 
     SwitcherPlusSettingTab.setSymbolListCommand(containerEl, settings);
     SwitcherPlusSettingTab.setSymbolsInLineOrder(containerEl, settings);
@@ -50,7 +50,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
   ): void {
-    new Setting(containerEl).setName('Workspace List Mode Settings').setHeading();
+    containerEl.createEl('h2', { text: 'Workspace List Mode Settings' });
 
     SwitcherPlusSettingTab.setWorkspaceListCommand(containerEl, settings);
   }
@@ -59,7 +59,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
   ): void {
-    new Setting(containerEl).setName('Headings List Mode Settings').setHeading();
+    containerEl.createEl('h2', { text: 'Headings List Mode Settings' });
 
     SwitcherPlusSettingTab.setHeadingsListCommand(containerEl, settings);
     SwitcherPlusSettingTab.setStrictHeadingsOnly(containerEl, settings);
