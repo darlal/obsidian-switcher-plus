@@ -64,6 +64,30 @@ describe('modeHandler', () => {
     jest.spyOn(settings, 'headingsListCommand', 'get').mockReturnValue(headingsTrigger);
   });
 
+  describe('opening and closing the modal', () => {
+    const mockKeymap = mock<Keymap>();
+
+    beforeAll(() => {
+      sut = new ModeHandler(mockApp, settings, mockKeymap);
+    });
+
+    test('onOpen() should open the keymap', () => {
+      mockKeymap.isOpen = false;
+
+      sut.onOpen();
+
+      expect(mockKeymap.isOpen).toBe(true);
+    });
+
+    test('onClose() should close the keymap', () => {
+      mockKeymap.isOpen = true;
+
+      sut.onClose();
+
+      expect(mockKeymap.isOpen).toBe(false);
+    });
+  });
+
   describe('Starting sessions with explicit command string', () => {
     let commandStringSpy: jest.SpyInstance;
 

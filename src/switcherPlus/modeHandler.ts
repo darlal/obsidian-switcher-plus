@@ -46,6 +46,14 @@ export class ModeHandler {
     this.reset();
   }
 
+  onOpen(): void {
+    this.exKeymap.isOpen = true;
+  }
+
+  onClose() {
+    this.exKeymap.isOpen = false;
+  }
+
   setSessionOpenMode(mode: Mode, chooser: Chooser<AnySuggestion>): void {
     this.reset();
     chooser?.setSuggestions([]);

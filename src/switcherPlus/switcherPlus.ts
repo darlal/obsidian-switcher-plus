@@ -37,13 +37,13 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
     }
 
     onOpen(): void {
-      this.exMode.exKeymap.isOpen = true;
+      this.exMode.onOpen();
       super.onOpen();
     }
 
     onClose() {
       super.onClose();
-      this.exMode.exKeymap.isOpen = false;
+      this.exMode.onClose();
     }
 
     protected updateSuggestions(): void {
