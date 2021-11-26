@@ -255,14 +255,17 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
 
     // find the nearest heading to the current cursor pos, if applicable
     if (cursorLine) {
-      const found = items
-        .filter((v): v is SymbolInfo => isHeadingCache(v.symbol))
-        .reduce((acc, curr) => {
+      let found: SymbolInfo = null;
+      const headings = items.filter((v): v is SymbolInfo => isHeadingCache(v.symbol));
+
+      if (headings.length) {
+        found = headings.reduce((acc, curr) => {
           const { line: currLine } = curr.symbol.position.start;
           const accLine = acc ? acc.symbol.position.start.line : -1;
 
           return currLine > accLine && currLine <= cursorLine ? curr : acc;
         });
+      }
 
       if (found) {
         found.isSelected = true;
