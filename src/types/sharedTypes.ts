@@ -29,6 +29,13 @@ export enum SymbolType {
   Heading = 8,
 }
 
+export enum LinkType {
+  None = 0,
+  Normal = 1,
+  Heading = 2,
+  Block = 4,
+}
+
 type AllSymbols = {
   [type in SymbolType]: string;
 };
@@ -148,6 +155,7 @@ export interface SettingsData {
   enabledSymbolTypes: Record<SymbolType, boolean>;
   selectNearestHeading: boolean;
   excludeFolders: Array<string>;
+  excludeLinkSubTypes: number;
 }
 
 export interface SearchQuery {

@@ -30,6 +30,7 @@ export class SwitcherPlusSettings {
       enabledSymbolTypes,
       selectNearestHeading: true,
       excludeFolders: [],
+      excludeLinkSubTypes: 0,
     };
   }
 
@@ -189,6 +190,14 @@ export class SwitcherPlusSettings {
   set excludeFolders(value: Array<string>) {
     // remove any duplicates before storing
     this.data.excludeFolders = [...new Set(value)];
+  }
+
+  get excludeLinkSubTypes(): number {
+    return this.data.excludeLinkSubTypes;
+  }
+
+  set excludeLinkSubTypes(value: number) {
+    this.data.excludeLinkSubTypes = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

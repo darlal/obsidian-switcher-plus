@@ -1,4 +1,4 @@
-import { SettingsData, SymbolType } from 'src/types';
+import { LinkType, SettingsData, SymbolType } from 'src/types';
 import SwitcherPlusPlugin from 'src/main';
 import { SwitcherPlusSettings } from 'src/settings';
 import { Chance } from 'chance';
@@ -45,6 +45,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     `/${chance.word()}`,
   ];
   const excludeFolders = useDefault ? [] : excludedFolders;
+  const excludeLinkSubTypes = useDefault ? 0 : LinkType.Block;
 
   const data: SettingsData = {
     alwaysNewPaneForSymbols,
@@ -63,6 +64,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     enabledSymbolTypes,
     selectNearestHeading,
     excludeFolders,
+    excludeLinkSubTypes,
   };
 
   return data;
@@ -126,6 +128,7 @@ describe('SwitcherPlusSettings', () => {
     sut.limit = settings.limit;
     sut.selectNearestHeading = settings.selectNearestHeading;
     sut.excludeFolders = settings.excludeFolders;
+    sut.excludeLinkSubTypes = settings.excludeLinkSubTypes;
 
     sut.setSymbolTypeEnabled(
       SymbolType.Heading,

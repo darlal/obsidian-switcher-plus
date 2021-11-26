@@ -69,8 +69,10 @@ View, filter, and navigate to any symbol (Headings, Hashtags, Links, Embedding) 
 | Auto-select nearest heading      | **Enabled**: in an unfiltered symbol list, select the closest preceding Heading to the current cursor position. <br />**Disabled**: the first symbol in the list is selected. | enabled |
 | Show Headings                    | **Enabled**: display Headings in the symbol list.<br />**Disabled**: don't show Headings in the symbol list | enabled |
 | Show Tags                        | **Enabled**: display Tags in the symbol list.<br />**Disabled**: don't show Tags in the symbol list | enabled |
-| Show Links                       | **Enabled**: display Links in the symbol list.<br />**Disabled**: don't show Links in the symbol list | enabled |
 | Show Embeds                      | **Enabled**: display Embeds in the symbol list.<br />**Disabled**: don't show Embeds in the symbol list | enabled |
+| Show Links                       | **Enabled**: display Links in the symbol list. When enabled, the following settings become visible to further refine which types of links are displayed, `Links to headings`, `Links to blocks`.<br />**Disabled**: don't show Links in the symbol list | enabled |
+| Links to headings                | **Enabled**: display links that point to a header, e.g `[[file#header]]`. This setting is only visible when `Show Links` is enabled.<br />**Disabled**: don't show Links to headers | enabled |
+| Links to blocks                  | **Enabled**: display links that point to a block, e.g `[[file#^blockid]]`. This setting is only visible when `Show Links` is enabled.<br />**Disabled**: don't show Links to blocks | enabled |
 
 
 ## Navigate between open editors

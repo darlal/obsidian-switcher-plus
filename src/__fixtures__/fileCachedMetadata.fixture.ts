@@ -9,34 +9,44 @@ import {
   ReferenceCache,
 } from 'obsidian';
 
-export function makeLoc(line: number, col?: number, offset?: number): Loc {
+export function makeLoc(line?: number, col?: number, offset?: number): Loc {
   return {
-    line,
+    line: line ?? 0,
     col: col ?? 0,
     offset: offset ?? 0,
   };
 }
 
-function makePos(startLoc: Loc, endLoc: Loc): Pos {
+function makePos(startLoc?: Loc, endLoc?: Loc): Pos {
+  const start = startLoc ?? makeLoc();
+  const end = endLoc ?? makeLoc();
+
   return {
-    start: startLoc,
-    end: endLoc,
+    start,
+    end,
   };
 }
 
-function makeLink(
+export function makeLink(
   link: string,
   original: string,
-  displayText: string,
-  startLoc: Loc,
-  endLoc: Loc,
+  displayText?: string,
+  startLoc?: Loc,
+  endLoc?: Loc,
 ): ReferenceCache {
-  return {
-    position: makePos(startLoc, endLoc),
+  const position = makePos(startLoc ?? makeLoc(), endLoc ?? makeLoc());
+
+  const refCache: ReferenceCache = {
+    position,
     link,
     original,
-    displayText,
   };
+
+  if (displayText) {
+    refCache.displayText = displayText;
+  }
+
+  return refCache;
 }
 
 function makeTag(tag: string, startLoc: Loc, endLoc: Loc): TagCache {
@@ -52,7 +62,7 @@ export function makeHeading(
   startLoc?: Loc,
   endLoc?: Loc,
 ): HeadingCache {
-  const position = makePos(startLoc ?? makeLoc(0, 0, 0), endLoc ?? makeLoc(0, 0, 0));
+  const position = makePos(startLoc ?? makeLoc(), endLoc ?? makeLoc());
 
   return {
     position,

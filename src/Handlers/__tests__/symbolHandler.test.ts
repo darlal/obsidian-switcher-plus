@@ -5,6 +5,7 @@ import {
   SymbolType,
   HeadingIndicators,
   AnySymbolInfoPayload,
+  LinkType,
 } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { SymbolHandler } from 'src/Handlers';
@@ -308,6 +309,80 @@ describe('symbolHandler', () => {
 
       mockMetadataCache.getFileCache.mockReset();
       mockFuzzySearch.mockReset();
+    });
+
+    it('should not return suggestions for a symbol type that is disabled', () => {
+      const inputInfo = new InputInfo(symbolTrigger);
+
+      const isSymbolTypeEnabledSpy = jest
+        .spyOn(settings, 'isSymbolTypeEnabled')
+        .mockImplementation((type) => (type === SymbolType.Tag ? false : true));
+
+      mockMetadataCache.getFileCache.mockReturnValueOnce({ tags: getTags() });
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(0);
+
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
+        mockRootSplitLeaf.view.file,
+      );
+      expect(mockPrepareQuery).toHaveBeenCalled();
+
+      isSymbolTypeEnabledSpy.mockRestore();
+    });
+
+    it('should not return suggestions for links if the Link symbol type is disabled', () => {
+      const inputInfo = new InputInfo(symbolTrigger);
+
+      const isSymbolTypeEnabledSpy = jest
+        .spyOn(settings, 'isSymbolTypeEnabled')
+        .mockImplementation((type) => (type === SymbolType.Link ? false : true));
+
+      mockMetadataCache.getFileCache.mockReturnValueOnce({ links: getLinks() });
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(0);
+
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
+        mockRootSplitLeaf.view.file,
+      );
+      expect(mockPrepareQuery).toHaveBeenCalled();
+
+      isSymbolTypeEnabledSpy.mockRestore();
+    });
+
+    it('should not return suggestions for a sub-link type that is disabled', () => {
+      const inputInfo = new InputInfo(symbolTrigger);
+
+      const excludeLinkSubTypesSpy = jest
+        .spyOn(settings, 'excludeLinkSubTypes', 'get')
+        .mockReturnValue(LinkType.Block | LinkType.Heading);
+
+      mockMetadataCache.getFileCache.mockReturnValueOnce({ links: getLinks() });
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(results).toBeInstanceOf(Array);
+
+      // getLinks fixture returns 2 links, 1 block, 1 normal
+      expect(results).toHaveLength(1);
+
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
+        mockRootSplitLeaf.view.file,
+      );
+      expect(mockPrepareQuery).toHaveBeenCalled();
+
+      excludeLinkSubTypesSpy.mockRestore();
     });
   });
 

@@ -1,5 +1,5 @@
 import { App, Modal, PluginSettingTab, Setting } from 'obsidian';
-import { SymbolType } from 'src/types';
+import { LinkType, SymbolType } from 'src/types';
 import { SwitcherPlusSettings } from 'src/settings';
 import type SwitcherPlusPlugin from '../main';
 
@@ -16,7 +16,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     const { containerEl, settings } = this;
 
     containerEl.empty();
-    SwitcherPlusSettingTab.setSymbolModeSettingsGroup(containerEl, settings);
+    this.setSymbolModeSettingsGroup(containerEl, settings);
     this.setEditorModeSettingsGroup(containerEl, settings);
     SwitcherPlusSettingTab.setWorkspaceModeSettingsGroup(containerEl, settings);
     this.setHeadingsModeSettingsGroup(containerEl, settings);
@@ -32,7 +32,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     this.setIncludeSidePanelViews(containerEl, settings);
   }
 
-  private static setSymbolModeSettingsGroup(
+  private setSymbolModeSettingsGroup(
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
   ): void {
@@ -43,7 +43,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols(containerEl, settings);
     SwitcherPlusSettingTab.setUseActivePaneForSymbolsOnMobile(containerEl, settings);
     SwitcherPlusSettingTab.setSelectNearestHeading(containerEl, settings);
-    SwitcherPlusSettingTab.setEnabledSymbolTypes(containerEl, settings);
+    this.setEnabledSymbolTypes(containerEl, settings);
   }
 
   private static setWorkspaceModeSettingsGroup(
@@ -141,7 +141,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       );
   }
 
-  private static setEnabledSymbolTypes(
+  private setEnabledSymbolTypes(
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
   ): void {
@@ -161,13 +161,6 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       }),
     );
 
-    new Setting(containerEl).setName('Show Links').addToggle((toggle) =>
-      toggle.setValue(settings.isSymbolTypeEnabled(SymbolType.Link)).onChange((value) => {
-        settings.setSymbolTypeEnabled(SymbolType.Link, value);
-        SwitcherPlusSettingTab.saveChanges(settings);
-      }),
-    );
-
     new Setting(containerEl).setName('Show Embeds').addToggle((toggle) =>
       toggle
         .setValue(settings.isSymbolTypeEnabled(SymbolType.Embed))
@@ -176,6 +169,71 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           SwitcherPlusSettingTab.saveChanges(settings);
         }),
     );
+
+    this.setEnableLinks(containerEl, settings);
+  }
+
+  private setEnableLinks(containerEl: HTMLElement, settings: SwitcherPlusSettings): void {
+    const isLinksEnabled = settings.isSymbolTypeEnabled(SymbolType.Link);
+
+    new Setting(containerEl).setName('Show Links').addToggle((toggle) => {
+      toggle.setValue(isLinksEnabled).onChange(async (value) => {
+        settings.setSymbolTypeEnabled(SymbolType.Link, value);
+
+        // have to await the save here because the call to display() will trigger a read
+        // of the updated data
+        await settings.saveSettings();
+
+        // reload the settings panel. This will cause the sublink types toggle
+        // controls to be shown/hidden based on isLinksEnabled status
+        this.display();
+      });
+    });
+
+    if (isLinksEnabled) {
+      SwitcherPlusSettingTab.addSubLinkTypeToggle(
+        containerEl,
+        settings,
+        LinkType.Heading,
+        'Links to headings',
+      );
+
+      SwitcherPlusSettingTab.addSubLinkTypeToggle(
+        containerEl,
+        settings,
+        LinkType.Block,
+        'Links to blocks',
+      );
+    }
+  }
+
+  private static addSubLinkTypeToggle(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+    linkType: LinkType,
+    name: string,
+  ): void {
+    new Setting(containerEl)
+      .setClass('qsp-setting-item-indent')
+      .setName(name)
+      .addToggle((toggle) => {
+        const isExcluded = (settings.excludeLinkSubTypes & linkType) === linkType;
+
+        toggle.setValue(!isExcluded).onChange((isEnabled) => {
+          let exclusions = settings.excludeLinkSubTypes;
+
+          if (isEnabled) {
+            // remove from exclusion list
+            exclusions &= ~linkType;
+          } else {
+            // add to exclusion list
+            exclusions |= linkType;
+          }
+
+          settings.excludeLinkSubTypes = exclusions;
+          SwitcherPlusSettingTab.saveChanges(settings);
+        });
+      });
   }
 
   private static setEditorListCommand(

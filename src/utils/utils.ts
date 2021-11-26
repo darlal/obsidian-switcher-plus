@@ -2,6 +2,7 @@ import {
   App,
   HeadingCache,
   InstalledPlugin,
+  LinkCache,
   QuickSwitcherPluginInstance,
   TagCache,
   TFile,
@@ -17,6 +18,7 @@ import {
   HeadingSuggestion,
   AnySuggestion,
   AnyExSuggestion,
+  LinkType,
 } from 'src/types';
 
 export function isOfType<T>(
@@ -153,4 +155,23 @@ export function matcherFnForRegExList(
   };
 
   return isMatchFn;
+}
+
+export function getLinkType(linkCache: LinkCache): LinkType {
+  let type = LinkType.None;
+
+  if (linkCache) {
+    // remove the display text before trying to parse the link target
+    const linkStr = linkCache.link.split('|')[0];
+
+    if (linkStr.includes('#^')) {
+      type = LinkType.Block;
+    } else if (linkStr.includes('#')) {
+      type = LinkType.Heading;
+    } else {
+      type = LinkType.Normal;
+    }
+  }
+
+  return type;
 }

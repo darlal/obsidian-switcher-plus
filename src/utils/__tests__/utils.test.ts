@@ -1,11 +1,18 @@
 import { TFile } from 'obsidian';
-import { AliasSuggestion, FileSuggestion, UnresolvedSuggestion } from 'src/types';
+import {
+  AliasSuggestion,
+  FileSuggestion,
+  UnresolvedSuggestion,
+  LinkType,
+} from 'src/types';
 import {
   filenameFromPath,
   stripMDExtensionFromPath,
   isSystemSuggestion,
   matcherFnForRegExList,
+  getLinkType,
 } from 'src/utils';
+import { makeLink } from '@fixtures';
 
 describe('utils', () => {
   describe('isSystemSuggestion', () => {
@@ -140,6 +147,31 @@ describe('utils', () => {
       const fn = matcherFnForRegExList(list);
 
       expect(fn('Lorem ipsum dolor')).toBe(false);
+    });
+  });
+
+  describe('getLinkType', () => {
+    it('should not throw on falsy input', () => {
+      expect(() => getLinkType(null)).not.toThrow();
+      expect(getLinkType(null)).toBe(LinkType.None);
+    });
+
+    it('shoud parse as normal link', () => {
+      const link = makeLink('foo', '[[foo]]');
+      expect(getLinkType(link)).toBe(LinkType.Normal);
+
+      const withDisplayText = makeLink('foo|bar', '[[foo|bar]]', 'bar');
+      expect(getLinkType(withDisplayText)).toBe(LinkType.Normal);
+    });
+
+    it('should parse as block link', () => {
+      const link = makeLink('foo#^bar', '[[foo#^bar]]');
+      expect(getLinkType(link)).toBe(LinkType.Block);
+    });
+
+    it('should parse as header link', () => {
+      const link = makeLink('foo#bar', '[[foo#bar]]');
+      expect(getLinkType(link)).toBe(LinkType.Heading);
     });
   });
 });

@@ -38,4 +38,8 @@
 }
 .qsp-warning {
     color: var(--text-error);
-  }
+}
+.qsp-setting-item-indent {
+    border: 0px;
+    padding-left: 36px;
+}

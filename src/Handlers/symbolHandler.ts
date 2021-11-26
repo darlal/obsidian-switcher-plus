@@ -2,6 +2,7 @@ import {
   App,
   EditorPosition,
   fuzzySearch,
+  LinkCache,
   MarkdownView,
   Platform,
   ReferenceCache,
@@ -25,6 +26,7 @@ import {
 } from 'src/types';
 import {
   activateLeaf,
+  getLinkType,
   getOpenLeaves,
   isEditorSuggestion,
   isHeadingCache,
@@ -293,12 +295,32 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
 
         push(symbolData.headings, SymbolType.Heading);
         push(symbolData.tags, SymbolType.Tag);
-        push(symbolData.links, SymbolType.Link);
+        this.addLinksFromTarget(symbolData.links, ret);
         push(symbolData.embeds, SymbolType.Embed);
       }
     }
 
     return orderByLineNumber ? SymbolHandler.orderSymbolsByLineNumber(ret) : ret;
+  }
+
+  private addLinksFromTarget(linkData: LinkCache[], symbolList: SymbolInfo[]): void {
+    const { settings } = this;
+    linkData = linkData ?? [];
+
+    if (settings.isSymbolTypeEnabled(SymbolType.Link)) {
+      for (const link of linkData) {
+        const type = getLinkType(link);
+        const isExcluded = (settings.excludeLinkSubTypes & type) === type;
+
+        if (!isExcluded) {
+          symbolList.push({
+            type: 'symbolInfo',
+            symbol: link,
+            symbolType: SymbolType.Link,
+          });
+        }
+      }
+    }
   }
 
   private static orderSymbolsByLineNumber(symbols: SymbolInfo[] = []): SymbolInfo[] {
