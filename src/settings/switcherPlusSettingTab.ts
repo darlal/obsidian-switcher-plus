@@ -248,7 +248,8 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .setPlaceholder(settings.editorListPlaceholderText)
           .setValue(settings.editorListCommand)
           .onChange((value) => {
-            settings.editorListCommand = value;
+            const val = value.length ? value : settings.editorListPlaceholderText;
+            settings.editorListCommand = val;
             SwitcherPlusSettingTab.saveChanges(settings);
           }),
       );
@@ -266,7 +267,8 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .setPlaceholder(settings.symbolListPlaceholderText)
           .setValue(settings.symbolListCommand)
           .onChange((value) => {
-            settings.symbolListCommand = value;
+            const val = value.length ? value : settings.symbolListPlaceholderText;
+            settings.symbolListCommand = val;
             SwitcherPlusSettingTab.saveChanges(settings);
           }),
       );
@@ -306,7 +308,8 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .setPlaceholder(settings.workspaceListPlaceholderText)
           .setValue(settings.workspaceListCommand)
           .onChange((value) => {
-            settings.workspaceListCommand = value;
+            const val = value.length ? value : settings.workspaceListPlaceholderText;
+            settings.workspaceListCommand = val;
             SwitcherPlusSettingTab.saveChanges(settings);
           }),
       );
@@ -324,7 +327,8 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .setPlaceholder(settings.headingsListPlaceholderText)
           .setValue(settings.headingsListCommand)
           .onChange((value) => {
-            settings.headingsListCommand = value;
+            const val = value.length ? value : settings.headingsListPlaceholderText;
+            settings.headingsListCommand = val;
             SwitcherPlusSettingTab.saveChanges(settings);
           }),
       );

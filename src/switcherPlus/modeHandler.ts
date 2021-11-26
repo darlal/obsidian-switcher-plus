@@ -164,6 +164,7 @@ export class ModeHandler {
     const { inputText } = inputInfo;
     const { editorListCommand, workspaceListCommand, headingsListCommand } =
       this.settings;
+
     const escEditorCmd = escapeRegExp(editorListCommand);
     const escWorkspaceCmd = escapeRegExp(workspaceListCommand);
     const escHeadingsCmd = escapeRegExp(headingsListCommand);
@@ -182,7 +183,7 @@ export class ModeHandler {
     ).exec(inputText);
 
     if (match?.groups) {
-      let mode: Mode;
+      let mode: Mode = null;
       const {
         index,
         groups: { ep, wp, hp, ft },
@@ -196,7 +197,15 @@ export class ModeHandler {
         mode = Mode.HeadingsList;
       }
 
-      this.getHandler(mode).validateCommand(inputInfo, index, ft, activeSugg, activeLeaf);
+      if (mode) {
+        this.getHandler(mode).validateCommand(
+          inputInfo,
+          index,
+          ft,
+          activeSugg,
+          activeLeaf,
+        );
+      }
     }
   }
 
@@ -206,14 +215,13 @@ export class ModeHandler {
     activeLeaf: WorkspaceLeaf,
   ): void {
     const { mode, inputText } = inputInfo;
+    const { symbolListCommand } = this.settings;
 
     // Standard, Headings, and EditorList mode can have an embedded symbol command
     if (
-      mode === Mode.Standard ||
-      mode === Mode.EditorList ||
-      mode === Mode.HeadingsList
+      symbolListCommand.length &&
+      (mode === Mode.Standard || mode === Mode.EditorList || mode === Mode.HeadingsList)
     ) {
-      const { symbolListCommand } = this.settings;
       const escSymbolCmd = escapeRegExp(symbolListCommand);
 
       // regex that matches symbol command, and extract filter text
