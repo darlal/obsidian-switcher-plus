@@ -10,6 +10,7 @@ import {
   SearchResult,
   sortSearchResults,
   TFile,
+  View,
   WorkspaceLeaf,
 } from 'obsidian';
 import {
@@ -151,8 +152,11 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     // figure out if the previous operation was a symbol operation
     const hasPrevSymbolTarget = prevMode === Mode.SymbolList && !!prevTarget;
 
-    const activeSuggInfo = SymbolHandler.getActiveSuggestionInfo(activeSuggestion);
     const activeEditorInfo = this.getActiveEditorInfo(activeLeaf);
+    const activeSuggInfo = SymbolHandler.getActiveSuggestionInfo(
+      activeSuggestion,
+      activeEditorInfo,
+    );
 
     // Pick the target for a potential symbol operation, prioritizing
     // any pre-existing symbol operation that was in progress
@@ -176,22 +180,13 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
 
     if (activeLeaf) {
       const { view } = activeLeaf;
-      let isCurrentEditorValid = false;
 
       const viewType = view.getViewType();
       file = view.file;
+      cursor = SymbolHandler.getCursorPos(view);
 
       // determine if the current active editor pane is valid
-      isCurrentEditorValid = !excludeViewTypes.includes(viewType);
-
-      if (viewType === 'markdown') {
-        const md = view as MarkdownView;
-
-        if (md.getMode() !== 'preview') {
-          const { editor } = md;
-          cursor = editor.getCursor('head');
-        }
-      }
+      const isCurrentEditorValid = !excludeViewTypes.includes(viewType);
 
       // whether or not the current active editor can be used as the target for
       // symbol search
@@ -201,31 +196,56 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     return { isValidSymbolTarget, leaf: activeLeaf, file, suggestion: null, cursor };
   }
 
-  private static getActiveSuggestionInfo(activeSuggestion: AnySuggestion): TargetInfo {
-    let file: TFile = null,
-      leaf: WorkspaceLeaf = null,
-      isValidSymbolTarget = false;
+  private static getActiveSuggestionInfo(
+    activeSuggestion: AnySuggestion,
+    activeEditorInfo: TargetInfo,
+  ): TargetInfo {
+    let file: TFile = null;
+    let leaf: WorkspaceLeaf = null;
+    let cursor: EditorPosition = null;
 
-    if (
+    // Can't use a symbol, workspace, unresolved (non-existent file) suggestions as
+    // the target for another symbol command, because they don't point to a file
+    const isValidSymbolTarget =
       activeSuggestion &&
       !isSymbolSuggestion(activeSuggestion) &&
       !isUnresolvedSuggestion(activeSuggestion) &&
-      !isWorkspaceSuggestion(activeSuggestion)
-    ) {
-      // Can't use a symbol, workspace, unresolved (non-existent file) suggestions as
-      // the target for another symbol command
-      isValidSymbolTarget = true;
+      !isWorkspaceSuggestion(activeSuggestion);
 
+    if (isValidSymbolTarget) {
       if (isEditorSuggestion(activeSuggestion)) {
         leaf = activeSuggestion.item;
+        cursor = SymbolHandler.getCursorPos(leaf.view);
         file = leaf.view?.file;
       } else {
         // this catches system File suggestion, Heading, and Alias suggestion
         file = activeSuggestion.file;
+
+        // if the active editor is showing the same file as the suggestion we
+        // can reliably use it for cursor information
+        if (activeEditorInfo.isValidSymbolTarget && activeEditorInfo.file === file) {
+          leaf = activeEditorInfo.leaf;
+          cursor = activeEditorInfo.cursor;
+        }
       }
     }
 
-    return { isValidSymbolTarget, leaf, file, suggestion: activeSuggestion };
+    return { isValidSymbolTarget, leaf, file, suggestion: activeSuggestion, cursor };
+  }
+
+  private static getCursorPos(view: View): EditorPosition {
+    let cursor: EditorPosition = null;
+
+    if (view.getViewType() === 'markdown') {
+      const md = view as MarkdownView;
+
+      if (md.getMode() !== 'preview') {
+        const { editor } = md;
+        cursor = editor.getCursor('head');
+      }
+    }
+
+    return cursor;
   }
 
   private getItems(target: TargetInfo, hasSearchTerm: boolean): SymbolInfo[] {

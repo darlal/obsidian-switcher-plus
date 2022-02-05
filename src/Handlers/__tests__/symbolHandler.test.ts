@@ -4,6 +4,7 @@ import {
   SymbolSuggestion,
   SymbolType,
   HeadingIndicators,
+  HeadingSuggestion,
   AnySymbolInfoPayload,
   LinkType,
 } from 'src/types';
@@ -32,11 +33,13 @@ import {
   rootSplitEditorFixtures,
   leftSplitEditorFixtures,
   symbolTrigger,
+  headingsTrigger,
   makePreparedQuery,
   makeFuzzyMatch,
   getHeadings,
   getTags,
   getLinks,
+  makeHeading,
 } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { mocked } from 'ts-jest/dist/utils/testing';
@@ -159,6 +162,63 @@ describe('symbolHandler', () => {
         mockRootSplitLeaf.view.file,
       );
       expect(mockPrepareQuery).toHaveBeenCalled();
+    });
+
+    test('with selectNearestHeading set to true, it should set the isSelected property of the nearest preceding heading suggestion to true when the file is open in the active editor for any file based suggestion modes', () => {
+      const selectNearestHeadingSpy = jest
+        .spyOn(settings, 'selectNearestHeading', 'get')
+        .mockReturnValue(true);
+
+      // there should be a heading in the fixture that starts on this line number
+      const expectedHeadingStartLineNumber = 9;
+      const expectedSelectedHeading = rootFixture.cachedMetadata.headings.find(
+        (val) => val.position.start.line === expectedHeadingStartLineNumber,
+      );
+      expect(expectedSelectedHeading).not.toBeNull();
+
+      const mockEditor = (mockRootSplitLeaf.view as MarkdownView)
+        .editor as MockProxy<Editor>;
+
+      mockEditor.getCursor.mockReturnValueOnce({
+        line: expectedHeadingStartLineNumber + 1,
+        ch: 0,
+      });
+
+      const activeSugg: HeadingSuggestion = {
+        item: makeHeading('foo heading', 1),
+        file: mockRootSplitLeaf.view.file, // <-- here, use the same TFile as ActivecLeaf
+        match: null,
+        type: 'heading',
+      };
+
+      // use headings prefix mode along with heading suggestion, note that the suggestion
+      // has to point to the same TFile as 'activeLeaf'
+      const inputInfo = new InputInfo('', Mode.HeadingsList);
+      sut.validateCommand(
+        inputInfo,
+        headingsTrigger.length,
+        '',
+        activeSugg,
+        mockRootSplitLeaf,
+      );
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(results).not.toBeNull();
+      expect(results).toBeInstanceOf(Array);
+      expect(results.every((sugg) => sugg.type === 'symbol')).toBe(true);
+
+      const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
+      expect(selectedSuggestions).toHaveLength(1);
+      expect(selectedSuggestions[0].item.symbol).toBe(expectedSelectedHeading);
+
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
+        mockRootSplitLeaf.view.file,
+      );
+      expect(mockPrepareQuery).toHaveBeenCalled();
+
+      selectNearestHeadingSpy.mockReset();
     });
 
     test('with selectNearestHeading set to true, it should set the isSelected property of the nearest preceding heading suggestion to true', () => {
