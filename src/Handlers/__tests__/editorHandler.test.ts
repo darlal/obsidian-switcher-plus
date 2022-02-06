@@ -33,7 +33,6 @@ import {
 import { EditorHandler } from 'src/Handlers';
 import { activateLeaf } from 'src/utils';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { mocked } from 'ts-jest/utils';
 
 function makeLeaf(text: string, root: WorkspaceItem): MockProxy<WorkspaceLeaf> {
   const mockView = mock<View>();
@@ -96,8 +95,8 @@ describe('editorHandler', () => {
   });
 
   describe('getSuggestions', () => {
-    const mockPrepareQuery = mocked<typeof prepareQuery>(prepareQuery);
-    const mockFuzzySearch = mocked<typeof fuzzySearch>(fuzzySearch);
+    const mockPrepareQuery = jest.mocked(prepareQuery);
+    const mockFuzzySearch = jest.mocked(fuzzySearch);
     const rootFixture = rootSplitEditorFixtures[0];
     const leftFixture = leftSplitEditorFixtures[0];
     const rightFixture = rightSplitEditorFixtures[0];
@@ -258,7 +257,7 @@ describe('editorHandler', () => {
       const mockParentEl = mock<HTMLElement>();
       const displayText = 'foo';
       const mockLeaf = makeLeaf(displayText, null);
-      const mockRenderResults = mocked<typeof renderResults>(renderResults);
+      const mockRenderResults = jest.mocked(renderResults);
 
       const sugg: EditorSuggestion = {
         type: 'editor',

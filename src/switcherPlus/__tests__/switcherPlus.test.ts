@@ -2,7 +2,6 @@ import SwitcherPlusPlugin from 'src/main';
 import { createSwitcherPlus, ModeHandler } from 'src/switcherPlus';
 import { getSystemSwitcherInstance } from 'src/utils';
 import { mock, mockClear, MockProxy } from 'jest-mock-extended';
-import { mocked } from 'ts-jest/utils';
 import { App, Chooser, QuickSwitcherPluginInstance } from 'obsidian';
 import { AnySuggestion, Mode, SwitcherPlus, EditorSuggestion } from 'src/types';
 
@@ -52,9 +51,9 @@ describe('switcherPlus', () => {
 
   // mock of utils function that retrieves the builtin switcher plugin instance
   // defaults to returning the mocked version of the plugin instance
-  const mockGetSystemSwitcherInstance = mocked<typeof getSystemSwitcherInstance>(
-    getSystemSwitcherInstance,
-  ).mockReturnValue(mockSystemSwitcherPluginInstance);
+  const mockGetSystemSwitcherInstance = jest
+    .mocked(getSystemSwitcherInstance)
+    .mockReturnValue(mockSystemSwitcherPluginInstance);
 
   beforeAll(() => {
     mockApp = mock<App>();
