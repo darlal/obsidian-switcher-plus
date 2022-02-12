@@ -276,4 +276,45 @@ describe('SwitcherPlusSettings', () => {
 
     mockInternalPlugins.getPluginById.mockReset();
   });
+
+  it('should log errors to console on fire and forget save operation', () => {
+    // Promise used to trigger the error condition
+    const saveDataPromise = Promise.resolve();
+
+    mockPlugin.saveData.mockImplementationOnce((_data: SettingsData) => {
+      // throw to simulate saveData() failing. This happens first
+      return saveDataPromise.then(() => {
+        throw new Error('saveData() unit test mock error');
+      });
+    });
+
+    // Promise used to track the call to console.log
+    let consoleLogPromiseResolveFn: (value: void | PromiseLike<void>) => void;
+    const consoleLogPromise = new Promise<void>((resolve, _reject) => {
+      consoleLogPromiseResolveFn = resolve;
+    });
+
+    const consoleLogSpy = jest
+      .spyOn(console, 'log')
+      .mockImplementation((message: string) => {
+        if (message.startsWith('Switcher++: error saving changes to settings')) {
+          // resolve the consoleLogPromise. This happens second and will allow
+          // allPromises to resolve itself
+          consoleLogPromiseResolveFn();
+        }
+      });
+
+    // wait for the other promises to resolve before this promise can resolve
+    const allPromises = Promise.all([saveDataPromise, consoleLogPromise]);
+
+    sut.save();
+
+    // when all the promises are resolved check expectations and clean up
+    return allPromises.finally(() => {
+      expect(mockPlugin.saveData).toHaveBeenCalled();
+      expect(consoleLogSpy).toHaveBeenCalled();
+
+      consoleLogSpy.mockRestore();
+    });
+  });
 });

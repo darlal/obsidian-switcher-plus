@@ -231,6 +231,12 @@ export class SwitcherPlusSettings {
     await plugin?.saveData(data);
   }
 
+  save(): void {
+    this.saveSettings().catch((e) => {
+      console.log('Switcher++: error saving changes to settings', e);
+    });
+  }
+
   isSymbolTypeEnabled(symbol: SymbolType): boolean {
     return this.data.enabledSymbolTypes[symbol];
   }

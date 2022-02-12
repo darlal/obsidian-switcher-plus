@@ -15,6 +15,7 @@ import {
   TFile,
 } from 'obsidian';
 import { makeFuzzyMatch, makePreparedQuery } from '@fixtures';
+import { MockSetting, MockTextComponent } from './mockSetting';
 
 const chance = new Chance();
 
@@ -74,4 +75,6 @@ export {
   mockSortSearchResults as sortSearchResults,
   mockRenderResults as renderResults,
   mockDebounce as debounce,
+  MockSetting as Setting,
+  MockTextComponent as TextComponent,
 };

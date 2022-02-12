@@ -67,12 +67,6 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     this.setExcludeFolders(containerEl, settings);
   }
 
-  private static saveChanges(settings: SwitcherPlusSettings) {
-    settings.saveSettings().catch((e) => {
-      console.log('Switcher++: error saving changes to settings', e);
-    });
-  }
-
   private static setAlwaysNewPaneForSymbols(
     containerEl: HTMLElement,
     settings: SwitcherPlusSettings,
@@ -85,7 +79,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(settings.alwaysNewPaneForSymbols).onChange((value) => {
           settings.alwaysNewPaneForSymbols = value;
-          SwitcherPlusSettingTab.saveChanges(settings);
+          settings.save();
         }),
       );
   }
@@ -102,7 +96,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(settings.useActivePaneForSymbolsOnMobile).onChange((value) => {
           settings.useActivePaneForSymbolsOnMobile = value;
-          SwitcherPlusSettingTab.saveChanges(settings);
+          settings.save();
         }),
       );
   }
@@ -119,7 +113,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(settings.selectNearestHeading).onChange((value) => {
           settings.selectNearestHeading = value;
-          SwitcherPlusSettingTab.saveChanges(settings);
+          settings.save();
         }),
       );
   }
@@ -136,7 +130,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(settings.symbolsInLineOrder).onChange((value) => {
           settings.symbolsInLineOrder = value;
-          SwitcherPlusSettingTab.saveChanges(settings);
+          settings.save();
         }),
       );
   }
@@ -150,14 +144,14 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         .setValue(settings.isSymbolTypeEnabled(SymbolType.Heading))
         .onChange((value) => {
           settings.setSymbolTypeEnabled(SymbolType.Heading, value);
-          SwitcherPlusSettingTab.saveChanges(settings);
+          settings.save();
         }),
     );
 
     new Setting(containerEl).setName('Show Tags').addToggle((toggle) =>
       toggle.setValue(settings.isSymbolTypeEnabled(SymbolType.Tag)).onChange((value) => {
         settings.setSymbolTypeEnabled(SymbolType.Tag, value);
-        SwitcherPlusSettingTab.saveChanges(settings);
+        settings.save();
       }),
     );
 
@@ -166,7 +160,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         .setValue(settings.isSymbolTypeEnabled(SymbolType.Embed))
         .onChange((value) => {
           settings.setSymbolTypeEnabled(SymbolType.Embed, value);
-          SwitcherPlusSettingTab.saveChanges(settings);
+          settings.save();
         }),
     );
 
@@ -231,7 +225,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           }
 
           settings.excludeLinkSubTypes = exclusions;
-          SwitcherPlusSettingTab.saveChanges(settings);
+          settings.save();
         });
       });
   }
@@ -250,7 +244,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .onChange((value) => {
             const val = value.length ? value : settings.editorListPlaceholderText;
             settings.editorListCommand = val;
-            SwitcherPlusSettingTab.saveChanges(settings);
+            settings.save();
           }),
       );
   }
@@ -269,7 +263,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .onChange((value) => {
             const val = value.length ? value : settings.symbolListPlaceholderText;
             settings.symbolListCommand = val;
-            SwitcherPlusSettingTab.saveChanges(settings);
+            settings.save();
           }),
       );
   }
@@ -291,7 +285,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .setValue(settings.includeSidePanelViewTypes.join('\n'))
           .onChange((value) => {
             settings.includeSidePanelViewTypes = value.split('\n');
-            SwitcherPlusSettingTab.saveChanges(settings);
+            settings.save();
           }),
       );
   }
@@ -310,7 +304,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .onChange((value) => {
             const val = value.length ? value : settings.workspaceListPlaceholderText;
             settings.workspaceListCommand = val;
-            SwitcherPlusSettingTab.saveChanges(settings);
+            settings.save();
           }),
       );
   }
@@ -329,7 +323,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           .onChange((value) => {
             const val = value.length ? value : settings.headingsListPlaceholderText;
             settings.headingsListCommand = val;
-            SwitcherPlusSettingTab.saveChanges(settings);
+            settings.save();
           }),
       );
   }
@@ -346,7 +340,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(settings.strictHeadingsOnly).onChange((value) => {
           settings.strictHeadingsOnly = value;
-          SwitcherPlusSettingTab.saveChanges(settings);
+          settings.save();
         }),
       );
   }
@@ -363,7 +357,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(settings.searchAllHeadings).onChange((value) => {
           settings.searchAllHeadings = value;
-          SwitcherPlusSettingTab.saveChanges(settings);
+          settings.save();
         }),
       );
   }
@@ -388,7 +382,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
 
           if (this.validateExcludeFolderList(settingName, excludes)) {
             settings.excludeFolders = excludes;
-            SwitcherPlusSettingTab.saveChanges(settings);
+            settings.save();
           }
         });
       });
