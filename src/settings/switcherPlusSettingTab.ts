@@ -1,3 +1,4 @@
+import { StarredSettingTabSection } from './starredSettingsTabSection';
 import { App, Modal, PluginSettingTab, Setting } from 'obsidian';
 import { LinkType, SymbolType } from 'src/types';
 import { SwitcherPlusSettings } from 'src/settings';
@@ -20,6 +21,10 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     this.setEditorModeSettingsGroup(containerEl, settings);
     SwitcherPlusSettingTab.setWorkspaceModeSettingsGroup(containerEl, settings);
     this.setHeadingsModeSettingsGroup(containerEl, settings);
+
+    const starredSection = new StarredSettingTabSection(this.app, this, settings);
+
+    starredSection.display(containerEl);
   }
 
   private setEditorModeSettingsGroup(

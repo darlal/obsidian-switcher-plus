@@ -5,6 +5,25 @@ declare module 'obsidian' {
     id: string;
   }
 
+  export interface StarredPluginItem {
+    type: 'file' | 'search';
+    title: string;
+  }
+
+  export interface SearchStarredItem extends StarredPluginItem {
+    type: 'search';
+    query: string;
+  }
+
+  export interface FileStarredItem extends StarredPluginItem {
+    type: 'file';
+    path: string;
+  }
+
+  export interface StarredPluginInstance extends PluginInstance {
+    items: Array<StarredPluginItem>;
+  }
+
   export interface WorkspacesPluginInstance extends PluginInstance {
     workspaces: Record<string, unknown>;
     loadWorkspace(id: string): void;

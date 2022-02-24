@@ -13,11 +13,14 @@ import {
   renderResults,
   sortSearchResults,
   TFile,
+  Keymap,
 } from 'obsidian';
 import { makeFuzzyMatch, makePreparedQuery } from '@fixtures';
 import { MockSetting, MockTextComponent } from './mockSetting';
 
 const chance = new Chance();
+
+const mockKeymap = mock<typeof Keymap>();
 
 const mockPlatform = mock<typeof Platform>({
   isDesktop: true,
@@ -75,6 +78,7 @@ export {
   mockSortSearchResults as sortSearchResults,
   mockRenderResults as renderResults,
   mockDebounce as debounce,
+  mockKeymap as Keymap,
   MockSetting as Setting,
   MockTextComponent as TextComponent,
 };

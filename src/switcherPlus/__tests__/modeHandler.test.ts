@@ -9,6 +9,7 @@ import {
   SymbolSuggestion,
   SymbolType,
   AnySuggestion,
+  StarredSuggestion,
 } from 'src/types';
 import { Keymap, ModeHandler, SymbolParsedCommand } from 'src/switcherPlus';
 import {
@@ -16,7 +17,7 @@ import {
   HeadingsHandler,
   SymbolHandler,
   WorkspaceHandler,
-  WORKSPACE_PLUGIN_ID,
+  StarredHandler,
 } from 'src/Handlers';
 import {
   TFile,
@@ -26,7 +27,7 @@ import {
   debounce,
   View,
   InternalPlugins,
-  InstalledPlugin,
+  Workspace,
 } from 'obsidian';
 import {
   editorTrigger,
@@ -40,8 +41,11 @@ import {
   workspacePrefixOnlyInputFixture,
   headingsTrigger,
   headingsPrefixOnlyInputFixture,
+  starredPrefixOnlyInputFixture,
   makeHeading,
   getHeadings,
+  starredTrigger,
+  makeFileStarredItem,
 } from '@fixtures';
 
 function makeLeaf(): MockProxy<WorkspaceLeaf> {
@@ -55,13 +59,31 @@ describe('modeHandler', () => {
   let sut: ModeHandler;
 
   beforeAll(() => {
-    mockApp = mock<App>({ internalPlugins: mock<InternalPlugins>() });
+    const mockInternalPlugins = mock<InternalPlugins>();
+    mockInternalPlugins.getPluginById.mockImplementation((_id) => {
+      return {
+        enabled: true,
+        instance: null,
+      };
+    });
+
+    const mockWorkspace = mock<Workspace>({ activeLeaf: null });
+    mockWorkspace.iterateAllLeaves.mockImplementation((_callback) => {
+      //noop
+    });
+
+    mockApp = mock<App>({
+      internalPlugins: mockInternalPlugins,
+      workspace: mockWorkspace,
+    });
+
     settings = new SwitcherPlusSettings(null);
 
     jest.spyOn(settings, 'editorListCommand', 'get').mockReturnValue(editorTrigger);
     jest.spyOn(settings, 'symbolListCommand', 'get').mockReturnValue(symbolTrigger);
     jest.spyOn(settings, 'workspaceListCommand', 'get').mockReturnValue(workspaceTrigger);
     jest.spyOn(settings, 'headingsListCommand', 'get').mockReturnValue(headingsTrigger);
+    jest.spyOn(settings, 'starredListCommand', 'get').mockReturnValue(starredTrigger);
   });
 
   describe('opening and closing the modal', () => {
@@ -113,6 +135,7 @@ describe('modeHandler', () => {
         const eSpy = jest.spyOn(EditorHandler.prototype, 'commandString', 'get');
         const wSpy = jest.spyOn(WorkspaceHandler.prototype, 'commandString', 'get');
         const hSpy = jest.spyOn(HeadingsHandler.prototype, 'commandString', 'get');
+        const starredSpy = jest.spyOn(StarredHandler.prototype, 'commandString', 'get');
 
         sut.setSessionOpenMode(Mode.Standard, null);
 
@@ -120,11 +143,13 @@ describe('modeHandler', () => {
         expect(eSpy).not.toHaveBeenCalled();
         expect(wSpy).not.toHaveBeenCalled();
         expect(hSpy).not.toHaveBeenCalled();
+        expect(starredSpy).not.toHaveBeenCalled();
 
         sSpy.mockRestore();
         eSpy.mockRestore();
         wSpy.mockRestore();
         hSpy.mockRestore();
+        starredSpy.mockRestore();
       });
     });
 
@@ -170,7 +195,7 @@ describe('modeHandler', () => {
         'for input: "$input" (array data index: $#)',
         ({ editorTrigger, symbolTrigger, input, expected: { mode, parsedInput } }) => {
           const s = new SwitcherPlusSettings(null);
-          const mh = new ModeHandler(null, s, null);
+          const mh = new ModeHandler(mockApp, s, null);
           let cmdSpy: jest.SpyInstance;
 
           if (editorTrigger) {
@@ -318,6 +343,8 @@ describe('modeHandler', () => {
             },
           };
 
+          mockApp.workspace.activeLeaf = leaf;
+
           const inputInfo = sut.determineRunMode(input, editorSuggestion, null);
 
           expect(inputInfo.mode).toBe(mode);
@@ -332,26 +359,13 @@ describe('modeHandler', () => {
           expect(target.file).toBe(leaf.view.file);
           expect(target.leaf).toBe(leaf);
           expect(target.suggestion).toBe(editorSuggestion);
+
+          mockApp.workspace.activeLeaf = null;
         },
       );
     });
 
     describe('should parse as workspace mode', () => {
-      beforeAll(() => {
-        const mockInternalPlugins = mockApp.internalPlugins as MockProxy<InternalPlugins>;
-        mockInternalPlugins.getPluginById.mockImplementation((id) => {
-          let ret: InstalledPlugin;
-          if (id === WORKSPACE_PLUGIN_ID) {
-            ret = {
-              enabled: true,
-              instance: null,
-            };
-          }
-
-          return ret;
-        });
-      });
-
       test.each(workspacePrefixOnlyInputFixture)(
         'for input: "$input" (array data index: $#)',
         ({ input, expected: { mode, isValidated, parsedInput } }) => {
@@ -363,6 +377,22 @@ describe('modeHandler', () => {
           const workspaceCmd = inputInfo.parsedCommand();
           expect(workspaceCmd.isValidated).toBe(isValidated);
           expect(workspaceCmd.parsedInput).toBe(parsedInput);
+        },
+      );
+    });
+
+    describe('should parse as starred mode', () => {
+      test.each(starredPrefixOnlyInputFixture)(
+        'for input: "$input" (array data index: $#)',
+        ({ input, expected: { mode, isValidated, parsedInput } }) => {
+          const inputInfo = sut.determineRunMode(input, null, null);
+
+          expect(inputInfo.mode).toBe(mode);
+          expect(inputInfo.inputText).toBe(input);
+
+          const starredCmd = inputInfo.parsedCommand();
+          expect(starredCmd.isValidated).toBe(isValidated);
+          expect(starredCmd.parsedInput).toBe(parsedInput);
         },
       );
     });
@@ -415,6 +445,12 @@ describe('modeHandler', () => {
       type: 'heading',
       item: makeHeading('foo', 1),
       file: null,
+      match: null,
+    };
+
+    const starredSugg: StarredSuggestion = {
+      type: 'starred',
+      item: makeFileStarredItem(),
       match: null,
     };
 
@@ -558,6 +594,22 @@ describe('modeHandler', () => {
         mockSetSuggestion.mockReset();
       });
 
+      it('should get suggestions for Starred Mode', () => {
+        const expectedSuggestions = [starredSugg];
+        getSuggestionSpy = jest
+          .spyOn(StarredHandler.prototype, 'getSuggestions')
+          .mockReturnValue(expectedSuggestions);
+
+        const results = sut.updateSuggestions(starredTrigger, mockChooser);
+
+        expect(results).toBe(true);
+        expect(getSuggestionSpy).toHaveBeenCalled();
+        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
+
+        getSuggestionSpy.mockRestore();
+        mockSetSuggestion.mockReset();
+      });
+
       it('should get suggestions for Headings Mode', () => {
         const expectedSuggestions = [headingsSugg];
         getSuggestionSpy = jest
@@ -635,6 +687,19 @@ describe('modeHandler', () => {
 
         renderSuggestionSpy.mockRestore();
       });
+
+      it('should render suggestions for Starred Mode', () => {
+        renderSuggestionSpy = jest
+          .spyOn(StarredHandler.prototype, 'renderSuggestion')
+          .mockImplementation();
+
+        const result = sut.renderSuggestion(starredSugg, mockParentEl);
+
+        expect(result).toBe(true);
+        expect(renderSuggestionSpy).toHaveBeenCalledWith(starredSugg, mockParentEl);
+
+        renderSuggestionSpy.mockRestore();
+      });
     });
 
     describe('onchooseSuggestions', () => {
@@ -694,6 +759,19 @@ describe('modeHandler', () => {
 
         expect(result).toBe(true);
         expect(onChooseSuggestionSpy).toHaveBeenCalledWith(workspaceSugg, mockEvt);
+
+        onChooseSuggestionSpy.mockRestore();
+      });
+
+      it('should action suggestions for Starred Mode', () => {
+        onChooseSuggestionSpy = jest
+          .spyOn(StarredHandler.prototype, 'onChooseSuggestion')
+          .mockImplementation();
+
+        const result = sut.onChooseSuggestion(starredSugg, mockEvt);
+
+        expect(result).toBe(true);
+        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(starredSugg, mockEvt);
 
         onChooseSuggestionSpy.mockRestore();
       });

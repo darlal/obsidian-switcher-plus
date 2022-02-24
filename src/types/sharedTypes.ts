@@ -11,7 +11,7 @@ import {
   TFile,
   WorkspaceLeaf,
 } from 'obsidian';
-import type { SuggestModal } from 'obsidian';
+import type { SuggestModal, StarredPluginItem } from 'obsidian';
 import type { InputInfo } from 'src/switcherPlus/inputInfo';
 
 export enum Mode {
@@ -20,6 +20,7 @@ export enum Mode {
   SymbolList = 4,
   WorkspaceList = 8,
   HeadingsList = 16,
+  StarredList = 32,
 }
 
 export enum SymbolType {
@@ -105,6 +106,10 @@ export interface HeadingSuggestion extends FuzzyMatch<HeadingCache> {
   type: 'heading';
 }
 
+export interface StarredSuggestion extends FuzzyMatch<StarredPluginItem> {
+  type: 'starred';
+}
+
 export interface FileSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
   file: TFile;
   type: 'file';
@@ -122,12 +127,16 @@ export interface UnresolvedSuggestion extends Omit<FuzzyMatch<string>, 'item'> {
 }
 
 export type AnyExSuggestionPayload = WorkspaceLeaf | SymbolInfo | WorkspaceInfo;
+
 export type AnyExSuggestion =
   | SymbolSuggestion
   | EditorSuggestion
   | WorkspaceSuggestion
-  | HeadingSuggestion;
+  | HeadingSuggestion
+  | StarredSuggestion;
+
 export type AnySystemSuggestion = FileSuggestion | AliasSuggestion | UnresolvedSuggestion;
+
 export type AnySuggestion = AnyExSuggestion | AnySystemSuggestion;
 
 export interface TargetInfo {
@@ -146,6 +155,7 @@ export interface SettingsData {
   symbolListCommand: string;
   workspaceListCommand: string;
   headingsListCommand: string;
+  starredListCommand: string;
   strictHeadingsOnly: boolean;
   searchAllHeadings: boolean;
   excludeViewTypes: Array<string>;

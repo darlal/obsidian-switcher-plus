@@ -1,14 +1,17 @@
 import { SwitcherPlusSettings } from 'src/settings';
 import {
+  AliasSuggestion,
   Mode,
   SymbolSuggestion,
   SymbolType,
+  EditorSuggestion,
   HeadingIndicators,
   HeadingSuggestion,
   AnySymbolInfoPayload,
+  StarredSuggestion,
   LinkType,
 } from 'src/types';
-import { InputInfo } from 'src/switcherPlus';
+import { InputInfo, SymbolParsedCommand } from 'src/switcherPlus';
 import { SymbolHandler } from 'src/Handlers';
 import {
   WorkspaceLeaf,
@@ -28,6 +31,7 @@ import {
   Editor,
   Workspace,
   TFile,
+  Vault,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -40,6 +44,8 @@ import {
   getTags,
   getLinks,
   makeHeading,
+  makeFileStarredItem,
+  makeSearchStarredItem,
 } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { mocked } from 'ts-jest/dist/utils/testing';
@@ -62,6 +68,7 @@ describe('symbolHandler', () => {
   const leftFixture = leftSplitEditorFixtures[0];
   let settings: SwitcherPlusSettings;
   let mockApp: MockProxy<App>;
+  let mockWorkspace: MockProxy<Workspace>;
   let sut: SymbolHandler;
   let mockMetadataCache: MockProxy<MetadataCache>;
   let mockRootSplitLeaf: MockProxy<WorkspaceLeaf>;
@@ -75,7 +82,12 @@ describe('symbolHandler', () => {
     mockMetadataCache = mock<MetadataCache>();
     mockMetadataCache.getFileCache.mockImplementation((_f) => rootFixture.cachedMetadata);
 
-    mockApp = mock<App>({ metadataCache: mockMetadataCache });
+    mockWorkspace = mock<Workspace>({ activeLeaf: null });
+    mockApp = mock<App>({
+      workspace: mockWorkspace,
+      metadataCache: mockMetadataCache,
+      vault: mock<Vault>(),
+    });
 
     settings = new SwitcherPlusSettings(null);
     jest.spyOn(settings, 'symbolListCommand', 'get').mockReturnValue(symbolTrigger);
@@ -122,6 +134,176 @@ describe('symbolHandler', () => {
       const symbolCmd = inputInfo.parsedCommand();
       expect(symbolCmd.parsedInput).toBe(filterText);
       expect(symbolCmd.isValidated).toBe(true);
+    });
+
+    it('should validate parsed input for file based suggestion', () => {
+      const targetFile = new TFile();
+
+      const sugg: AliasSuggestion = {
+        file: targetFile,
+        alias: 'foo',
+        type: 'alias',
+        match: null,
+      };
+
+      const inputInfo = new InputInfo('', Mode.Standard);
+      sut.validateCommand(inputInfo, 0, '', sugg, null);
+
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+      expect(symbolCmd.isValidated).toBe(true);
+      expect(symbolCmd.target).toEqual(
+        expect.objectContaining({
+          file: targetFile,
+          leaf: null,
+          suggestion: sugg,
+          isValidSymbolTarget: true,
+        }),
+      );
+    });
+
+    it('should validate parsed input for editor suggestion', () => {
+      const targetLeaf = makeLeaf();
+      mockWorkspace.activeLeaf = targetLeaf; // <-- set the target as a currently open leaf
+
+      const sugg: EditorSuggestion = {
+        item: targetLeaf,
+        type: 'editor',
+        match: null,
+      };
+
+      const inputInfo = new InputInfo('', Mode.EditorList);
+      sut.validateCommand(inputInfo, 0, '', sugg, null);
+
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+      expect(symbolCmd.isValidated).toBe(true);
+      expect(symbolCmd.target).toEqual(
+        expect.objectContaining({
+          file: targetLeaf.view.file,
+          leaf: targetLeaf,
+          suggestion: sugg,
+          isValidSymbolTarget: true,
+        }),
+      );
+
+      mockWorkspace.activeLeaf = null;
+    });
+
+    it('should validate parsed input for starred file suggestion', () => {
+      const targetFile = new TFile();
+      const item = makeFileStarredItem(targetFile.basename);
+
+      const sugg: StarredSuggestion = {
+        item,
+        type: 'starred',
+        match: null,
+      };
+
+      (mockApp.vault as MockProxy<Vault>).getAbstractFileByPath
+        .calledWith(targetFile.path)
+        .mockReturnValueOnce(targetFile);
+
+      const inputInfo = new InputInfo('', Mode.StarredList);
+      sut.validateCommand(inputInfo, 0, '', sugg, null);
+
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+      expect(symbolCmd.isValidated).toBe(true);
+      expect(symbolCmd.target).toEqual(
+        expect.objectContaining({
+          file: targetFile,
+          leaf: null,
+          suggestion: sugg,
+          isValidSymbolTarget: true,
+        }),
+      );
+    });
+
+    it('should not validate parsed input for starred search suggestion', () => {
+      const item = makeSearchStarredItem();
+
+      const sugg: StarredSuggestion = {
+        item,
+        type: 'starred',
+        match: null,
+      };
+
+      const inputInfo = new InputInfo('', Mode.StarredList);
+      sut.validateCommand(inputInfo, 0, '', sugg, null);
+
+      expect(inputInfo.mode).toBe(Mode.StarredList);
+
+      const symbolCmd = inputInfo.parsedCommand(Mode.SymbolList) as SymbolParsedCommand;
+      expect(symbolCmd.isValidated).toBe(false);
+      expect(symbolCmd.target).toBeNull();
+    });
+
+    it('should validate and identify active editor as matching the file suggestion target', () => {
+      const targetLeaf = makeLeaf();
+      mockWorkspace.activeLeaf = targetLeaf; // <-- set the target as a currently open leaf
+
+      const sugg: AliasSuggestion = {
+        file: targetLeaf.view.file,
+        alias: 'foo',
+        type: 'alias',
+        match: null,
+      };
+
+      const inputInfo = new InputInfo('', Mode.Standard);
+      sut.validateCommand(inputInfo, 0, '', sugg, null);
+
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+      expect(symbolCmd.isValidated).toBe(true);
+      expect(symbolCmd.target).toEqual(
+        expect.objectContaining({
+          file: targetLeaf.view.file,
+          leaf: targetLeaf,
+          suggestion: sugg,
+          isValidSymbolTarget: true,
+        }),
+      );
+
+      mockWorkspace.activeLeaf = null;
+    });
+
+    it('should validate and identify in-active editor as matching the file suggestion target file', () => {
+      const targetLeaf = makeLeaf();
+
+      const sugg: AliasSuggestion = {
+        file: targetLeaf.view.file,
+        alias: 'foo',
+        type: 'alias',
+        match: null,
+      };
+
+      mockWorkspace.activeLeaf = null; // <-- clear out active leaf
+      mockWorkspace.iterateAllLeaves.mockImplementation((callback) => {
+        callback(targetLeaf); // <-- report targetLeaf and an in-active open leaf
+      });
+
+      const inputInfo = new InputInfo('', Mode.Standard);
+      sut.validateCommand(inputInfo, 0, '', sugg, null);
+
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+      expect(symbolCmd.isValidated).toBe(true);
+      expect(symbolCmd.target).toEqual(
+        expect.objectContaining({
+          file: targetLeaf.view.file,
+          leaf: targetLeaf,
+          suggestion: sugg,
+          isValidSymbolTarget: true,
+        }),
+      );
+
+      mockWorkspace.iterateAllLeaves.mockReset();
     });
   });
 
@@ -179,14 +361,16 @@ describe('symbolHandler', () => {
       const mockEditor = (mockRootSplitLeaf.view as MarkdownView)
         .editor as MockProxy<Editor>;
 
-      mockEditor.getCursor.mockReturnValueOnce({
+      mockEditor.getCursor.mockReturnValue({
         line: expectedHeadingStartLineNumber + 1,
         ch: 0,
       });
 
+      mockWorkspace.activeLeaf = mockRootSplitLeaf;
+
       const activeSugg: HeadingSuggestion = {
         item: makeHeading('foo heading', 1),
-        file: mockRootSplitLeaf.view.file, // <-- here, use the same TFile as ActivecLeaf
+        file: mockWorkspace.activeLeaf.view.file, // <-- here, use the same TFile as ActiveLeaf
         match: null,
         type: 'heading',
       };
@@ -199,13 +383,12 @@ describe('symbolHandler', () => {
         headingsTrigger.length,
         '',
         activeSugg,
-        mockRootSplitLeaf,
+        mockWorkspace.activeLeaf,
       );
-      expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       const results = sut.getSuggestions(inputInfo);
 
-      expect(results).not.toBeNull();
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
       expect(results).toBeInstanceOf(Array);
       expect(results.every((sugg) => sugg.type === 'symbol')).toBe(true);
 
@@ -214,11 +397,13 @@ describe('symbolHandler', () => {
       expect(selectedSuggestions[0].item.symbol).toBe(expectedSelectedHeading);
 
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
-        mockRootSplitLeaf.view.file,
+        mockWorkspace.activeLeaf.view.file,
       );
       expect(mockPrepareQuery).toHaveBeenCalled();
 
       selectNearestHeadingSpy.mockReset();
+      mockEditor.getCursor.mockReset();
+      mockWorkspace.activeLeaf = null;
     });
 
     test('with selectNearestHeading set to true, it should set the isSelected property of the nearest preceding heading suggestion to true', () => {
@@ -562,8 +747,6 @@ describe('symbolHandler', () => {
       cursor: EditorRange;
     };
 
-    let mockWorkspace: MockProxy<Workspace>;
-
     const getExpectedEphemeralState = (
       sugg: SymbolSuggestion,
       focus?: boolean,
@@ -590,20 +773,12 @@ describe('symbolHandler', () => {
       return state;
     };
 
-    beforeAll(() => {
-      mockWorkspace = mock<Workspace>();
-      mockApp.workspace = mockWorkspace;
-    });
-
     it('should not throw an error with a null suggestion', () => {
       expect(() => sut.onChooseSuggestion(null, null)).not.toThrow();
     });
 
     it('should activate the existing workspaceLeaf that contains the target symbol and scroll that view via eState', () => {
       const expectedState = getExpectedEphemeralState(symbolSugg, true);
-      mockWorkspace.iterateAllLeaves.mockImplementation((callback) => {
-        callback(mockRootSplitLeaf);
-      });
 
       const inputInfo = new InputInfo(symbolTrigger);
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
@@ -612,26 +787,28 @@ describe('symbolHandler', () => {
 
       sut.onChooseSuggestion(symbolSugg, null);
 
-      expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
       expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockRootSplitLeaf, true);
       expect(mockRootSplitLeaf.view.setEphemeralState).toHaveBeenCalledWith(
         expectedState,
       );
-
-      mockWorkspace.iterateAllLeaves.mockReset();
     });
 
     it('should create a new workspaceLeaf for the target file that contains the symbol, and scroll via eState', () => {
+      // set alwaysNewPaneForSymbols to true for new pane creation
+      const alwaysNewPaneForSymbolsSpy = jest
+        .spyOn(settings, 'alwaysNewPaneForSymbols', 'get')
+        .mockReturnValue(true);
+
       const expectedState = getExpectedEphemeralState(symbolSugg);
       mockWorkspace.openLinkText.mockResolvedValue();
 
       const inputInfo = new InputInfo(symbolTrigger);
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
       sut.getSuggestions(inputInfo);
-      expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       sut.onChooseSuggestion(symbolSugg, null);
 
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
       expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
         mockRootSplitLeaf.view.file.path,
         '',
@@ -640,9 +817,15 @@ describe('symbolHandler', () => {
       );
 
       mockWorkspace.openLinkText.mockReset();
+      alwaysNewPaneForSymbolsSpy.mockRestore();
     });
 
     it('should catch errors while opening new workspaceLeaf and log it to the console', () => {
+      // set alwaysNewPaneForSymbols to true for new pane creation
+      const alwaysNewPaneForSymbolsSpy = jest
+        .spyOn(settings, 'alwaysNewPaneForSymbols', 'get')
+        .mockReturnValue(true);
+
       // Promise used to trigger the error condition
       const openLinkTextPromise = Promise.resolve();
 
@@ -675,7 +858,6 @@ describe('symbolHandler', () => {
       const inputInfo = new InputInfo(symbolTrigger);
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
       sut.getSuggestions(inputInfo);
-      expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       // internally calls openLinkText(), which the spy will cause to fail, and then
       // will call console.log
@@ -683,12 +865,13 @@ describe('symbolHandler', () => {
 
       // when all the promises are resolved check expectations and clean up
       return allPromises.finally(() => {
-        expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
+        expect(inputInfo.mode).toBe(Mode.SymbolList);
         expect(mockWorkspace.openLinkText).toHaveBeenCalled();
         expect(consoleLogSpy).toHaveBeenCalled();
 
         mockWorkspace.openLinkText.mockReset();
         consoleLogSpy.mockRestore();
+        alwaysNewPaneForSymbolsSpy.mockRestore();
       });
     });
   });

@@ -34,7 +34,7 @@ export function makeLink(
   startLoc?: Loc,
   endLoc?: Loc,
 ): ReferenceCache {
-  const position = makePos(startLoc ?? makeLoc(), endLoc ?? makeLoc());
+  const position = makePos(startLoc, endLoc);
 
   const refCache: ReferenceCache = {
     position,
@@ -62,7 +62,7 @@ export function makeHeading(
   startLoc?: Loc,
   endLoc?: Loc,
 ): HeadingCache {
-  const position = makePos(startLoc ?? makeLoc(), endLoc ?? makeLoc());
+  const position = makePos(startLoc, endLoc);
 
   return {
     position,

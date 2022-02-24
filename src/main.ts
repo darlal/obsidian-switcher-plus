@@ -34,6 +34,11 @@ export default class SwitcherPlusPlugin extends Plugin {
       'Open in Headings Mode',
       Mode.HeadingsList,
     );
+    this.registerCommand(
+      'switcher-plus:open-starred',
+      'Open in Starred Mode',
+      Mode.StarredList,
+    );
   }
 
   registerCommand(id: string, name: string, mode: Mode): void {

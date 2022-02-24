@@ -39,6 +39,7 @@ export class InputInfo {
     pcs[Mode.EditorList] = InputInfo.defaultParsedCommand;
     pcs[Mode.WorkspaceList] = InputInfo.defaultParsedCommand;
     pcs[Mode.HeadingsList] = InputInfo.defaultParsedCommand;
+    pcs[Mode.StarredList] = InputInfo.defaultParsedCommand;
     this.parsedCommands = pcs;
   }
 

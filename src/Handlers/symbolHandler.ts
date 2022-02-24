@@ -31,8 +31,11 @@ import {
   getOpenLeaves,
   isEditorSuggestion,
   isHeadingCache,
+  isStarredSuggestion,
+  isFileStarredItem,
   isSymbolSuggestion,
   isTagCache,
+  isTFile,
   isUnresolvedSuggestion,
   isWorkspaceSuggestion,
 } from 'src/utils';
@@ -153,10 +156,7 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     const hasPrevSymbolTarget = prevMode === Mode.SymbolList && !!prevTarget;
 
     const activeEditorInfo = this.getActiveEditorInfo(activeLeaf);
-    const activeSuggInfo = SymbolHandler.getActiveSuggestionInfo(
-      activeSuggestion,
-      activeEditorInfo,
-    );
+    const activeSuggInfo = this.getActiveSuggestionInfo(activeSuggestion);
 
     // Pick the target for a potential symbol operation, prioritizing
     // any pre-existing symbol operation that was in progress
@@ -196,47 +196,64 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     return { isValidSymbolTarget, leaf: activeLeaf, file, suggestion: null, cursor };
   }
 
-  private static getActiveSuggestionInfo(
-    activeSuggestion: AnySuggestion,
-    activeEditorInfo: TargetInfo,
-  ): TargetInfo {
+  private getActiveSuggestionInfo(activeSuggestion: AnySuggestion): TargetInfo {
+    const info = this.getTargetInfoFromSuggestion(activeSuggestion);
+    let leaf = info.leaf;
+
+    if (info.isValidSymbolTarget) {
+      // try to find a matching leaf for suggestion types that don't explicitly
+      // provide one. This is primarily needed to be able to focus an
+      // existing pane if there is one
+      ({ leaf } = this.findOpenEditorMatchingSymbolTarget(info.file, info.leaf));
+    }
+
+    // Get the cursor information to support `selectNearestHeading`
+    const cursor = SymbolHandler.getCursorPos(leaf?.view);
+
+    return { ...info, leaf, cursor };
+  }
+
+  private getTargetInfoFromSuggestion(suggestion: AnySuggestion): TargetInfo {
     let file: TFile = null;
     let leaf: WorkspaceLeaf = null;
-    let cursor: EditorPosition = null;
 
     // Can't use a symbol, workspace, unresolved (non-existent file) suggestions as
     // the target for another symbol command, because they don't point to a file
-    const isValidSymbolTarget =
-      activeSuggestion &&
-      !isSymbolSuggestion(activeSuggestion) &&
-      !isUnresolvedSuggestion(activeSuggestion) &&
-      !isWorkspaceSuggestion(activeSuggestion);
+    const isFileBasedSuggestion =
+      suggestion &&
+      !isSymbolSuggestion(suggestion) &&
+      !isUnresolvedSuggestion(suggestion) &&
+      !isWorkspaceSuggestion(suggestion);
 
-    if (isValidSymbolTarget) {
-      if (isEditorSuggestion(activeSuggestion)) {
-        leaf = activeSuggestion.item;
-        cursor = SymbolHandler.getCursorPos(leaf.view);
-        file = leaf.view?.file;
-      } else {
-        // this catches system File suggestion, Heading, and Alias suggestion
-        file = activeSuggestion.file;
+    if (isEditorSuggestion(suggestion)) {
+      // note: this leaf could be a reference view, which is not usable for
+      // `selectNearestHeading` because reference views don't have cursor information
+      leaf = suggestion.item;
+      file = leaf.view?.file;
+    } else if (isStarredSuggestion(suggestion)) {
+      // only starred files supported currently
+      if (isFileStarredItem(suggestion.item)) {
+        const path = suggestion.item.path;
+        const abstractFile = this.app.vault.getAbstractFileByPath(path);
 
-        // if the active editor is showing the same file as the suggestion we
-        // can reliably use it for cursor information
-        if (activeEditorInfo.isValidSymbolTarget && activeEditorInfo.file === file) {
-          leaf = activeEditorInfo.leaf;
-          cursor = activeEditorInfo.cursor;
+        if (isTFile(abstractFile)) {
+          file = abstractFile;
         }
       }
+    } else if (isFileBasedSuggestion) {
+      // this catches system File suggestion, Heading, and Alias suggestion
+      file = suggestion.file;
     }
 
-    return { isValidSymbolTarget, leaf, file, suggestion: activeSuggestion, cursor };
+    const isValidSymbolTarget = !!file;
+
+    return { isValidSymbolTarget, leaf, file, suggestion };
   }
 
   private static getCursorPos(view: View): EditorPosition {
     let cursor: EditorPosition = null;
 
-    if (view.getViewType() === 'markdown') {
+    if (view?.getViewType() === 'markdown') {
       const md = view as MarkdownView;
 
       if (md.getMode() !== 'preview') {
@@ -303,7 +320,7 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     } = this;
     const ret: SymbolInfo[] = [];
 
-    if (targetInfo.file) {
+    if (targetInfo?.file) {
       const file = targetInfo.file;
       const symbolData = metadataCache.getFileCache(file);
 
@@ -410,15 +427,18 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
 
   private navigateToSymbol(sugg: SymbolSuggestion): void {
     const {
+      inputInfo,
       app: { workspace },
       settings: { alwaysNewPaneForSymbols, useActivePaneForSymbolsOnMobile },
     } = this;
 
-    // determine if the target is already open in a pane
+    const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+
+    // get the target file and leaf if available
     const {
       leaf,
       file: { path },
-    } = this.findOpenEditorMatchingSymbolTarget();
+    } = symbolCmd.target;
 
     const {
       start: { line, col },
@@ -451,33 +471,50 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     }
   }
 
-  private findOpenEditorMatchingSymbolTarget(): TargetInfo {
+  private findOpenEditorMatchingSymbolTarget(
+    file: TFile,
+    leaf: WorkspaceLeaf,
+  ): TargetInfo {
+    const isTargetLeaf = !!leaf;
     const {
-      inputInfo,
       settings: { referenceViews, excludeViewTypes, includeSidePanelViewTypes },
       app: { workspace },
     } = this;
-    const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
-    const { file, leaf } = symbolCmd.target;
-    const isTargetLeaf = !!leaf;
 
-    const predicate = (l: WorkspaceLeaf) => {
+    const isMatch = (l: WorkspaceLeaf) => {
       let val = false;
-      const isRefView = referenceViews.includes(l.view.getViewType());
-      const isTargetRefView =
-        isTargetLeaf && referenceViews.includes(leaf.view.getViewType());
 
-      if (!isRefView) {
-        val = isTargetLeaf && !isTargetRefView ? l === leaf : l.view?.file === file;
+      if (l) {
+        const isRefView = referenceViews.includes(l.view.getViewType());
+        const isTargetRefView =
+          isTargetLeaf && referenceViews.includes(leaf.view.getViewType());
+
+        if (!isRefView) {
+          val = isTargetLeaf && !isTargetRefView ? l === leaf : l.view?.file === file;
+        }
       }
 
       return val;
     };
 
-    const l = getOpenLeaves(workspace, excludeViewTypes, includeSidePanelViewTypes).find(
-      predicate,
-    );
+    // See if the active leaf matches first, otherwise find the first matching leaf,
+    // if there is one
+    let matchingLeaf = workspace.activeLeaf;
+    if (!isMatch(matchingLeaf)) {
+      const leaves = getOpenLeaves(
+        workspace,
+        excludeViewTypes,
+        includeSidePanelViewTypes,
+      );
 
-    return { leaf: l, file, suggestion: null, isValidSymbolTarget: false };
+      matchingLeaf = leaves.find(isMatch);
+    }
+
+    return {
+      leaf: matchingLeaf ?? null,
+      file,
+      suggestion: null,
+      isValidSymbolTarget: false,
+    };
   }
 }

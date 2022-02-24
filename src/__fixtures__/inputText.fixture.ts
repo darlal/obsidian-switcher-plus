@@ -4,6 +4,7 @@ import {
   symbolTrigger,
   workspaceTrigger,
   headingsTrigger,
+  starredTrigger,
 } from './modeTrigger.fixture';
 
 interface InputExpectation {
@@ -58,6 +59,13 @@ function headingsExpectation(
   return makeInputExpectation(input, Mode.HeadingsList, expectedParsedInput);
 }
 
+function starredExpectation(
+  input: string,
+  expectedParsedInput?: string,
+): InputExpectation {
+  return makeInputExpectation(input, Mode.StarredList, expectedParsedInput);
+}
+
 interface InputExpectationStandard {
   input: string;
   expected: {
@@ -108,6 +116,12 @@ export const standardModeInputFixture = [
   standardExpectation(` ${headingsTrigger}test string`),
   standardExpectation(`test string ${headingsTrigger}`),
   standardExpectation(`     ${headingsTrigger}test string ${headingsTrigger}`),
+  standardExpectation(`test${starredTrigger}string`),
+  standardExpectation(`test${starredTrigger}$string`),
+  standardExpectation(`^${starredTrigger}string`),
+  standardExpectation(` ${starredTrigger}test string`),
+  standardExpectation(`test string ${starredTrigger}`),
+  standardExpectation(`     ${starredTrigger}test string ${starredTrigger}`),
 ];
 
 // Used for editor mode tests
@@ -324,6 +338,37 @@ export const headingsPrefixOnlyInputFixture = [
   ),
   headingsExpectation(
     `${headingsTrigger}bar ${symbolTrigger} foo`,
+    `bar ${symbolTrigger} foo`,
+  ),
+];
+
+// Used for starred mode tests
+export const starredPrefixOnlyInputFixture = [
+  starredExpectation(`${starredTrigger}`, ''),
+  starredExpectation(`${starredTrigger}test string`, 'test string'),
+  starredExpectation(`${starredTrigger}${symbolTrigger}`, `${symbolTrigger}`),
+  starredExpectation(`${starredTrigger} ${symbolTrigger}`, ` ${symbolTrigger}`),
+  starredExpectation(`${starredTrigger}${symbolTrigger}  `, `${symbolTrigger}  `),
+  starredExpectation(`${starredTrigger}${symbolTrigger}foo`, `${symbolTrigger}foo`),
+  starredExpectation(`${starredTrigger}${symbolTrigger} fooo`, `${symbolTrigger} fooo`),
+  starredExpectation(`${starredTrigger}bar${symbolTrigger}`, `bar${symbolTrigger}`),
+  starredExpectation(`${starredTrigger}bar$${symbolTrigger}  `, `bar$${symbolTrigger}  `),
+  starredExpectation(`${starredTrigger}bar ${symbolTrigger}`, `bar ${symbolTrigger}`),
+  starredExpectation(
+    `${starredTrigger}bar ${symbolTrigger}   `,
+    `bar ${symbolTrigger}   `,
+  ),
+  starredExpectation(`${starredTrigger}bar${symbolTrigger}foo`, `bar${symbolTrigger}foo`),
+  starredExpectation(
+    `${starredTrigger}bar${editorTrigger} foo`,
+    `bar${editorTrigger} foo`,
+  ),
+  starredExpectation(
+    `${starredTrigger}bar ${workspaceTrigger}foo  `,
+    `bar ${workspaceTrigger}foo  `,
+  ),
+  starredExpectation(
+    `${starredTrigger}bar ${symbolTrigger} foo`,
     `bar ${symbolTrigger} foo`,
   ),
 ];

@@ -4,6 +4,7 @@ import {
   InstalledPlugin,
   LinkCache,
   QuickSwitcherPluginInstance,
+  FileStarredItem,
   TagCache,
   TFile,
 } from 'obsidian';
@@ -19,6 +20,7 @@ import {
   AnySuggestion,
   AnyExSuggestion,
   LinkType,
+  StarredSuggestion,
 } from 'src/types';
 
 export function isOfType<T>(
@@ -54,6 +56,10 @@ export function isHeadingSuggestion(obj: unknown): obj is HeadingSuggestion {
   return isOfType<HeadingSuggestion>(obj, 'type', 'heading');
 }
 
+export function isStarredSuggestion(obj: unknown): obj is StarredSuggestion {
+  return isOfType<StarredSuggestion>(obj, 'type', 'starred');
+}
+
 export function isFileSuggestion(obj: unknown): obj is FileSuggestion {
   return isOfType<FileSuggestion>(obj, 'type', 'file');
 }
@@ -84,6 +90,10 @@ export function isTagCache(obj: unknown): obj is TagCache {
 
 export function isTFile(obj: unknown): obj is TFile {
   return isOfType<TFile>(obj, 'extension');
+}
+
+export function isFileStarredItem(obj: unknown): obj is FileStarredItem {
+  return isOfType<FileStarredItem>(obj, 'type', 'file');
 }
 
 export function escapeRegExp(str: string): string {

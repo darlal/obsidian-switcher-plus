@@ -16,6 +16,8 @@ Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](ht
   * [Configuration](#editor-navigation-configuration)
 * [Switch between configured Workspaces quickly](#switch-workspaces)
   * [Configuration](#workspace-configuration)
+* [Navigate between your Starred notes](#navigate-starred-notes)
+  * [Configuration](#starred-configuration)
 * [Global Commands for Hotkeys/Shortcuts](#global-commands-for-hotkeys)
 
 ## Demo
@@ -102,6 +104,18 @@ Note: the built-in system [Workspaces](https://help.obsidian.md/Plugins/Workspac
 |--------------------------|-------------|---------|
 | Workspace list mode trigger | Character that will trigger workspace list mode in the switcher. | `+` |
 
+## Navigate Starred notes
+
+View, filter, and switch between [Starred notes](https://help.obsidian.md/Plugins/Starred+notes) quickly using the default `'` command.
+
+Note: the built-in system [Starred Notes](https://help.obsidian.md/Plugins/Starred+notes) plugin must be enabled for this mode to work.
+
+### Starred configuration
+
+| Setting                  | Description | Default |
+|--------------------------|-------------|---------|
+| Starred list mode trigger | Character that will trigger workspace list mode in the switcher. | `'` |
+
 ## Global Commands for Hotkeys
 
 The following Global Commands are registered by the plugin, which can be used for global hotkeys/shortcuts.
@@ -111,6 +125,7 @@ The following Global Commands are registered by the plugin, which can be used fo
 * `Quick Switcher++: Open in Symbol Mode`
 * `Quick Switcher++: Open in Workspaces Mode`
 * `Quick Switcher++: Open in Headings Mode`
+* `Quick Switcher++: Open in Starred Mode`
 
 ## Installation
 

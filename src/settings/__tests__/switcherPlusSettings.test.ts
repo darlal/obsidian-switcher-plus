@@ -14,58 +14,67 @@ import { mock, MockProxy } from 'jest-mock-extended';
 const chance = new Chance();
 
 function transientSettingsData(useDefault: boolean): SettingsData {
-  const alwaysNewPaneForSymbols = useDefault ? false : chance.bool();
-  const useActivePaneForSymbolsOnMobile = useDefault ? false : chance.bool();
-  const symbolsInLineOrder = useDefault ? true : chance.bool();
-  const editorListCommand = useDefault ? 'edt ' : chance.word();
-  const symbolListCommand = useDefault ? '@' : chance.word();
-  const workspaceListCommand = useDefault ? '+' : chance.word();
-  const headingsListCommand = useDefault ? '#' : chance.word();
-  const strictHeadingsOnly = useDefault ? false : chance.bool();
-  const searchAllHeadings = useDefault ? true : chance.bool();
-  const excludeViewTypes = ['empty'];
-  const referenceViews = ['backlink', 'localgraph', 'outgoing-link', 'outline'];
-  const limit = useDefault ? 50 : chance.integer();
-  const selectNearestHeading = useDefault ? true : chance.bool();
-
   const sidePanelOptions = ['backlink', 'image', 'markdown', 'pdf'];
-  const includeSidePanelViewTypes = useDefault
-    ? sidePanelOptions
-    : [chance.word(), chance.word(), chance.pickone(sidePanelOptions)];
 
   const enabledSymbolTypes = {} as Record<SymbolType, boolean>;
-  enabledSymbolTypes[SymbolType.Link] = useDefault ? true : chance.bool();
-  enabledSymbolTypes[SymbolType.Embed] = useDefault ? true : chance.bool();
-  enabledSymbolTypes[SymbolType.Tag] = useDefault ? true : chance.bool();
-  enabledSymbolTypes[SymbolType.Heading] = useDefault ? true : chance.bool();
-
-  const excludedFolders = [
-    `path/to/${chance.word()}`,
-    `${chance.word()}`,
-    `/${chance.word()}`,
-  ];
-  const excludeFolders = useDefault ? [] : excludedFolders;
-  const excludeLinkSubTypes = useDefault ? 0 : LinkType.Block;
+  enabledSymbolTypes[SymbolType.Link] = true;
+  enabledSymbolTypes[SymbolType.Embed] = true;
+  enabledSymbolTypes[SymbolType.Tag] = true;
+  enabledSymbolTypes[SymbolType.Heading] = true;
 
   const data: SettingsData = {
-    alwaysNewPaneForSymbols,
-    useActivePaneForSymbolsOnMobile,
-    symbolsInLineOrder,
-    editorListCommand,
-    symbolListCommand,
-    workspaceListCommand,
-    headingsListCommand,
-    strictHeadingsOnly,
-    searchAllHeadings,
-    excludeViewTypes,
-    referenceViews,
-    limit,
-    includeSidePanelViewTypes,
     enabledSymbolTypes,
-    selectNearestHeading,
-    excludeFolders,
-    excludeLinkSubTypes,
+    excludeViewTypes: ['empty'],
+    referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'],
+    alwaysNewPaneForSymbols: false,
+    useActivePaneForSymbolsOnMobile: false,
+    symbolsInLineOrder: true,
+    editorListCommand: 'edt ',
+    symbolListCommand: '@',
+    workspaceListCommand: '+',
+    headingsListCommand: '#',
+    strictHeadingsOnly: false,
+    searchAllHeadings: true,
+    limit: 50,
+    selectNearestHeading: true,
+    starredListCommand: "'",
+    excludeLinkSubTypes: LinkType.None,
+    includeSidePanelViewTypes: sidePanelOptions,
+    excludeFolders: [],
   };
+
+  if (!useDefault) {
+    data.alwaysNewPaneForSymbols = chance.bool();
+    data.useActivePaneForSymbolsOnMobile = chance.bool();
+    data.symbolsInLineOrder = chance.bool();
+    data.editorListCommand = chance.word();
+    data.symbolListCommand = chance.word();
+    data.workspaceListCommand = chance.word();
+    data.headingsListCommand = chance.word();
+    data.strictHeadingsOnly = chance.bool();
+    data.searchAllHeadings = chance.bool();
+    data.limit = chance.integer();
+    data.selectNearestHeading = chance.bool();
+    data.starredListCommand = chance.word();
+    data.excludeLinkSubTypes = LinkType.Block;
+
+    data.includeSidePanelViewTypes = [
+      chance.word(),
+      chance.word(),
+      chance.pickone(sidePanelOptions),
+    ];
+
+    data.excludeFolders = [
+      `path/to/${chance.word()}`,
+      `${chance.word()}`,
+      `/${chance.word()}`,
+    ];
+
+    enabledSymbolTypes[SymbolType.Link] = chance.bool();
+    enabledSymbolTypes[SymbolType.Embed] = chance.bool();
+    enabledSymbolTypes[SymbolType.Tag] = chance.bool();
+    enabledSymbolTypes[SymbolType.Heading] = chance.bool();
+  }
 
   return data;
 }
@@ -94,6 +103,7 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.symbolListPlaceholderText).toBe(defaults.symbolListCommand);
     expect(sut.workspaceListPlaceholderText).toBe(defaults.workspaceListCommand);
     expect(sut.headingsListPlaceholderText).toBe(defaults.headingsListCommand);
+    expect(sut.starredListPlaceholderText).toBe(defaults.starredListCommand);
     expect(sut.includeSidePanelViewTypesPlaceholder).toBe(
       defaults.includeSidePanelViewTypes.join('\n'),
     );
@@ -122,6 +132,7 @@ describe('SwitcherPlusSettings', () => {
     sut.symbolListCommand = settings.symbolListCommand;
     sut.workspaceListCommand = settings.workspaceListCommand;
     sut.headingsListCommand = settings.headingsListCommand;
+    sut.starredListCommand = settings.starredListCommand;
     sut.strictHeadingsOnly = settings.strictHeadingsOnly;
     sut.searchAllHeadings = settings.searchAllHeadings;
     sut.includeSidePanelViewTypes = settings.includeSidePanelViewTypes;

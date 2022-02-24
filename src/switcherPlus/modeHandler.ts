@@ -3,6 +3,7 @@ import {
   HeadingsHandler,
   EditorHandler,
   SymbolHandler,
+  StarredHandler,
 } from 'src/Handlers';
 import {
   isSymbolSuggestion,
@@ -11,6 +12,7 @@ import {
   isWorkspaceSuggestion,
   isHeadingSuggestion,
   isExSuggestion,
+  isStarredSuggestion,
 } from 'src/utils';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
@@ -41,6 +43,7 @@ export class ModeHandler {
     handlersByMode.set(Mode.WorkspaceList, new WorkspaceHandler(app, settings));
     handlersByMode.set(Mode.HeadingsList, new HeadingsHandler(app, settings));
     handlersByMode.set(Mode.EditorList, new EditorHandler(app, settings));
+    handlersByMode.set(Mode.StarredList, new StarredHandler(app, settings));
 
     this.debouncedGetSuggestions = debounce(this.getSuggestions.bind(this), 400, true);
     this.reset();
@@ -162,31 +165,37 @@ export class ModeHandler {
     activeLeaf: WorkspaceLeaf,
   ): void {
     const { inputText } = inputInfo;
-    const { editorListCommand, workspaceListCommand, headingsListCommand } =
-      this.settings;
+    const {
+      editorListCommand,
+      workspaceListCommand,
+      headingsListCommand,
+      starredListCommand,
+    } = this.settings;
 
     const escEditorCmd = escapeRegExp(editorListCommand);
     const escWorkspaceCmd = escapeRegExp(workspaceListCommand);
     const escHeadingsCmd = escapeRegExp(headingsListCommand);
+    const escStarredCmd = escapeRegExp(starredListCommand);
 
     // account for potential overlapping command strings
     const prefixCmds = [
       `(?<ep>${escEditorCmd})`,
       `(?<wp>${escWorkspaceCmd})`,
       `(?<hp>${escHeadingsCmd})`,
+      `(?<sp>${escStarredCmd})`,
     ].sort((a, b) => b.length - a.length);
 
     // regex that matches editor, workspace, headings prefixes, and extract filter text
-    // ^(?:(?<ep>edt )|(?<wp>+)|(?<hp>#))(?<ft>.*)$
+    // ^(?:(?<ep>edt )|(?<wp>+)|(?<hp>#)|(?<sp>*))(?<ft>.*)$
     const match = new RegExp(
-      `^(?:${prefixCmds[0]}|${prefixCmds[1]}|${prefixCmds[2]})(?<ft>.*)$`,
+      `^(?:${prefixCmds[0]}|${prefixCmds[1]}|${prefixCmds[2]}|${prefixCmds[3]})(?<ft>.*)$`,
     ).exec(inputText);
 
     if (match?.groups) {
       let mode: Mode = null;
       const {
         index,
-        groups: { ep, wp, hp, ft },
+        groups: { ep, wp, hp, sp, ft },
       } = match;
 
       if (ep) {
@@ -195,6 +204,8 @@ export class ModeHandler {
         mode = Mode.WorkspaceList;
       } else if (hp) {
         mode = Mode.HeadingsList;
+      } else if (sp) {
+        mode = Mode.StarredList;
       }
 
       if (mode) {
@@ -217,10 +228,13 @@ export class ModeHandler {
     const { mode, inputText } = inputInfo;
     const { symbolListCommand } = this.settings;
 
-    // Standard, Headings, and EditorList mode can have an embedded symbol command
+    // Standard, Headings, Starred, and EditorList mode can have an embedded symbol command
     if (
       symbolListCommand.length &&
-      (mode === Mode.Standard || mode === Mode.EditorList || mode === Mode.HeadingsList)
+      (mode === Mode.Standard ||
+        mode === Mode.EditorList ||
+        mode === Mode.HeadingsList ||
+        mode === Mode.StarredList)
     ) {
       const escSymbolCmd = escapeRegExp(symbolListCommand);
 
@@ -289,6 +303,8 @@ export class ModeHandler {
         mode = Mode.HeadingsList;
       } else if (isSymbolSuggestion(kind)) {
         mode = Mode.SymbolList;
+      } else if (isStarredSuggestion(kind)) {
+        mode = Mode.StarredList;
       }
     }
 

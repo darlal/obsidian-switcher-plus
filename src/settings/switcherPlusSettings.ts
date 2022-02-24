@@ -21,6 +21,7 @@ export class SwitcherPlusSettings {
       symbolListCommand: '@',
       workspaceListCommand: '+',
       headingsListCommand: '#',
+      starredListCommand: "'",
       strictHeadingsOnly: false,
       searchAllHeadings: true,
       excludeViewTypes: ['empty'],
@@ -128,6 +129,18 @@ export class SwitcherPlusSettings {
 
   get headingsListPlaceholderText(): string {
     return SwitcherPlusSettings.defaults.headingsListCommand;
+  }
+
+  get starredListCommand(): string {
+    return this.data.starredListCommand;
+  }
+
+  set starredListCommand(value: string) {
+    this.data.starredListCommand = value;
+  }
+
+  get starredListPlaceholderText(): string {
+    return SwitcherPlusSettings.defaults.starredListCommand;
   }
 
   get strictHeadingsOnly(): boolean {
