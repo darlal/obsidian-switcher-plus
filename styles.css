@@ -43,3 +43,19 @@
     border: 0px;
     padding-left: 36px;
 }
+
+/* editor suggestion style */
+.qsp-editor-suggestion {
+    box-shadow: 3px 0px 0 #ec9f2b inset;
+    background: #ec9f2b33;
+}
+.qsp-editor-suggestion:after {
+    content: "open editor";
+    float: right;
+    font-size: 10px;
+    font-weight: bold;
+}
+.suggestion-item.is-selected.qsp-editor-suggestion {
+    border-radius: 0;
+    background: #ec9f2b5d;
+}

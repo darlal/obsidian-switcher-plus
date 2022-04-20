@@ -1,14 +1,10 @@
-import { SwitcherPlusSettings } from 'src/settings';
-import { AnySuggestion, EditorSuggestion, Handler, Mode } from 'src/types';
-import { InputInfo } from 'src/switcherPlus';
 import {
-  App,
-  renderResults,
-  SearchResult,
-  sortSearchResults,
-  fuzzySearch,
-  WorkspaceLeaf,
+  App, renderResults, SearchResult, sortSearchResults, fuzzySearch, WorkspaceLeaf,
+  prepareQuery,
 } from 'obsidian';
+import { SwitcherPlusSettings } from 'src/settings';
+import { InputInfo } from 'src/switcherPlus';
+import { AnySuggestion, EditorSuggestion, Handler, Mode } from 'src/types';
 import { activateLeaf, getOpenLeaves } from 'src/utils';
 
 export class EditorHandler implements Handler<EditorSuggestion> {
@@ -69,8 +65,45 @@ export class EditorHandler implements Handler<EditorSuggestion> {
     return suggestions;
   }
 
+  static getOpenFileSuggestions(app: App, query: string): EditorSuggestion[] {
+    const suggestions: EditorSuggestion[] = [];
+    const input = (query ?? '').trim().toLowerCase()
+
+    const prepQuery = prepareQuery(input);
+    const hasSearchTerm = prepQuery?.query?.length > 0;
+
+    const excludeViewTypes = ['empty'],
+    includeSidePanelViewTypes = ['image', 'markdown', 'pdf']
+
+    const items = getOpenLeaves(
+      app.workspace,
+      excludeViewTypes,
+      includeSidePanelViewTypes,
+    );
+
+    items.forEach((item) => {
+      let shouldPush = true;
+      let match: SearchResult = null;
+
+      if (hasSearchTerm) {
+        match = fuzzySearch(prepQuery, item.getDisplayText());
+        shouldPush = !!match;
+      }
+
+      if (shouldPush) {
+        suggestions.push({ type: 'editor', item, match });
+      }
+    });
+
+    if (hasSearchTerm) {
+      sortSearchResults(suggestions);
+    }
+    return suggestions;
+  }
+
   renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
+      parentEl.addClass('qsp-editor-suggestion');
       renderResults(parentEl, sugg.item.getDisplayText(), sugg.match);
     }
   }
