@@ -30,7 +30,6 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
 
     constructor(app: App, public plugin: SwitcherPlusPlugin) {
       super(app, plugin.options.builtInSystemOptions);
-      console.log('construct quickswitcher++');
 
       plugin.options.shouldShowAlias = this.shouldShowAlias;
       const exKeymap = new Keymap(this.scope, this.chooser, this.containerEl);
