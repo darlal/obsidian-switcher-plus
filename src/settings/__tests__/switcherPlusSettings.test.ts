@@ -1,19 +1,17 @@
-import { LinkType, SettingsData, SymbolType } from 'src/types';
-import SwitcherPlusPlugin from 'src/main';
-import { SwitcherPlusSettings } from 'src/settings';
 import { Chance } from 'chance';
+import { mock, MockProxy } from 'jest-mock-extended';
 import {
-  App,
-  QuickSwitcherOptions,
-  InstalledPlugin,
-  QuickSwitcherPluginInstance,
+  App, QuickSwitcherOptions, InstalledPlugin, QuickSwitcherPluginInstance,
   InternalPlugins,
 } from 'obsidian';
-import { mock, MockProxy } from 'jest-mock-extended';
+import SwitcherPlusPlugin from 'src/main';
+import { SwitcherPlusSettings } from 'src/settings';
+import { LinkType, SettingsData, SymbolType } from 'src/types';
 
 const chance = new Chance();
 
 function transientSettingsData(useDefault: boolean): SettingsData {
+  const standardIncludeOpenFiles = useDefault ? true : chance.bool();
   const alwaysNewPaneForSymbols = useDefault ? false : chance.bool();
   const useActivePaneForSymbolsOnMobile = useDefault ? false : chance.bool();
   const symbolsInLineOrder = useDefault ? true : chance.bool();
@@ -48,6 +46,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
   const excludeLinkSubTypes = useDefault ? 0 : LinkType.Block;
 
   const data: SettingsData = {
+    standardIncludeOpenFiles,
     alwaysNewPaneForSymbols,
     useActivePaneForSymbolsOnMobile,
     symbolsInLineOrder,

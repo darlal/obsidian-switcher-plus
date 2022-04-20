@@ -1,7 +1,7 @@
+import { QuickSwitcherOptions } from 'obsidian';
+import type SwitcherPlusPlugin from 'src/main';
 import { SettingsData, SymbolType } from 'src/types';
 import { getSystemSwitcherInstance } from 'src/utils';
-import type SwitcherPlusPlugin from 'src/main';
-import { QuickSwitcherOptions } from 'obsidian';
 
 export class SwitcherPlusSettings {
   private data: SettingsData;
@@ -14,6 +14,7 @@ export class SwitcherPlusSettings {
     enabledSymbolTypes[SymbolType.Heading] = true;
 
     return {
+      standardIncludeOpenFiles: true,
       alwaysNewPaneForSymbols: false,
       useActivePaneForSymbolsOnMobile: false,
       symbolsInLineOrder: true,
@@ -56,6 +57,14 @@ export class SwitcherPlusSettings {
   get showExistingOnly(): boolean {
     // forward to core switcher settings
     return this.builtInSystemOptions?.showExistingOnly;
+  }
+
+  get standardIncludeOpenFiles(): boolean {
+    return this.data.standardIncludeOpenFiles;
+  }
+
+  set standardIncludeOpenFiles(value: boolean) {
+    this.data.standardIncludeOpenFiles = value;
   }
 
   get alwaysNewPaneForSymbols(): boolean {

@@ -1,6 +1,7 @@
 import { App, Modal, PluginSettingTab, Setting } from 'obsidian';
-import { LinkType, SymbolType } from 'src/types';
 import { SwitcherPlusSettings } from 'src/settings';
+import { LinkType, SymbolType } from 'src/types';
+
 import type SwitcherPlusPlugin from '../main';
 
 export class SwitcherPlusSettingTab extends PluginSettingTab {
@@ -16,10 +17,20 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     const { containerEl, settings } = this;
 
     containerEl.empty();
+    this.setStandardModeSettingsGroup(containerEl, settings);
     this.setSymbolModeSettingsGroup(containerEl, settings);
     this.setEditorModeSettingsGroup(containerEl, settings);
     SwitcherPlusSettingTab.setWorkspaceModeSettingsGroup(containerEl, settings);
     this.setHeadingsModeSettingsGroup(containerEl, settings);
+  }
+
+  private setStandardModeSettingsGroup(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    containerEl.createEl('h2', { text: 'Standard Mode Settings' });
+
+    SwitcherPlusSettingTab.addStandardIncludeOpenFilesToggle(containerEl, settings);
   }
 
   private setEditorModeSettingsGroup(
@@ -234,6 +245,23 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           SwitcherPlusSettingTab.saveChanges(settings);
         });
       });
+  }
+
+  private static addStandardIncludeOpenFilesToggle(
+    containerEl: HTMLElement,
+    settings: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl)
+      .setName('Include open files')
+      .setDesc('Include open files at the top of standard suggestions, when selected, make the open file active instead of opening another pane.')
+      .addToggle((toggle) =>
+        toggle
+          .setValue(settings.standardIncludeOpenFiles)
+          .onChange((value) => {
+            settings.standardIncludeOpenFiles = value
+            SwitcherPlusSettingTab.saveChanges(settings);
+          }),
+      );
   }
 
   private static setEditorListCommand(

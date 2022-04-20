@@ -1,17 +1,8 @@
-import {
-  App,
-  Chooser,
-  EditorPosition,
-  EmbedCache,
-  FuzzyMatch,
-  HeadingCache,
-  LinkCache,
-  PreparedQuery,
-  TagCache,
-  TFile,
-  WorkspaceLeaf,
-} from 'obsidian';
 import type { SuggestModal } from 'obsidian';
+import {
+  App, Chooser, EditorPosition, EmbedCache, FuzzyMatch, HeadingCache,
+  LinkCache, PreparedQuery, TagCache, TFile, WorkspaceLeaf,
+} from 'obsidian';
 import type { InputInfo } from 'src/switcherPlus/inputInfo';
 
 export enum Mode {
@@ -139,6 +130,7 @@ export interface TargetInfo {
 }
 
 export interface SettingsData {
+  standardIncludeOpenFiles: boolean;
   alwaysNewPaneForSymbols: boolean;
   useActivePaneForSymbolsOnMobile: boolean;
   symbolsInLineOrder: boolean;

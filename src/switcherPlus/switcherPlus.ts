@@ -4,6 +4,7 @@ import { SystemSwitcher, SwitcherPlus, AnySuggestion, Mode } from 'src/types';
 import { getSystemSwitcherInstance, isFileSuggestion } from 'src/utils';
 
 import { EditorHandler } from '../Handlers/editorHandler';
+import { SwitcherPlusSettings } from '../settings';
 import { Keymap } from './keymap';
 import { ModeHandler } from './modeHandler';
 
@@ -25,6 +26,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
   const SwitcherPlusModal = class extends SystemSwitcherModal implements SwitcherPlus {
     private exMode: ModeHandler;
     editorHandler: EditorHandler;
+    settings: SwitcherPlusSettings;
 
     constructor(app: App, public plugin: SwitcherPlusPlugin) {
       super(app, plugin.options.builtInSystemOptions);
@@ -34,6 +36,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       const exKeymap = new Keymap(this.scope, this.chooser, this.containerEl);
       this.exMode = new ModeHandler(app, plugin.options, exKeymap);
       this.editorHandler = new EditorHandler(app, plugin.options);
+      this.settings = plugin.options
     }
 
     openInMode(mode: Mode): void {
@@ -61,7 +64,11 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       }
     }
 
+    // called by updateSuggestions
     getSuggestions(query: string): AnySuggestion[] {
+      if (!this.settings.standardIncludeOpenFiles) {
+        return super.getSuggestions(query);
+      }
       // console.log('overwrite getSuggestions', query);
       const suggs: AnySuggestion[] = [];
       const editorFiles: Filepaths = {};
