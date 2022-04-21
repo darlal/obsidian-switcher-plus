@@ -4,7 +4,7 @@
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/darlal/obsidian-switcher-plus/Create%20and%20publish%20release?logo=github&style=for-the-badge)](https://github.com/darlal/obsidian-switcher-plus/actions)
 
 
-Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](https://obsidian.md/) plugin that extends the functionality of the builtin "Quick Switcher".
+Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](https://obsidian.md/) plugin that extends the functionality of the builtin "Quick Switcher". [What's new?](https://github.com/darlal/obsidian-switcher-plus/releases)
 
 ## Features
 
@@ -132,6 +132,20 @@ From Obsidian v0.9.10, this plugin can be activated from within Obsidian:
 Note: On MacOs the `.obsidian` folder may be hidden by default.
 - Reload Obsidian
 - Open Settings, third-party plugins, make sure safe mode is off and enable "Quick Switcher++" from there.
+
+## Contributing
+
+Contributions via bug fixes, documentation, and general improvements are always welcome. For more major feature work, please create a [Discussion](https://github.com/darlal/obsidian-switcher-plus/discussions) about the feature idea, or reach out to me so we can judge feasibility and how best to implement it.
+
+A primary design goal for Switcher++ is to be a "drop in" replacement for the built-in system Switcher. Such that, a user can simply replace the built-in system Switcher with Switcher++ and have all the built-in functionality continue to work as expected.
+
+### Getting started
+
+* Clone the repository
+* `cd` into the repository directory
+* Run `npm install`
+* Run `npm run dev` this will monitor for any source file changes and run unit tests, linter, and build the plugin whenever a change is detected.
+* Happy coding! 😀
 
 ## Change Log
 

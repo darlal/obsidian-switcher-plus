@@ -16,7 +16,8 @@
     "lint": "eslint '*/**/*.{js,ts}'",
     "test": "jest",
     "test:watch": "jest --watchAll",
-    "test:cov": "serve coverage/lcov-report"
+    "test:cov": "serve coverage/lcov-report",
+    "dev": "onchange 'src/**/*.ts' -- run-s test lint bundle package-plugin"
   },
   "keywords": [
     "obsidian",
@@ -43,7 +44,7 @@
     "jest": "^27.5.0",
     "jest-mock-extended": "^2.0.4",
     "npm-run-all": "^4.1.5",
-    "obsidian": "^0.12.17",
+    "obsidian": "^0.14.6",
     "onchange": "^7.1.0",
     "prettier": "^2.5.1",
     "rollup": "^2.67.0",
