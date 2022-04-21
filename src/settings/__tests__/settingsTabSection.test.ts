@@ -1,5 +1,5 @@
 import { SwitcherPlusSettings } from '../switcherPlusSettings';
-import { SettingsTabSection } from '../SettingsTabSection';
+import { SettingsTabSection } from 'src/settings';
 import { Chance } from 'chance';
 import { mock } from 'jest-mock-extended';
 import { App, PluginSettingTab, Setting } from 'obsidian';
