@@ -553,7 +553,7 @@ describe('headingsHandler', () => {
 
       expect(mockParentEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
-          cls: 'suggestion-flair',
+          cls: ['suggestion-flair', 'qsp-headings-indicator'],
           text: HeadingIndicators[headingSugg.item.level],
           prepend: true,
         }),

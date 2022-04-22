@@ -96,7 +96,7 @@ export class HeadingsHandler implements Handler<SupportedSuggestionTypes> {
       renderResults(parentEl, item.heading, sugg.match);
 
       parentEl.createSpan({
-        cls: 'suggestion-flair',
+        cls: ['suggestion-flair', 'qsp-headings-indicator'],
         text: HeadingIndicators[item.level],
         prepend: true,
       });
