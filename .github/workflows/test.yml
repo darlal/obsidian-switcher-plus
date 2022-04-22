@@ -1,0 +1,64 @@
+name: Build and test project
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: Check formatting
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+
+      - name: Setup node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+  build:
+    runs-on: ubuntu-latest
+    name: Build project
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+
+      - name: Setup node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bundle
+        run: npm run bundle
+
+      - name: Package
+        run: npm run package-plugin
+
+  test:
+    runs-on: ubuntu-latest
+    name: Test project
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+
+      - name: Setup node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm run test
