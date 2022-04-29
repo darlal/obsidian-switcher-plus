@@ -97,6 +97,7 @@ describe('symbolHandler', () => {
 
     symbolSugg = {
       type: 'symbol',
+      file: new TFile(),
       item: {
         type: 'symbolInfo',
         symbol: getHeadings()[0],
@@ -169,6 +170,7 @@ describe('symbolHandler', () => {
 
       const sugg: EditorSuggestion = {
         item: targetLeaf,
+        file: null,
         type: 'editor',
         match: null,
       };
@@ -199,6 +201,7 @@ describe('symbolHandler', () => {
       const sugg: StarredSuggestion = {
         item,
         type: 'starred',
+        file: new TFile(),
         match: null,
       };
 
@@ -228,6 +231,7 @@ describe('symbolHandler', () => {
 
       const sugg: StarredSuggestion = {
         item,
+        file: null,
         type: 'starred',
         match: null,
       };
@@ -317,6 +321,13 @@ describe('symbolHandler', () => {
       expect(results).not.toBeNull();
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(0);
+    });
+
+    test('that SymbolSuggestion have a file property to enable interop with other plugins (like HoverEditor)', () => {
+      const inputInfo = new InputInfo(symbolTrigger);
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(results.every((v) => v.file !== null)).toBe(true);
     });
 
     test('with default settings, it should return symbol suggestions', () => {
@@ -663,6 +674,7 @@ describe('symbolHandler', () => {
     it('should render Tag suggestion', () => {
       const tagSugg: SymbolSuggestion = {
         type: 'symbol',
+        file: null,
         item: {
           type: 'symbolInfo',
           symbol: getTags()[0],
@@ -687,6 +699,7 @@ describe('symbolHandler', () => {
     it('should render Link suggestion', () => {
       const linkSugg: SymbolSuggestion = {
         type: 'symbol',
+        file: null,
         item: {
           type: 'symbolInfo',
           symbol: getLinks()[1],

@@ -22,6 +22,7 @@ import {
   View,
   WorkspaceItem,
   WorkspaceSplit,
+  TFile,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -35,7 +36,7 @@ import { activateLeaf } from 'src/utils';
 import { mock, MockProxy } from 'jest-mock-extended';
 
 function makeLeaf(text: string, root: WorkspaceItem): MockProxy<WorkspaceLeaf> {
-  const mockView = mock<View>();
+  const mockView = mock<View>({ file: new TFile() });
   mockView.getViewType.mockImplementation(() => 'markdown');
 
   const mockLeaf = mock<WorkspaceLeaf>({ view: mockView });
@@ -125,6 +126,13 @@ describe('editorHandler', () => {
       expect(results).not.toBeNull();
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(0);
+    });
+
+    test('that EditorSuggestion have a file property to enable interop with other plugins (like HoverEditor)', () => {
+      const inputInfo = new InputInfo(editorTrigger);
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(results.every((v) => v.file !== null)).toBe(true);
     });
 
     test('with default settings, it should return suggestions for editor mode', () => {
@@ -261,6 +269,7 @@ describe('editorHandler', () => {
 
       const sugg: EditorSuggestion = {
         type: 'editor',
+        file: null,
         item: mockLeaf,
         match: makeFuzzyMatch(),
       };
@@ -285,6 +294,7 @@ describe('editorHandler', () => {
       const mockLeaf = makeLeaf(null, null);
       const sugg: EditorSuggestion = {
         type: 'editor',
+        file: null,
         item: mockLeaf,
         match: makeFuzzyMatch(),
       };

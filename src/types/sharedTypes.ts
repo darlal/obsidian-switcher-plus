@@ -90,10 +90,12 @@ export interface WorkspaceInfo {
 }
 
 export interface SymbolSuggestion extends FuzzyMatch<SymbolInfo> {
+  file: TFile;
   type: 'symbol';
 }
 
 export interface EditorSuggestion extends FuzzyMatch<WorkspaceLeaf> {
+  file: TFile;
   type: 'editor';
 }
 
@@ -107,6 +109,7 @@ export interface HeadingSuggestion extends FuzzyMatch<HeadingCache> {
 }
 
 export interface StarredSuggestion extends FuzzyMatch<StarredPluginItem> {
+  file: TFile;
   type: 'starred';
 }
 

@@ -19,6 +19,11 @@ import {
 
 export const STARRED_PLUGIN_ID = 'starred';
 
+interface StarredItemInfo {
+  file: TFile;
+  item: StarredPluginItem;
+}
+
 export class StarredHandler implements Handler<StarredSuggestion> {
   get commandString(): string {
     return this.settings?.starredListCommand;
@@ -48,9 +53,9 @@ export class StarredHandler implements Handler<StarredSuggestion> {
     if (inputInfo) {
       inputInfo.buildSearchQuery();
       const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
-      const items = this.getItems();
+      const itemsInfo = this.getItems();
 
-      items.forEach((item) => {
+      itemsInfo.forEach(({ file, item }) => {
         let shouldPush = true;
         let match: SearchResult = null;
 
@@ -60,7 +65,7 @@ export class StarredHandler implements Handler<StarredSuggestion> {
         }
 
         if (shouldPush) {
-          suggestions.push({ type: 'starred', item, match });
+          suggestions.push({ type: 'starred', file, item, match });
         }
       });
 
@@ -106,8 +111,8 @@ export class StarredHandler implements Handler<StarredSuggestion> {
     return file;
   }
 
-  getItems(): StarredPluginItem[] {
-    const starredFiles: StarredPluginItem[] = [];
+  getItems(): StarredItemInfo[] {
+    const itemsInfo: StarredItemInfo[] = [];
     const starredItems = this.getSystemStarredPluginInstance()?.items;
 
     if (starredItems) {
@@ -126,19 +131,20 @@ export class StarredHandler implements Handler<StarredSuggestion> {
             // filename. So do the same thing here in order to display the current
             // filename as the starred file title
             const title = file.basename;
-            const starredFile: FileStarredItem = {
+
+            const item: FileStarredItem = {
               type: 'file',
               title,
               path: starredItem.path,
             };
 
-            starredFiles.push(starredFile);
+            itemsInfo.push({ file, item });
           }
         }
       });
     }
 
-    return starredFiles;
+    return itemsInfo;
   }
 
   private isStarredPluginEnabled(): boolean {

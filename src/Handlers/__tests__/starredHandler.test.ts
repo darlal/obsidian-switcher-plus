@@ -167,6 +167,15 @@ describe('starredHandler', () => {
       expect(results).toHaveLength(0);
     });
 
+    test('that StarredSuggestion have a file property to enable interop with other plugins (like HoverEditor)', () => {
+      const inputInfo = new InputInfo(starredTrigger);
+      const results = sut.getSuggestions(inputInfo);
+
+      const fileSuggs = results.filter((v) => isFileStarredItem(v.item));
+
+      expect(fileSuggs.every((v) => v.file !== null)).toBe(true);
+    });
+
     test('with default settings, it should return suggestions for files that have been starred', () => {
       const inputInfo = new InputInfo(starredTrigger);
       const results = sut.getSuggestions(inputInfo);
@@ -367,7 +376,7 @@ describe('starredHandler', () => {
       mockVault.getAbstractFileByPath.calledWith(file.path).mockReturnValueOnce(file);
 
       const results = sut.getItems();
-      const resultItem = results[0];
+      const resultItem = results[0].item;
 
       expect(results).toHaveLength(1);
       expect(resultItem.title).toBe(file.basename);

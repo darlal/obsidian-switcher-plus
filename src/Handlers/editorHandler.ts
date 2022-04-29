@@ -57,7 +57,8 @@ export class EditorHandler implements Handler<EditorSuggestion> {
         }
 
         if (shouldPush) {
-          suggestions.push({ type: 'editor', item, match });
+          const file = item.view?.file;
+          suggestions.push({ type: 'editor', file, item, match });
         }
       });
 

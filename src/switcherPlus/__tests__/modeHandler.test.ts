@@ -212,6 +212,7 @@ describe('modeHandler', () => {
 
           const es: EditorSuggestion = {
             item: makeLeaf(),
+            file: null,
             type: 'editor',
             match: {
               score: 0,
@@ -336,6 +337,7 @@ describe('modeHandler', () => {
           const leaf = makeLeaf();
           const editorSuggestion: EditorSuggestion = {
             item: leaf,
+            file: null,
             type: 'editor',
             match: {
               score: 0,
@@ -417,12 +419,14 @@ describe('modeHandler', () => {
   describe('managing suggestions', () => {
     const editorSugg: EditorSuggestion = {
       type: 'editor',
+      file: null,
       item: makeLeaf(),
       match: null,
     };
 
     const symbolSugg: SymbolSuggestion = {
       type: 'symbol',
+      file: null,
       item: {
         type: 'symbolInfo',
         symbol: getHeadings()[0],
@@ -450,6 +454,7 @@ describe('modeHandler', () => {
 
     const starredSugg: StarredSuggestion = {
       type: 'starred',
+      file: new TFile(),
       item: makeFileStarredItem(),
       match: null,
     };
@@ -541,6 +546,7 @@ describe('modeHandler', () => {
       it('should set the active suggestion in Symbol Mode', () => {
         const symbolSugg2: SymbolSuggestion = {
           type: 'symbol',
+          file: null,
           item: {
             type: 'symbolInfo',
             symbol: getHeadings()[0],

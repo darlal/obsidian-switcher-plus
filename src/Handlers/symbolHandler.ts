@@ -92,7 +92,8 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
         }
 
         if (shouldPush) {
-          suggestions.push({ type: 'symbol', item, match });
+          const { file } = symbolCmd.target;
+          suggestions.push({ type: 'symbol', file, item, match });
         }
       });
 
