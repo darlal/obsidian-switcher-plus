@@ -11,6 +11,7 @@ import {
   sortSearchResults,
   WorkspaceLeaf,
   TFolder,
+  Keymap,
 } from 'obsidian';
 import { InputInfo } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings/';
@@ -30,6 +31,7 @@ import {
   stripMDExtensionFromPath,
   filenameFromPath,
   matcherFnForRegExList,
+  openFileInLeaf,
 } from 'src/utils';
 
 type SupportedSuggestionTypes =
@@ -60,8 +62,9 @@ export class HeadingsHandler implements Handler<SupportedSuggestionTypes> {
     headingsCmd.isValidated = true;
   }
 
-  onChooseSuggestion(sugg: HeadingSuggestion, _evt: MouseEvent | KeyboardEvent): void {
+  onChooseSuggestion(sugg: HeadingSuggestion, evt: MouseEvent | KeyboardEvent): void {
     const { workspace } = this.app;
+    const isModDown = Keymap.isModEvent(evt);
 
     if (sugg) {
       const {
@@ -80,13 +83,16 @@ export class HeadingsHandler implements Handler<SupportedSuggestionTypes> {
         },
       };
 
-      workspace
-        .getLeaf(false)
-        .openFile(sugg.file, {
+      openFileInLeaf(
+        workspace,
+        sugg.file,
+        isModDown,
+        {
           active: true,
           eState,
-        })
-        .catch(() => console.log('Switcher++: unable to open file.'));
+        },
+        'Unable to navigate to heading for file.',
+      );
     }
   }
 

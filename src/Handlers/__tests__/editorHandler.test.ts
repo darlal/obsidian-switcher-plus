@@ -23,6 +23,7 @@ import {
   WorkspaceItem,
   WorkspaceSplit,
   TFile,
+  Keymap,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -302,6 +303,27 @@ describe('editorHandler', () => {
       sut.onChooseSuggestion(sugg, null);
 
       expect(activateLeaf).toHaveBeenCalledWith(mockWorkspace, sugg.item, false);
+    });
+
+    it('should open file in new leaf when Mod is down', () => {
+      const mockLeaf = mock<WorkspaceLeaf>();
+      const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
+
+      mockKeymap.isModEvent.mockReturnValueOnce(true);
+      mockLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
+
+      const sugg: EditorSuggestion = {
+        type: 'editor',
+        file: new TFile(),
+        item: null,
+        match: null,
+      };
+
+      sut.onChooseSuggestion(sugg, null);
+
+      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(true);
+      expect(mockLeaf.openFile).toHaveBeenCalledWith(sugg.file, { active: true });
     });
   });
 });

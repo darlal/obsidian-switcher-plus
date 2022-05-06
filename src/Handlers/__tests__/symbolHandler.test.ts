@@ -32,6 +32,8 @@ import {
   Workspace,
   TFile,
   Vault,
+  Keymap,
+  Platform,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -806,14 +808,16 @@ describe('symbolHandler', () => {
       );
     });
 
-    it('should create a new workspaceLeaf for the target file that contains the symbol, and scroll via eState', () => {
+    test('with alwaysNewPaneForSymbols enabled, it should create a new workspaceLeaf for the target file that contains the symbol, and scroll via eState', () => {
       // set alwaysNewPaneForSymbols to true for new pane creation
       const alwaysNewPaneForSymbolsSpy = jest
         .spyOn(settings, 'alwaysNewPaneForSymbols', 'get')
         .mockReturnValue(true);
 
       const expectedState = getExpectedEphemeralState(symbolSugg);
-      mockWorkspace.openLinkText.mockResolvedValue();
+      const mockLeaf = makeLeaf();
+      mockLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
       const inputInfo = new InputInfo(symbolTrigger);
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
@@ -822,70 +826,72 @@ describe('symbolHandler', () => {
       sut.onChooseSuggestion(symbolSugg, null);
 
       expect(inputInfo.mode).toBe(Mode.SymbolList);
-      expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
-        mockRootSplitLeaf.view.file.path,
-        '',
-        true,
-        { eState: expectedState },
-      );
+      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(true);
+      expect(mockLeaf.openFile).toHaveBeenCalledWith(mockRootSplitLeaf.view.file, {
+        eState: expectedState,
+      });
 
-      mockWorkspace.openLinkText.mockReset();
       alwaysNewPaneForSymbolsSpy.mockRestore();
     });
 
-    it('should catch errors while opening new workspaceLeaf and log it to the console', () => {
-      // set alwaysNewPaneForSymbols to true for new pane creation
-      const alwaysNewPaneForSymbolsSpy = jest
-        .spyOn(settings, 'alwaysNewPaneForSymbols', 'get')
-        .mockReturnValue(true);
+    test('with Mod down, it should it should create a new workspaceLeaf for the target file that contains the symbol, and scroll via eState', () => {
+      const expectedState = getExpectedEphemeralState(symbolSugg);
+      const mockLeaf = makeLeaf();
+      const evt = mock<MouseEvent>();
+      const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
+      const isModDown = true;
 
-      // Promise used to trigger the error condition
-      const openLinkTextPromise = Promise.resolve();
-
-      mockWorkspace.openLinkText.mockImplementation(() => {
-        // throw to simulate openLinkText() failing. This happens first
-        return openLinkTextPromise.then(() => {
-          throw new Error('openLinkText() unit test mock error');
-        });
-      });
-
-      // Promise used to track the call to console.log
-      let consoleLogPromiseResolveFn: (value: void | PromiseLike<void>) => void;
-      const consoleLogPromise = new Promise<void>((resolve, _reject) => {
-        consoleLogPromiseResolveFn = resolve;
-      });
-
-      const consoleLogSpy = jest
-        .spyOn(console, 'log')
-        .mockImplementation((message: string) => {
-          if (message.startsWith('Switcher++: unable to navigate to symbol for file')) {
-            // resolve the consoleLogPromise. This happens second and will allow
-            // allPromises to resolve itself
-            consoleLogPromiseResolveFn();
-          }
-        });
-
-      // wait for the other promises to resolve before this promise can resolve
-      const allPromises = Promise.all([openLinkTextPromise, consoleLogPromise]);
+      mockKeymap.isModEvent.mockReturnValueOnce(isModDown);
+      mockLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
       const inputInfo = new InputInfo(symbolTrigger);
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
       sut.getSuggestions(inputInfo);
 
-      // internally calls openLinkText(), which the spy will cause to fail, and then
-      // will call console.log
-      sut.onChooseSuggestion(symbolSugg, null);
+      sut.onChooseSuggestion(symbolSugg, evt);
 
-      // when all the promises are resolved check expectations and clean up
-      return allPromises.finally(() => {
-        expect(inputInfo.mode).toBe(Mode.SymbolList);
-        expect(mockWorkspace.openLinkText).toHaveBeenCalled();
-        expect(consoleLogSpy).toHaveBeenCalled();
-
-        mockWorkspace.openLinkText.mockReset();
-        consoleLogSpy.mockRestore();
-        alwaysNewPaneForSymbolsSpy.mockRestore();
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+      expect(mockKeymap.isModEvent).toHaveBeenCalledWith(evt);
+      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(true);
+      expect(mockLeaf.openFile).toHaveBeenCalledWith(mockRootSplitLeaf.view.file, {
+        eState: expectedState,
       });
+    });
+  });
+
+  describe('navigateToSymbol', () => {
+    test('with useActivePaneForSymbolsOnMobile disabled, it should create a new leaf', () => {
+      const mockFile = new TFile();
+      const mockLeaf = makeLeaf();
+      const mockPlatform = jest.mocked<typeof Platform>(Platform);
+      mockPlatform.isMobile = true;
+
+      const symbolCmd = mock<SymbolParsedCommand>({
+        target: {
+          file: mockFile,
+        },
+      });
+
+      mockLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
+
+      SymbolHandler.navigateToSymbol(
+        symbolSugg,
+        symbolCmd,
+        false,
+        settings,
+        mockWorkspace,
+      );
+
+      const useActivePaneForSymbolsOnMobileSpy = jest
+        .spyOn(settings, 'useActivePaneForSymbolsOnMobile', 'get')
+        .mockReturnValue(false);
+
+      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(true);
+      expect(mockLeaf.openFile).toHaveBeenCalled();
+
+      useActivePaneForSymbolsOnMobileSpy.mockRestore();
     });
   });
 });

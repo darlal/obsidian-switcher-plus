@@ -164,23 +164,37 @@ describe('keymap', () => {
       expect(mockScope.keys).toContain(mockEnter);
     });
 
-    it('should remove the shift/meta-enter hotkey in non-standard modes', () => {
+    it('should remove the shift-enter hotkey in non-standard modes', () => {
       mockScope.keys = [mockMetaEnter, mockShiftEnter];
       const sut = new Keymap(mockScope, null, mockModalContainer);
 
       sut.updateKeymapForMode(Mode.EditorList);
 
-      expect(mockScope.keys).toHaveLength(0);
+      expect(mockScope.keys).toHaveLength(1);
+    });
+
+    it('should keep the meta-enter hotkey registered in non-standard modes', () => {
+      mockScope.keys = [mockMetaEnter, mockShiftEnter];
+      const sut = new Keymap(mockScope, null, mockModalContainer);
+
+      sut.updateKeymapForMode(Mode.StarredList);
+
+      expect(mockScope.keys).toHaveLength(1);
+      expect(mockScope.keys).toContain(mockMetaEnter);
     });
 
     it('should restore the shift/meta hotkey in standard mode', () => {
       mockScope.keys = [mockMetaEnter, mockShiftEnter];
       const sut = new Keymap(mockScope, null, mockModalContainer);
-      sut.updateKeymapForMode(Mode.EditorList);
-      // should first remove in non-standard mode
-      expect(mockScope.keys).toHaveLength(0);
 
+      // should first remove shift-enter in non-standard mode
+      sut.updateKeymapForMode(Mode.EditorList);
+      const extendedModeKeyCount = mockScope.keys.length;
+
+      // should restore all hotkeys in standard mode
       sut.updateKeymapForMode(Mode.Standard);
+
+      expect(extendedModeKeyCount).toBe(1);
       expect(mockScope.keys).toContain(mockMetaEnter);
       expect(mockScope.keys).toContain(mockShiftEnter);
     });

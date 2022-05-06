@@ -2,6 +2,7 @@ import {
   App,
   CachedMetadata,
   fuzzySearch,
+  Keymap,
   MetadataCache,
   PreparedQuery,
   prepareQuery,
@@ -597,6 +598,10 @@ describe('headingsHandler', () => {
       sut = new HeadingsHandler(mockApp, settings);
     });
 
+    it('should not throw an error with a null suggestion', () => {
+      expect(() => sut.onChooseSuggestion(null, null)).not.toThrow();
+    });
+
     it('should open the file associated with the suggestion', () => {
       const mockLeaf = mock<WorkspaceLeaf>();
       mockLeaf.openFile.mockResolvedValueOnce();
@@ -608,62 +613,21 @@ describe('headingsHandler', () => {
       expect(mockLeaf.openFile).toHaveBeenCalled();
     });
 
-    it('should not throw an error with a null suggestion', () => {
-      expect(() => sut.onChooseSuggestion(null, null)).not.toThrow();
-    });
-
-    it('should catch and log errors to the console', () => {
+    it('should open file in new leaf when Mod is down', () => {
       const mockLeaf = mock<WorkspaceLeaf>();
-      const sugg: HeadingSuggestion = {
-        item: makeHeading('foo heading', 1),
-        file: new TFile(),
-        match: null,
-        type: 'heading',
-      };
+      const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
 
+      mockKeymap.isModEvent.mockReturnValueOnce(true);
+      mockLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      // Promise used to trigger the error condition
-      const openFilePromise = Promise.resolve();
+      sut.onChooseSuggestion(headingSugg, null);
 
-      mockLeaf.openFile.mockImplementation(() => {
-        // throw to simulate openFile() failing. This happens first
-        return openFilePromise.then(() => {
-          throw new Error('openFile() unit test mock error');
-        });
-      });
-
-      let consoleLogPromiseResolveFn: (value: void | PromiseLike<void>) => void;
-
-      // Promise used to track the call to console.log
-      const consoleLogPromise = new Promise<void>((resolve, _reject) => {
-        consoleLogPromiseResolveFn = resolve;
-      });
-
-      const consoleLogSpy = jest
-        .spyOn(console, 'log')
-        .mockImplementation((message: string) => {
-          if (message.startsWith('Switcher++: unable to open file')) {
-            // resolve the consoleLogPromise. This happens second and will allow
-            // allPromises to resolve itself
-            consoleLogPromiseResolveFn();
-          }
-        });
-
-      // wait for the other promises to resolve before this promise can resolve
-      const allPromises = Promise.all([openFilePromise, consoleLogPromise]);
-
-      // internally calls openFile(), which the spy will cause to fail, and then will call console.log
-      sut.onChooseSuggestion(sugg, null);
-
-      // when all the promises are resolved check expectations and clean up
-      return allPromises.finally(() => {
-        expect(mockWorkspace.getLeaf).toHaveBeenCalled();
-        expect(mockLeaf.openFile).toHaveBeenCalled();
-        expect(consoleLogSpy).toHaveBeenCalled();
-
-        consoleLogSpy.mockRestore();
-      });
+      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(true);
+      expect(mockLeaf.openFile).toHaveBeenCalledWith(
+        headingSugg.file,
+        expect.objectContaining({ active: true }),
+      );
     });
   });
 });

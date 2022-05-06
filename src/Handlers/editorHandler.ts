@@ -8,8 +8,9 @@ import {
   sortSearchResults,
   fuzzySearch,
   WorkspaceLeaf,
+  Keymap,
 } from 'obsidian';
-import { activateLeaf, getOpenLeaves } from 'src/utils';
+import { activateLeaf, getOpenLeaves, openFileInLeaf } from 'src/utils';
 
 export class EditorHandler implements Handler<EditorSuggestion> {
   get commandString(): string {
@@ -76,9 +77,22 @@ export class EditorHandler implements Handler<EditorSuggestion> {
     }
   }
 
-  onChooseSuggestion(sugg: EditorSuggestion, _evt: MouseEvent | KeyboardEvent): void {
+  onChooseSuggestion(sugg: EditorSuggestion, evt: MouseEvent | KeyboardEvent): void {
     if (sugg) {
-      activateLeaf(this.app.workspace, sugg.item, false);
+      const isModDown = Keymap.isModEvent(evt);
+      const { workspace } = this.app;
+
+      if (isModDown) {
+        openFileInLeaf(
+          workspace,
+          sugg.file,
+          true,
+          { active: true },
+          'Unable to reopen existing editor in new Leaf.',
+        );
+      } else {
+        activateLeaf(workspace, sugg.item, false);
+      }
     }
   }
 }

@@ -2,6 +2,7 @@ import {
   App,
   EditorPosition,
   fuzzySearch,
+  Keymap,
   LinkCache,
   MarkdownView,
   Platform,
@@ -11,6 +12,7 @@ import {
   sortSearchResults,
   TFile,
   View,
+  Workspace,
   WorkspaceLeaf,
 } from 'obsidian';
 import {
@@ -38,6 +40,7 @@ import {
   isTFile,
   isUnresolvedSuggestion,
   isWorkspaceSuggestion,
+  openFileInLeaf,
 } from 'src/utils';
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo, SymbolParsedCommand } from 'src/switcherPlus';
@@ -129,9 +132,16 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     }
   }
 
-  onChooseSuggestion(sugg: SymbolSuggestion, _evt: MouseEvent | KeyboardEvent): void {
+  onChooseSuggestion(sugg: SymbolSuggestion, evt: MouseEvent | KeyboardEvent): void {
     if (sugg) {
-      this.navigateToSymbol(sugg);
+      const isModDown = Keymap.isModEvent(evt);
+      const symbolCmd = this.inputInfo.parsedCommand() as SymbolParsedCommand;
+      const {
+        app: { workspace },
+        settings,
+      } = this;
+
+      SymbolHandler.navigateToSymbol(sugg, symbolCmd, isModDown, settings, workspace);
     }
   }
 
@@ -426,20 +436,15 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     });
   }
 
-  private navigateToSymbol(sugg: SymbolSuggestion): void {
-    const {
-      inputInfo,
-      app: { workspace },
-      settings: { alwaysNewPaneForSymbols, useActivePaneForSymbolsOnMobile },
-    } = this;
-
-    const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
-
-    // get the target file and leaf if available
-    const {
-      leaf,
-      file: { path },
-    } = symbolCmd.target;
+  static navigateToSymbol(
+    sugg: SymbolSuggestion,
+    symbolCmd: SymbolParsedCommand,
+    shouldCreateNewLeaf: boolean,
+    settings: SwitcherPlusSettings,
+    workspace: Workspace,
+  ): void {
+    const { alwaysNewPaneForSymbols, useActivePaneForSymbolsOnMobile } = settings;
+    const { leaf, file } = symbolCmd.target;
 
     const {
       start: { line, col },
@@ -458,17 +463,23 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
       },
     };
 
-    if (leaf && !alwaysNewPaneForSymbols) {
+    const { isMobile } = Platform;
+    let createNewLeaf = shouldCreateNewLeaf || alwaysNewPaneForSymbols;
+
+    if (isMobile) {
+      createNewLeaf = shouldCreateNewLeaf || !useActivePaneForSymbolsOnMobile;
+    }
+
+    if (leaf && !createNewLeaf) {
       activateLeaf(workspace, leaf, true, eState);
     } else {
-      const { isDesktop, isMobile } = Platform;
-      const createNewLeaf = isDesktop || (isMobile && !useActivePaneForSymbolsOnMobile);
-
-      workspace
-        .openLinkText(path, '', createNewLeaf, { eState })
-        .catch(() =>
-          console.log(`Switcher++: unable to navigate to symbol for file ${path}`),
-        );
+      openFileInLeaf(
+        workspace,
+        file,
+        createNewLeaf,
+        { eState },
+        `Unable to navigate to symbol for file ${file.path}`,
+      );
     }
   }
 

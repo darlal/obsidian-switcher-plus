@@ -66,7 +66,7 @@ export class Keymap {
         // modifiers are serialized to string at run time, if they exist
         const modifiers = key.modifiers?.toString();
 
-        if (key.key === 'Enter' && (modifiers === 'Meta' || modifiers === 'Shift')) {
+        if (key.key === 'Enter' && modifiers === 'Shift') {
           keys.splice(i, 1);
           backupKeys.push(key);
         }
