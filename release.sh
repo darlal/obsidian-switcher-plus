@@ -51,7 +51,7 @@ then
   then
 
     git add -A .
-    git commit -m"Version bump ${NEW_VERSION}"
+    git commit -m"build: version bump ${NEW_VERSION}"
     git tag "${NEW_VERSION}"
     git push
     git push --tags
