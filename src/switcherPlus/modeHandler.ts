@@ -3,6 +3,7 @@ import {
   WorkspaceHandler,
   HeadingsHandler,
   EditorHandler,
+  RelatedItemsHandler,
   SymbolHandler,
   StarredHandler,
   CommandHandler,
@@ -16,6 +17,7 @@ import {
   isExSuggestion,
   isStarredSuggestion,
   isCommandSuggestion,
+  isRelatedItemsSuggestion,
 } from 'src/utils';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
@@ -42,6 +44,7 @@ export class ModeHandler {
     handlersByMode.set(Mode.EditorList, new EditorHandler(app, settings));
     handlersByMode.set(Mode.StarredList, new StarredHandler(app, settings));
     handlersByMode.set(Mode.CommandList, new CommandHandler(app, settings));
+    handlersByMode.set(Mode.RelatedItemsList, new RelatedItemsHandler(app, settings));
 
     this.debouncedGetSuggestions = debounce(this.getSuggestions.bind(this), 400, true);
     this.reset();
@@ -140,7 +143,7 @@ export class ModeHandler {
     }
 
     this.validatePrefixCommands(info, activeSugg, activeLeaf);
-    this.validateSymbolCommand(info, activeSugg, activeLeaf);
+    this.validateSourcedCommands(info, activeSugg, activeLeaf);
 
     return info;
   }
@@ -223,40 +226,57 @@ export class ModeHandler {
     }
   }
 
-  private validateSymbolCommand(
+  private validateSourcedCommands(
     inputInfo: InputInfo,
     activeSugg: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
   ): void {
     const { mode, inputText } = inputInfo;
-    const { symbolListCommand } = this.settings;
+    const { symbolListCommand, relatedItemsListCommand } = this.settings;
 
-    // Standard, Headings, Starred, and EditorList mode can have an embedded symbol command
-    if (
-      symbolListCommand.length &&
-      (mode === Mode.Standard ||
-        mode === Mode.EditorList ||
-        mode === Mode.HeadingsList ||
-        mode === Mode.StarredList)
-    ) {
+    // Standard, Headings, Starred, and EditorList mode can have an embedded command
+    const supportedModes = [
+      Mode.Standard,
+      Mode.EditorList,
+      Mode.HeadingsList,
+      Mode.StarredList,
+    ];
+
+    if (supportedModes.includes(mode)) {
       const escSymbolCmd = escapeRegExp(symbolListCommand);
+      const escRelatedCmd = escapeRegExp(relatedItemsListCommand);
+
+      const embeddedCmds = [`(?<se>${escSymbolCmd})`, `(?<re>${escRelatedCmd})`].sort(
+        (a, b) => b.length - a.length,
+      );
 
       // regex that matches symbol command, and extract filter text
-      // @(?<ft>.*)$
-      const match = new RegExp(`${escSymbolCmd}(?<ft>.*)$`).exec(inputText);
-      if (match?.groups) {
-        const {
-          index,
-          groups: { ft },
-        } = match;
+      // (?:(?<se>@)|(?<re>~))(?<ft>.*)$
+      const match = new RegExp(
+        `(?:${embeddedCmds[0]}|${embeddedCmds[1]})(?<ft>.*)$`,
+      ).exec(inputText);
 
-        this.getHandler(Mode.SymbolList).validateCommand(
-          inputInfo,
-          index,
-          ft,
-          activeSugg,
-          activeLeaf,
-        );
+      if (match?.groups) {
+        const { index, groups } = match;
+        const cmdToModeMap = new Map<string, Mode>([
+          [symbolListCommand, Mode.SymbolList],
+          [relatedItemsListCommand, Mode.RelatedItemsList],
+        ]);
+
+        // find the group that is not filter text (ft),
+        // and the value of the group is truthy
+        const groupKey = Object.keys(groups).find((v) => v !== 'ft' && groups[v]);
+        const targetMode = cmdToModeMap.get(groups[groupKey]);
+
+        if (targetMode) {
+          this.getHandler(targetMode).validateCommand(
+            inputInfo,
+            index,
+            groups.ft,
+            activeSugg,
+            activeLeaf,
+          );
+        }
       }
     }
   }
@@ -288,6 +308,7 @@ export class ModeHandler {
     this.inputInfo = new InputInfo();
     this.sessionOpenModeString = null;
     (this.getHandler(Mode.SymbolList) as SymbolHandler).reset();
+    (this.getHandler(Mode.RelatedItemsList) as RelatedItemsHandler).reset();
   }
 
   private getHandler(
@@ -310,6 +331,8 @@ export class ModeHandler {
         mode = Mode.StarredList;
       } else if (isCommandSuggestion(kind)) {
         mode = Mode.CommandList;
+      } else if (isRelatedItemsSuggestion(kind)) {
+        mode = Mode.RelatedItemsList;
       }
     }
 

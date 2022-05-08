@@ -20,19 +20,27 @@ Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](ht
   * [Configuration](#starred-configuration)
 * [Run commands](#run-commands)
   * [Configuration](#command-configuration)
+* [Navigate to related items](#related-items)
+  * [Configuration](#related-items-configuration)
 * [Global Commands for Hotkeys/Shortcuts](#global-commands-for-hotkeys)
 
 ## Demo
 
-**Search Headings:** Launch Switcher++ using a shortcut, trigger Headings mode using the default `#` command, then enter the search text. Notice, different heading level matches are returned, along with Alias, Unresolved and regular filename matches.
+### Search Headings:
+
+Launch Switcher++ using a shortcut, trigger Headings mode using the default `#` command, then enter the search text. Notice, different heading level matches are returned, along with Alias, Unresolved and regular filename matches.
 
 ![Heading Mode gif](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/headings-mode.gif)
 
-**Symbol Navigation:** Launch Switcher++ using a shortcut, filter all files to find the `Format your notes` file, then trigger the symbol command (default `@`) to open the file directly to the `External links` section.
+### Symbol Navigation:
+
+Launch Switcher++ using a shortcut, filter all files to find the `Format your notes` file, then trigger the symbol command (default `@`) to open the file directly to the `External links` section.
 
 ![Symbol Mode gif](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/symbol-mode.gif)
 
-**Editor Navigation:** Launch Switcher++ directly into editor mode using a shortcut, filter the currently open editors to find the `Format your notes` editor and make it active. Then use Switcher++ again to open the `backlinks` side panel.
+### Editor Navigation:
+
+Launch Switcher++ directly into editor mode using a shortcut, filter the currently open editors to find the `Format your notes` editor and make it active. Then use Switcher++ again to open the `backlinks` side panel.
 
 ![Symbol Mode gif](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/editor-mode.gif)
 
@@ -56,9 +64,13 @@ Find the file you're looking for by searching through the headings contained in 
 
 View, filter, and navigate to any symbol (Headings, Hashtags, Links, Embedding) in a file directly from the Quick Switcher.
 
-**For the currently open and focused pane:** symbols can be viewed directly by using the `Open in Symbol Mode` global hotkey (see below).
+### For the currently open and focused pane:
 
-**For any other file (open or not):** symbols can be viewed by opening Quick Switcher++, typing some characters to filter and/or using the arrow keys to select (highlight) the file of interest. Then, once the file of interest is selected/highlighted, type the `@` (default) character to view the symbols for the file of interest.
+Symbols can be viewed directly by using the `Open in Symbol Mode` global hotkey (see below).
+
+### Embedded Symbol search (for any other file, open or not):
+
+Symbols can be viewed by opening Quick Switcher++, typing some characters to filter and/or using the arrow keys to select (highlight) the file of interest. Then, once the file of interest is selected/highlighted, type the `@` (default) character to view the symbols for the file of interest.
 
 ![symbol outline preview](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/symbol-outline.png)
 
@@ -77,7 +89,6 @@ View, filter, and navigate to any symbol (Headings, Hashtags, Links, Embedding) 
 | Show Links                       | **Enabled**: display Links in the symbol list. When enabled, the following settings become visible to further refine which types of links are displayed, `Links to headings`, `Links to blocks`.<br />**Disabled**: don't show Links in the symbol list | enabled |
 | Links to headings                | **Enabled**: display links that point to a header, e.g `[[file#header]]`. This setting is only visible when `Show Links` is enabled.<br />**Disabled**: don't show Links to headers | enabled |
 | Links to blocks                  | **Enabled**: display links that point to a block, e.g `[[file#^blockid]]`. This setting is only visible when `Show Links` is enabled.<br />**Disabled**: don't show Links to blocks | enabled |
-
 
 ## Navigate between open editors
 
@@ -128,6 +139,24 @@ View, search, and run Obsidian commands quickly using the default `>` command.
 |--------------------------|-------------|---------|
 | Command list mode trigger | Character that will trigger command list mode in the switcher. | `>` |
 
+## Related Items
+
+View, filter, and navigate to files that are "related" to the selected file. Currently, related items are files located in the same folder as the selected file.
+
+### For the currently open and focused pane:
+
+Related items can be viewed directly by using the `Open in Related Items Mode` global hotkey (see below).
+
+### Embedded related items search (for any other file, open or not):
+
+Related Items can be viewed by opening Quick Switcher++, typing some characters to filter and/or using the arrow keys to select (highlight) the file of interest. Then, once the file of interest is selected/highlighted, type the `~` (default) character to view the related items for the file of interest.
+
+### Related Items Configuration
+
+| Setting                         | Description | Default |
+|---------------------------------|-------------|---------|
+| Related items list mode trigger | Character that will trigger related items list mode in the switcher. | `~` |
+
 ## Global Commands for Hotkeys
 
 The following Global Commands are registered by the plugin, which can be used for global hotkeys/shortcuts.
@@ -139,6 +168,7 @@ The following Global Commands are registered by the plugin, which can be used fo
 * `Quick Switcher++: Open in Headings Mode`
 * `Quick Switcher++: Open in Starred Mode`
 * `Quick Switcher++: Open in Commands Mode`
+* `Quick Switcher++: Open in Related Items Mode`
 
 ## Installation
 

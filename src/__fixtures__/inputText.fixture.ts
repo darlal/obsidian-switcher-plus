@@ -6,6 +6,7 @@ import {
   headingsTrigger,
   starredTrigger,
   commandTrigger,
+  relatedItemsTrigger,
 } from './modeTrigger.fixture';
 
 interface InputExpectation {
@@ -74,6 +75,13 @@ function commandExpectation(
   return makeInputExpectation(input, Mode.CommandList, expectedParsedInput);
 }
 
+function relatedItemsExpectation(
+  input: string,
+  expectedParsedInput?: string,
+): InputExpectation {
+  return makeInputExpectation(input, Mode.RelatedItemsList, expectedParsedInput);
+}
+
 interface InputExpectationStandard {
   input: string;
   expected: {
@@ -130,6 +138,12 @@ export const standardModeInputFixture = [
   standardExpectation(` ${starredTrigger}test string`),
   standardExpectation(`test string ${starredTrigger}`),
   standardExpectation(`     ${starredTrigger}test string ${starredTrigger}`),
+  standardExpectation(`test${relatedItemsTrigger}string`),
+  standardExpectation(`test${relatedItemsTrigger}$string`),
+  standardExpectation(`^${relatedItemsTrigger}string`),
+  standardExpectation(` ${relatedItemsTrigger}test string`),
+  standardExpectation(`test string ${relatedItemsTrigger}`),
+  standardExpectation(`     ${relatedItemsTrigger}test string ${relatedItemsTrigger}`),
 ];
 
 // Used for editor mode tests
@@ -409,5 +423,140 @@ export const commandPrefixOnlyInputFixture = [
   commandExpectation(
     `${commandTrigger}bar ${symbolTrigger} foo`,
     `bar ${symbolTrigger} foo`,
+  ),
+];
+
+// Used for tests with active leaf only (no suggestions)
+export const relatedItemsPrefixOnlyInputFixture = [
+  relatedItemsExpectation(`${relatedItemsTrigger}`, ''),
+  relatedItemsExpectation(`${relatedItemsTrigger}test string`, 'test string'),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}${relatedItemsTrigger}`,
+    `${relatedItemsTrigger}`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}bar${relatedItemsTrigger}`,
+    `bar${relatedItemsTrigger}`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}bar ${relatedItemsTrigger}`,
+    `bar ${relatedItemsTrigger}`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}bar ${relatedItemsTrigger}   `,
+    `bar ${relatedItemsTrigger}   `,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}bar${relatedItemsTrigger}foo`,
+    `bar${relatedItemsTrigger}foo`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}bar${relatedItemsTrigger} foo`,
+    `bar${relatedItemsTrigger} foo`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}bar ${relatedItemsTrigger}foo`,
+    `bar ${relatedItemsTrigger}foo`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}bar ${relatedItemsTrigger} foo`,
+    `bar ${relatedItemsTrigger} foo`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}${relatedItemsTrigger}fooooo${relatedItemsTrigger}${relatedItemsTrigger}`,
+    `${relatedItemsTrigger}fooooo${relatedItemsTrigger}${relatedItemsTrigger}`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}${relatedItemsTrigger}${relatedItemsTrigger}`,
+    `${relatedItemsTrigger}${relatedItemsTrigger}`,
+  ),
+];
+
+// Used for tests with different types of suggestions (File, Editor)
+export const relatedItemsModeInputFixture = [
+  relatedItemsExpectation(`${relatedItemsTrigger}`, ''),
+  relatedItemsExpectation(`${relatedItemsTrigger}test string`, 'test string'),
+  relatedItemsExpectation(`${relatedItemsTrigger} `, ' '),
+  relatedItemsExpectation(` ${relatedItemsTrigger}`, ''),
+  relatedItemsExpectation(`/${relatedItemsTrigger}`, ''),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}${relatedItemsTrigger}`,
+    `${relatedItemsTrigger}`,
+  ),
+  relatedItemsExpectation(`${relatedItemsTrigger}foo`, 'foo'),
+  relatedItemsExpectation(`${relatedItemsTrigger} foo`, ' foo'),
+  relatedItemsExpectation(` ${relatedItemsTrigger}foo`, 'foo'),
+  relatedItemsExpectation(` ${relatedItemsTrigger} foo`, ' foo'),
+  relatedItemsExpectation(
+    `bar/${relatedItemsTrigger}foo${relatedItemsTrigger}`,
+    `foo${relatedItemsTrigger}`,
+  ),
+  relatedItemsExpectation(
+    `bar${relatedItemsTrigger}${relatedItemsTrigger}foo${relatedItemsTrigger}`,
+    `${relatedItemsTrigger}foo${relatedItemsTrigger}`,
+  ),
+  relatedItemsExpectation(
+    `bar//${relatedItemsTrigger}foo${relatedItemsTrigger}`,
+    `foo${relatedItemsTrigger}`,
+  ),
+  relatedItemsExpectation(`bar${relatedItemsTrigger}`, ''),
+  relatedItemsExpectation(`bar ${relatedItemsTrigger}`, ''),
+  relatedItemsExpectation(`bar!${relatedItemsTrigger}foo`, 'foo'),
+  relatedItemsExpectation(`bar${relatedItemsTrigger}foo`, 'foo'),
+  relatedItemsExpectation(`bar${relatedItemsTrigger} foo`, ' foo'),
+  relatedItemsExpectation(`bar ${relatedItemsTrigger}foo`, 'foo'),
+  relatedItemsExpectation(`bar ${relatedItemsTrigger} foo`, ' foo'),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}bar${relatedItemsTrigger}`,
+    `bar${relatedItemsTrigger}`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}bar ${relatedItemsTrigger}`,
+    `bar ${relatedItemsTrigger}`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}bar ${relatedItemsTrigger}   `,
+    `bar ${relatedItemsTrigger}   `,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}bar${relatedItemsTrigger}foo`,
+    `bar${relatedItemsTrigger}foo`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}bar${relatedItemsTrigger} foo`,
+    `bar${relatedItemsTrigger} foo`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}bar ${relatedItemsTrigger}foo`,
+    `bar ${relatedItemsTrigger}foo`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}bar ${relatedItemsTrigger} foo`,
+    `bar ${relatedItemsTrigger} foo`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}${relatedItemsTrigger}fooooo${relatedItemsTrigger}${relatedItemsTrigger}`,
+    `${relatedItemsTrigger}fooooo${relatedItemsTrigger}${relatedItemsTrigger}`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}${relatedItemsTrigger}${relatedItemsTrigger}`,
+    `${relatedItemsTrigger}${relatedItemsTrigger}`,
+  ),
+  relatedItemsExpectation(
+    `${relatedItemsTrigger}${editorTrigger}sfsas${relatedItemsTrigger}`,
+    `${editorTrigger}sfsas${relatedItemsTrigger}`,
+  ),
+  relatedItemsExpectation(`${editorTrigger}${relatedItemsTrigger}`, ''),
+  relatedItemsExpectation(`${editorTrigger} ${relatedItemsTrigger}`, ''),
+  relatedItemsExpectation(`${editorTrigger}${relatedItemsTrigger}  `, `  `),
+  relatedItemsExpectation(`${editorTrigger}${relatedItemsTrigger}foo`, `foo`),
+  relatedItemsExpectation(`${editorTrigger}${relatedItemsTrigger} fooo`, ' fooo'),
+  relatedItemsExpectation(`${editorTrigger}bar${relatedItemsTrigger}`, ''),
+  relatedItemsExpectation(`${editorTrigger}bar${relatedItemsTrigger}  `, '  '),
+  relatedItemsExpectation(`${editorTrigger}bar ${relatedItemsTrigger}$   `, '$   '),
+  relatedItemsExpectation(`${editorTrigger}bar.+${relatedItemsTrigger}*foo`, '*foo'),
+  relatedItemsExpectation(
+    `${editorTrigger}   \\bar  ${relatedItemsTrigger} ^[]foo    `,
+    ' ^[]foo    ',
   ),
 ];

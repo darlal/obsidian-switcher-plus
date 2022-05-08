@@ -1,4 +1,13 @@
-import { PreparedQuery, SearchMatches, SearchResult } from 'obsidian';
+import { mock, MockProxy } from 'jest-mock-extended';
+import {
+  Editor,
+  MarkdownView,
+  PreparedQuery,
+  SearchMatches,
+  SearchResult,
+  TFile,
+  WorkspaceLeaf,
+} from 'obsidian';
 
 export function makePreparedQuery(filterText = ''): PreparedQuery {
   // WARNING: this is obviously not a faithful representation of the core obsidian
@@ -29,4 +38,17 @@ export function makeFuzzyMatch(
     matches,
     score,
   };
+}
+
+export function makeLeaf(sourceFile?: TFile): MockProxy<WorkspaceLeaf> {
+  const mockView = mock<MarkdownView>({
+    file: sourceFile ?? new TFile(),
+    editor: mock<Editor>(),
+  });
+
+  mockView.getViewType.mockReturnValue('markdown');
+
+  return mock<WorkspaceLeaf>({
+    view: mockView,
+  });
 }

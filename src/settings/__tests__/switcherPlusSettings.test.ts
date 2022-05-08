@@ -35,6 +35,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     headingsListCommand: '#',
     starredListCommand: "'",
     commandListCommand: '>',
+    relatedItemsListCommand: '~',
     strictHeadingsOnly: false,
     searchAllHeadings: true,
     limit: 50,
@@ -42,6 +43,8 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     excludeLinkSubTypes: LinkType.None,
     includeSidePanelViewTypes: sidePanelOptions,
     excludeFolders: [],
+    excludeRelatedFolders: [''],
+    excludeOpenRelatedFiles: false,
   };
 
   if (!useDefault) {
@@ -58,7 +61,10 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     data.searchAllHeadings = chance.bool();
     data.limit = chance.integer();
     data.selectNearestHeading = chance.bool();
+    data.starredListCommand = chance.word();
+    data.relatedItemsListCommand = chance.word();
     data.excludeLinkSubTypes = LinkType.Block;
+    data.excludeOpenRelatedFiles = chance.bool();
 
     data.includeSidePanelViewTypes = [
       chance.word(),
@@ -71,6 +77,8 @@ function transientSettingsData(useDefault: boolean): SettingsData {
       `${chance.word()}`,
       `/${chance.word()}`,
     ];
+
+    data.excludeRelatedFolders = [`path/to/${chance.word()}`];
 
     enabledSymbolTypes[SymbolType.Link] = chance.bool();
     enabledSymbolTypes[SymbolType.Embed] = chance.bool();
@@ -107,6 +115,7 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.headingsListPlaceholderText).toBe(defaults.headingsListCommand);
     expect(sut.starredListPlaceholderText).toBe(defaults.starredListCommand);
     expect(sut.commandListPlaceholderText).toBe(defaults.commandListCommand);
+    expect(sut.relatedItemsListPlaceholderText).toBe(defaults.relatedItemsListCommand);
     expect(sut.includeSidePanelViewTypesPlaceholder).toBe(
       defaults.includeSidePanelViewTypes.join('\n'),
     );
@@ -137,6 +146,7 @@ describe('SwitcherPlusSettings', () => {
     sut.headingsListCommand = settings.headingsListCommand;
     sut.starredListCommand = settings.starredListCommand;
     sut.commandListCommand = settings.commandListCommand;
+    sut.relatedItemsListCommand = settings.relatedItemsListCommand;
     sut.strictHeadingsOnly = settings.strictHeadingsOnly;
     sut.searchAllHeadings = settings.searchAllHeadings;
     sut.includeSidePanelViewTypes = settings.includeSidePanelViewTypes;
@@ -144,6 +154,8 @@ describe('SwitcherPlusSettings', () => {
     sut.selectNearestHeading = settings.selectNearestHeading;
     sut.excludeFolders = settings.excludeFolders;
     sut.excludeLinkSubTypes = settings.excludeLinkSubTypes;
+    sut.excludeRelatedFolders = settings.excludeRelatedFolders;
+    sut.excludeOpenRelatedFiles = settings.excludeOpenRelatedFiles;
 
     sut.setSymbolTypeEnabled(
       SymbolType.Heading,

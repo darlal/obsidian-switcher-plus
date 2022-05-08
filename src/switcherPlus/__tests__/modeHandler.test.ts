@@ -11,6 +11,7 @@ import {
   AnySuggestion,
   StarredSuggestion,
   CommandSuggestion,
+  RelatedItemsSuggestion,
 } from 'src/types';
 import { Keymap, ModeHandler, SourcedParsedCommand } from 'src/switcherPlus';
 import {
@@ -20,6 +21,7 @@ import {
   WorkspaceHandler,
   StarredHandler,
   CommandHandler,
+  RelatedItemsHandler,
 } from 'src/Handlers';
 import {
   TFile,
@@ -51,6 +53,9 @@ import {
   commandTrigger,
   commandPrefixOnlyInputFixture,
   makeCommandItem,
+  relatedItemsTrigger,
+  relatedItemsPrefixOnlyInputFixture,
+  relatedItemsModeInputFixture,
 } from '@fixtures';
 
 function makeLeaf(): MockProxy<WorkspaceLeaf> {
@@ -90,6 +95,9 @@ describe('modeHandler', () => {
     jest.spyOn(settings, 'headingsListCommand', 'get').mockReturnValue(headingsTrigger);
     jest.spyOn(settings, 'starredListCommand', 'get').mockReturnValue(starredTrigger);
     jest.spyOn(settings, 'commandListCommand', 'get').mockReturnValue(commandTrigger);
+    jest
+      .spyOn(settings, 'relatedItemsListCommand', 'get')
+      .mockReturnValue(relatedItemsTrigger);
   });
 
   describe('opening and closing the modal', () => {
@@ -143,6 +151,11 @@ describe('modeHandler', () => {
         const hSpy = jest.spyOn(HeadingsHandler.prototype, 'commandString', 'get');
         const starredSpy = jest.spyOn(StarredHandler.prototype, 'commandString', 'get');
         const commandsSpy = jest.spyOn(CommandHandler.prototype, 'commandString', 'get');
+        const relatedItemsSpy = jest.spyOn(
+          RelatedItemsHandler.prototype,
+          'commandString',
+          'get',
+        );
 
         sut.setSessionOpenMode(Mode.Standard, null);
 
@@ -152,6 +165,7 @@ describe('modeHandler', () => {
         expect(hSpy).not.toHaveBeenCalled();
         expect(starredSpy).not.toHaveBeenCalled();
         expect(commandsSpy).not.toHaveBeenCalled();
+        expect(relatedItemsSpy).not.toHaveBeenCalled();
 
         sSpy.mockRestore();
         eSpy.mockRestore();
@@ -159,6 +173,7 @@ describe('modeHandler', () => {
         hSpy.mockRestore();
         starredSpy.mockRestore();
         commandsSpy.mockRestore();
+        relatedItemsSpy.mockRestore();
       });
     });
 
@@ -440,6 +455,93 @@ describe('modeHandler', () => {
         },
       );
     });
+
+    describe('should parse as related mode', () => {
+      test.each(relatedItemsPrefixOnlyInputFixture)(
+        'with ACTIVE LEAF for input: "$input" (array data index: $#)',
+        ({ input, expected: { mode, isValidated, parsedInput } }) => {
+          const mockLeaf = makeLeaf();
+          const inputInfo = sut.determineRunMode(input, null, mockLeaf);
+
+          expect(inputInfo.mode).toBe(mode);
+          expect(inputInfo.inputText).toBe(input);
+
+          const cmd = inputInfo.parsedCommand() as SourcedParsedCommand;
+          expect(cmd.isValidated).toBe(isValidated);
+          expect(cmd.parsedInput).toBe(parsedInput);
+
+          const { source } = cmd;
+          expect(source.isValidSource).toBe(true);
+          expect(source.file).toBe(mockLeaf.view.file);
+          expect(source.leaf).toBe(mockLeaf);
+          expect(source.suggestion).toBe(null);
+        },
+      );
+
+      test.each(relatedItemsModeInputFixture)(
+        'with FILE SUGGESTION for input: "$input" (array data index: $#)',
+        ({ input, expected: { mode, isValidated, parsedInput } }) => {
+          const fileSuggestion: FileSuggestion = {
+            file: new TFile(),
+            type: 'file',
+            match: {
+              score: 0,
+              matches: [[0, 0]],
+            },
+          };
+
+          const inputInfo = sut.determineRunMode(input, fileSuggestion, null);
+
+          expect(inputInfo.mode).toBe(mode);
+          expect(inputInfo.inputText).toBe(input);
+
+          const cmd = inputInfo.parsedCommand() as SourcedParsedCommand;
+          expect(cmd.isValidated).toBe(isValidated);
+          expect(cmd.parsedInput).toBe(parsedInput);
+
+          const { source } = cmd;
+          expect(source.isValidSource).toBe(true);
+          expect(source.file).toBe(fileSuggestion.file);
+          expect(source.leaf).toBe(null);
+          expect(source.suggestion).toBe(fileSuggestion);
+        },
+      );
+
+      test.each(relatedItemsModeInputFixture)(
+        'with EDITOR SUGGESTION for input: "$input" (array data index: $#)',
+        ({ input, expected: { mode, isValidated, parsedInput } }) => {
+          const leaf = makeLeaf();
+          const editorSuggestion: EditorSuggestion = {
+            item: leaf,
+            file: leaf.view.file,
+            type: 'editor',
+            match: {
+              score: 0,
+              matches: [[0, 0]],
+            },
+          };
+
+          mockApp.workspace.activeLeaf = leaf;
+
+          const inputInfo = sut.determineRunMode(input, editorSuggestion, null);
+
+          expect(inputInfo.mode).toBe(mode);
+          expect(inputInfo.inputText).toBe(input);
+
+          const cmd = inputInfo.parsedCommand() as SourcedParsedCommand;
+          expect(cmd.isValidated).toBe(isValidated);
+          expect(cmd.parsedInput).toBe(parsedInput);
+
+          const { source } = cmd;
+          expect(source.isValidSource).toBe(true);
+          expect(source.file).toBe(leaf.view.file);
+          expect(source.leaf).toBe(leaf);
+          expect(source.suggestion).toBe(editorSuggestion);
+
+          mockApp.workspace.activeLeaf = null;
+        },
+      );
+    });
   });
 
   describe('managing suggestions', () => {
@@ -488,6 +590,13 @@ describe('modeHandler', () => {
     const commandSugg: CommandSuggestion = {
       type: 'command',
       item: makeCommandItem(),
+      match: null,
+    };
+
+    const relatedItemSugg: RelatedItemsSuggestion = {
+      type: 'relatedItems',
+      relationType: 'diskLocation',
+      file: new TFile(),
       match: null,
     };
 
@@ -679,6 +788,29 @@ describe('modeHandler', () => {
         getSuggestionSpy.mockRestore();
         mockSetSuggestion.mockReset();
       });
+
+      it('should get suggestions for RelatedItems Mode', () => {
+        const expectedSuggestions = [relatedItemSugg];
+        getSuggestionSpy = jest
+          .spyOn(RelatedItemsHandler.prototype, 'getSuggestions')
+          .mockReturnValue(expectedSuggestions);
+
+        const validateCommandSpy = jest
+          .spyOn(RelatedItemsHandler.prototype, 'validateCommand')
+          .mockImplementation((inputInfo) => {
+            inputInfo.mode = Mode.RelatedItemsList;
+          });
+
+        const results = sut.updateSuggestions(relatedItemsTrigger, mockChooser);
+
+        expect(results).toBe(true);
+        expect(getSuggestionSpy).toHaveBeenCalled();
+        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
+
+        getSuggestionSpy.mockRestore();
+        validateCommandSpy.mockRestore();
+        mockSetSuggestion.mockReset();
+      });
     });
 
     describe('renderSuggestions', () => {
@@ -767,6 +899,19 @@ describe('modeHandler', () => {
 
         renderSuggestionSpy.mockRestore();
       });
+
+      it('should render suggestions for RelatedItems Mode', () => {
+        renderSuggestionSpy = jest
+          .spyOn(RelatedItemsHandler.prototype, 'renderSuggestion')
+          .mockImplementation();
+
+        const result = sut.renderSuggestion(relatedItemSugg, mockParentEl);
+
+        expect(result).toBe(true);
+        expect(renderSuggestionSpy).toHaveBeenCalledWith(relatedItemSugg, mockParentEl);
+
+        renderSuggestionSpy.mockRestore();
+      });
     });
 
     describe('onchooseSuggestions', () => {
@@ -852,6 +997,19 @@ describe('modeHandler', () => {
 
         expect(result).toBe(true);
         expect(onChooseSuggestionSpy).toHaveBeenCalledWith(commandSugg, mockEvt);
+
+        onChooseSuggestionSpy.mockRestore();
+      });
+
+      it('should action suggestions for RelatedItems Mode', () => {
+        onChooseSuggestionSpy = jest
+          .spyOn(RelatedItemsHandler.prototype, 'onChooseSuggestion')
+          .mockImplementation();
+
+        const result = sut.onChooseSuggestion(relatedItemSugg, mockEvt);
+
+        expect(result).toBe(true);
+        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(relatedItemSugg, mockEvt);
 
         onChooseSuggestionSpy.mockRestore();
       });

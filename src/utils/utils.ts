@@ -22,6 +22,7 @@ import {
   LinkType,
   StarredSuggestion,
   CommandSuggestion,
+  RelatedItemsSuggestion,
 } from 'src/types';
 
 export function isOfType<T>(
@@ -63,6 +64,10 @@ export function isStarredSuggestion(obj: unknown): obj is StarredSuggestion {
 
 export function isCommandSuggestion(obj: unknown): obj is CommandSuggestion {
   return isOfType<CommandSuggestion>(obj, 'type', 'command');
+}
+
+export function isRelatedItemsSuggestion(obj: unknown): obj is RelatedItemsSuggestion {
+  return isOfType<RelatedItemsSuggestion>(obj, 'type', 'relatedItems');
 }
 
 export function isFileSuggestion(obj: unknown): obj is FileSuggestion {

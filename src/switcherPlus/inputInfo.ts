@@ -28,20 +28,26 @@ export class InputInfo {
   }
 
   constructor(public inputText = '', public mode = Mode.Standard) {
-    const sc: SourcedParsedCommand = {
+    const symbolListCmd: SourcedParsedCommand = {
       ...InputInfo.defaultParsedCommand,
       source: null,
     };
 
-    const pcs = {} as Record<Mode, ParsedCommand>;
-    pcs[Mode.SymbolList] = sc;
-    pcs[Mode.Standard] = InputInfo.defaultParsedCommand;
-    pcs[Mode.EditorList] = InputInfo.defaultParsedCommand;
-    pcs[Mode.WorkspaceList] = InputInfo.defaultParsedCommand;
-    pcs[Mode.HeadingsList] = InputInfo.defaultParsedCommand;
-    pcs[Mode.StarredList] = InputInfo.defaultParsedCommand;
-    pcs[Mode.CommandList] = InputInfo.defaultParsedCommand;
-    this.parsedCommands = pcs;
+    const relatedItemsListCmd: SourcedParsedCommand = {
+      ...InputInfo.defaultParsedCommand,
+      source: null,
+    };
+
+    const parsedCmds = {} as Record<Mode, ParsedCommand>;
+    parsedCmds[Mode.SymbolList] = symbolListCmd;
+    parsedCmds[Mode.Standard] = InputInfo.defaultParsedCommand;
+    parsedCmds[Mode.EditorList] = InputInfo.defaultParsedCommand;
+    parsedCmds[Mode.WorkspaceList] = InputInfo.defaultParsedCommand;
+    parsedCmds[Mode.HeadingsList] = InputInfo.defaultParsedCommand;
+    parsedCmds[Mode.StarredList] = InputInfo.defaultParsedCommand;
+    parsedCmds[Mode.CommandList] = InputInfo.defaultParsedCommand;
+    parsedCmds[Mode.RelatedItemsList] = relatedItemsListCmd;
+    this.parsedCommands = parsedCmds;
   }
 
   buildSearchQuery(): void {

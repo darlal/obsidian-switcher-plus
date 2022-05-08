@@ -23,6 +23,7 @@ export class SwitcherPlusSettings {
       headingsListCommand: '#',
       starredListCommand: "'",
       commandListCommand: '>',
+      relatedItemsListCommand: '~',
       strictHeadingsOnly: false,
       searchAllHeadings: true,
       excludeViewTypes: ['empty'],
@@ -33,6 +34,8 @@ export class SwitcherPlusSettings {
       selectNearestHeading: true,
       excludeFolders: [],
       excludeLinkSubTypes: 0,
+      excludeRelatedFolders: [''],
+      excludeOpenRelatedFiles: false,
     };
   }
 
@@ -156,6 +159,18 @@ export class SwitcherPlusSettings {
     return SwitcherPlusSettings.defaults.commandListCommand;
   }
 
+  get relatedItemsListCommand(): string {
+    return this.data.relatedItemsListCommand;
+  }
+
+  set relatedItemsListCommand(value: string) {
+    this.data.relatedItemsListCommand = value;
+  }
+
+  get relatedItemsListPlaceholderText(): string {
+    return SwitcherPlusSettings.defaults.relatedItemsListCommand;
+  }
+
   get strictHeadingsOnly(): boolean {
     return this.data.strictHeadingsOnly;
   }
@@ -224,6 +239,22 @@ export class SwitcherPlusSettings {
 
   set excludeLinkSubTypes(value: number) {
     this.data.excludeLinkSubTypes = value;
+  }
+
+  get excludeRelatedFolders(): Array<string> {
+    return this.data.excludeRelatedFolders;
+  }
+
+  set excludeRelatedFolders(value: Array<string>) {
+    this.data.excludeRelatedFolders = [...new Set(value)];
+  }
+
+  get excludeOpenRelatedFiles(): boolean {
+    return this.data.excludeOpenRelatedFiles;
+  }
+
+  set excludeOpenRelatedFiles(value: boolean) {
+    this.data.excludeOpenRelatedFiles = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

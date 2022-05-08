@@ -22,6 +22,7 @@ export enum Mode {
   HeadingsList = 16,
   StarredList = 32,
   CommandList = 64,
+  RelatedItemsList = 128,
 }
 
 export enum SymbolType {
@@ -114,6 +115,12 @@ export interface StarredSuggestion extends FuzzyMatch<StarredPluginItem> {
   type: 'starred';
 }
 
+export interface RelatedItemsSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
+  file: TFile;
+  type: 'relatedItems';
+  relationType: 'diskLocation';
+}
+
 export interface FileSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
   file: TFile;
   type: 'file';
@@ -142,7 +149,8 @@ export type AnyExSuggestion =
   | WorkspaceSuggestion
   | HeadingSuggestion
   | StarredSuggestion
-  | CommandSuggestion;
+  | CommandSuggestion
+  | RelatedItemsSuggestion;
 
 export type AnySystemSuggestion = FileSuggestion | AliasSuggestion | UnresolvedSuggestion;
 
@@ -166,6 +174,7 @@ export interface SettingsData {
   headingsListCommand: string;
   starredListCommand: string;
   commandListCommand: string;
+  relatedItemsListCommand: string;
   strictHeadingsOnly: boolean;
   searchAllHeadings: boolean;
   excludeViewTypes: Array<string>;
@@ -176,6 +185,8 @@ export interface SettingsData {
   selectNearestHeading: boolean;
   excludeFolders: Array<string>;
   excludeLinkSubTypes: number;
+  excludeRelatedFolders: Array<string>;
+  excludeOpenRelatedFiles: boolean;
 }
 
 export interface SearchQuery {

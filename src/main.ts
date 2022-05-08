@@ -44,6 +44,12 @@ export default class SwitcherPlusPlugin extends Plugin {
       'Open in Commands Mode',
       Mode.CommandList,
     );
+
+    this.registerCommand(
+      'switcher-plus:open-related-items',
+      'Open in Related Items Mode',
+      Mode.RelatedItemsList,
+    );
   }
 
   registerCommand(id: string, name: string, mode: Mode): void {
