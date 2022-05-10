@@ -1,5 +1,4 @@
 import {
-  App,
   fuzzySearch,
   HeadingCache,
   PreparedQuery,
@@ -14,7 +13,6 @@ import {
   Keymap,
 } from 'obsidian';
 import { InputInfo } from 'src/switcherPlus';
-import { SwitcherPlusSettings } from 'src/settings/';
 import {
   Mode,
   HeadingSuggestion,
@@ -22,7 +20,6 @@ import {
   AliasSuggestion,
   UnresolvedSuggestion,
   HeadingIndicators,
-  Handler,
   AnySuggestion,
 } from 'src/types';
 import {
@@ -33,6 +30,7 @@ import {
   matcherFnForRegExList,
   openFileInLeaf,
 } from 'src/utils';
+import { Handler } from './handler';
 
 type SupportedSuggestionTypes =
   | HeadingSuggestion
@@ -40,14 +38,12 @@ type SupportedSuggestionTypes =
   | AliasSuggestion
   | UnresolvedSuggestion;
 
-export class HeadingsHandler implements Handler<SupportedSuggestionTypes> {
-  get commandString(): string {
+export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
+  override get commandString(): string {
     return this.settings?.headingsListCommand;
   }
 
-  constructor(private app: App, private settings: SwitcherPlusSettings) {}
-
-  validateCommand(
+  override validateCommand(
     inputInfo: InputInfo,
     index: number,
     filterText: string,
@@ -62,7 +58,10 @@ export class HeadingsHandler implements Handler<SupportedSuggestionTypes> {
     headingsCmd.isValidated = true;
   }
 
-  onChooseSuggestion(sugg: HeadingSuggestion, evt: MouseEvent | KeyboardEvent): void {
+  override onChooseSuggestion(
+    sugg: HeadingSuggestion,
+    evt: MouseEvent | KeyboardEvent,
+  ): void {
     const { workspace } = this.app;
     const isModDown = Keymap.isModEvent(evt);
 
@@ -96,7 +95,7 @@ export class HeadingsHandler implements Handler<SupportedSuggestionTypes> {
     }
   }
 
-  renderSuggestion(sugg: HeadingSuggestion, parentEl: HTMLElement): void {
+  override renderSuggestion(sugg: HeadingSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       const { item } = sugg;
       renderResults(parentEl, item.heading, sugg.match);
@@ -114,7 +113,7 @@ export class HeadingsHandler implements Handler<SupportedSuggestionTypes> {
     }
   }
 
-  getSuggestions(inputInfo: InputInfo): SupportedSuggestionTypes[] {
+  override getSuggestions(inputInfo: InputInfo): SupportedSuggestionTypes[] {
     let suggestions: SupportedSuggestionTypes[] = [];
 
     if (inputInfo) {

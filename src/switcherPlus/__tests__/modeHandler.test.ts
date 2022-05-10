@@ -12,7 +12,7 @@ import {
   StarredSuggestion,
   CommandSuggestion,
 } from 'src/types';
-import { Keymap, ModeHandler, SymbolParsedCommand } from 'src/switcherPlus';
+import { Keymap, ModeHandler, SourcedParsedCommand } from 'src/switcherPlus';
 import {
   EditorHandler,
   HeadingsHandler,
@@ -219,9 +219,10 @@ describe('modeHandler', () => {
               .mockReturnValue(symbolTrigger);
           }
 
+          const leaf = makeLeaf();
           const es: EditorSuggestion = {
-            item: makeLeaf(),
-            file: null,
+            item: leaf,
+            file: leaf.view.file,
             type: 'editor',
             match: {
               score: 0,
@@ -299,15 +300,15 @@ describe('modeHandler', () => {
           expect(inputInfo.mode).toBe(mode);
           expect(inputInfo.inputText).toBe(input);
 
-          const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+          const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
           expect(symbolCmd.isValidated).toBe(isValidated);
           expect(symbolCmd.parsedInput).toBe(parsedInput);
 
-          const { target } = symbolCmd;
-          expect(target.isValidSymbolTarget).toBe(true);
-          expect(target.file).toBe(mockLeaf.view.file);
-          expect(target.leaf).toBe(mockLeaf);
-          expect(target.suggestion).toBe(null);
+          const { source } = symbolCmd;
+          expect(source.isValidSource).toBe(true);
+          expect(source.file).toBe(mockLeaf.view.file);
+          expect(source.leaf).toBe(mockLeaf);
+          expect(source.suggestion).toBe(null);
         },
       );
 
@@ -328,15 +329,15 @@ describe('modeHandler', () => {
           expect(inputInfo.mode).toBe(mode);
           expect(inputInfo.inputText).toBe(input);
 
-          const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+          const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
           expect(symbolCmd.isValidated).toBe(isValidated);
           expect(symbolCmd.parsedInput).toBe(parsedInput);
 
-          const { target } = symbolCmd;
-          expect(target.isValidSymbolTarget).toBe(true);
-          expect(target.file).toBe(fileSuggestion.file);
-          expect(target.leaf).toBe(null);
-          expect(target.suggestion).toBe(fileSuggestion);
+          const { source } = symbolCmd;
+          expect(source.isValidSource).toBe(true);
+          expect(source.file).toBe(fileSuggestion.file);
+          expect(source.leaf).toBe(null);
+          expect(source.suggestion).toBe(fileSuggestion);
         },
       );
 
@@ -346,7 +347,7 @@ describe('modeHandler', () => {
           const leaf = makeLeaf();
           const editorSuggestion: EditorSuggestion = {
             item: leaf,
-            file: null,
+            file: leaf.view.file,
             type: 'editor',
             match: {
               score: 0,
@@ -361,15 +362,15 @@ describe('modeHandler', () => {
           expect(inputInfo.mode).toBe(mode);
           expect(inputInfo.inputText).toBe(input);
 
-          const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+          const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
           expect(symbolCmd.isValidated).toBe(isValidated);
           expect(symbolCmd.parsedInput).toBe(parsedInput);
 
-          const { target } = symbolCmd;
-          expect(target.isValidSymbolTarget).toBe(true);
-          expect(target.file).toBe(leaf.view.file);
-          expect(target.leaf).toBe(leaf);
-          expect(target.suggestion).toBe(editorSuggestion);
+          const { source } = symbolCmd;
+          expect(source.isValidSource).toBe(true);
+          expect(source.file).toBe(leaf.view.file);
+          expect(source.leaf).toBe(leaf);
+          expect(source.suggestion).toBe(editorSuggestion);
 
           mockApp.workspace.activeLeaf = null;
         },

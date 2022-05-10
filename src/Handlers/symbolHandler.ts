@@ -1,17 +1,12 @@
 import {
-  App,
-  EditorPosition,
   fuzzySearch,
   Keymap,
   LinkCache,
-  MarkdownView,
   Platform,
   ReferenceCache,
   renderResults,
   SearchResult,
   sortSearchResults,
-  TFile,
-  View,
   Workspace,
   WorkspaceLeaf,
 } from 'obsidian';
@@ -19,63 +14,57 @@ import {
   Mode,
   SymbolSuggestion,
   AnySuggestion,
-  TargetInfo,
+  SourceInfo,
   SymbolInfo,
   AnySymbolInfoPayload,
   SymbolType,
   HeadingIndicators,
   SymbolIndicators,
-  Handler,
 } from 'src/types';
 import {
   activateLeaf,
   getLinkType,
-  getOpenLeaves,
-  isEditorSuggestion,
   isHeadingCache,
-  isStarredSuggestion,
-  isFileStarredItem,
-  isSymbolSuggestion,
   isTagCache,
-  isTFile,
-  isUnresolvedSuggestion,
-  isWorkspaceSuggestion,
   openFileInLeaf,
-  isCommandSuggestion,
 } from 'src/utils';
 import { SwitcherPlusSettings } from 'src/settings';
-import { InputInfo, SymbolParsedCommand } from 'src/switcherPlus';
+import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
+import { Handler } from './handler';
 
-export class SymbolHandler implements Handler<SymbolSuggestion> {
+export class SymbolHandler extends Handler<SymbolSuggestion> {
   private inputInfo: InputInfo;
 
-  get commandString(): string {
+  override get commandString(): string {
     return this.settings?.symbolListCommand;
   }
 
-  constructor(private app: App, private settings: SwitcherPlusSettings) {}
-
-  validateCommand(
+  override validateCommand(
     inputInfo: InputInfo,
     index: number,
     filterText: string,
     activeSuggestion: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
   ): void {
-    const target = this.getSymbolTarget(activeSuggestion, activeLeaf, index === 0);
-    if (target) {
+    const sourceInfo = this.getSourceInfoForSymbolOperation(
+      activeSuggestion,
+      activeLeaf,
+      index === 0,
+    );
+
+    if (sourceInfo) {
       inputInfo.mode = Mode.SymbolList;
 
-      const symbolCmd = inputInfo.parsedCommand(Mode.SymbolList) as SymbolParsedCommand;
+      const symbolCmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
 
-      symbolCmd.target = target;
+      symbolCmd.source = sourceInfo;
       symbolCmd.index = index;
       symbolCmd.parsedInput = filterText;
       symbolCmd.isValidated = true;
     }
   }
 
-  getSuggestions(inputInfo: InputInfo): SymbolSuggestion[] {
+  override getSuggestions(inputInfo: InputInfo): SymbolSuggestion[] {
     const suggestions: SymbolSuggestion[] = [];
 
     if (inputInfo) {
@@ -83,8 +72,8 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
 
       inputInfo.buildSearchQuery();
       const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
-      const symbolCmd = inputInfo.parsedCommand(Mode.SymbolList) as SymbolParsedCommand;
-      const items = this.getItems(symbolCmd.target, hasSearchTerm);
+      const symbolCmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
+      const items = this.getItems(symbolCmd.source, hasSearchTerm);
 
       items.forEach((item) => {
         let shouldPush = true;
@@ -96,7 +85,7 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
         }
 
         if (shouldPush) {
-          const { file } = symbolCmd.target;
+          const { file } = symbolCmd.source;
           suggestions.push({ type: 'symbol', file, item, match });
         }
       });
@@ -109,7 +98,7 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     return suggestions;
   }
 
-  renderSuggestion(sugg: SymbolSuggestion, parentEl: HTMLElement): void {
+  override renderSuggestion(sugg: SymbolSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       const { item } = sugg;
       let containerEl = parentEl;
@@ -133,10 +122,13 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     }
   }
 
-  onChooseSuggestion(sugg: SymbolSuggestion, evt: MouseEvent | KeyboardEvent): void {
+  override onChooseSuggestion(
+    sugg: SymbolSuggestion,
+    evt: MouseEvent | KeyboardEvent,
+  ): void {
     if (sugg) {
       const isModDown = Keymap.isModEvent(evt);
-      const symbolCmd = this.inputInfo.parsedCommand() as SymbolParsedCommand;
+      const symbolCmd = this.inputInfo.parsedCommand() as SourcedParsedCommand;
       const {
         app: { workspace },
         settings,
@@ -150,135 +142,41 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     this.inputInfo = null;
   }
 
-  private getSymbolTarget(
+  private getSourceInfoForSymbolOperation(
     activeSuggestion: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
     isSymbolCmdPrefix: boolean,
-  ): TargetInfo {
+  ): SourceInfo {
     const prevInputInfo = this.inputInfo;
-    let prevTarget: TargetInfo = null;
+    let prevSourceInfo: SourceInfo = null;
     let prevMode: Mode = Mode.Standard;
 
     if (prevInputInfo) {
-      prevTarget = (prevInputInfo.parsedCommand() as SymbolParsedCommand).target;
+      prevSourceInfo = (prevInputInfo.parsedCommand() as SourcedParsedCommand).source;
       prevMode = prevInputInfo.mode;
     }
 
     // figure out if the previous operation was a symbol operation
-    const hasPrevSymbolTarget = prevMode === Mode.SymbolList && !!prevTarget;
+    const hasPrevSymbolSource = prevMode === Mode.SymbolList && !!prevSourceInfo;
 
-    const activeEditorInfo = this.getActiveEditorInfo(activeLeaf);
-    const activeSuggInfo = this.getActiveSuggestionInfo(activeSuggestion);
+    const activeEditorInfo = this.getEditorInfo(activeLeaf);
+    const activeSuggInfo = this.getSuggestionInfo(activeSuggestion);
 
-    // Pick the target for a potential symbol operation, prioritizing
+    // Pick the source file for a potential symbol operation, prioritizing
     // any pre-existing symbol operation that was in progress
-    let target: TargetInfo = null;
-    if (hasPrevSymbolTarget) {
-      target = prevTarget;
-    } else if (activeSuggInfo.isValidSymbolTarget) {
-      target = activeSuggInfo;
-    } else if (activeEditorInfo.isValidSymbolTarget && isSymbolCmdPrefix) {
-      target = activeEditorInfo;
+    let sourceInfo: SourceInfo = null;
+    if (hasPrevSymbolSource) {
+      sourceInfo = prevSourceInfo;
+    } else if (activeSuggInfo.isValidSource) {
+      sourceInfo = activeSuggInfo;
+    } else if (activeEditorInfo.isValidSource && isSymbolCmdPrefix) {
+      sourceInfo = activeEditorInfo;
     }
 
-    return target;
+    return sourceInfo;
   }
 
-  private getActiveEditorInfo(activeLeaf: WorkspaceLeaf): TargetInfo {
-    const { excludeViewTypes } = this.settings;
-    let file: TFile = null;
-    let isValidSymbolTarget = false;
-    let cursor: EditorPosition = null;
-
-    if (activeLeaf) {
-      const { view } = activeLeaf;
-
-      const viewType = view.getViewType();
-      file = view.file;
-      cursor = SymbolHandler.getCursorPos(view);
-
-      // determine if the current active editor pane is valid
-      const isCurrentEditorValid = !excludeViewTypes.includes(viewType);
-
-      // whether or not the current active editor can be used as the target for
-      // symbol search
-      isValidSymbolTarget = isCurrentEditorValid && !!file;
-    }
-
-    return { isValidSymbolTarget, leaf: activeLeaf, file, suggestion: null, cursor };
-  }
-
-  private getActiveSuggestionInfo(activeSuggestion: AnySuggestion): TargetInfo {
-    const info = this.getTargetInfoFromSuggestion(activeSuggestion);
-    let leaf = info.leaf;
-
-    if (info.isValidSymbolTarget) {
-      // try to find a matching leaf for suggestion types that don't explicitly
-      // provide one. This is primarily needed to be able to focus an
-      // existing pane if there is one
-      ({ leaf } = this.findOpenEditorMatchingSymbolTarget(info.file, info.leaf));
-    }
-
-    // Get the cursor information to support `selectNearestHeading`
-    const cursor = SymbolHandler.getCursorPos(leaf?.view);
-
-    return { ...info, leaf, cursor };
-  }
-
-  private getTargetInfoFromSuggestion(suggestion: AnySuggestion): TargetInfo {
-    let file: TFile = null;
-    let leaf: WorkspaceLeaf = null;
-
-    // Can't use a symbol, workspace, unresolved (non-existent file) suggestions as
-    // the target for another symbol command, because they don't point to a file
-    const isFileBasedSuggestion =
-      suggestion &&
-      !isSymbolSuggestion(suggestion) &&
-      !isUnresolvedSuggestion(suggestion) &&
-      !isWorkspaceSuggestion(suggestion) &&
-      !isCommandSuggestion(suggestion);
-
-    if (isEditorSuggestion(suggestion)) {
-      // note: this leaf could be a reference view, which is not usable for
-      // `selectNearestHeading` because reference views don't have cursor information
-      leaf = suggestion.item;
-      file = leaf.view?.file;
-    } else if (isStarredSuggestion(suggestion)) {
-      // only starred files supported currently
-      if (isFileStarredItem(suggestion.item)) {
-        const path = suggestion.item.path;
-        const abstractFile = this.app.vault.getAbstractFileByPath(path);
-
-        if (isTFile(abstractFile)) {
-          file = abstractFile;
-        }
-      }
-    } else if (isFileBasedSuggestion) {
-      // this catches system File suggestion, Heading, and Alias suggestion
-      file = suggestion.file;
-    }
-
-    const isValidSymbolTarget = !!file;
-
-    return { isValidSymbolTarget, leaf, file, suggestion };
-  }
-
-  private static getCursorPos(view: View): EditorPosition {
-    let cursor: EditorPosition = null;
-
-    if (view?.getViewType() === 'markdown') {
-      const md = view as MarkdownView;
-
-      if (md.getMode() !== 'preview') {
-        const { editor } = md;
-        cursor = editor.getCursor('head');
-      }
-    }
-
-    return cursor;
-  }
-
-  private getItems(target: TargetInfo, hasSearchTerm: boolean): SymbolInfo[] {
+  private getItems(sourceInfo: SourceInfo, hasSearchTerm: boolean): SymbolInfo[] {
     let items: SymbolInfo[] = [];
 
     let symbolsInLineOrder = false;
@@ -288,10 +186,10 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
       ({ selectNearestHeading, symbolsInLineOrder } = this.settings);
     }
 
-    items = this.getSymbolsForTarget(target, symbolsInLineOrder);
+    items = this.getSymbolsFromSource(sourceInfo, symbolsInLineOrder);
 
     if (selectNearestHeading) {
-      SymbolHandler.FindNearestHeadingSymbol(items, target);
+      SymbolHandler.FindNearestHeadingSymbol(items, sourceInfo);
     }
 
     return items;
@@ -299,9 +197,9 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
 
   private static FindNearestHeadingSymbol(
     items: SymbolInfo[],
-    targetInfo: TargetInfo,
+    sourceInfo: SourceInfo,
   ): void {
-    const cursorLine = targetInfo?.cursor?.line;
+    const cursorLine = sourceInfo?.cursor?.line;
 
     // find the nearest heading to the current cursor pos, if applicable
     if (cursorLine) {
@@ -323,8 +221,8 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     }
   }
 
-  private getSymbolsForTarget(
-    targetInfo: TargetInfo,
+  private getSymbolsFromSource(
+    sourceInfo: SourceInfo,
     orderByLineNumber: boolean,
   ): SymbolInfo[] {
     const {
@@ -333,8 +231,8 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     } = this;
     const ret: SymbolInfo[] = [];
 
-    if (targetInfo?.file) {
-      const file = targetInfo.file;
+    if (sourceInfo?.file) {
+      const file = sourceInfo.file;
       const symbolData = metadataCache.getFileCache(file);
 
       if (symbolData) {
@@ -348,7 +246,7 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
 
         push(symbolData.headings, SymbolType.Heading);
         push(symbolData.tags, SymbolType.Tag);
-        this.addLinksFromTarget(symbolData.links, ret);
+        this.addLinksFromSource(symbolData.links, ret);
         push(symbolData.embeds, SymbolType.Embed);
       }
     }
@@ -356,7 +254,7 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
     return orderByLineNumber ? SymbolHandler.orderSymbolsByLineNumber(ret) : ret;
   }
 
-  private addLinksFromTarget(linkData: LinkCache[], symbolList: SymbolInfo[]): void {
+  private addLinksFromSource(linkData: LinkCache[], symbolList: SymbolInfo[]): void {
     const { settings } = this;
     linkData = linkData ?? [];
 
@@ -440,13 +338,13 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
 
   static navigateToSymbol(
     sugg: SymbolSuggestion,
-    symbolCmd: SymbolParsedCommand,
+    symbolCmd: SourcedParsedCommand,
     shouldCreateNewLeaf: boolean,
     settings: SwitcherPlusSettings,
     workspace: Workspace,
   ): void {
     const { alwaysNewPaneForSymbols, useActivePaneForSymbolsOnMobile } = settings;
-    const { leaf, file } = symbolCmd.target;
+    const { leaf, file } = symbolCmd.source;
 
     const {
       start: { line, col },
@@ -483,52 +381,5 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
         `Unable to navigate to symbol for file ${file.path}`,
       );
     }
-  }
-
-  private findOpenEditorMatchingSymbolTarget(
-    file: TFile,
-    leaf: WorkspaceLeaf,
-  ): TargetInfo {
-    const isTargetLeaf = !!leaf;
-    const {
-      settings: { referenceViews, excludeViewTypes, includeSidePanelViewTypes },
-      app: { workspace },
-    } = this;
-
-    const isMatch = (l: WorkspaceLeaf) => {
-      let val = false;
-
-      if (l) {
-        const isRefView = referenceViews.includes(l.view.getViewType());
-        const isTargetRefView =
-          isTargetLeaf && referenceViews.includes(leaf.view.getViewType());
-
-        if (!isRefView) {
-          val = isTargetLeaf && !isTargetRefView ? l === leaf : l.view?.file === file;
-        }
-      }
-
-      return val;
-    };
-
-    // See if the active leaf matches first, otherwise find the first matching leaf,
-    // if there is one
-    let matchingLeaf = workspace.activeLeaf;
-    if (!isMatch(matchingLeaf)) {
-      const leaves = getOpenLeaves(
-        workspace,
-        excludeViewTypes,
-        includeSidePanelViewTypes,
-      );
-
-      matchingLeaf = leaves.find(isMatch);
-    }
-
-    return {
-      leaf: matchingLeaf ?? null,
-      file,
-      suggestion: null,
-      isValidSymbolTarget: false,
-    };
   }
 }

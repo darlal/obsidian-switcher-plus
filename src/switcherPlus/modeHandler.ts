@@ -1,4 +1,5 @@
 import {
+  Handler,
   WorkspaceHandler,
   HeadingsHandler,
   EditorHandler,
@@ -19,13 +20,7 @@ import {
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import { WorkspaceLeaf, App, Chooser, Debouncer, debounce } from 'obsidian';
-import {
-  Mode,
-  AnySuggestion,
-  AnyExSuggestion,
-  Handler,
-  SymbolSuggestion,
-} from 'src/types';
+import { Mode, AnySuggestion, AnyExSuggestion, SymbolSuggestion } from 'src/types';
 import { Keymap } from './keymap';
 
 export class ModeHandler {

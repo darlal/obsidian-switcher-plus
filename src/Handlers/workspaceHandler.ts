@@ -1,15 +1,7 @@
 import { getInternalPluginById } from 'src/utils';
-import {
-  AnySuggestion,
-  Handler,
-  Mode,
-  WorkspaceInfo,
-  WorkspaceSuggestion,
-} from 'src/types';
-import { SwitcherPlusSettings } from 'src/settings';
+import { AnySuggestion, Mode, WorkspaceInfo, WorkspaceSuggestion } from 'src/types';
 import { InputInfo } from 'src/switcherPlus/inputInfo';
 import {
-  App,
   fuzzySearch,
   InstalledPlugin,
   renderResults,
@@ -18,17 +10,16 @@ import {
   WorkspaceLeaf,
   WorkspacesPluginInstance,
 } from 'obsidian';
+import { Handler } from './handler';
 
 export const WORKSPACE_PLUGIN_ID = 'workspaces';
 
-export class WorkspaceHandler implements Handler<WorkspaceSuggestion> {
-  get commandString(): string {
+export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
+  override get commandString(): string {
     return this.settings?.workspaceListCommand;
   }
 
-  constructor(private app: App, private settings: SwitcherPlusSettings) {}
-
-  validateCommand(
+  override validateCommand(
     inputInfo: InputInfo,
     index: number,
     filterText: string,
@@ -45,7 +36,7 @@ export class WorkspaceHandler implements Handler<WorkspaceSuggestion> {
     }
   }
 
-  getSuggestions(inputInfo: InputInfo): WorkspaceSuggestion[] {
+  override getSuggestions(inputInfo: InputInfo): WorkspaceSuggestion[] {
     const suggestions: WorkspaceSuggestion[] = [];
 
     if (inputInfo) {
@@ -75,13 +66,16 @@ export class WorkspaceHandler implements Handler<WorkspaceSuggestion> {
     return suggestions;
   }
 
-  renderSuggestion(sugg: WorkspaceSuggestion, parentEl: HTMLElement): void {
+  override renderSuggestion(sugg: WorkspaceSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       renderResults(parentEl, sugg.item.id, sugg.match);
     }
   }
 
-  onChooseSuggestion(sugg: WorkspaceSuggestion, _evt: MouseEvent | KeyboardEvent): void {
+  override onChooseSuggestion(
+    sugg: WorkspaceSuggestion,
+    _evt: MouseEvent | KeyboardEvent,
+  ): void {
     if (sugg) {
       const { id } = sugg.item;
       const pluginInstance = this.getSystemWorkspacesPluginInstance();

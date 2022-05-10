@@ -1,5 +1,5 @@
 import { prepareQuery } from 'obsidian';
-import { Mode, TargetInfo, SearchQuery } from 'src/types';
+import { Mode, SourceInfo, SearchQuery } from 'src/types';
 
 export interface ParsedCommand {
   isValidated: boolean;
@@ -7,8 +7,8 @@ export interface ParsedCommand {
   parsedInput: string;
 }
 
-export interface SymbolParsedCommand extends ParsedCommand {
-  target: TargetInfo;
+export interface SourcedParsedCommand extends ParsedCommand {
+  source: SourceInfo;
 }
 
 export class InputInfo {
@@ -28,9 +28,9 @@ export class InputInfo {
   }
 
   constructor(public inputText = '', public mode = Mode.Standard) {
-    const sc: SymbolParsedCommand = {
+    const sc: SourcedParsedCommand = {
       ...InputInfo.defaultParsedCommand,
-      target: null,
+      source: null,
     };
 
     const pcs = {} as Record<Mode, ParsedCommand>;

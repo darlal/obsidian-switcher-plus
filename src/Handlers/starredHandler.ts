@@ -1,9 +1,7 @@
 import { getInternalPluginById, isFileStarredItem, isTFile } from 'src/utils';
 import { InputInfo } from 'src/switcherPlus';
-import { SwitcherPlusSettings } from 'src/settings/';
-import { AnySuggestion, Handler, Mode, StarredSuggestion } from 'src/types';
+import { AnySuggestion, Mode, StarredSuggestion } from 'src/types';
 import {
-  App,
   InstalledPlugin,
   SearchResult,
   sortSearchResults,
@@ -16,6 +14,7 @@ import {
   TFile,
   FileStarredItem,
 } from 'obsidian';
+import { Handler } from './handler';
 
 export const STARRED_PLUGIN_ID = 'starred';
 
@@ -24,13 +23,12 @@ interface StarredItemInfo {
   item: StarredPluginItem;
 }
 
-export class StarredHandler implements Handler<StarredSuggestion> {
-  get commandString(): string {
+export class StarredHandler extends Handler<StarredSuggestion> {
+  override get commandString(): string {
     return this.settings?.starredListCommand;
   }
 
-  constructor(private app: App, private settings: SwitcherPlusSettings) {}
-  validateCommand(
+  override validateCommand(
     inputInfo: InputInfo,
     index: number,
     filterText: string,
@@ -47,7 +45,7 @@ export class StarredHandler implements Handler<StarredSuggestion> {
     }
   }
 
-  getSuggestions(inputInfo: InputInfo): StarredSuggestion[] {
+  override getSuggestions(inputInfo: InputInfo): StarredSuggestion[] {
     const suggestions: StarredSuggestion[] = [];
 
     if (inputInfo) {
@@ -77,13 +75,16 @@ export class StarredHandler implements Handler<StarredSuggestion> {
     return suggestions;
   }
 
-  renderSuggestion(sugg: StarredSuggestion, parentEl: HTMLElement): void {
+  override renderSuggestion(sugg: StarredSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       renderResults(parentEl, sugg.item.title, sugg.match);
     }
   }
 
-  onChooseSuggestion(sugg: StarredSuggestion, evt: MouseEvent | KeyboardEvent): void {
+  override onChooseSuggestion(
+    sugg: StarredSuggestion,
+    evt: MouseEvent | KeyboardEvent,
+  ): void {
     if (sugg) {
       const { item } = sugg;
 

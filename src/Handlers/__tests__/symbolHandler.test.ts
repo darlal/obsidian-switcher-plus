@@ -11,7 +11,7 @@ import {
   StarredSuggestion,
   LinkType,
 } from 'src/types';
-import { InputInfo, SymbolParsedCommand } from 'src/switcherPlus';
+import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { SymbolHandler } from 'src/Handlers';
 import {
   WorkspaceLeaf,
@@ -154,14 +154,14 @@ describe('symbolHandler', () => {
 
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
-      const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+      const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
       expect(symbolCmd.isValidated).toBe(true);
-      expect(symbolCmd.target).toEqual(
+      expect(symbolCmd.source).toEqual(
         expect.objectContaining({
           file: targetFile,
           leaf: null,
           suggestion: sugg,
-          isValidSymbolTarget: true,
+          isValidSource: true,
         }),
       );
     });
@@ -172,7 +172,7 @@ describe('symbolHandler', () => {
 
       const sugg: EditorSuggestion = {
         item: targetLeaf,
-        file: null,
+        file: targetLeaf.view.file,
         type: 'editor',
         match: null,
       };
@@ -182,14 +182,14 @@ describe('symbolHandler', () => {
 
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
-      const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+      const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
       expect(symbolCmd.isValidated).toBe(true);
-      expect(symbolCmd.target).toEqual(
+      expect(symbolCmd.source).toEqual(
         expect.objectContaining({
           file: targetLeaf.view.file,
           leaf: targetLeaf,
           suggestion: sugg,
-          isValidSymbolTarget: true,
+          isValidSource: true,
         }),
       );
 
@@ -203,7 +203,7 @@ describe('symbolHandler', () => {
       const sugg: StarredSuggestion = {
         item,
         type: 'starred',
-        file: new TFile(),
+        file: targetFile,
         match: null,
       };
 
@@ -216,14 +216,14 @@ describe('symbolHandler', () => {
 
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
-      const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+      const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
       expect(symbolCmd.isValidated).toBe(true);
-      expect(symbolCmd.target).toEqual(
+      expect(symbolCmd.source).toEqual(
         expect.objectContaining({
           file: targetFile,
           leaf: null,
           suggestion: sugg,
-          isValidSymbolTarget: true,
+          isValidSource: true,
         }),
       );
     });
@@ -243,9 +243,9 @@ describe('symbolHandler', () => {
 
       expect(inputInfo.mode).toBe(Mode.StarredList);
 
-      const symbolCmd = inputInfo.parsedCommand(Mode.SymbolList) as SymbolParsedCommand;
+      const symbolCmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
       expect(symbolCmd.isValidated).toBe(false);
-      expect(symbolCmd.target).toBeNull();
+      expect(symbolCmd.source).toBeNull();
     });
 
     it('should validate and identify active editor as matching the file suggestion target', () => {
@@ -264,14 +264,14 @@ describe('symbolHandler', () => {
 
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
-      const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+      const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
       expect(symbolCmd.isValidated).toBe(true);
-      expect(symbolCmd.target).toEqual(
+      expect(symbolCmd.source).toEqual(
         expect.objectContaining({
           file: targetLeaf.view.file,
           leaf: targetLeaf,
           suggestion: sugg,
-          isValidSymbolTarget: true,
+          isValidSource: true,
         }),
       );
 
@@ -298,14 +298,14 @@ describe('symbolHandler', () => {
 
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
-      const symbolCmd = inputInfo.parsedCommand() as SymbolParsedCommand;
+      const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
       expect(symbolCmd.isValidated).toBe(true);
-      expect(symbolCmd.target).toEqual(
+      expect(symbolCmd.source).toEqual(
         expect.objectContaining({
           file: targetLeaf.view.file,
           leaf: targetLeaf,
           suggestion: sugg,
-          isValidSymbolTarget: true,
+          isValidSource: true,
         }),
       );
 
@@ -867,8 +867,8 @@ describe('symbolHandler', () => {
       const mockPlatform = jest.mocked<typeof Platform>(Platform);
       mockPlatform.isMobile = true;
 
-      const symbolCmd = mock<SymbolParsedCommand>({
-        target: {
+      const symbolCmd = mock<SourcedParsedCommand>({
+        source: {
           file: mockFile,
         },
       });

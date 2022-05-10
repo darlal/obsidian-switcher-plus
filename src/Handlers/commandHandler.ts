@@ -1,9 +1,8 @@
 import { getInternalPluginById } from 'src/utils';
 import { InputInfo } from 'src/switcherPlus';
-import { SwitcherPlusSettings } from 'src/settings/';
-import { AnySuggestion, Handler, Mode, CommandSuggestion } from 'src/types';
+import { AnySuggestion, Mode, CommandSuggestion } from 'src/types';
+import { Handler } from './handler';
 import {
-  App,
   InstalledPlugin,
   SearchResult,
   sortSearchResults,
@@ -16,13 +15,12 @@ import {
 
 export const COMMAND_PALETTE_PLUGIN_ID = 'command-palette';
 
-export class CommandHandler implements Handler<CommandSuggestion> {
+export class CommandHandler extends Handler<CommandSuggestion> {
   get commandString(): string {
     return this.settings?.commandListCommand;
   }
 
-  constructor(private app: App, private settings: SwitcherPlusSettings) {}
-  validateCommand(
+  override validateCommand(
     inputInfo: InputInfo,
     index: number,
     filterText: string,
@@ -37,7 +35,7 @@ export class CommandHandler implements Handler<CommandSuggestion> {
     commandCmd.isValidated = true;
   }
 
-  getSuggestions(inputInfo: InputInfo): CommandSuggestion[] {
+  override getSuggestions(inputInfo: InputInfo): CommandSuggestion[] {
     const suggestions: CommandSuggestion[] = [];
 
     if (inputInfo) {
@@ -71,13 +69,13 @@ export class CommandHandler implements Handler<CommandSuggestion> {
     return suggestions;
   }
 
-  renderSuggestion(sugg: CommandSuggestion, parentEl: HTMLElement): void {
+  override renderSuggestion(sugg: CommandSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       renderResults(parentEl, sugg.item.name, sugg.match);
     }
   }
 
-  onChooseSuggestion(sugg: CommandSuggestion): void {
+  override onChooseSuggestion(sugg: CommandSuggestion): void {
     if (sugg) {
       const { item } = sugg;
       this.app.commands.executeCommandById(item.id);

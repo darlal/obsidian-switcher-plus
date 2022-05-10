@@ -1,8 +1,6 @@
-import { SwitcherPlusSettings } from 'src/settings';
-import { AnySuggestion, EditorSuggestion, Handler, Mode } from 'src/types';
+import { AnySuggestion, EditorSuggestion, Mode } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import {
-  App,
   renderResults,
   SearchResult,
   sortSearchResults,
@@ -11,15 +9,14 @@ import {
   Keymap,
 } from 'obsidian';
 import { activateLeaf, getOpenLeaves, openFileInLeaf } from 'src/utils';
+import { Handler } from './handler';
 
-export class EditorHandler implements Handler<EditorSuggestion> {
-  get commandString(): string {
+export class EditorHandler extends Handler<EditorSuggestion> {
+  override get commandString(): string {
     return this.settings?.editorListCommand;
   }
 
-  constructor(private app: App, private settings: SwitcherPlusSettings) {}
-
-  validateCommand(
+  override validateCommand(
     inputInfo: InputInfo,
     index: number,
     filterText: string,
@@ -34,7 +31,7 @@ export class EditorHandler implements Handler<EditorSuggestion> {
     editorCmd.isValidated = true;
   }
 
-  getSuggestions(inputInfo: InputInfo): EditorSuggestion[] {
+  override getSuggestions(inputInfo: InputInfo): EditorSuggestion[] {
     const suggestions: EditorSuggestion[] = [];
 
     if (inputInfo) {
@@ -71,13 +68,16 @@ export class EditorHandler implements Handler<EditorSuggestion> {
     return suggestions;
   }
 
-  renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): void {
+  override renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       renderResults(parentEl, sugg.item.getDisplayText(), sugg.match);
     }
   }
 
-  onChooseSuggestion(sugg: EditorSuggestion, evt: MouseEvent | KeyboardEvent): void {
+  override onChooseSuggestion(
+    sugg: EditorSuggestion,
+    evt: MouseEvent | KeyboardEvent,
+  ): void {
     if (sugg) {
       const isModDown = Keymap.isModEvent(evt);
       const { workspace } = this.app;
