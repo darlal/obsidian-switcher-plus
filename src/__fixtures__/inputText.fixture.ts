@@ -5,6 +5,7 @@ import {
   workspaceTrigger,
   headingsTrigger,
   starredTrigger,
+  commandTrigger,
 } from './modeTrigger.fixture';
 
 interface InputExpectation {
@@ -64,6 +65,13 @@ function starredExpectation(
   expectedParsedInput?: string,
 ): InputExpectation {
   return makeInputExpectation(input, Mode.StarredList, expectedParsedInput);
+}
+
+function commandExpectation(
+  input: string,
+  expectedParsedInput?: string,
+): InputExpectation {
+  return makeInputExpectation(input, Mode.CommandList, expectedParsedInput);
 }
 
 interface InputExpectationStandard {
@@ -369,6 +377,37 @@ export const starredPrefixOnlyInputFixture = [
   ),
   starredExpectation(
     `${starredTrigger}bar ${symbolTrigger} foo`,
+    `bar ${symbolTrigger} foo`,
+  ),
+];
+
+// Used for command mode tests
+export const commandPrefixOnlyInputFixture = [
+  commandExpectation(`${commandTrigger}`, ''),
+  commandExpectation(`${commandTrigger}test string`, 'test string'),
+  commandExpectation(`${commandTrigger}${symbolTrigger}`, `${symbolTrigger}`),
+  commandExpectation(`${commandTrigger} ${symbolTrigger}`, ` ${symbolTrigger}`),
+  commandExpectation(`${commandTrigger}${symbolTrigger}  `, `${symbolTrigger}  `),
+  commandExpectation(`${commandTrigger}${symbolTrigger}foo`, `${symbolTrigger}foo`),
+  commandExpectation(`${commandTrigger}${symbolTrigger} fooo`, `${symbolTrigger} fooo`),
+  commandExpectation(`${commandTrigger}bar${symbolTrigger}`, `bar${symbolTrigger}`),
+  commandExpectation(`${commandTrigger}bar${editorTrigger}  `, `bar${editorTrigger}  `),
+  commandExpectation(`${commandTrigger}bar ${symbolTrigger}`, `bar ${symbolTrigger}`),
+  commandExpectation(
+    `${commandTrigger}bar ${symbolTrigger}   `,
+    `bar ${symbolTrigger}   `,
+  ),
+  commandExpectation(`${commandTrigger}bar${symbolTrigger}foo`, `bar${symbolTrigger}foo`),
+  commandExpectation(
+    `${commandTrigger}bar${symbolTrigger} foo`,
+    `bar${symbolTrigger} foo`,
+  ),
+  commandExpectation(
+    `${commandTrigger}bar ${symbolTrigger}foo  `,
+    `bar ${symbolTrigger}foo  `,
+  ),
+  commandExpectation(
+    `${commandTrigger}bar ${symbolTrigger} foo`,
     `bar ${symbolTrigger} foo`,
   ),
 ];

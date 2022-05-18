@@ -4,6 +4,7 @@ import {
   EditorHandler,
   SymbolHandler,
   StarredHandler,
+  CommandHandler,
 } from 'src/Handlers';
 import {
   isSymbolSuggestion,
@@ -13,6 +14,7 @@ import {
   isHeadingSuggestion,
   isExSuggestion,
   isStarredSuggestion,
+  isCommandSuggestion,
 } from 'src/utils';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
@@ -44,6 +46,7 @@ export class ModeHandler {
     handlersByMode.set(Mode.HeadingsList, new HeadingsHandler(app, settings));
     handlersByMode.set(Mode.EditorList, new EditorHandler(app, settings));
     handlersByMode.set(Mode.StarredList, new StarredHandler(app, settings));
+    handlersByMode.set(Mode.CommandList, new CommandHandler(app, settings));
 
     this.debouncedGetSuggestions = debounce(this.getSuggestions.bind(this), 400, true);
     this.reset();
@@ -170,12 +173,14 @@ export class ModeHandler {
       workspaceListCommand,
       headingsListCommand,
       starredListCommand,
+      commandListCommand,
     } = this.settings;
 
     const escEditorCmd = escapeRegExp(editorListCommand);
     const escWorkspaceCmd = escapeRegExp(workspaceListCommand);
     const escHeadingsCmd = escapeRegExp(headingsListCommand);
     const escStarredCmd = escapeRegExp(starredListCommand);
+    const escCommandListCmd = escapeRegExp(commandListCommand);
 
     // account for potential overlapping command strings
     const prefixCmds = [
@@ -183,19 +188,20 @@ export class ModeHandler {
       `(?<wp>${escWorkspaceCmd})`,
       `(?<hp>${escHeadingsCmd})`,
       `(?<sp>${escStarredCmd})`,
+      `(?<cp>${escCommandListCmd})`,
     ].sort((a, b) => b.length - a.length);
 
     // regex that matches editor, workspace, headings prefixes, and extract filter text
     // ^(?:(?<ep>edt )|(?<wp>+)|(?<hp>#)|(?<sp>*))(?<ft>.*)$
     const match = new RegExp(
-      `^(?:${prefixCmds[0]}|${prefixCmds[1]}|${prefixCmds[2]}|${prefixCmds[3]})(?<ft>.*)$`,
+      `^(?:${prefixCmds[0]}|${prefixCmds[1]}|${prefixCmds[2]}|${prefixCmds[3]}|${prefixCmds[4]})(?<ft>.*)$`,
     ).exec(inputText);
 
     if (match?.groups) {
       let mode: Mode = null;
       const {
         index,
-        groups: { ep, wp, hp, sp, ft },
+        groups: { ep, wp, hp, sp, cp, ft },
       } = match;
 
       if (ep) {
@@ -206,6 +212,8 @@ export class ModeHandler {
         mode = Mode.HeadingsList;
       } else if (sp) {
         mode = Mode.StarredList;
+      } else if (cp) {
+        mode = Mode.CommandList;
       }
 
       if (mode) {
@@ -305,6 +313,8 @@ export class ModeHandler {
         mode = Mode.SymbolList;
       } else if (isStarredSuggestion(kind)) {
         mode = Mode.StarredList;
+      } else if (isCommandSuggestion(kind)) {
+        mode = Mode.CommandList;
       }
     }
 

@@ -39,6 +39,11 @@ export default class SwitcherPlusPlugin extends Plugin {
       'Open in Starred Mode',
       Mode.StarredList,
     );
+    this.registerCommand(
+      'switcher-plus:open-commands',
+      'Open in Commands Mode',
+      Mode.CommandList,
+    );
   }
 
   registerCommand(id: string, name: string, mode: Mode): void {

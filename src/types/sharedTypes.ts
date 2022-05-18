@@ -10,6 +10,7 @@ import {
   TagCache,
   TFile,
   WorkspaceLeaf,
+  Command,
 } from 'obsidian';
 import type { SuggestModal, StarredPluginItem } from 'obsidian';
 import type { InputInfo } from 'src/switcherPlus/inputInfo';
@@ -21,6 +22,7 @@ export enum Mode {
   WorkspaceList = 8,
   HeadingsList = 16,
   StarredList = 32,
+  CommandList = 64,
 }
 
 export enum SymbolType {
@@ -129,6 +131,10 @@ export interface UnresolvedSuggestion extends Omit<FuzzyMatch<string>, 'item'> {
   type: 'unresolved';
 }
 
+export interface CommandSuggestion extends FuzzyMatch<Command> {
+  type: 'command';
+}
+
 export type AnyExSuggestionPayload = WorkspaceLeaf | SymbolInfo | WorkspaceInfo;
 
 export type AnyExSuggestion =
@@ -136,7 +142,8 @@ export type AnyExSuggestion =
   | EditorSuggestion
   | WorkspaceSuggestion
   | HeadingSuggestion
-  | StarredSuggestion;
+  | StarredSuggestion
+  | CommandSuggestion;
 
 export type AnySystemSuggestion = FileSuggestion | AliasSuggestion | UnresolvedSuggestion;
 
@@ -159,6 +166,7 @@ export interface SettingsData {
   workspaceListCommand: string;
   headingsListCommand: string;
   starredListCommand: string;
+  commandListCommand: string;
   strictHeadingsOnly: boolean;
   searchAllHeadings: boolean;
   excludeViewTypes: Array<string>;

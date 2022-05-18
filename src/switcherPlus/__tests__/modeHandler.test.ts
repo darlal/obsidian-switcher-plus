@@ -10,6 +10,7 @@ import {
   SymbolType,
   AnySuggestion,
   StarredSuggestion,
+  CommandSuggestion,
 } from 'src/types';
 import { Keymap, ModeHandler, SymbolParsedCommand } from 'src/switcherPlus';
 import {
@@ -18,6 +19,7 @@ import {
   SymbolHandler,
   WorkspaceHandler,
   StarredHandler,
+  CommandHandler,
 } from 'src/Handlers';
 import {
   TFile,
@@ -46,6 +48,9 @@ import {
   getHeadings,
   starredTrigger,
   makeFileStarredItem,
+  commandTrigger,
+  commandPrefixOnlyInputFixture,
+  makeCommandItem,
 } from '@fixtures';
 
 function makeLeaf(): MockProxy<WorkspaceLeaf> {
@@ -84,6 +89,7 @@ describe('modeHandler', () => {
     jest.spyOn(settings, 'workspaceListCommand', 'get').mockReturnValue(workspaceTrigger);
     jest.spyOn(settings, 'headingsListCommand', 'get').mockReturnValue(headingsTrigger);
     jest.spyOn(settings, 'starredListCommand', 'get').mockReturnValue(starredTrigger);
+    jest.spyOn(settings, 'commandListCommand', 'get').mockReturnValue(commandTrigger);
   });
 
   describe('opening and closing the modal', () => {
@@ -136,6 +142,7 @@ describe('modeHandler', () => {
         const wSpy = jest.spyOn(WorkspaceHandler.prototype, 'commandString', 'get');
         const hSpy = jest.spyOn(HeadingsHandler.prototype, 'commandString', 'get');
         const starredSpy = jest.spyOn(StarredHandler.prototype, 'commandString', 'get');
+        const commandsSpy = jest.spyOn(CommandHandler.prototype, 'commandString', 'get');
 
         sut.setSessionOpenMode(Mode.Standard, null);
 
@@ -144,12 +151,14 @@ describe('modeHandler', () => {
         expect(wSpy).not.toHaveBeenCalled();
         expect(hSpy).not.toHaveBeenCalled();
         expect(starredSpy).not.toHaveBeenCalled();
+        expect(commandsSpy).not.toHaveBeenCalled();
 
         sSpy.mockRestore();
         eSpy.mockRestore();
         wSpy.mockRestore();
         hSpy.mockRestore();
         starredSpy.mockRestore();
+        commandsSpy.mockRestore();
       });
     });
 
@@ -414,6 +423,22 @@ describe('modeHandler', () => {
         },
       );
     });
+
+    describe('should parse as command mode', () => {
+      test.each(commandPrefixOnlyInputFixture)(
+        'for input: "$input" (array data index: $#)',
+        ({ input, expected: { mode, isValidated, parsedInput } }) => {
+          const inputInfo = sut.determineRunMode(input, null, null);
+
+          expect(inputInfo.mode).toBe(mode);
+          expect(inputInfo.inputText).toBe(input);
+
+          const commandCmd = inputInfo.parsedCommand();
+          expect(commandCmd.isValidated).toBe(isValidated);
+          expect(commandCmd.parsedInput).toBe(parsedInput);
+        },
+      );
+    });
   });
 
   describe('managing suggestions', () => {
@@ -456,6 +481,12 @@ describe('modeHandler', () => {
       type: 'starred',
       file: new TFile(),
       item: makeFileStarredItem(),
+      match: null,
+    };
+
+    const commandSugg: CommandSuggestion = {
+      type: 'command',
+      item: makeCommandItem(),
       match: null,
     };
 
@@ -631,6 +662,22 @@ describe('modeHandler', () => {
         getSuggestionSpy.mockRestore();
         mockSetSuggestion.mockReset();
       });
+
+      it('should get suggestions for Command Mode', () => {
+        const expectedSuggestions = [commandSugg];
+        getSuggestionSpy = jest
+          .spyOn(CommandHandler.prototype, 'getSuggestions')
+          .mockReturnValue(expectedSuggestions);
+
+        const results = sut.updateSuggestions(commandTrigger, mockChooser);
+
+        expect(results).toBe(true);
+        expect(getSuggestionSpy).toHaveBeenCalled();
+        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
+
+        getSuggestionSpy.mockRestore();
+        mockSetSuggestion.mockReset();
+      });
     });
 
     describe('renderSuggestions', () => {
@@ -706,6 +753,19 @@ describe('modeHandler', () => {
 
         renderSuggestionSpy.mockRestore();
       });
+
+      it('should render suggestions for Command Mode', () => {
+        renderSuggestionSpy = jest
+          .spyOn(CommandHandler.prototype, 'renderSuggestion')
+          .mockImplementation();
+
+        const result = sut.renderSuggestion(commandSugg, mockParentEl);
+
+        expect(result).toBe(true);
+        expect(renderSuggestionSpy).toHaveBeenCalledWith(commandSugg, mockParentEl);
+
+        renderSuggestionSpy.mockRestore();
+      });
     });
 
     describe('onchooseSuggestions', () => {
@@ -778,6 +838,19 @@ describe('modeHandler', () => {
 
         expect(result).toBe(true);
         expect(onChooseSuggestionSpy).toHaveBeenCalledWith(starredSugg, mockEvt);
+
+        onChooseSuggestionSpy.mockRestore();
+      });
+
+      it('should action suggestions for Command Mode', () => {
+        onChooseSuggestionSpy = jest
+          .spyOn(CommandHandler.prototype, 'onChooseSuggestion')
+          .mockImplementation();
+
+        const result = sut.onChooseSuggestion(commandSugg, mockEvt);
+
+        expect(result).toBe(true);
+        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(commandSugg, mockEvt);
 
         onChooseSuggestionSpy.mockRestore();
       });

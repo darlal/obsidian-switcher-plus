@@ -1,4 +1,5 @@
 import { StarredSettingTabSection } from './starredSettingsTabSection';
+import { CommandListSettingTabSection } from './commandListSettingsTabSection';
 import { App, Modal, PluginSettingTab, Setting } from 'obsidian';
 import { LinkType, SymbolType } from 'src/types';
 import { SwitcherPlusSettings } from 'src/settings';
@@ -23,8 +24,10 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     this.setHeadingsModeSettingsGroup(containerEl, settings);
 
     const starredSection = new StarredSettingTabSection(this.app, this, settings);
-
     starredSection.display(containerEl);
+
+    const commandListSection = new CommandListSettingTabSection(this.app, this, settings);
+    commandListSection.display(containerEl);
   }
 
   private setEditorModeSettingsGroup(

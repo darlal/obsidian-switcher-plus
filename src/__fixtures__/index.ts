@@ -4,3 +4,4 @@ export * from './fixtureUtils';
 export * from './inputText.fixture';
 export * from './modeTrigger.fixture';
 export * from './starredMode.fixture';
+export * from './commandMode.fixture';
