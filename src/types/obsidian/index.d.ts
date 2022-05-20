@@ -24,6 +24,12 @@ declare module 'obsidian' {
     items: Array<StarredPluginItem>;
   }
 
+  export interface CommandPalettePluginInstance extends PluginInstance {
+    options: {
+      pinned?: Array<string>;
+    };
+  }
+
   export interface WorkspacesPluginInstance extends PluginInstance {
     workspaces: Record<string, unknown>;
     loadWorkspace(id: string): void;
@@ -58,6 +64,10 @@ declare module 'obsidian' {
   export interface App {
     internalPlugins: InternalPlugins;
     viewRegistry: ViewRegistry;
+    commands: {
+      listCommands(): Command[];
+      executeCommandById(id: string): boolean;
+    };
   }
 
   export interface Chooser<T> {

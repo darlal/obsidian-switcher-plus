@@ -41,6 +41,7 @@ import {
   isUnresolvedSuggestion,
   isWorkspaceSuggestion,
   openFileInLeaf,
+  isCommandSuggestion,
 } from 'src/utils';
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo, SymbolParsedCommand } from 'src/switcherPlus';
@@ -234,7 +235,8 @@ export class SymbolHandler implements Handler<SymbolSuggestion> {
       suggestion &&
       !isSymbolSuggestion(suggestion) &&
       !isUnresolvedSuggestion(suggestion) &&
-      !isWorkspaceSuggestion(suggestion);
+      !isWorkspaceSuggestion(suggestion) &&
+      !isCommandSuggestion(suggestion);
 
     if (isEditorSuggestion(suggestion)) {
       // note: this leaf could be a reference view, which is not usable for

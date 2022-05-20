@@ -33,11 +33,12 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     symbolListCommand: '@',
     workspaceListCommand: '+',
     headingsListCommand: '#',
+    starredListCommand: "'",
+    commandListCommand: '>',
     strictHeadingsOnly: false,
     searchAllHeadings: true,
     limit: 50,
     selectNearestHeading: true,
-    starredListCommand: "'",
     excludeLinkSubTypes: LinkType.None,
     includeSidePanelViewTypes: sidePanelOptions,
     excludeFolders: [],
@@ -51,11 +52,12 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     data.symbolListCommand = chance.word();
     data.workspaceListCommand = chance.word();
     data.headingsListCommand = chance.word();
+    data.starredListCommand = chance.word();
+    data.commandListCommand = chance.word();
     data.strictHeadingsOnly = chance.bool();
     data.searchAllHeadings = chance.bool();
     data.limit = chance.integer();
     data.selectNearestHeading = chance.bool();
-    data.starredListCommand = chance.word();
     data.excludeLinkSubTypes = LinkType.Block;
 
     data.includeSidePanelViewTypes = [
@@ -104,6 +106,7 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.workspaceListPlaceholderText).toBe(defaults.workspaceListCommand);
     expect(sut.headingsListPlaceholderText).toBe(defaults.headingsListCommand);
     expect(sut.starredListPlaceholderText).toBe(defaults.starredListCommand);
+    expect(sut.commandListPlaceholderText).toBe(defaults.commandListCommand);
     expect(sut.includeSidePanelViewTypesPlaceholder).toBe(
       defaults.includeSidePanelViewTypes.join('\n'),
     );
@@ -133,6 +136,7 @@ describe('SwitcherPlusSettings', () => {
     sut.workspaceListCommand = settings.workspaceListCommand;
     sut.headingsListCommand = settings.headingsListCommand;
     sut.starredListCommand = settings.starredListCommand;
+    sut.commandListCommand = settings.commandListCommand;
     sut.strictHeadingsOnly = settings.strictHeadingsOnly;
     sut.searchAllHeadings = settings.searchAllHeadings;
     sut.includeSidePanelViewTypes = settings.includeSidePanelViewTypes;
