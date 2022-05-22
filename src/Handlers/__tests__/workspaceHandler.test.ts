@@ -1,4 +1,3 @@
-import { mocked } from 'ts-jest/dist/utils/testing';
 import { Mode, WorkspaceSuggestion } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { WorkspaceHandler, WORKSPACE_PLUGIN_ID } from 'src/Handlers';
@@ -151,10 +150,10 @@ describe('workspaceHandler', () => {
 
     test('with filter search term, it should return only matching suggestions for workspace mode', () => {
       const filterText = 'first';
-      const mockPrepareQuery = mocked<typeof prepareQuery>(prepareQuery);
+      const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
       mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
 
-      const mockFuzzySearch = mocked<typeof fuzzySearch>(fuzzySearch);
+      const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
       mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
         const match = makeFuzzyMatch();
         return text.startsWith(filterText) ? match : null;
@@ -186,7 +185,7 @@ describe('workspaceHandler', () => {
 
     it('should render a suggestion with match offsets', () => {
       const mockParentEl = mock<HTMLElement>();
-      const mockRenderResults = mocked<typeof renderResults>(renderResults);
+      const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
 
       sut.renderSuggestion(suggestionInstance, mockParentEl);
 

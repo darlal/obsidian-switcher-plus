@@ -2,6 +2,7 @@ jest.mock('src/utils/panelUtils', () => {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const actual = jest.requireActual('src/utils/panelUtils');
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return {
     ...actual,
     activateLeaf: jest.fn(),

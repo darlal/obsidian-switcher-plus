@@ -42,7 +42,6 @@ import {
   stripMDExtensionFromPath,
 } from 'src/utils';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { mocked } from 'ts-jest/dist/utils/testing';
 
 function makeFileTree(expectedFile: TFile, parentFolderName = 'l2Folder2'): TFolder {
   const mockFolder = jest.fn<
@@ -113,8 +112,8 @@ describe('headingsHandler', () => {
   });
 
   describe('getSuggestions', () => {
-    const mockPrepareQuery = mocked<typeof prepareQuery>(prepareQuery);
-    const mockFuzzySearch = mocked<typeof fuzzySearch>(fuzzySearch);
+    const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
+    const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
     let sut: HeadingsHandler;
     let mockWorkspace: MockProxy<Workspace>;
     let mockVault: MockProxy<Vault>;
@@ -562,7 +561,7 @@ describe('headingsHandler', () => {
     });
 
     test('with HeadingCache, it should render a suggestion with match offsets', () => {
-      const mockRenderResults = mocked<typeof renderResults>(renderResults);
+      const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
 
       sut.renderSuggestion(headingSugg, mockParentEl);
 

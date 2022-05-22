@@ -50,7 +50,6 @@ import {
   makeSearchStarredItem,
 } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { mocked } from 'ts-jest/dist/utils/testing';
 
 function makeLeaf(): MockProxy<WorkspaceLeaf> {
   const mockView = mock<MarkdownView>({
@@ -314,8 +313,8 @@ describe('symbolHandler', () => {
   });
 
   describe('getSuggestions', () => {
-    const mockPrepareQuery = mocked<typeof prepareQuery>(prepareQuery);
-    const mockFuzzySearch = mocked<typeof fuzzySearch>(fuzzySearch);
+    const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
+    const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
 
     test('with falsy input, it should return an empty array', () => {
       const results = sut.getSuggestions(null);
@@ -645,7 +644,7 @@ describe('symbolHandler', () => {
   });
 
   describe('renderSuggestion', () => {
-    const mockRenderResults = mocked<typeof renderResults>(renderResults);
+    const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
     let mockTextSpan: MockProxy<HTMLSpanElement>;
     let mockParentEl: MockProxy<HTMLElement>;
 
