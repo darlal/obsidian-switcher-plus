@@ -1,25 +1,25 @@
 import {
-  CommandListSettingsTabSection,
+  EditorSettingsTabSection,
   SettingsTabSection,
   SwitcherPlusSettings,
 } from 'src/settings';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { App, PluginSettingTab } from 'obsidian';
+import { App, PluginSettingTab, ViewRegistry } from 'obsidian';
 
-describe('commandListSettingsTabSection', () => {
+describe('editorSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
   let mockPluginSettingTab: MockProxy<PluginSettingTab>;
   let config: SwitcherPlusSettings;
   let mockContainerEl: MockProxy<HTMLElement>;
-  let sut: CommandListSettingsTabSection;
+  let sut: EditorSettingsTabSection;
 
   beforeAll(() => {
-    mockApp = mock<App>();
+    mockApp = mock<App>({ viewRegistry: mock<ViewRegistry>() });
     mockContainerEl = mock<HTMLElement>();
     mockPluginSettingTab = mock<PluginSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
 
-    sut = new CommandListSettingsTabSection(mockApp, mockPluginSettingTab, config);
+    sut = new EditorSettingsTabSection(mockApp, mockPluginSettingTab, config);
   });
 
   it('should display a header for the section', () => {
@@ -32,7 +32,7 @@ describe('commandListSettingsTabSection', () => {
 
     expect(addSectionTitleSpy).toHaveBeenCalledWith(
       mockContainerEl,
-      'Command List Mode Settings',
+      'Editor List Mode Settings',
     );
 
     addSectionTitleSpy.mockRestore();
@@ -45,13 +45,33 @@ describe('commandListSettingsTabSection', () => {
 
     expect(addTextSettingSpy).toBeCalledWith(
       mockContainerEl,
-      'Command list mode trigger',
+      'Editor list mode trigger',
       expect.any(String),
-      config.commandListCommand,
-      'commandListCommand',
-      config.commandListPlaceholderText,
+      config.editorListCommand,
+      'editorListCommand',
+      config.editorListPlaceholderText,
     );
 
     addTextSettingSpy.mockRestore();
+  });
+
+  it('should show the includeSidePanelViewTypes setting', () => {
+    const addTextAreaSettingSpy = jest.spyOn(
+      SettingsTabSection.prototype,
+      'addTextAreaSetting',
+    );
+
+    sut.display(mockContainerEl);
+
+    expect(addTextAreaSettingSpy).toBeCalledWith(
+      mockContainerEl,
+      'Include side panel views',
+      expect.any(String),
+      config.includeSidePanelViewTypes.join('\n'),
+      'includeSidePanelViewTypes',
+      config.includeSidePanelViewTypesPlaceholder,
+    );
+
+    addTextAreaSettingSpy.mockRestore();
   });
 });

@@ -1,17 +1,17 @@
 import {
-  CommandListSettingsTabSection,
   SettingsTabSection,
   SwitcherPlusSettings,
+  WorkspaceSettingsTabSection,
 } from 'src/settings';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { App, PluginSettingTab } from 'obsidian';
 
-describe('commandListSettingsTabSection', () => {
+describe('WorkspaceSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
   let mockPluginSettingTab: MockProxy<PluginSettingTab>;
   let config: SwitcherPlusSettings;
   let mockContainerEl: MockProxy<HTMLElement>;
-  let sut: CommandListSettingsTabSection;
+  let sut: WorkspaceSettingsTabSection;
 
   beforeAll(() => {
     mockApp = mock<App>();
@@ -19,7 +19,7 @@ describe('commandListSettingsTabSection', () => {
     mockPluginSettingTab = mock<PluginSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
 
-    sut = new CommandListSettingsTabSection(mockApp, mockPluginSettingTab, config);
+    sut = new WorkspaceSettingsTabSection(mockApp, mockPluginSettingTab, config);
   });
 
   it('should display a header for the section', () => {
@@ -32,7 +32,7 @@ describe('commandListSettingsTabSection', () => {
 
     expect(addSectionTitleSpy).toHaveBeenCalledWith(
       mockContainerEl,
-      'Command List Mode Settings',
+      'Workspace List Mode Settings',
     );
 
     addSectionTitleSpy.mockRestore();
@@ -45,11 +45,11 @@ describe('commandListSettingsTabSection', () => {
 
     expect(addTextSettingSpy).toBeCalledWith(
       mockContainerEl,
-      'Command list mode trigger',
+      'Workspace list mode trigger',
       expect.any(String),
-      config.commandListCommand,
-      'commandListCommand',
-      config.commandListPlaceholderText,
+      config.workspaceListCommand,
+      'workspaceListCommand',
+      config.workspaceListPlaceholderText,
     );
 
     addTextSettingSpy.mockRestore();

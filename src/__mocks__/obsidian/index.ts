@@ -15,8 +15,13 @@ import {
   TFile,
   Keymap,
 } from 'obsidian';
+import {
+  MockSetting,
+  MockTextComponent,
+  MockToggleComponent,
+  MockTextAreaComponent,
+} from './mockSetting';
 import { makeFuzzyMatch, makePreparedQuery } from '@fixtures';
-import { MockSetting, MockTextComponent } from './mockSetting';
 
 const chance = new Chance();
 
@@ -81,4 +86,6 @@ export {
   mockKeymap as Keymap,
   MockSetting as Setting,
   MockTextComponent as TextComponent,
+  MockToggleComponent as ToggleComponent,
+  MockTextAreaComponent as TextAreaComponent,
 };

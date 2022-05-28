@@ -1,31 +1,18 @@
-import { SwitcherPlusSettings } from './switcherPlusSettings';
 import { SettingsTabSection } from './settingsTabSection';
 
-export class StarredSettingTabSection extends SettingsTabSection {
+export class StarredSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
-    containerEl.createEl('h2', { text: 'Starred List Mode Settings' });
+    const { config } = this;
 
-    this.setStarredListCommand(containerEl, this.settings);
-  }
+    this.addSectionTitle(containerEl, 'Starred List Mode Settings');
 
-  private setStarredListCommand(
-    containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
-  ): void {
-    this.createSetting(
+    this.addTextSetting(
       containerEl,
       'Starred list mode trigger',
       'Character that will trigger starred list mode in the switcher',
-    ).addText((text) =>
-      text
-        .setPlaceholder(settings.starredListPlaceholderText)
-        .setValue(settings.starredListCommand)
-        .onChange((value) => {
-          const val = value.length ? value : settings.starredListPlaceholderText;
-
-          settings.starredListCommand = val;
-          settings.save();
-        }),
+      config.starredListCommand,
+      'starredListCommand',
+      config.starredListPlaceholderText,
     );
   }
 }

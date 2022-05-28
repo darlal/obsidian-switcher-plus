@@ -1,31 +1,18 @@
-import { SwitcherPlusSettings } from './switcherPlusSettings';
 import { SettingsTabSection } from './settingsTabSection';
 
-export class CommandListSettingTabSection extends SettingsTabSection {
+export class CommandListSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
-    containerEl.createEl('h2', { text: 'Command List Mode Settings' });
+    const { config } = this;
 
-    this.setCommandListCommand(containerEl, this.settings);
-  }
+    this.addSectionTitle(containerEl, 'Command List Mode Settings');
 
-  private setCommandListCommand(
-    containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
-  ): void {
-    this.createSetting(
+    this.addTextSetting(
       containerEl,
       'Command list mode trigger',
       'Character that will trigger command list mode in the switcher',
-    ).addText((text) =>
-      text
-        .setPlaceholder(settings.commandListPlaceholderText)
-        .setValue(settings.commandListCommand)
-        .onChange((value) => {
-          const val = value.length ? value : settings.commandListPlaceholderText;
-
-          settings.commandListCommand = val;
-          settings.save();
-        }),
+      config.commandListCommand,
+      'commandListCommand',
+      config.commandListPlaceholderText,
     );
   }
 }

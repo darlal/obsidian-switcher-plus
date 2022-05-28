@@ -13,6 +13,10 @@ import {
   Command,
 } from 'obsidian';
 import type { SuggestModal, StarredPluginItem } from 'obsidian';
+import { PickKeys, WritableKeys } from 'ts-essentials';
+
+// Pick from T the keys that are writable and whose value is of type K
+export type WritableKeysWithValueOfType<T, K> = PickKeys<Pick<T, WritableKeys<T>>, K>;
 
 export enum Mode {
   Standard = 1,

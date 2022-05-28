@@ -1,91 +1,80 @@
-import { StarredSettingTabSection } from './starredSettingsTabSection';
-import { CommandListSettingTabSection } from './commandListSettingsTabSection';
-import { RelatedItemsSettingTabSection } from './relatedItemsSettingsTabSection';
+import { StarredSettingsTabSection } from './starredSettingsTabSection';
+import { CommandListSettingsTabSection } from './commandListSettingsTabSection';
+import { RelatedItemsSettingsTabSection } from './relatedItemsSettingsTabSection';
+import { WorkspaceSettingsTabSection } from './workspaceSettingsTabSection';
+import { EditorSettingsTabSection } from './editorSettingsTabSection';
+import { SwitcherPlusSettings } from './switcherPlusSettings';
 import { App, Modal, PluginSettingTab, Setting } from 'obsidian';
 import { LinkType, SymbolType } from 'src/types';
-import { SwitcherPlusSettings } from 'src/settings';
 import type SwitcherPlusPlugin from '../main';
 
 export class SwitcherPlusSettingTab extends PluginSettingTab {
   constructor(
     app: App,
     plugin: SwitcherPlusPlugin,
-    private settings: SwitcherPlusSettings,
+    private config: SwitcherPlusSettings,
   ) {
     super(app, plugin);
   }
 
   display(): void {
-    const { containerEl, settings } = this;
+    const { containerEl, config } = this;
 
     containerEl.empty();
-    this.setSymbolModeSettingsGroup(containerEl, settings);
-    this.setEditorModeSettingsGroup(containerEl, settings);
-    SwitcherPlusSettingTab.setWorkspaceModeSettingsGroup(containerEl, settings);
-    this.setHeadingsModeSettingsGroup(containerEl, settings);
+    containerEl.createEl('h2', { text: 'Quick Switcher++ Settings' });
 
-    const starredSection = new StarredSettingTabSection(this.app, this, settings);
-    starredSection.display(containerEl);
+    this.setSymbolModeSettingsGroup(containerEl, config);
+    this.setHeadingsModeSettingsGroup(containerEl, config);
 
-    const commandListSection = new CommandListSettingTabSection(this.app, this, settings);
-    commandListSection.display(containerEl);
+    const editorSection = new EditorSettingsTabSection(this.app, this, config);
+    editorSection.display(containerEl);
 
-    const relatedItemsSection = new RelatedItemsSettingTabSection(
+    const relatedItemsSection = new RelatedItemsSettingsTabSection(
       this.app,
       this,
-      settings,
+      config,
     );
     relatedItemsSection.display(containerEl);
-  }
 
-  private setEditorModeSettingsGroup(
-    containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
-  ): void {
-    containerEl.createEl('h2', { text: 'Editor List Mode Settings' });
+    const starredSection = new StarredSettingsTabSection(this.app, this, config);
+    starredSection.display(containerEl);
 
-    SwitcherPlusSettingTab.setEditorListCommand(containerEl, settings);
-    this.setIncludeSidePanelViews(containerEl, settings);
+    const commandListSection = new CommandListSettingsTabSection(this.app, this, config);
+    commandListSection.display(containerEl);
+
+    const workspaceListSection = new WorkspaceSettingsTabSection(this.app, this, config);
+    workspaceListSection.display(containerEl);
   }
 
   private setSymbolModeSettingsGroup(
     containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
+    config: SwitcherPlusSettings,
   ): void {
-    containerEl.createEl('h2', { text: 'Symbol List Mode Settings' });
+    new Setting(containerEl).setHeading().setName('Symbol List Mode Settings');
 
-    SwitcherPlusSettingTab.setSymbolListCommand(containerEl, settings);
-    SwitcherPlusSettingTab.setSymbolsInLineOrder(containerEl, settings);
-    SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols(containerEl, settings);
-    SwitcherPlusSettingTab.setUseActivePaneForSymbolsOnMobile(containerEl, settings);
-    SwitcherPlusSettingTab.setSelectNearestHeading(containerEl, settings);
-    this.setEnabledSymbolTypes(containerEl, settings);
-  }
-
-  private static setWorkspaceModeSettingsGroup(
-    containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
-  ): void {
-    containerEl.createEl('h2', { text: 'Workspace List Mode Settings' });
-
-    SwitcherPlusSettingTab.setWorkspaceListCommand(containerEl, settings);
+    SwitcherPlusSettingTab.setSymbolListCommand(containerEl, config);
+    SwitcherPlusSettingTab.setSymbolsInLineOrder(containerEl, config);
+    SwitcherPlusSettingTab.setAlwaysNewPaneForSymbols(containerEl, config);
+    SwitcherPlusSettingTab.setUseActivePaneForSymbolsOnMobile(containerEl, config);
+    SwitcherPlusSettingTab.setSelectNearestHeading(containerEl, config);
+    this.setEnabledSymbolTypes(containerEl, config);
   }
 
   private setHeadingsModeSettingsGroup(
     containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
+    config: SwitcherPlusSettings,
   ): void {
-    containerEl.createEl('h2', { text: 'Headings List Mode Settings' });
+    new Setting(containerEl).setHeading().setName('Headings List Mode Settings');
 
-    SwitcherPlusSettingTab.setHeadingsListCommand(containerEl, settings);
-    SwitcherPlusSettingTab.setStrictHeadingsOnly(containerEl, settings);
-    SwitcherPlusSettingTab.setSearchAllHeadings(containerEl, settings);
-    this.setExcludeFolders(containerEl, settings);
+    SwitcherPlusSettingTab.setHeadingsListCommand(containerEl, config);
+    SwitcherPlusSettingTab.setStrictHeadingsOnly(containerEl, config);
+    SwitcherPlusSettingTab.setSearchAllHeadings(containerEl, config);
+    this.setExcludeFolders(containerEl, config);
   }
 
   private static setAlwaysNewPaneForSymbols(
     containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
+    config: SwitcherPlusSettings,
   ): void {
     new Setting(containerEl)
       .setName('Open Symbols in new pane')
@@ -93,16 +82,16 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         'Enabled, always open a new pane when navigating to Symbols. Disabled, navigate in an already open pane (if one exists)',
       )
       .addToggle((toggle) =>
-        toggle.setValue(settings.alwaysNewPaneForSymbols).onChange((value) => {
-          settings.alwaysNewPaneForSymbols = value;
-          settings.save();
+        toggle.setValue(config.alwaysNewPaneForSymbols).onChange((value) => {
+          config.alwaysNewPaneForSymbols = value;
+          config.save();
         }),
       );
   }
 
   private static setUseActivePaneForSymbolsOnMobile(
     containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
+    config: SwitcherPlusSettings,
   ): void {
     new Setting(containerEl)
       .setName('Open Symbols in active pane on mobile devices')
@@ -110,16 +99,16 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         'Enabled, navigate to the target file and symbol in the active editor pane. Disabled, open a new pane when navigating to Symbols, even on mobile devices.',
       )
       .addToggle((toggle) =>
-        toggle.setValue(settings.useActivePaneForSymbolsOnMobile).onChange((value) => {
-          settings.useActivePaneForSymbolsOnMobile = value;
-          settings.save();
+        toggle.setValue(config.useActivePaneForSymbolsOnMobile).onChange((value) => {
+          config.useActivePaneForSymbolsOnMobile = value;
+          config.save();
         }),
       );
   }
 
   private static setSelectNearestHeading(
     containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
+    config: SwitcherPlusSettings,
   ): void {
     new Setting(containerEl)
       .setName('Auto-select nearest heading')
@@ -127,16 +116,16 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         'Enabled, in an unfiltered symbol list, select the closest preceding Heading to the current cursor position. Disabled, the first symbol in the list is selected.',
       )
       .addToggle((toggle) =>
-        toggle.setValue(settings.selectNearestHeading).onChange((value) => {
-          settings.selectNearestHeading = value;
-          settings.save();
+        toggle.setValue(config.selectNearestHeading).onChange((value) => {
+          config.selectNearestHeading = value;
+          config.save();
         }),
       );
   }
 
   private static setSymbolsInLineOrder(
     containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
+    config: SwitcherPlusSettings,
   ): void {
     new Setting(containerEl)
       .setName('List symbols as indented outline')
@@ -144,55 +133,53 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         'Enabled, symbols will be displayed in the (line) order they appear in the source text, indented under any preceding heading. Disabled, symbols will be grouped by type: Headings, Tags, Links, Embeds.',
       )
       .addToggle((toggle) =>
-        toggle.setValue(settings.symbolsInLineOrder).onChange((value) => {
-          settings.symbolsInLineOrder = value;
-          settings.save();
+        toggle.setValue(config.symbolsInLineOrder).onChange((value) => {
+          config.symbolsInLineOrder = value;
+          config.save();
         }),
       );
   }
 
   private setEnabledSymbolTypes(
     containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
+    config: SwitcherPlusSettings,
   ): void {
     new Setting(containerEl).setName('Show Headings').addToggle((toggle) =>
       toggle
-        .setValue(settings.isSymbolTypeEnabled(SymbolType.Heading))
+        .setValue(config.isSymbolTypeEnabled(SymbolType.Heading))
         .onChange((value) => {
-          settings.setSymbolTypeEnabled(SymbolType.Heading, value);
-          settings.save();
+          config.setSymbolTypeEnabled(SymbolType.Heading, value);
+          config.save();
         }),
     );
 
     new Setting(containerEl).setName('Show Tags').addToggle((toggle) =>
-      toggle.setValue(settings.isSymbolTypeEnabled(SymbolType.Tag)).onChange((value) => {
-        settings.setSymbolTypeEnabled(SymbolType.Tag, value);
-        settings.save();
+      toggle.setValue(config.isSymbolTypeEnabled(SymbolType.Tag)).onChange((value) => {
+        config.setSymbolTypeEnabled(SymbolType.Tag, value);
+        config.save();
       }),
     );
 
     new Setting(containerEl).setName('Show Embeds').addToggle((toggle) =>
-      toggle
-        .setValue(settings.isSymbolTypeEnabled(SymbolType.Embed))
-        .onChange((value) => {
-          settings.setSymbolTypeEnabled(SymbolType.Embed, value);
-          settings.save();
-        }),
+      toggle.setValue(config.isSymbolTypeEnabled(SymbolType.Embed)).onChange((value) => {
+        config.setSymbolTypeEnabled(SymbolType.Embed, value);
+        config.save();
+      }),
     );
 
-    this.setEnableLinks(containerEl, settings);
+    this.setEnableLinks(containerEl, config);
   }
 
-  private setEnableLinks(containerEl: HTMLElement, settings: SwitcherPlusSettings): void {
-    const isLinksEnabled = settings.isSymbolTypeEnabled(SymbolType.Link);
+  private setEnableLinks(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
+    const isLinksEnabled = config.isSymbolTypeEnabled(SymbolType.Link);
 
     new Setting(containerEl).setName('Show Links').addToggle((toggle) => {
       toggle.setValue(isLinksEnabled).onChange(async (value) => {
-        settings.setSymbolTypeEnabled(SymbolType.Link, value);
+        config.setSymbolTypeEnabled(SymbolType.Link, value);
 
         // have to await the save here because the call to display() will trigger a read
         // of the updated data
-        await settings.saveSettings();
+        await config.saveSettings();
 
         // reload the settings panel. This will cause the sublink types toggle
         // controls to be shown/hidden based on isLinksEnabled status
@@ -203,14 +190,14 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     if (isLinksEnabled) {
       SwitcherPlusSettingTab.addSubLinkTypeToggle(
         containerEl,
-        settings,
+        config,
         LinkType.Heading,
         'Links to headings',
       );
 
       SwitcherPlusSettingTab.addSubLinkTypeToggle(
         containerEl,
-        settings,
+        config,
         LinkType.Block,
         'Links to blocks',
       );
@@ -219,7 +206,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
 
   private static addSubLinkTypeToggle(
     containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
+    config: SwitcherPlusSettings,
     linkType: LinkType,
     name: string,
   ): void {
@@ -227,10 +214,10 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       .setClass('qsp-setting-item-indent')
       .setName(name)
       .addToggle((toggle) => {
-        const isExcluded = (settings.excludeLinkSubTypes & linkType) === linkType;
+        const isExcluded = (config.excludeLinkSubTypes & linkType) === linkType;
 
         toggle.setValue(!isExcluded).onChange((isEnabled) => {
-          let exclusions = settings.excludeLinkSubTypes;
+          let exclusions = config.excludeLinkSubTypes;
 
           if (isEnabled) {
             // remove from exclusion list
@@ -240,113 +227,53 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
             exclusions |= linkType;
           }
 
-          settings.excludeLinkSubTypes = exclusions;
-          settings.save();
+          config.excludeLinkSubTypes = exclusions;
+          config.save();
         });
       });
   }
 
-  private static setEditorListCommand(
-    containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
-  ): void {
-    new Setting(containerEl)
-      .setName('Editor list mode trigger')
-      .setDesc('Character that will trigger editor list mode in the switcher')
-      .addText((text) =>
-        text
-          .setPlaceholder(settings.editorListPlaceholderText)
-          .setValue(settings.editorListCommand)
-          .onChange((value) => {
-            const val = value.length ? value : settings.editorListPlaceholderText;
-            settings.editorListCommand = val;
-            settings.save();
-          }),
-      );
-  }
-
   private static setSymbolListCommand(
     containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
+    config: SwitcherPlusSettings,
   ): void {
     new Setting(containerEl)
       .setName('Symbol list mode trigger')
       .setDesc('Character that will trigger symbol list mode in the switcher')
       .addText((text) =>
         text
-          .setPlaceholder(settings.symbolListPlaceholderText)
-          .setValue(settings.symbolListCommand)
+          .setPlaceholder(config.symbolListPlaceholderText)
+          .setValue(config.symbolListCommand)
           .onChange((value) => {
-            const val = value.length ? value : settings.symbolListPlaceholderText;
-            settings.symbolListCommand = val;
-            settings.save();
-          }),
-      );
-  }
-
-  private setIncludeSidePanelViews(
-    containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
-  ): void {
-    const viewsListing = Object.keys(this.app.viewRegistry.viewByType).sort().join(' ');
-
-    new Setting(containerEl)
-      .setName('Include side panel views')
-      .setDesc(
-        `When in Editor list mode, show the following view types from the side panels. Add one view type per line. Available view types: ${viewsListing}`,
-      )
-      .addTextArea((textArea) =>
-        textArea
-          .setPlaceholder(settings.includeSidePanelViewTypesPlaceholder)
-          .setValue(settings.includeSidePanelViewTypes.join('\n'))
-          .onChange((value) => {
-            settings.includeSidePanelViewTypes = value.split('\n');
-            settings.save();
-          }),
-      );
-  }
-
-  private static setWorkspaceListCommand(
-    containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
-  ): void {
-    new Setting(containerEl)
-      .setName('Workspace list mode trigger')
-      .setDesc('Character that will trigger workspace list mode in the switcher')
-      .addText((text) =>
-        text
-          .setPlaceholder(settings.workspaceListPlaceholderText)
-          .setValue(settings.workspaceListCommand)
-          .onChange((value) => {
-            const val = value.length ? value : settings.workspaceListPlaceholderText;
-            settings.workspaceListCommand = val;
-            settings.save();
+            const val = value.length ? value : config.symbolListPlaceholderText;
+            config.symbolListCommand = val;
+            config.save();
           }),
       );
   }
 
   private static setHeadingsListCommand(
     containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
+    config: SwitcherPlusSettings,
   ): void {
     new Setting(containerEl)
       .setName('Headings list mode trigger')
       .setDesc('Character that will trigger headings list mode in the switcher')
       .addText((text) =>
         text
-          .setPlaceholder(settings.headingsListPlaceholderText)
-          .setValue(settings.headingsListCommand)
+          .setPlaceholder(config.headingsListPlaceholderText)
+          .setValue(config.headingsListCommand)
           .onChange((value) => {
-            const val = value.length ? value : settings.headingsListPlaceholderText;
-            settings.headingsListCommand = val;
-            settings.save();
+            const val = value.length ? value : config.headingsListPlaceholderText;
+            config.headingsListCommand = val;
+            config.save();
           }),
       );
   }
 
   private static setStrictHeadingsOnly(
     containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
+    config: SwitcherPlusSettings,
   ): void {
     new Setting(containerEl)
       .setName('Show headings only')
@@ -354,16 +281,16 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         'Enabled, only show suggestions where there is a match in the first H1 contained in the file. Disabled, if there is not a match in the first H1, fallback to showing suggestions where there is a filename match.',
       )
       .addToggle((toggle) =>
-        toggle.setValue(settings.strictHeadingsOnly).onChange((value) => {
-          settings.strictHeadingsOnly = value;
-          settings.save();
+        toggle.setValue(config.strictHeadingsOnly).onChange((value) => {
+          config.strictHeadingsOnly = value;
+          config.save();
         }),
       );
   }
 
   private static setSearchAllHeadings(
     containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
+    config: SwitcherPlusSettings,
   ): void {
     new Setting(containerEl)
       .setName('Search all headings')
@@ -371,16 +298,16 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         'Enabled, search through all headings contained in each file. Disabled, only search through the first H1 in each file.',
       )
       .addToggle((toggle) =>
-        toggle.setValue(settings.searchAllHeadings).onChange((value) => {
-          settings.searchAllHeadings = value;
-          settings.save();
+        toggle.setValue(config.searchAllHeadings).onChange((value) => {
+          config.searchAllHeadings = value;
+          config.save();
         }),
       );
   }
 
   private setExcludeFolders(
     containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
+    config: SwitcherPlusSettings,
   ): void {
     const settingName = 'Exclude folders';
     new Setting(containerEl)
@@ -389,7 +316,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         `When in Headings list mode, folder path that match any regex listed here will not be searched for suggestions. Path should start from the Vault Root. Add one path per line.`,
       )
       .addTextArea((textArea) => {
-        textArea.setValue(settings.excludeFolders.join('\n'));
+        textArea.setValue(config.excludeFolders.join('\n'));
         textArea.inputEl.addEventListener('blur', () => {
           const excludes = textArea
             .getValue()
@@ -397,8 +324,8 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
             .filter((v) => v.length > 0);
 
           if (this.validateExcludeFolderList(settingName, excludes)) {
-            settings.excludeFolders = excludes;
-            settings.save();
+            config.excludeFolders = excludes;
+            config.save();
           }
         });
       });

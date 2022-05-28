@@ -1,66 +1,157 @@
 import { SwitcherPlusSettings } from './switcherPlusSettings';
 import { App, PluginSettingTab, Setting } from 'obsidian';
+import { WritableKeysWithValueOfType } from 'src/types';
+import { WritableKeys } from 'ts-essentials';
 
-// type IfEquals<X, Y, A, B> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
-//   ? 1
-//   : 2
-//   ? A
-//   : B;
-
-// // Type that represents only the writable keys of an object
-// // https://stackoverflow.com/a/49579497
-// export type WritableKeysOf<T> = {
-//   [P in keyof T]: IfEquals<{ [Q in P]: T[P] }, { -readonly [Q in P]: T[P] }, P, never>;
-// }[keyof T];
-
-// // type WritableSettingsConfigKeys = Pick<
-// //   SwitcherPlusSettings,
-// //   WritableKeysOf<SwitcherPlusSettings>
-// // >;
-
-// type ReadonlyKeys = 'builtInSystemOptions' | 'editorListPlaceholderText' | 'excludeViewTypes' | 'headingsListPlaceholderText' | 'includeSidePanelViewTypesPlaceholder' | 'referenceViews' | 'relatedItemsListPlaceholderText' | 'showAllFileTypes' | 'showAttachments' | 'showExistingOnly' | 'starredListPlaceholderText' | 'symbolListPlaceholderText' | 'workspaceListPlaceholderText';
-// type WritableSettingsConfigKeys = keyof Omit<SwitcherPlusSettings, ReadonlyKeys>;
+type StringTypedConfigKey = WritableKeysWithValueOfType<SwitcherPlusSettings, string>;
+type BooleanTypedConfigKey = WritableKeysWithValueOfType<SwitcherPlusSettings, boolean>;
+type ListTypedConfigKey = WritableKeysWithValueOfType<
+  SwitcherPlusSettings,
+  Array<string>
+>;
 
 export abstract class SettingsTabSection {
   constructor(
-    private app: App,
-    private mainSettingsTab: PluginSettingTab,
-    protected settings: SwitcherPlusSettings,
+    protected app: App,
+    protected mainSettingsTab: PluginSettingTab,
+    protected config: SwitcherPlusSettings,
   ) {}
 
-  public abstract display(containerEl: HTMLElement): void;
+  abstract display(containerEl: HTMLElement): void;
 
-  public createSetting(containerEl: HTMLElement, name: string, desc: string): Setting {
+  /**
+   * Creates a new Setting with the given name and description.
+   * @param  {HTMLElement} containerEl
+   * @param  {string} name
+   * @param  {string} desc
+   * @returns Setting
+   */
+  createSetting(containerEl: HTMLElement, name?: string, desc?: string): Setting {
     const setting = new Setting(containerEl);
     setting.setName(name);
     setting.setDesc(desc);
 
     return setting;
   }
+  /**
+   * Create section title elements and divider.
+   * @param  {HTMLElement} containerEl
+   * @param  {string} title
+   * @param  {string} desc?
+   * @returns Setting
+   */
+  addSectionTitle(containerEl: HTMLElement, title: string, desc = ''): Setting {
+    const setting = this.createSetting(containerEl, title, desc);
+    setting.setHeading();
 
-  // public createTextSetting(
-  //   containerEl: HTMLElement,
-  //   name: string,
-  //   desc: string,
-  //   placeholderText: string,
-  //   initialValue: string,
-  //   // settingsConfigStorageKey: keyof WritableSettingsConfigKeys,
-  //   settingsConfigStorageKey: keyof Omit<SwitcherPlusSettings, ReadonlyKeys>,
-  // ): Setting {
-  //   const setting = this.createSetting(containerEl, name, desc);
-  //   setting.addText((textComponent) => {
-  //     textComponent
-  //       .setPlaceholder(placeholderText)
-  //       .setValue(initialValue)
-  //       .onChange((rawValue) => {
-  //         const value = rawValue.length ? rawValue : initialValue;
-  //         const settingsConfig = this.settings;
+    return setting;
+  }
 
-  //         settingsConfig[settingsConfigStorageKey] = value;
-  //         settingsConfig.save();
-  //       });
-  //   });
+  /**
+   * Creates a HTMLInput element setting.
+   * @param  {HTMLElement} containerEl The element to attach the setting to.
+   * @param  {string} name
+   * @param  {string} desc
+   * @param  {string} initialValue
+   * @param  {StringTypedConfigKey} configStorageKey The SwitcherPlusSettings key where the value for this setting should be stored.
+   * @param  {string} placeholderText?
+   * @returns Setting
+   */
+  addTextSetting(
+    containerEl: HTMLElement,
+    name: string,
+    desc: string,
+    initialValue: string,
+    configStorageKey: StringTypedConfigKey,
+    placeholderText?: string,
+  ): Setting {
+    const setting = this.createSetting(containerEl, name, desc);
 
-  //   return setting;
-  // }
+    setting.addText((comp) => {
+      comp.setPlaceholder(placeholderText);
+      comp.setValue(initialValue);
+
+      comp.onChange((rawValue) => {
+        const value = rawValue.length ? rawValue : initialValue;
+        this.saveChangesToConfig(configStorageKey, value);
+      });
+    });
+
+    return setting;
+  }
+
+  /**
+   * Create a Checkbox element setting.
+   * @param  {HTMLElement} containerEl The element to attach the setting to.
+   * @param  {string} name
+   * @param  {string} desc
+   * @param  {boolean} initialValue
+   * @param  {BooleanTypedConfigKey} configStorageKey The SwitcherPlusSettings key where the value for this setting should be stored.
+   * @returns Setting
+   */
+  addToggleSetting(
+    containerEl: HTMLElement,
+    name: string,
+    desc: string,
+    initialValue: boolean,
+    configStorageKey: BooleanTypedConfigKey,
+  ): Setting {
+    const setting = this.createSetting(containerEl, name, desc);
+
+    setting.addToggle((comp) => {
+      comp.setValue(initialValue);
+      comp.onChange((value) => this.saveChangesToConfig(configStorageKey, value));
+    });
+
+    return setting;
+  }
+
+  /**
+   * Create a TextArea element setting.
+   * @param  {HTMLElement} containerEl The element to attach the setting to.
+   * @param  {string} name
+   * @param  {string} desc
+   * @param  {string} initialValue
+   * @param  {ListTypedConfigKey|StringTypedConfigKey} configStorageKey The SwitcherPlusSettings key where the value for this setting should be stored.
+   * @param  {string} placeholderText?
+   * @returns Setting
+   */
+  addTextAreaSetting(
+    containerEl: HTMLElement,
+    name: string,
+    desc: string,
+    initialValue: string,
+    configStorageKey: ListTypedConfigKey | StringTypedConfigKey,
+    placeholderText?: string,
+  ): Setting {
+    const setting = this.createSetting(containerEl, name, desc);
+
+    setting.addTextArea((comp) => {
+      comp.setPlaceholder(placeholderText);
+      comp.setValue(initialValue);
+
+      comp.onChange((rawValue) => {
+        const value = rawValue.length ? rawValue : initialValue;
+        const isArray = Array.isArray(this.config[configStorageKey]);
+        this.saveChangesToConfig(configStorageKey, isArray ? value.split('\n') : value);
+      });
+    });
+
+    return setting;
+  }
+
+  /**
+   * Updates the internal SwitcherPlusSettings configStorageKey with value, and writes it to disk.
+   * @param  {K} configStorageKey The SwitcherPlusSettings key where the value for this setting should be stored.
+   * @param  {SwitcherPlusSettings[K]} value
+   * @returns void
+   */
+  saveChangesToConfig<K extends WritableKeys<SwitcherPlusSettings>>(
+    configStorageKey: K,
+    value: SwitcherPlusSettings[K],
+  ): void {
+    const { config } = this;
+    config[configStorageKey] = value;
+    config.save();
+  }
 }

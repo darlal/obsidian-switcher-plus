@@ -1,31 +1,18 @@
-import { SwitcherPlusSettings } from './switcherPlusSettings';
 import { SettingsTabSection } from './settingsTabSection';
 
-export class RelatedItemsSettingTabSection extends SettingsTabSection {
+export class RelatedItemsSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
-    containerEl.createEl('h2', { text: 'Related Items List Mode Settings' });
+    const { config } = this;
 
-    this.setRelatedItemsListCommand(containerEl, this.settings);
-  }
+    this.addSectionTitle(containerEl, 'Related Items List Mode Settings');
 
-  private setRelatedItemsListCommand(
-    containerEl: HTMLElement,
-    settings: SwitcherPlusSettings,
-  ): void {
-    this.createSetting(
+    this.addTextSetting(
       containerEl,
       'Related Items list mode trigger',
       'Character that will trigger related items list mode in the switcher',
-    ).addText((text) =>
-      text
-        .setPlaceholder(settings.relatedItemsListPlaceholderText)
-        .setValue(settings.relatedItemsListCommand)
-        .onChange((value) => {
-          const val = value.length ? value : settings.relatedItemsListPlaceholderText;
-
-          settings.relatedItemsListCommand = val;
-          settings.save();
-        }),
+      config.relatedItemsListCommand,
+      'relatedItemsListCommand',
+      config.relatedItemsListPlaceholderText,
     );
   }
 }
