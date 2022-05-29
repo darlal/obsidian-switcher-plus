@@ -1,7 +1,7 @@
 import { stripMDExtensionFromPath } from 'src/utils';
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
-import { RelatedItemsHandler } from 'src/Handlers';
+import { Handler, RelatedItemsHandler } from 'src/Handlers';
 import {
   AliasSuggestion,
   Mode,
@@ -428,58 +428,44 @@ describe('relatedItemsHandler', () => {
   });
 
   describe('onChooseSuggestion', () => {
+    const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
+
+    beforeAll(() => {
+      const fileContainerLeaf = makeLeaf();
+      fileContainerLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValueOnce(fileContainerLeaf);
+    });
+
     it('should not throw an error with a null suggestion', () => {
       expect(() => sut.onChooseSuggestion(null, null)).not.toThrow();
     });
 
-    it('should activate the existing workspaceLeaf that contains the related file', () => {
-      const eState = { active: true, focus: true };
+    test('with Mod down, it should it should create a new workspaceLeaf for the target file', () => {
+      const isModDown = true;
+      const navigateToLeafOrOpenFileSpy = jest.spyOn(
+        Handler.prototype,
+        'navigateToLeafOrOpenFile',
+      );
+
+      mockKeymap.isModEvent.mockReturnValueOnce(isModDown);
+
       const sugg: RelatedItemsSuggestion = {
         type: 'relatedItems',
         relationType: 'diskLocation',
         file: file1,
         match: null,
       };
-
-      // set file1 as the active leaf
-      mockWorkspace.activeLeaf = makeLeaf();
-
-      // set file1 as the file for active leaf
-      mockWorkspace.activeLeaf.view.file = file1;
 
       sut.onChooseSuggestion(sugg, null);
 
-      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(
-        mockWorkspace.activeLeaf,
-        true,
+      expect(mockKeymap.isModEvent).toHaveBeenCalled();
+      expect(navigateToLeafOrOpenFileSpy).toHaveBeenCalledWith(
+        isModDown,
+        sugg.file,
+        expect.any(String),
       );
-      expect(mockWorkspace.activeLeaf.view.setEphemeralState).toHaveBeenCalledWith(
-        eState,
-      );
-    });
 
-    test('with Mod down, it should it should create a new workspaceLeaf for the target file that contains the symbol, and scroll via eState', () => {
-      const mockLeaf = makeLeaf();
-      const evt = mock<MouseEvent>();
-      const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
-      const isModDown = true;
-      const eState = { active: true, focus: true };
-      const sugg: RelatedItemsSuggestion = {
-        type: 'relatedItems',
-        relationType: 'diskLocation',
-        file: file1,
-        match: null,
-      };
-
-      mockKeymap.isModEvent.mockReturnValueOnce(isModDown);
-      mockLeaf.openFile.mockResolvedValueOnce();
-      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
-
-      sut.onChooseSuggestion(sugg, evt);
-
-      expect(mockKeymap.isModEvent).toHaveBeenCalledWith(evt);
-      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(true);
-      expect(mockLeaf.openFile).toHaveBeenCalledWith(file1, { eState });
+      navigateToLeafOrOpenFileSpy.mockRestore();
     });
   });
 

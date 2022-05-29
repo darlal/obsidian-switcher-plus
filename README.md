@@ -22,6 +22,7 @@ Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](ht
   * [Configuration](#command-configuration)
 * [Navigate to related items](#related-items)
   * [Configuration](#related-items-configuration)
+* [General Settings](#general-settings)
 * [Global Commands for Hotkeys/Shortcuts](#global-commands-for-hotkeys)
 
 ## Demo
@@ -156,6 +157,12 @@ Related Items can be viewed by opening Quick Switcher++, typing some characters 
 | Setting                         | Description | Default |
 |---------------------------------|-------------|---------|
 | Related items list mode trigger | Character that will trigger related items list mode in the switcher. | `~` |
+
+## General Settings
+
+| Setting                         | Description | Default |
+|---------------------------------|-------------|---------|
+| Default to open in new pane | **Enabled**: navigating to un-opened files will open a new editor pane whenever possible (as if cmd/ctrl were held). When the file is already open, the existing pane will be activated. This overrides all other pane settings. | enabled |
 
 ## Global Commands for Hotkeys
 

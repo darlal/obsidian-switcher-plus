@@ -1,6 +1,6 @@
 import { SwitcherPlusSettings } from 'src/settings';
 import { mock, MockProxy, mockReset } from 'jest-mock-extended';
-import { StarredHandler, STARRED_PLUGIN_ID } from 'src/Handlers';
+import { Handler, StarredHandler, STARRED_PLUGIN_ID } from 'src/Handlers';
 import { InputInfo } from 'src/switcherPlus';
 import { Mode, StarredSuggestion } from 'src/types';
 import {
@@ -9,6 +9,7 @@ import {
   starredTrigger,
   makeFileStarredItem,
   makeSearchStarredItem,
+  makeLeaf,
 } from '@fixtures';
 import {
   App,
@@ -62,7 +63,7 @@ function makeInternalPluginList(
 }
 
 describe('starredHandler', () => {
-  let mockSettings: MockProxy<SwitcherPlusSettings>;
+  let settings: SwitcherPlusSettings;
   let mockWorkspace: MockProxy<Workspace>;
   let mockVault: MockProxy<Vault>;
   let mockApp: MockProxy<App>;
@@ -83,11 +84,10 @@ describe('starredHandler', () => {
       internalPlugins: mockInternalPlugins,
     });
 
-    mockSettings = mock<SwitcherPlusSettings>({
-      starredListCommand: starredTrigger,
-    });
+    settings = new SwitcherPlusSettings(null);
+    jest.spyOn(settings, 'starredListCommand', 'get').mockReturnValue(starredTrigger);
 
-    sut = new StarredHandler(mockApp, mockSettings);
+    sut = new StarredHandler(mockApp, settings);
   });
 
   describe('commandString', () => {
@@ -262,7 +262,11 @@ describe('starredHandler', () => {
         isFileStarredItem(v),
       );
 
-      sugg = mock<StarredSuggestion>({ item });
+      const fileContainerLeaf = makeLeaf();
+      fileContainerLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValue(fileContainerLeaf);
+
+      sugg = mock<StarredSuggestion>({ item, file: new TFile() });
     });
 
     it('should not throw an error with a null suggestion', () => {
@@ -271,64 +275,22 @@ describe('starredHandler', () => {
 
     it('should open a new leaf for the chosen suggestion', () => {
       const isModDown = true;
+      const navigateToLeafOrOpenFileSpy = jest.spyOn(
+        Handler.prototype,
+        'navigateToLeafOrOpenFile',
+      );
       mockKeymap.isModEvent.mockReturnValueOnce(isModDown);
-      mockWorkspace.openLinkText.mockResolvedValueOnce();
 
       sut.onChooseSuggestion(sugg, evt);
 
       expect(mockKeymap.isModEvent).toHaveBeenCalledWith(evt);
-      expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
-        (sugg.item as FileStarredItem).path,
-        '',
+      expect(navigateToLeafOrOpenFileSpy).toHaveBeenCalledWith(
         isModDown,
-        expect.objectContaining({ active: true }),
+        sugg.file,
+        expect.any(String),
       );
-    });
 
-    it('should catch errors while opening new workspaceLeaf and log it to the console', () => {
-      // Promise used to trigger the error condition
-      const openLinkTextPromise = Promise.resolve();
-
-      mockWorkspace.openLinkText.mockImplementation(() => {
-        // throw to simulate openLinkText() failing. This happens first
-        return openLinkTextPromise.then(() => {
-          throw new Error('openLinkText() unit test mock error');
-        });
-      });
-
-      // Promise used to track the call to console.log
-      let consoleLogPromiseResolveFn: (value: void | PromiseLike<void>) => void;
-      const consoleLogPromise = new Promise<void>((resolve, _reject) => {
-        consoleLogPromiseResolveFn = resolve;
-      });
-
-      const consoleLogSpy = jest
-        .spyOn(console, 'log')
-        .mockImplementation((message: string) => {
-          if (message.startsWith('Switcher++: unable to open file')) {
-            // resolve the consoleLogPromise. This happens second and will allow
-            // allPromises to resolve itself
-            consoleLogPromiseResolveFn();
-          }
-        });
-
-      // wait for the other promises to resolve before this promise can resolve
-      const allPromises = Promise.all([openLinkTextPromise, consoleLogPromise]);
-
-      mockKeymap.isModEvent.mockReturnValueOnce(false);
-
-      // internally calls openLinkText(), which the spy will cause to fail, and then
-      // will call console.log
-      sut.onChooseSuggestion(sugg, evt);
-
-      // when all the promises are resolved check expectations and clean up
-      return allPromises.finally(() => {
-        expect(mockWorkspace.openLinkText).toHaveBeenCalled();
-        expect(consoleLogSpy).toHaveBeenCalled();
-
-        mockWorkspace.openLinkText.mockReset();
-        consoleLogSpy.mockRestore();
-      });
+      navigateToLeafOrOpenFileSpy.mockRestore();
     });
   });
 

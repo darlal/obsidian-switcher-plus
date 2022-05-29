@@ -3,15 +3,16 @@ import {
   EditorPosition,
   HeadingCache,
   MarkdownView,
+  OpenViewState,
+  Platform,
   TFile,
   View,
   WorkspaceLeaf,
 } from 'obsidian';
-import { AnySuggestion, SourceInfo } from 'src/types';
+import { AnySuggestion, Mode, SourceInfo } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
-  getOpenLeaves,
   isCommandSuggestion,
   isEditorSuggestion,
   isSymbolSuggestion,
@@ -176,10 +177,11 @@ export abstract class Handler<T> {
   /**
    * Finds the first open WorkspaceLeaf that is showing source file.
    * @param  {TFile} file The source file that is being shown to find
-   * @param  {WorkspaceLeaf} leaf Optional, a 'reference' WorkspaceLeaf (example: backlinks, outline, etc.. views) that is used as a pointer to a source file.
+   * @param  {WorkspaceLeaf} leaf An already open editor, or, a 'reference' WorkspaceLeaf (example: backlinks, outline, etc.. views) that is used to find the associated editor if one exists.
    * @returns TargetInfo
    */
   findOpenEditor(file: TFile, leaf?: WorkspaceLeaf): SourceInfo {
+    let matchingLeaf = null;
     const isTargetLeaf = !!leaf;
     const {
       settings: { referenceViews, excludeViewTypes, includeSidePanelViewTypes },
@@ -189,30 +191,29 @@ export abstract class Handler<T> {
     const isMatch = (l: WorkspaceLeaf) => {
       let val = false;
 
-      if (l) {
+      if (l?.view) {
         const isRefView = referenceViews.includes(l.view.getViewType());
         const isTargetRefView =
           isTargetLeaf && referenceViews.includes(leaf.view.getViewType());
 
         if (!isRefView) {
-          val = isTargetLeaf && !isTargetRefView ? l === leaf : l.view?.file === file;
+          val = isTargetLeaf && !isTargetRefView ? l === leaf : l.view.file === file;
         }
       }
 
       return val;
     };
 
-    // See if the active leaf matches first, otherwise find the first matching leaf,
-    // if there is one
-    let matchingLeaf = workspace.activeLeaf;
-    if (!isMatch(matchingLeaf)) {
-      const leaves = getOpenLeaves(
-        workspace,
-        excludeViewTypes,
-        includeSidePanelViewTypes,
-      );
+    // Prioritize the active leaf matches first, otherwise find the first matching leaf
+    if (isMatch(workspace.activeLeaf)) {
+      matchingLeaf = workspace.activeLeaf;
+    }
 
-      matchingLeaf = leaves.find(isMatch);
+    if (!matchingLeaf) {
+      const leaves = this.getOpenLeaves(excludeViewTypes, includeSidePanelViewTypes);
+
+      // put leaf at the first index so it gets checked first
+      matchingLeaf = [leaf, ...leaves].find(isMatch);
     }
 
     return {
@@ -221,5 +222,167 @@ export abstract class Handler<T> {
       suggestion: null,
       isValidSource: false,
     };
+  }
+
+  /**
+   * Determines whether or not a new leaf should be created
+   * @param  {boolean} isModDown Set to true if the user holding cmd/ctrl
+   * @param  {} isAlreadyOpen=false Set to true if there is a pane showing the file already
+   * @param  {Mode} mode? Only Symbol mode has special handling.
+   * @returns boolean
+   */
+  shouldCreateNewLeaf(isModDown: boolean, isAlreadyOpen = false, mode?: Mode): boolean {
+    const {
+      onOpenPreferNewPane,
+      alwaysNewPaneForSymbols,
+      useActivePaneForSymbolsOnMobile,
+    } = this.settings;
+
+    const isNewPaneRequested = !isAlreadyOpen && onOpenPreferNewPane;
+    let shouldCreateNew = isModDown || isNewPaneRequested;
+
+    if (mode === Mode.SymbolList && !onOpenPreferNewPane) {
+      const { isMobile } = Platform;
+      shouldCreateNew = alwaysNewPaneForSymbols || isModDown;
+
+      if (isMobile) {
+        shouldCreateNew = isModDown || !useActivePaneForSymbolsOnMobile;
+      }
+    }
+
+    return shouldCreateNew;
+  }
+
+  /**
+   * Determines if a leaf belongs to the main editor panel (workspace.rootSplit)
+   * as opposed to the side panels
+   * @param  {WorkspaceLeaf} leaf
+   * @returns boolean
+   */
+  isMainPanelLeaf(leaf: WorkspaceLeaf): boolean {
+    return leaf?.getRoot() === this.app.workspace.rootSplit;
+  }
+
+  /**
+   * Reveals and optionally bring into focus a WorkspaceLeaf, including leaves
+   * from the side panels.
+   * @param  {WorkspaceLeaf} leaf
+   * @param  {boolean} pushHistory?
+   * @param  {Record<string} eState?
+   * @param  {} unknown>
+   * @returns void
+   */
+  activateLeaf(
+    leaf: WorkspaceLeaf,
+    pushHistory?: boolean,
+    eState?: Record<string, unknown>,
+  ): void {
+    const { workspace } = this.app;
+    const isInSidePanel = !this.isMainPanelLeaf(leaf);
+    const state = { focus: true, ...eState };
+
+    if (isInSidePanel) {
+      workspace.revealLeaf(leaf);
+    }
+
+    workspace.setActiveLeaf(leaf, pushHistory);
+    leaf.view.setEphemeralState(state);
+  }
+
+  /**
+   * Returns a array of all open WorkspaceLeaf taking into account
+   * excludeMainPanelViewTypes and includeSidePanelViewTypes.
+   * @param  {string[]} excludeMainPanelViewTypes?
+   * @param  {string[]} includeSidePanelViewTypes?
+   * @returns WorkspaceLeaf[]
+   */
+  getOpenLeaves(
+    excludeMainPanelViewTypes?: string[],
+    includeSidePanelViewTypes?: string[],
+  ): WorkspaceLeaf[] {
+    const leaves: WorkspaceLeaf[] = [];
+
+    const saveLeaf = (l: WorkspaceLeaf) => {
+      const viewType = l.view?.getViewType();
+
+      if (this.isMainPanelLeaf(l)) {
+        if (!excludeMainPanelViewTypes?.includes(viewType)) {
+          leaves.push(l);
+        }
+      } else if (includeSidePanelViewTypes?.includes(viewType)) {
+        leaves.push(l);
+      }
+    };
+
+    this.app.workspace.iterateAllLeaves(saveLeaf);
+    return leaves;
+  }
+
+  /**
+   * Loads a file into a (optionally new) WorkspaceLeaf
+   * @param  {TFile} file
+   * @param  {boolean} shouldCreateNewLeaf
+   * @param  {OpenViewState} openState?
+   * @param  {} errorContext=''
+   * @returns void
+   */
+  openFileInLeaf(
+    file: TFile,
+    shouldCreateNewLeaf: boolean,
+    openState?: OpenViewState,
+    errorContext?: string,
+  ): void {
+    errorContext = errorContext ?? '';
+    const message = `Switcher++: error opening file. ${errorContext}`;
+
+    try {
+      this.app.workspace
+        .getLeaf(shouldCreateNewLeaf)
+        .openFile(file, openState)
+        .catch((reason) => {
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+          console.log(`${message} ${reason}`);
+        });
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      console.log(`${message} ${error}`);
+    }
+  }
+
+  /**
+   * Determines whether to activate (make active and focused) an existing WorkspaceLeaf,
+   * or, create a new WorkspaceLeaf, or, reuse an unpinned WorkspaceLeaf in order to
+   * dispay file. This takes user settings and Mod key status into account.
+   * @param  {boolean} isModDown Set to true if the user is holding down cmd/ctrl keys
+   * @param  {TFile} file The file to display
+   * @param  {string} errorContext Custom text to save in error messages
+   * @param  {OpenViewState} openState? State to pass to the new, or activated view. If
+   * falsy, default values will be used
+   * @param  {WorkspaceLeaf} leaf? Editor, or reference WorkspaceLeaf to activate if it's
+   * already known
+   * @param  {Mode} mode? Only Symbol mode has custom handling
+   * @returns void
+   */
+  navigateToLeafOrOpenFile(
+    isModDown: boolean,
+    file: TFile,
+    errorContext: string,
+    openState?: OpenViewState,
+    leaf?: WorkspaceLeaf,
+    mode?: Mode,
+  ): void {
+    const { leaf: targetLeaf } = this.findOpenEditor(file, leaf);
+    const isAlreadyOpen = !!targetLeaf;
+    const shouldCreateNew = this.shouldCreateNewLeaf(isModDown, isAlreadyOpen, mode);
+
+    // default to having the pane active and focused
+    openState = openState ?? { active: true, eState: { active: true, focus: true } };
+
+    if (targetLeaf && !shouldCreateNew) {
+      const eState = openState?.eState as Record<string, unknown>;
+      this.activateLeaf(targetLeaf, true, eState);
+    } else {
+      this.openFileInLeaf(file, shouldCreateNew, openState, errorContext);
+    }
   }
 }

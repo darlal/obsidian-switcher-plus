@@ -40,6 +40,11 @@ export function makeFuzzyMatch(
   };
 }
 
+export const defaultOpenViewState = {
+  active: true,
+  eState: { active: true, focus: true },
+};
+
 export function makeLeaf(sourceFile?: TFile): MockProxy<WorkspaceLeaf> {
   const mockView = mock<MarkdownView>({
     file: sourceFile ?? new TFile(),

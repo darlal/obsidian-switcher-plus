@@ -169,6 +169,7 @@ export interface SourceInfo {
 }
 
 export interface SettingsData {
+  onOpenPreferNewPane: boolean;
   alwaysNewPaneForSymbols: boolean;
   useActivePaneForSymbolsOnMobile: boolean;
   symbolsInLineOrder: boolean;

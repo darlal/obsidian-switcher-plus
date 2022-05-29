@@ -8,7 +8,6 @@ import {
   WorkspaceLeaf,
   Keymap,
 } from 'obsidian';
-import { activateLeaf, getOpenLeaves, openFileInLeaf } from 'src/utils';
 import { Handler } from './handler';
 
 export class EditorHandler extends Handler<EditorSuggestion> {
@@ -39,11 +38,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
       const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
       const { excludeViewTypes, includeSidePanelViewTypes } = this.settings;
 
-      const items = getOpenLeaves(
-        this.app.workspace,
-        excludeViewTypes,
-        includeSidePanelViewTypes,
-      );
+      const items = this.getOpenLeaves(excludeViewTypes, includeSidePanelViewTypes);
 
       items.forEach((item) => {
         let shouldPush = true;
@@ -79,20 +74,13 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     evt: MouseEvent | KeyboardEvent,
   ): void {
     if (sugg) {
-      const isModDown = Keymap.isModEvent(evt);
-      const { workspace } = this.app;
-
-      if (isModDown) {
-        openFileInLeaf(
-          workspace,
-          sugg.file,
-          true,
-          { active: true },
-          'Unable to reopen existing editor in new Leaf.',
-        );
-      } else {
-        activateLeaf(workspace, sugg.item, false);
-      }
+      this.navigateToLeafOrOpenFile(
+        Keymap.isModEvent(evt),
+        sugg.file,
+        'Unable to reopen existing editor in new Leaf.',
+        null,
+        sugg.item,
+      );
     }
   }
 }

@@ -89,13 +89,12 @@ export class StarredHandler extends Handler<StarredSuggestion> {
       const { item } = sugg;
 
       if (isFileStarredItem(item)) {
-        const { workspace } = this.app;
-        const isModDown = Keymap.isModEvent(evt);
-        const state = { active: true };
+        const { file } = sugg;
 
-        workspace.openLinkText(item.path, '', isModDown, state).catch((reason) =>
-          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-          console.log(`Switcher++: unable to open file ${item.path}. ${reason}`),
+        this.navigateToLeafOrOpenFile(
+          Keymap.isModEvent(evt),
+          file,
+          `Unable to open Starred file ${file.path}`,
         );
       }
     }

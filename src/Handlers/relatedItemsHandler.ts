@@ -12,13 +12,7 @@ import {
 import { AnySuggestion, Mode, RelatedItemsSuggestion, SourceInfo } from 'src/types';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler } from './handler';
-import {
-  activateLeaf,
-  isTFile,
-  matcherFnForRegExList,
-  openFileInLeaf,
-  stripMDExtensionFromPath,
-} from 'src/utils';
+import { isTFile, matcherFnForRegExList, stripMDExtensionFromPath } from 'src/utils';
 
 export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
   private inputInfo: InputInfo;
@@ -97,23 +91,13 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
     evt: MouseEvent | KeyboardEvent,
   ): void {
     if (sugg) {
-      const isModDown = Keymap.isModEvent(evt);
       const { file } = sugg;
-      const { leaf } = this.findOpenEditor(file);
-      const { workspace } = this.app;
-      const eState = { active: true, focus: true };
 
-      if (leaf && !isModDown) {
-        activateLeaf(workspace, leaf, true, eState);
-      } else {
-        openFileInLeaf(
-          workspace,
-          file,
-          isModDown,
-          { eState },
-          `Unable to open related file ${file.path}`,
-        );
-      }
+      this.navigateToLeafOrOpenFile(
+        Keymap.isModEvent(evt),
+        file,
+        `Unable to open related file ${file.path}`,
+      );
     }
   }
 

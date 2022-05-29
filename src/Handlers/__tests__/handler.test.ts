@@ -10,12 +10,19 @@ import {
   HeadingCache,
   Loc,
   Pos,
+  Platform,
+  WorkspaceSplit,
+  View,
 } from 'obsidian';
-import { AnySuggestion, EditorSuggestion } from 'src/types';
-import { mock, MockProxy } from 'jest-mock-extended';
+import { defaultOpenViewState, makeLeaf } from '@fixtures';
+import { AnySuggestion, EditorSuggestion, Mode } from 'src/types';
+import { mock, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
 import { SwitcherPlusSettings } from 'src/settings';
 import { stripMDExtensionFromPath } from 'src/utils';
+import { Chance } from 'chance';
+
+const chance = new Chance();
 
 class SUT extends Handler<AnySuggestion> {}
 
@@ -27,9 +34,15 @@ describe('Handler', () => {
   let sut: SUT;
 
   beforeAll(() => {
-    mockWorkspace = mock<Workspace>();
+    mockWorkspace = mock<Workspace>({
+      rootSplit: mock<WorkspaceSplit>(),
+      leftSplit: mock<WorkspaceSplit>(),
+      rightSplit: mock<WorkspaceSplit>(),
+    });
+
     mockMetadataCache = mock<MetadataCache>();
     mockApp = mock<App>({ workspace: mockWorkspace, metadataCache: mockMetadataCache });
+
     mockSettings = mock<SwitcherPlusSettings>({
       excludeViewTypes: [],
       referenceViews: [],
@@ -349,6 +362,436 @@ describe('Handler', () => {
 
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(mockFile);
       expect(result).toBe(mockH1);
+    });
+  });
+
+  describe('shouldCreateNewLeaf', () => {
+    let mockPlatform: MockProxy<typeof Platform>;
+
+    beforeAll(() => {
+      mockPlatform = jest.mocked<typeof Platform>(Platform);
+    });
+
+    test('with onOpenPreferNewPane enabled it should return true', () => {
+      const isModDown = false;
+      mockSettings.onOpenPreferNewPane = true;
+
+      const result = sut.shouldCreateNewLeaf(isModDown);
+
+      expect(result).toBe(true);
+
+      mockReset(mockSettings);
+    });
+
+    test('with isAlreadyOpen enabled it should return false', () => {
+      const isModDown = false;
+      const isAlreadyOpen = true;
+      mockSettings.onOpenPreferNewPane = true;
+
+      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen);
+
+      expect(result).toBe(false);
+
+      mockReset(mockSettings);
+    });
+
+    test('with isModDown enabled it should return true', () => {
+      const isModDown = true;
+      mockSettings.onOpenPreferNewPane = false;
+
+      const result = sut.shouldCreateNewLeaf(isModDown);
+
+      expect(result).toBe(true);
+
+      mockReset(mockSettings);
+    });
+
+    test('with isModDown, and isAlreadyOpen enabled it should return true', () => {
+      const isModDown = true;
+      const isAlreadyOpen = true;
+      mockSettings.onOpenPreferNewPane = false;
+
+      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen);
+
+      expect(result).toBe(true);
+
+      mockReset(mockSettings);
+    });
+
+    test('with onOpenPreferNewPane and isModDown enabled it should return true', () => {
+      const isModDown = true;
+      mockSettings.onOpenPreferNewPane = true;
+
+      const result = sut.shouldCreateNewLeaf(isModDown);
+
+      expect(result).toBe(true);
+
+      mockReset(mockSettings);
+    });
+
+    test('with onOpenPreferNewPane, isModDown, isAlreadyOpen enabled it should return true', () => {
+      const isModDown = true;
+      const isAlreadyOpen = true;
+      mockSettings.onOpenPreferNewPane = true;
+
+      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen);
+
+      expect(result).toBe(true);
+
+      mockReset(mockSettings);
+    });
+
+    test('with onOpenPreferNewPane enabled, and in Symbol mode, it should return true. This overrides all symbol mode new pane settings', () => {
+      const isModDown = false;
+      const isAlreadyOpen = false;
+      mockSettings.onOpenPreferNewPane = true;
+
+      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen, Mode.SymbolList);
+
+      expect(result).toBe(true);
+
+      mockReset(mockSettings);
+    });
+
+    test('with onOpenPreferNewPane and isModDown enabled, and in Symbol mode, it should return true. This overrides all symbol mode new pane settings', () => {
+      const isModDown = true;
+      const isAlreadyOpen = false;
+      mockSettings.onOpenPreferNewPane = true;
+
+      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen, Mode.SymbolList);
+
+      expect(result).toBe(true);
+
+      mockReset(mockSettings);
+    });
+
+    test('with onOpenPreferNewPane, isModDown, isAlreadyOpen enabled, and in Symbol mode, it should return true. This overrides all symbol mode new pane settings', () => {
+      const isModDown = true;
+      const isAlreadyOpen = true;
+      mockSettings.onOpenPreferNewPane = true;
+
+      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen, Mode.SymbolList);
+
+      expect(result).toBe(true);
+
+      mockReset(mockSettings);
+    });
+
+    test('with alwaysNewPaneForSymbols enabled, and in Symbol mode, it should return true.', () => {
+      const isModDown = false;
+      const isAlreadyOpen = false;
+      mockSettings.onOpenPreferNewPane = false;
+      mockSettings.alwaysNewPaneForSymbols = true;
+
+      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen, Mode.SymbolList);
+
+      expect(result).toBe(true);
+
+      mockReset(mockSettings);
+    });
+
+    test('with isModDown enabled, and in Symbol mode, it should return true.', () => {
+      const isModDown = true;
+      const isAlreadyOpen = true;
+      mockSettings.onOpenPreferNewPane = false;
+      mockSettings.alwaysNewPaneForSymbols = false;
+
+      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen, Mode.SymbolList);
+
+      expect(result).toBe(true);
+
+      mockReset(mockSettings);
+    });
+
+    test('with useActivePaneForSymbolsOnMobile enabled, and in Symbol mode, it should return false.', () => {
+      const isModDown = false;
+      const isAlreadyOpen = true;
+      mockSettings.onOpenPreferNewPane = false;
+      mockSettings.alwaysNewPaneForSymbols = true;
+      mockSettings.useActivePaneForSymbolsOnMobile = true;
+      mockPlatform.isMobile = true;
+
+      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen, Mode.SymbolList);
+
+      expect(result).toBe(false);
+
+      mockReset(mockSettings);
+    });
+
+    test('with useActivePaneForSymbolsOnMobile disabled, and in Symbol mode, it should return true.', () => {
+      const isModDown = false;
+      const isAlreadyOpen = false;
+      mockSettings.onOpenPreferNewPane = false;
+      mockSettings.alwaysNewPaneForSymbols = true;
+      mockSettings.useActivePaneForSymbolsOnMobile = false;
+      mockPlatform.isMobile = true;
+
+      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen, Mode.SymbolList);
+
+      expect(result).toBe(true);
+
+      mockReset(mockSettings);
+    });
+  });
+
+  describe('isMainPanelLeaf', () => {
+    const mockLeaf = makeLeaf();
+
+    it('should return true for main panel leaf', () => {
+      mockLeaf.getRoot.mockReturnValueOnce(mockWorkspace.rootSplit);
+
+      const result = sut.isMainPanelLeaf(mockLeaf);
+
+      expect(result).toBe(true);
+      expect(mockLeaf.getRoot).toHaveBeenCalled();
+    });
+
+    it('should return false for side panel leaf', () => {
+      mockLeaf.getRoot.mockReturnValueOnce(mockWorkspace.leftSplit);
+
+      const result = sut.isMainPanelLeaf(mockLeaf);
+
+      expect(result).toBe(false);
+      expect(mockLeaf.getRoot).toHaveBeenCalled();
+    });
+  });
+
+  describe('activateLeaf', () => {
+    const mockLeaf = makeLeaf();
+    const mockView = mockLeaf.view as MockProxy<View>;
+
+    it('should activate main panel leaf', () => {
+      mockLeaf.getRoot.mockReturnValueOnce(mockWorkspace.rootSplit);
+
+      sut.activateLeaf(mockLeaf, true);
+
+      expect(mockLeaf.getRoot).toHaveBeenCalled();
+      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, true);
+      expect(mockView.setEphemeralState).toHaveBeenCalled();
+    });
+
+    it('should activate side panel leaf', () => {
+      mockLeaf.getRoot.mockReturnValueOnce(mockWorkspace.rightSplit);
+
+      sut.activateLeaf(mockLeaf, true);
+
+      expect(mockLeaf.getRoot).toHaveBeenCalled();
+      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, true);
+      expect(mockView.setEphemeralState).toHaveBeenCalled();
+      expect(mockWorkspace.revealLeaf).toHaveBeenCalledWith(mockLeaf);
+    });
+  });
+
+  describe('getOpenLeaves', () => {
+    it('should return all leaves', () => {
+      const excludeMainViewTypes = ['exclude'];
+      const includeSideViewTypes = ['include'];
+
+      const l1 = makeLeaf();
+      l1.getRoot.mockReturnValue(mockWorkspace.rootSplit);
+
+      const l2 = makeLeaf();
+      l2.getRoot.mockReturnValue(mockWorkspace.rootSplit);
+      (l2.view as MockProxy<View>).getViewType.mockReturnValue(excludeMainViewTypes[0]);
+
+      const l3 = makeLeaf();
+      l3.getRoot.mockReturnValue(mockWorkspace.rightSplit);
+      (l3.view as MockProxy<View>).getViewType.mockReturnValue(includeSideViewTypes[0]);
+
+      mockWorkspace.iterateAllLeaves.mockImplementation((callback) => {
+        const leaves = [l1, l2, l3];
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        leaves.forEach((l) => callback(l));
+      });
+
+      const results = sut.getOpenLeaves(excludeMainViewTypes, includeSideViewTypes);
+
+      expect(results).toHaveLength(2);
+      expect(results).toContain(l1);
+      expect(results).not.toContain(l2);
+      expect(results).toContain(l3);
+      expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
+    });
+  });
+
+  describe('openFileInLeaf', () => {
+    it('should log a message to the console if falsy values are passed in', () => {
+      let logWasCalled = false;
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation((message: string) => {
+          if (message.startsWith('Switcher++: error opening file. ')) {
+            logWasCalled = true;
+          }
+        });
+
+      sut.openFileInLeaf(null, false);
+
+      expect(logWasCalled).toBe(true);
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should load a file in a leaf', () => {
+      const mockLeaf = makeLeaf();
+      const mockFile = new TFile();
+      const shouldCreateNewLeaf = false;
+      const openState = { active: true };
+
+      mockLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
+
+      sut.openFileInLeaf(
+        mockFile,
+        shouldCreateNewLeaf,
+        openState,
+        'panelUtils unit test.',
+      );
+
+      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(shouldCreateNewLeaf);
+      expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
+    });
+
+    it('should log a message to the console if openFile fails', () => {
+      const mockLeaf = makeLeaf();
+      const mockFile = new TFile();
+      const openState = { active: true };
+
+      // Promise used to trigger the error condition
+      const openFilePromise = Promise.resolve();
+
+      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
+
+      mockLeaf.openFile.mockImplementationOnce((_file, _openState) => {
+        // throw to simulate openFile() failing
+        return openFilePromise.then(() => {
+          throw new Error('openFile() unit test mock error');
+        });
+      });
+
+      // Promise used to track the call to console.log
+      let consoleLogPromiseResolveFn: (value: void | PromiseLike<void>) => void;
+      const consoleLogPromise = new Promise<void>((resolve, _reject) => {
+        consoleLogPromiseResolveFn = resolve;
+      });
+
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation((message: string) => {
+          if (message.startsWith('Switcher++: error opening file. ')) {
+            // resolve the consoleLogPromise. This allows allPromises to resolve itself
+            consoleLogPromiseResolveFn();
+          }
+        });
+
+      // wait for the other promises to resolve before this promise can resolve
+      const allPromises = Promise.all([openFilePromise, consoleLogPromise]);
+
+      sut.openFileInLeaf(mockFile, false, openState);
+
+      // when all the promises are resolved check expectations and clean up
+      return allPromises.finally(() => {
+        expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
+        expect(consoleLogSpy).toHaveBeenCalled();
+
+        consoleLogSpy.mockRestore();
+      });
+    });
+  });
+
+  describe('navigateToLeafOrOpenFile', () => {
+    let openFileInLeafSpy: jest.SpyInstance;
+    let activateLeafSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      openFileInLeafSpy = jest.spyOn(Handler.prototype, 'openFileInLeaf');
+      activateLeafSpy = jest.spyOn(Handler.prototype, 'activateLeaf');
+    });
+
+    beforeEach(() => {
+      openFileInLeafSpy.mockReset();
+      activateLeafSpy.mockReset();
+    });
+
+    afterAll(() => {
+      openFileInLeafSpy.mockRestore();
+      activateLeafSpy.mockRestore();
+    });
+
+    it('should open the file', () => {
+      const file = new TFile();
+      const isModDown = false;
+      const errorContext = chance.sentence();
+
+      sut.navigateToLeafOrOpenFile(isModDown, file, errorContext);
+
+      expect(openFileInLeafSpy).toHaveBeenCalledWith(
+        file,
+        false,
+        defaultOpenViewState,
+        errorContext,
+      );
+    });
+
+    it('should open the file in a new leaf with isModDown enabled', () => {
+      const file = new TFile();
+      const isModDown = true;
+      const errorContext = chance.sentence();
+
+      sut.navigateToLeafOrOpenFile(isModDown, file, errorContext);
+
+      expect(openFileInLeafSpy).toHaveBeenCalledWith(
+        file,
+        true,
+        defaultOpenViewState,
+        errorContext,
+      );
+    });
+
+    test('with existing leaf and isModDown disabled, it should activate the existing leaf', () => {
+      const file = new TFile();
+      const isModDown = false;
+      const leaf = makeLeaf();
+
+      sut.navigateToLeafOrOpenFile(isModDown, file, null, null, leaf);
+
+      expect(openFileInLeafSpy).not.toHaveBeenCalled();
+      expect(activateLeafSpy).toHaveBeenCalledWith(
+        leaf,
+        true,
+        defaultOpenViewState.eState,
+      );
+    });
+
+    test('with existing leaf and isModDown enabled, it should create a new leaf', () => {
+      const file = new TFile();
+      const isModDown = true;
+      const leaf = makeLeaf();
+      const errorContext = chance.sentence();
+
+      sut.navigateToLeafOrOpenFile(isModDown, file, errorContext, null, leaf);
+
+      expect(activateLeafSpy).not.toHaveBeenCalled();
+      expect(openFileInLeafSpy).toBeCalledWith(
+        file,
+        isModDown,
+        defaultOpenViewState,
+        errorContext,
+      );
+    });
+
+    it('should use the default OpenViewState when a falsy value is passed in for opening files', () => {
+      const file = new TFile();
+      const isModDown = false;
+
+      sut.navigateToLeafOrOpenFile(isModDown, file, null);
+
+      expect(openFileInLeafSpy).toHaveBeenCalledWith(
+        file,
+        isModDown,
+        defaultOpenViewState,
+        null,
+      );
     });
   });
 

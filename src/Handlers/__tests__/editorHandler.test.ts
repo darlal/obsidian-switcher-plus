@@ -1,14 +1,3 @@
-jest.mock('src/utils/panelUtils', () => {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const actual = jest.requireActual('src/utils/panelUtils');
-
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-  return {
-    ...actual,
-    activateLeaf: jest.fn(),
-  };
-});
-
 import { SwitcherPlusSettings } from 'src/settings';
 import { Mode, EditorSuggestion } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
@@ -32,16 +21,15 @@ import {
   rightSplitEditorFixtures,
   editorTrigger,
   makeFuzzyMatch,
+  makeLeaf,
+  defaultOpenViewState,
 } from '@fixtures';
-import { EditorHandler } from 'src/Handlers';
-import { activateLeaf } from 'src/utils';
+import { EditorHandler, Handler } from 'src/Handlers';
 import { mock, MockProxy } from 'jest-mock-extended';
 
-function makeLeaf(text: string, root: WorkspaceItem): MockProxy<WorkspaceLeaf> {
-  const mockView = mock<View>({ file: new TFile() });
-  mockView.getViewType.mockImplementation(() => 'markdown');
+function makeLeafWithRoot(text: string, root: WorkspaceItem): MockProxy<WorkspaceLeaf> {
+  const mockLeaf = makeLeaf();
 
-  const mockLeaf = mock<WorkspaceLeaf>({ view: mockView });
   mockLeaf.getDisplayText.mockImplementation(() => text);
   mockLeaf.getRoot.mockImplementation(() => root);
 
@@ -117,9 +105,18 @@ describe('editorHandler', () => {
     });
 
     beforeEach(() => {
-      mockRootSplitLeaf = makeLeaf(rootFixture.displayText, mockWorkspace.rootSplit);
-      mockLeftSplitLeaf = makeLeaf(leftFixture.displayText, mockWorkspace.leftSplit);
-      mockRightSplitLeaf = makeLeaf(rightFixture.displayText, mockWorkspace.rightSplit);
+      mockRootSplitLeaf = makeLeafWithRoot(
+        rootFixture.displayText,
+        mockWorkspace.rootSplit,
+      );
+      mockLeftSplitLeaf = makeLeafWithRoot(
+        leftFixture.displayText,
+        mockWorkspace.leftSplit,
+      );
+      mockRightSplitLeaf = makeLeafWithRoot(
+        rightFixture.displayText,
+        mockWorkspace.rightSplit,
+      );
     });
 
     test('with falsy input, it should return an empty array', () => {
@@ -266,7 +263,7 @@ describe('editorHandler', () => {
     it('should render a suggestion with match offsets', () => {
       const mockParentEl = mock<HTMLElement>();
       const displayText = 'foo';
-      const mockLeaf = makeLeaf(displayText, null);
+      const mockLeaf = makeLeafWithRoot(displayText, null);
       const mockRenderResults = jest.mocked(renderResults);
 
       const sugg: EditorSuggestion = {
@@ -288,43 +285,67 @@ describe('editorHandler', () => {
   });
 
   describe('onChooseSuggestion', () => {
+    beforeAll(() => {
+      const fileContainerLeaf = makeLeaf();
+      fileContainerLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValueOnce(fileContainerLeaf);
+    });
+
     it('should not throw an error with a null suggestion', () => {
       expect(() => sut.onChooseSuggestion(null, null)).not.toThrow();
     });
 
     it('should activate the selected leaf', () => {
-      const mockLeaf = makeLeaf(null, null);
+      const activateLeafSpy = jest.spyOn(Handler.prototype, 'activateLeaf');
+      const mockLeaf = makeLeafWithRoot(null, null);
       const sugg: EditorSuggestion = {
         type: 'editor',
-        file: null,
+        file: new TFile(),
         item: mockLeaf,
         match: makeFuzzyMatch(),
       };
 
       sut.onChooseSuggestion(sugg, null);
 
-      expect(activateLeaf).toHaveBeenCalledWith(mockWorkspace, sugg.item, false);
+      expect(activateLeafSpy).toHaveBeenCalledWith(
+        sugg.item,
+        true,
+        defaultOpenViewState.eState,
+      );
+
+      activateLeafSpy.mockRestore();
     });
 
     it('should open file in new leaf when Mod is down', () => {
-      const mockLeaf = mock<WorkspaceLeaf>();
+      const isModDown = true;
+      const mockLeaf = makeLeafWithRoot(null, null);
       const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
+      const navigateToLeafOrOpenFileSpy = jest.spyOn(
+        Handler.prototype,
+        'navigateToLeafOrOpenFile',
+      );
 
-      mockKeymap.isModEvent.mockReturnValueOnce(true);
-      mockLeaf.openFile.mockResolvedValueOnce();
-      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
+      mockKeymap.isModEvent.mockReturnValueOnce(isModDown);
 
       const sugg: EditorSuggestion = {
         type: 'editor',
         file: new TFile(),
-        item: null,
+        item: mockLeaf,
         match: null,
       };
 
       sut.onChooseSuggestion(sugg, null);
 
-      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(true);
-      expect(mockLeaf.openFile).toHaveBeenCalledWith(sugg.file, { active: true });
+      expect(mockKeymap.isModEvent).toHaveBeenCalled();
+      expect(navigateToLeafOrOpenFileSpy).toHaveBeenCalledWith(
+        isModDown,
+        sugg.file,
+        expect.any(String),
+        null,
+        mockLeaf,
+      );
+
+      navigateToLeafOrOpenFileSpy.mockRestore();
     });
   });
 });

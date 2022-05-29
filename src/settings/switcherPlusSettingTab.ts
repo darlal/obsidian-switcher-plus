@@ -1,6 +1,7 @@
 import { StarredSettingsTabSection } from './starredSettingsTabSection';
 import { CommandListSettingsTabSection } from './commandListSettingsTabSection';
 import { RelatedItemsSettingsTabSection } from './relatedItemsSettingsTabSection';
+import { GeneralSettingsTabSection } from './generalSettingsTabSection';
 import { WorkspaceSettingsTabSection } from './workspaceSettingsTabSection';
 import { EditorSettingsTabSection } from './editorSettingsTabSection';
 import { SwitcherPlusSettings } from './switcherPlusSettings';
@@ -22,6 +23,9 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
 
     containerEl.empty();
     containerEl.createEl('h2', { text: 'Quick Switcher++ Settings' });
+
+    const generalSection = new GeneralSettingsTabSection(this.app, this, config);
+    generalSection.display(containerEl);
 
     this.setSymbolModeSettingsGroup(containerEl, config);
     this.setHeadingsModeSettingsGroup(containerEl, config);

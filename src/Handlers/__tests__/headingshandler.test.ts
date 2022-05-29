@@ -13,9 +13,8 @@ import {
   Vault,
   ViewRegistry,
   Workspace,
-  WorkspaceLeaf,
 } from 'obsidian';
-import { HeadingsHandler } from 'src/Handlers';
+import { Handler, HeadingsHandler } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
   getCachedMetadata,
@@ -24,6 +23,7 @@ import {
   makeHeading,
   makeLoc,
   makePreparedQuery,
+  makeLeaf,
 } from '@fixtures';
 import { InputInfo } from 'src/switcherPlus';
 import {
@@ -585,6 +585,7 @@ describe('headingsHandler', () => {
   });
 
   describe('onChooseSuggestion', () => {
+    const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
     let sut: HeadingsHandler;
     let mockWorkspace: MockProxy<Workspace>;
 
@@ -594,6 +595,10 @@ describe('headingsHandler', () => {
         workspace: mockWorkspace,
       });
 
+      const fileContainerLeaf = makeLeaf();
+      fileContainerLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValueOnce(fileContainerLeaf);
+
       sut = new HeadingsHandler(mockApp, settings);
     });
 
@@ -602,31 +607,25 @@ describe('headingsHandler', () => {
     });
 
     it('should open the file associated with the suggestion', () => {
-      const mockLeaf = mock<WorkspaceLeaf>();
-      mockLeaf.openFile.mockResolvedValueOnce();
-      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
-
-      sut.onChooseSuggestion(headingSugg, null);
-
-      expect(mockWorkspace.getLeaf).toHaveBeenCalled();
-      expect(mockLeaf.openFile).toHaveBeenCalled();
-    });
-
-    it('should open file in new leaf when Mod is down', () => {
-      const mockLeaf = mock<WorkspaceLeaf>();
-      const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
-
-      mockKeymap.isModEvent.mockReturnValueOnce(true);
-      mockLeaf.openFile.mockResolvedValueOnce();
-      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
-
-      sut.onChooseSuggestion(headingSugg, null);
-
-      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(true);
-      expect(mockLeaf.openFile).toHaveBeenCalledWith(
-        headingSugg.file,
-        expect.objectContaining({ active: true }),
+      const isModDown = false;
+      const navigateToLeafOrOpenFileSpy = jest.spyOn(
+        Handler.prototype,
+        'navigateToLeafOrOpenFile',
       );
+
+      mockKeymap.isModEvent.mockReturnValueOnce(isModDown);
+
+      sut.onChooseSuggestion(headingSugg, null);
+
+      expect(mockKeymap.isModEvent).toHaveBeenCalled();
+      expect(navigateToLeafOrOpenFileSpy).toHaveBeenCalledWith(
+        isModDown,
+        headingSugg.file,
+        expect.any(String),
+        expect.anything(),
+      );
+
+      navigateToLeafOrOpenFileSpy.mockRestore();
     });
   });
 });

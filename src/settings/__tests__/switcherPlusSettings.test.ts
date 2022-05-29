@@ -26,6 +26,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     enabledSymbolTypes,
     excludeViewTypes: ['empty'],
     referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'],
+    onOpenPreferNewPane: true,
     alwaysNewPaneForSymbols: false,
     useActivePaneForSymbolsOnMobile: false,
     symbolsInLineOrder: true,
@@ -48,6 +49,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
   };
 
   if (!useDefault) {
+    data.onOpenPreferNewPane = chance.bool();
     data.alwaysNewPaneForSymbols = chance.bool();
     data.useActivePaneForSymbolsOnMobile = chance.bool();
     data.symbolsInLineOrder = chance.bool();
@@ -137,6 +139,7 @@ describe('SwitcherPlusSettings', () => {
   it('should save modified settings', async () => {
     const settings = transientSettingsData(false);
 
+    sut.onOpenPreferNewPane = settings.onOpenPreferNewPane;
     sut.alwaysNewPaneForSymbols = settings.alwaysNewPaneForSymbols;
     sut.useActivePaneForSymbolsOnMobile = settings.useActivePaneForSymbolsOnMobile;
     sut.symbolsInLineOrder = settings.symbolsInLineOrder;

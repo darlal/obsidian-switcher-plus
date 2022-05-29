@@ -28,7 +28,6 @@ import {
   stripMDExtensionFromPath,
   filenameFromPath,
   matcherFnForRegExList,
-  openFileInLeaf,
 } from 'src/utils';
 import { Handler } from './handler';
 
@@ -62,9 +61,6 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     sugg: HeadingSuggestion,
     evt: MouseEvent | KeyboardEvent,
   ): void {
-    const { workspace } = this.app;
-    const isModDown = Keymap.isModEvent(evt);
-
     if (sugg) {
       const {
         start: { line, col },
@@ -73,6 +69,8 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
       // state information to highlight the target heading
       const eState = {
+        active: true,
+        focus: true,
         startLoc: { line, col },
         endLoc,
         line,
@@ -82,15 +80,11 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
         },
       };
 
-      openFileInLeaf(
-        workspace,
+      this.navigateToLeafOrOpenFile(
+        Keymap.isModEvent(evt),
         sugg.file,
-        isModDown,
-        {
-          active: true,
-          eState,
-        },
         'Unable to navigate to heading for file.',
+        { active: true, eState },
       );
     }
   }

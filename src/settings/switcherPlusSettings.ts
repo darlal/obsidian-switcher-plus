@@ -4,7 +4,7 @@ import type SwitcherPlusPlugin from 'src/main';
 import { QuickSwitcherOptions } from 'obsidian';
 
 export class SwitcherPlusSettings {
-  private data: SettingsData;
+  private readonly data: SettingsData;
 
   private static get defaults(): SettingsData {
     const enabledSymbolTypes = {} as Record<SymbolType, boolean>;
@@ -14,6 +14,7 @@ export class SwitcherPlusSettings {
     enabledSymbolTypes[SymbolType.Heading] = true;
 
     return {
+      onOpenPreferNewPane: true,
       alwaysNewPaneForSymbols: false,
       useActivePaneForSymbolsOnMobile: false,
       symbolsInLineOrder: true,
@@ -61,6 +62,14 @@ export class SwitcherPlusSettings {
   get showExistingOnly(): boolean {
     // forward to core switcher settings
     return this.builtInSystemOptions?.showExistingOnly;
+  }
+
+  get onOpenPreferNewPane(): boolean {
+    return this.data.onOpenPreferNewPane;
+  }
+
+  set onOpenPreferNewPane(value: boolean) {
+    this.data.onOpenPreferNewPane = value;
   }
 
   get alwaysNewPaneForSymbols(): boolean {

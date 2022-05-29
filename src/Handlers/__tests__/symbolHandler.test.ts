@@ -12,7 +12,7 @@ import {
   LinkType,
 } from 'src/types';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
-import { SymbolHandler } from 'src/Handlers';
+import { Handler, SymbolHandler } from 'src/Handlers';
 import {
   WorkspaceLeaf,
   PreparedQuery,
@@ -21,8 +21,6 @@ import {
   App,
   SearchResult,
   MarkdownView,
-  EditorRange,
-  Loc,
   renderResults,
   HeadingCache,
   TagCache,
@@ -33,7 +31,7 @@ import {
   TFile,
   Vault,
   Keymap,
-  Platform,
+  OpenViewState,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -48,21 +46,9 @@ import {
   makeHeading,
   makeFileStarredItem,
   makeSearchStarredItem,
+  makeLeaf,
 } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
-
-function makeLeaf(): MockProxy<WorkspaceLeaf> {
-  const mockView = mock<MarkdownView>({
-    file: new TFile(),
-    editor: mock<Editor>(),
-  });
-
-  mockView.getViewType.mockImplementation(() => 'markdown');
-
-  return mock<WorkspaceLeaf>({
-    view: mockView,
-  });
-}
 
 describe('symbolHandler', () => {
   const rootFixture = rootSplitEditorFixtures[0];
@@ -753,36 +739,34 @@ describe('symbolHandler', () => {
   });
 
   describe('onChooseSuggestion', () => {
-    type eState = {
-      startLoc: Omit<Loc, 'offset'>;
-      focus?: boolean;
-      endLoc: Loc;
-      line: number;
-      cursor: EditorRange;
-    };
+    const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
 
-    const getExpectedEphemeralState = (
-      sugg: SymbolSuggestion,
-      focus?: boolean,
-    ): eState => {
+    beforeAll(() => {
+      const fileContainerLeaf = makeLeaf();
+      fileContainerLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValue(fileContainerLeaf);
+    });
+
+    const getExpectedEphemeralState = (sugg: SymbolSuggestion): OpenViewState => {
       const {
         start: { line, col },
         end: endLoc,
       } = sugg.item.symbol.position;
 
-      const state: eState = {
-        startLoc: { line, col },
-        endLoc,
-        line,
-        cursor: {
-          from: { line, ch: col },
-          to: { line, ch: col },
+      const state: Record<string, unknown> = {
+        active: true,
+        eState: {
+          active: true,
+          focus: true,
+          startLoc: { line, col },
+          endLoc,
+          line,
+          cursor: {
+            from: { line, ch: col },
+            to: { line, ch: col },
+          },
         },
       };
-
-      if (focus !== undefined) {
-        state.focus = focus;
-      }
 
       return state;
     };
@@ -792,105 +776,35 @@ describe('symbolHandler', () => {
     });
 
     it('should activate the existing workspaceLeaf that contains the target symbol and scroll that view via eState', () => {
-      const expectedState = getExpectedEphemeralState(symbolSugg, true);
-
-      const inputInfo = new InputInfo(symbolTrigger);
-      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
-      sut.getSuggestions(inputInfo);
-      expect(inputInfo.mode).toBe(Mode.SymbolList);
-
-      sut.onChooseSuggestion(symbolSugg, null);
-
-      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockRootSplitLeaf, true);
-      expect(mockRootSplitLeaf.view.setEphemeralState).toHaveBeenCalledWith(
-        expectedState,
-      );
-    });
-
-    test('with alwaysNewPaneForSymbols enabled, it should create a new workspaceLeaf for the target file that contains the symbol, and scroll via eState', () => {
-      // set alwaysNewPaneForSymbols to true for new pane creation
-      const alwaysNewPaneForSymbolsSpy = jest
-        .spyOn(settings, 'alwaysNewPaneForSymbols', 'get')
-        .mockReturnValue(true);
-
+      const isModDown = false;
       const expectedState = getExpectedEphemeralState(symbolSugg);
-      const mockLeaf = makeLeaf();
-      mockLeaf.openFile.mockResolvedValueOnce();
-      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
-
-      const inputInfo = new InputInfo(symbolTrigger);
-      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
-      sut.getSuggestions(inputInfo);
-
-      sut.onChooseSuggestion(symbolSugg, null);
-
-      expect(inputInfo.mode).toBe(Mode.SymbolList);
-      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(true);
-      expect(mockLeaf.openFile).toHaveBeenCalledWith(mockRootSplitLeaf.view.file, {
-        eState: expectedState,
-      });
-
-      alwaysNewPaneForSymbolsSpy.mockRestore();
-    });
-
-    test('with Mod down, it should it should create a new workspaceLeaf for the target file that contains the symbol, and scroll via eState', () => {
-      const expectedState = getExpectedEphemeralState(symbolSugg);
-      const mockLeaf = makeLeaf();
-      const evt = mock<MouseEvent>();
-      const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
-      const isModDown = true;
+      const mockLeaf = makeLeaf(symbolSugg.file);
 
       mockKeymap.isModEvent.mockReturnValueOnce(isModDown);
-      mockLeaf.openFile.mockResolvedValueOnce();
-      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
-
-      const inputInfo = new InputInfo(symbolTrigger);
-      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
-      sut.getSuggestions(inputInfo);
-
-      sut.onChooseSuggestion(symbolSugg, evt);
-
-      expect(inputInfo.mode).toBe(Mode.SymbolList);
-      expect(mockKeymap.isModEvent).toHaveBeenCalledWith(evt);
-      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(true);
-      expect(mockLeaf.openFile).toHaveBeenCalledWith(mockRootSplitLeaf.view.file, {
-        eState: expectedState,
-      });
-    });
-  });
-
-  describe('navigateToSymbol', () => {
-    test('with useActivePaneForSymbolsOnMobile disabled, it should create a new leaf', () => {
-      const mockFile = new TFile();
-      const mockLeaf = makeLeaf();
-      const mockPlatform = jest.mocked<typeof Platform>(Platform);
-      mockPlatform.isMobile = true;
-
-      const symbolCmd = mock<SourcedParsedCommand>({
-        source: {
-          file: mockFile,
-        },
-      });
-
-      mockLeaf.openFile.mockResolvedValueOnce();
-      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
-
-      SymbolHandler.navigateToSymbol(
-        symbolSugg,
-        symbolCmd,
-        false,
-        settings,
-        mockWorkspace,
+      const navigateToLeafOrOpenFileSpy = jest.spyOn(
+        Handler.prototype,
+        'navigateToLeafOrOpenFile',
       );
 
-      const useActivePaneForSymbolsOnMobileSpy = jest
-        .spyOn(settings, 'useActivePaneForSymbolsOnMobile', 'get')
-        .mockReturnValue(false);
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, mockLeaf);
+      sut.getSuggestions(inputInfo);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
 
-      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(true);
-      expect(mockLeaf.openFile).toHaveBeenCalled();
+      sut.onChooseSuggestion(symbolSugg, null);
 
-      useActivePaneForSymbolsOnMobileSpy.mockRestore();
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+      expect(mockKeymap.isModEvent).toHaveBeenCalled();
+      expect(navigateToLeafOrOpenFileSpy).toHaveBeenCalledWith(
+        isModDown,
+        symbolSugg.file,
+        expect.any(String),
+        expectedState,
+        mockLeaf,
+        Mode.SymbolList,
+      );
+
+      navigateToLeafOrOpenFileSpy.mockRestore();
     });
   });
 });
