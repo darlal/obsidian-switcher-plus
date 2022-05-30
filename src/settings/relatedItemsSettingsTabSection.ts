@@ -14,5 +14,13 @@ export class RelatedItemsSettingsTabSection extends SettingsTabSection {
       'relatedItemsListCommand',
       config.relatedItemsListPlaceholderText,
     );
+
+    this.addToggleSetting(
+      containerEl,
+      'Exclude open files',
+      'Enable, related files which are already open will not be displayed in the list. Disabled, All related files will be displayed in the list.',
+      config.excludeOpenRelatedFiles,
+      'excludeOpenRelatedFiles',
+    );
   }
 }

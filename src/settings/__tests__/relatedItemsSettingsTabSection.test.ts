@@ -54,4 +54,23 @@ describe('relatedItemsSettingsTabSection', () => {
 
     addTextSettingSpy.mockRestore();
   });
+
+  it('should show the excludeOpenRelatedFiles setting', () => {
+    const addToggleSettingSpy = jest.spyOn(
+      SettingsTabSection.prototype,
+      'addToggleSetting',
+    );
+
+    sut.display(mockContainerEl);
+
+    expect(addToggleSettingSpy).toBeCalledWith(
+      mockContainerEl,
+      'Exclude open files',
+      expect.any(String),
+      config.excludeOpenRelatedFiles,
+      'excludeOpenRelatedFiles',
+    );
+
+    addToggleSettingSpy.mockRestore();
+  });
 });
