@@ -57,7 +57,7 @@ Find the file you're looking for by searching through the headings contained in 
 | Setting                  | Description | Default |
 |--------------------------|-------------|---------|
 | Headings list mode trigger | Character that will trigger headings list mode in the switcher. | `#` |
-| Show headings only | **Enabled**: strictly search through only the first H1 contained in the file. <br />**Disabled**: if there is not a match in the first H1, fallback to search against the filename. This will also search through Aliases, and Unresolved links. | disabled |
+| Show headings only | **Enabled**: strictly search through only the first H1 contained in the file. <br />**Disabled**: if there is not a match in the first H1, fallback to search against the filename and path. This will also for searching through Aliases, and Unresolved links to be enabled. | disabled |
 | Search all headings | **Enabled**: search through all headings contained in the file. <br />**Disabled**: only search through the first H1 in each file. | enabled |
 | Exclude folders | List of folder path regex that will be used to exclude folders and their sub-directories from suggestion search. One per line. | None |
 
@@ -157,6 +157,7 @@ Related Items can be viewed by opening Quick Switcher++, typing some characters 
 | Setting                         | Description | Default |
 |---------------------------------|-------------|---------|
 | Related items list mode trigger | Character that will trigger related items list mode in the switcher. | `~` |
+| Exclude open files | **Enabled**: related files which are already open in an editor will not be displayed in the list. **Disabled**: All related files will be displayed in the list. | disabled |
 
 ## General Settings
 

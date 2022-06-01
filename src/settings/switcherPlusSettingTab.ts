@@ -20,33 +20,29 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
 
   display(): void {
     const { containerEl, config } = this;
-
-    containerEl.empty();
-    containerEl.createEl('h2', { text: 'Quick Switcher++ Settings' });
-
     const generalSection = new GeneralSettingsTabSection(this.app, this, config);
-    generalSection.display(containerEl);
-
-    this.setSymbolModeSettingsGroup(containerEl, config);
-    this.setHeadingsModeSettingsGroup(containerEl, config);
-
     const editorSection = new EditorSettingsTabSection(this.app, this, config);
-    editorSection.display(containerEl);
-
+    const starredSection = new StarredSettingsTabSection(this.app, this, config);
+    const commandListSection = new CommandListSettingsTabSection(this.app, this, config);
+    const workspaceListSection = new WorkspaceSettingsTabSection(this.app, this, config);
     const relatedItemsSection = new RelatedItemsSettingsTabSection(
       this.app,
       this,
       config,
     );
+
+    containerEl.empty();
+    containerEl.createEl('h2', { text: 'Quick Switcher++ Settings' });
+
+    generalSection.display(containerEl);
+
+    this.setSymbolModeSettingsGroup(containerEl, config);
+    this.setHeadingsModeSettingsGroup(containerEl, config);
+
+    editorSection.display(containerEl);
     relatedItemsSection.display(containerEl);
-
-    const starredSection = new StarredSettingsTabSection(this.app, this, config);
     starredSection.display(containerEl);
-
-    const commandListSection = new CommandListSettingsTabSection(this.app, this, config);
     commandListSection.display(containerEl);
-
-    const workspaceListSection = new WorkspaceSettingsTabSection(this.app, this, config);
     workspaceListSection.display(containerEl);
   }
 
@@ -282,7 +278,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Show headings only')
       .setDesc(
-        'Enabled, only show suggestions where there is a match in the first H1 contained in the file. Disabled, if there is not a match in the first H1, fallback to showing suggestions where there is a filename match.',
+        'Enabled, only show suggestions where there is a match in the first H1 contained in the file. Disabled, if there is not a match in the first H1, fallback to showing suggestions where there is a filename or path match.',
       )
       .addToggle((toggle) =>
         toggle.setValue(config.strictHeadingsOnly).onChange((value) => {

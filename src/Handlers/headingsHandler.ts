@@ -130,7 +130,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     return suggestions;
   }
 
-  private getAllFilesSuggestions(prepQuery: PreparedQuery): SupportedSuggestionTypes[] {
+  getAllFilesSuggestions(prepQuery: PreparedQuery): SupportedSuggestionTypes[] {
     const suggestions: SupportedSuggestionTypes[] = [];
     const {
       app: { vault },
@@ -144,7 +144,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       const node = nodes.pop();
 
       if (isTFile(node)) {
-        this.processFile(suggestions, node, prepQuery);
+        this.addSuggestionsFromFile(suggestions, node, prepQuery);
       } else if (!isExcludedFolder(node.path)) {
         nodes = nodes.concat((node as TFolder).children);
       }
@@ -157,7 +157,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     return suggestions;
   }
 
-  private processFile(
+  addSuggestionsFromFile(
     suggestions: SupportedSuggestionTypes[],
     file: TFile,
     prepQuery: PreparedQuery,
@@ -165,7 +165,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     const { settings } = this;
 
     if (this.shouldIncludeFile(file)) {
-      const hasH1 = this.addHeadingSuggestions(
+      const isH1Matched = this.addHeadingSuggestions(
         suggestions as HeadingSuggestion[],
         prepQuery,
         file,
@@ -173,9 +173,9 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       );
 
       if (!settings.strictHeadingsOnly) {
-        if (!hasH1) {
-          // if there isn't a heading and strict is disabled, do a fallback search
-          // against the file path
+        if (!isH1Matched) {
+          // if there isn't a H1 heading match and strict is disabled,
+          // do a fallback search against the filename, then path
           this.addFileSuggestions(suggestions as FileSuggestion[], prepQuery, file);
         }
 
@@ -236,36 +236,34 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     allHeadings: boolean,
   ): boolean {
     const { metadataCache } = this.app;
-    const headingList = metadataCache.getFileCache(file)?.headings;
+    const headingList = metadataCache.getFileCache(file)?.headings ?? [];
     let h1: HeadingCache = null;
+    let isH1Matched = false;
+    let i = headingList.length;
 
-    if (headingList) {
-      let i = headingList.length;
+    while (i--) {
+      const heading = headingList[i];
+      let isMatched = false;
 
-      while (i--) {
-        const heading = headingList[i];
-
-        if (heading.level === 1) {
-          const { line } = heading.position.start;
-
-          if (h1 === null) {
-            h1 = heading;
-          } else if (line < h1.position.start.line) {
-            h1 = heading;
-          }
-        }
-
-        if (allHeadings) {
-          this.matchAndPushHeading(suggestions, prepQuery, file, heading);
-        }
+      if (allHeadings) {
+        isMatched = this.matchAndPushHeading(suggestions, prepQuery, file, heading);
       }
 
-      if (!allHeadings && h1) {
-        this.matchAndPushHeading(suggestions, prepQuery, file, h1);
+      if (heading.level === 1) {
+        const { line } = heading.position.start;
+
+        if (h1 === null || line < h1.position.start.line) {
+          h1 = heading;
+          isH1Matched = isMatched;
+        }
       }
     }
 
-    return !!h1;
+    if (!allHeadings && h1) {
+      isH1Matched = this.matchAndPushHeading(suggestions, prepQuery, file, h1);
+    }
+
+    return isH1Matched;
   }
 
   private matchAndPushHeading(
@@ -273,12 +271,14 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     prepQuery: PreparedQuery,
     file: TFile,
     heading: HeadingCache,
-  ): void {
+  ): boolean {
     const { match } = this.matchStrings(prepQuery, heading.heading, null);
 
     if (match) {
       suggestions.push(this.makeHeadingSuggestion(heading, file, match));
     }
+
+    return !!match;
   }
 
   private addUnresolvedSuggestions(

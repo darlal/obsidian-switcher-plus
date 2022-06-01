@@ -73,6 +73,8 @@ function makeFileTree(expectedFile: TFile, parentFolderName = 'l2Folder2'): TFol
 describe('headingsHandler', () => {
   let settings: SwitcherPlusSettings;
   let headingSugg: HeadingSuggestion;
+  const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
+  const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
 
   beforeAll(() => {
     settings = new SwitcherPlusSettings(null);
@@ -112,8 +114,6 @@ describe('headingsHandler', () => {
   });
 
   describe('getSuggestions', () => {
-    const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
-    const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
     let sut: HeadingsHandler;
     let mockWorkspace: MockProxy<Workspace>;
     let mockVault: MockProxy<Vault>;
@@ -144,6 +144,10 @@ describe('headingsHandler', () => {
           showAttachments: true,
           showExistingOnly: false,
         });
+    });
+
+    afterAll(() => {
+      builtInSystemOptionsSpy.mockRestore();
     });
 
     test('with falsy input, it should return an empty array', () => {
@@ -300,7 +304,7 @@ describe('headingsHandler', () => {
       searchAllHeadingsSpy.mockRestore();
     });
 
-    test("with filter search term, it should return only matching suggestions using file name (leaf segment) when H1 doesn't exist", () => {
+    test("with filter search term, it should return matching suggestions using file name (leaf segment) when H1 doesn't exist", () => {
       const filterText = 'foo';
       const expected = new TFile();
       expected.path = 'path/to/bar/foo filename.md'; // only path matters for this test
@@ -340,7 +344,7 @@ describe('headingsHandler', () => {
       mockPrepareQuery.mockReset();
     });
 
-    test('with filter search term, it should fallback match against file path when there is no H1 and no match against the filename (leaf segment)', () => {
+    test("with filter search term, it should fallback to match against file path when H1 doesn't exist and there's no match against the filename (leaf segment)", () => {
       const filterText = 'foo';
       const expected = new TFile();
       expected.path = 'foo/path/to/filename.md'; // only path matters for this test
@@ -532,6 +536,107 @@ describe('headingsHandler', () => {
       mockFuzzySearch.mockReset();
       mockPrepareQuery.mockReset();
       excludeFoldersSpy.mockRestore();
+    });
+  });
+
+  describe('addSuggestionsFromFile', () => {
+    let sut: HeadingsHandler;
+    let mockWorkspace: MockProxy<Workspace>;
+    // let mockVault: MockProxy<Vault>;
+    let mockMetadataCache: MockProxy<MetadataCache>;
+    let mockViewRegistry: MockProxy<ViewRegistry>;
+    let builtInSystemOptionsSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      mockWorkspace = mock<Workspace>();
+      // mockVault = mock<Vault>();
+      mockMetadataCache = mock<MetadataCache>();
+      mockViewRegistry = mock<ViewRegistry>();
+      mockViewRegistry.isExtensionRegistered.mockReturnValue(true);
+
+      const mockApp = mock<App>({
+        workspace: mockWorkspace,
+        // vault: mockVault,
+        metadataCache: mockMetadataCache,
+        viewRegistry: mockViewRegistry,
+      });
+
+      builtInSystemOptionsSpy = jest
+        .spyOn(settings, 'builtInSystemOptions', 'get')
+        .mockReturnValue({
+          showAllFileTypes: true,
+          showAttachments: true,
+          showExistingOnly: false,
+        });
+
+      sut = new HeadingsHandler(mockApp, settings);
+    });
+
+    afterAll(() => {
+      builtInSystemOptionsSpy.mockRestore();
+    });
+
+    test('with filter search term, it should return matching suggestions using file name (leaf segment) when there is no H1 match', () => {
+      const filterText = 'foo';
+      const filename = `${filterText} filename`;
+      const path = `path/${filterText}/bar/${filename}`; // only path matters for this test
+      const results: Array<FileSuggestion> = [];
+      const expectedMatch = makeFuzzyMatch();
+
+      const expectedFile = new TFile();
+      expectedFile.path = path;
+
+      mockMetadataCache.getFileCache.calledWith(expectedFile).mockReturnValue({
+        headings: [makeHeading("words that don't match", 1)],
+      });
+
+      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
+        return text === filename ? expectedMatch : null;
+      });
+
+      sut.addSuggestionsFromFile(results, expectedFile, makePreparedQuery(filterText));
+
+      const result = results[0];
+      expect(results).toHaveLength(1);
+      expect(isFileSuggestion(result)).toBe(true);
+      expect(result.file).toBe(expectedFile);
+      expect(result.match).toBe(expectedMatch);
+      expect(mockFuzzySearch).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(expectedFile);
+
+      mockMetadataCache.getFileCache.mockReset();
+      mockFuzzySearch.mockReset();
+    });
+
+    test('with filter search term, it should fallback match against file path when there is no H1 match and no match against the filename (leaf segment)', () => {
+      const filterText = 'foo';
+      const path = `path/${filterText}/bar/filename`; // only path matters for this test
+      const results: Array<FileSuggestion> = [];
+      const expectedMatch = makeFuzzyMatch();
+
+      const expectedFile = new TFile();
+      expectedFile.path = path;
+
+      mockMetadataCache.getFileCache.calledWith(expectedFile).mockReturnValue({
+        headings: [makeHeading("words that don't match", 1)],
+      });
+
+      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
+        return text === path ? expectedMatch : null;
+      });
+
+      sut.addSuggestionsFromFile(results, expectedFile, makePreparedQuery(filterText));
+
+      const result = results[0];
+      expect(results).toHaveLength(1);
+      expect(isFileSuggestion(result)).toBe(true);
+      expect(result.file).toBe(expectedFile);
+      expect(result.match).toBe(expectedMatch);
+      expect(mockFuzzySearch).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(expectedFile);
+
+      mockMetadataCache.getFileCache.mockReset();
+      mockFuzzySearch.mockReset();
     });
   });
 
