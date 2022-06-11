@@ -23,80 +23,93 @@ describe('keymap', () => {
   });
 
   describe('Next/Previous keyboard navigation', () => {
+    const navKeys = [
+      ['n', 'p'],
+      ['j', 'k'],
+    ];
+
     beforeEach(() => {
       mockReset(mockScope);
       mockReset(mockChooser);
     });
 
-    it('should register ctrl-n/p for navigating forward/backward', () => {
-      new Keymap(mockScope, null, null);
+    it.each(navKeys)(
+      'should register Next/Previous navigation keys: ctrl-%s/%s',
+      (nextKey, previousKey) => {
+        new Keymap(mockScope, null, null);
 
-      expect(mockScope.register).toHaveBeenCalledWith(
-        expect.arrayContaining(['Ctrl']),
-        'n',
-        expect.anything(),
-      );
+        expect(mockScope.register).toHaveBeenCalledWith(
+          expect.arrayContaining(['Ctrl']),
+          nextKey,
+          expect.anything(),
+        );
 
-      expect(mockScope.register).toHaveBeenCalledWith(
-        expect.arrayContaining(['Ctrl']),
-        'p',
-        expect.anything(),
-      );
-    });
+        expect(mockScope.register).toHaveBeenCalledWith(
+          expect.arrayContaining(['Ctrl']),
+          previousKey,
+          expect.anything(),
+        );
+      },
+    );
 
-    test('when Open, it should change the selected item with ctrl-n/p keyboard navigation', () => {
-      const selectedIndex = 1;
-      const navPairs: Record<string, KeymapEventListener> = {
-        n: null,
-        p: null,
-      };
+    it.each(navKeys)(
+      'when Open, it should change the selected item with Next/Previous navigation keys: ctrl-%s/%s',
+      (nextKey, previousKey) => {
+        const selectedIndex = 1;
+        const evtHandlers: Record<string, KeymapEventListener> = {};
 
-      mockScope.register.mockImplementation((_m, key, func) => {
-        if (key in navPairs) {
-          navPairs[key] = func;
-        }
+        mockScope.register.mockImplementation((_m, key, func) => {
+          evtHandlers[key] = func;
+          return null;
+        });
 
-        return null;
-      });
+        mockChooser.selectedItem = selectedIndex;
 
-      mockChooser.selectedItem = selectedIndex;
+        const sut = new Keymap(mockScope, mockChooser, null);
+        sut.isOpen = true; // here
 
-      const sut = new Keymap(mockScope, mockChooser, null);
-      sut.isOpen = true; // here
+        evtHandlers[nextKey](
+          mock<KeyboardEvent>(),
+          mock<KeymapContext>({ key: nextKey }),
+        );
+        evtHandlers[previousKey](
+          mock<KeyboardEvent>(),
+          mock<KeymapContext>({ key: previousKey }),
+        );
 
-      navPairs.n(mock<KeyboardEvent>(), mock<KeymapContext>({ key: 'n' }));
-      navPairs.p(mock<KeyboardEvent>(), mock<KeymapContext>({ key: 'p' }));
+        expect(mockChooser.setSelectedItem).toHaveBeenCalledWith(selectedIndex + 1, true);
+        expect(mockChooser.setSelectedItem).toHaveBeenCalledWith(selectedIndex - 1, true);
+      },
+    );
 
-      expect(mockChooser.setSelectedItem).toHaveBeenCalledWith(selectedIndex + 1, true);
-      expect(mockChooser.setSelectedItem).toHaveBeenCalledWith(selectedIndex - 1, true);
-    });
+    it.each(navKeys)(
+      'when Closed, it should not change the selected item with Next/Previous navigation keys: ctrl-%s/%s',
+      (nextKey, previousKey) => {
+        const selectedIndex = 1;
+        const evtHandlers: Record<string, KeymapEventListener> = {};
 
-    test('when not Open, it should not change the selected item with ctrl-n/p keyboard navigation', () => {
-      const selectedIndex = 1;
-      const navPairs: Record<string, KeymapEventListener> = {
-        n: null,
-        p: null,
-      };
+        mockScope.register.mockImplementation((_m, key, func) => {
+          evtHandlers[key] = func;
+          return null;
+        });
 
-      mockScope.register.mockImplementation((_m, key, func) => {
-        if (key in navPairs) {
-          navPairs[key] = func;
-        }
+        mockChooser.selectedItem = selectedIndex;
 
-        return null;
-      });
+        const sut = new Keymap(mockScope, mockChooser, null);
+        sut.isOpen = false; // here
 
-      mockChooser.selectedItem = selectedIndex;
+        evtHandlers[nextKey](
+          mock<KeyboardEvent>(),
+          mock<KeymapContext>({ key: nextKey }),
+        );
+        evtHandlers[previousKey](
+          mock<KeyboardEvent>(),
+          mock<KeymapContext>({ key: previousKey }),
+        );
 
-      const sut = new Keymap(mockScope, mockChooser, null);
-      sut.isOpen = false; // here
-
-      navPairs.n(mock<KeyboardEvent>(), mock<KeymapContext>({ key: 'n' }));
-      navPairs.p(mock<KeyboardEvent>(), mock<KeymapContext>({ key: 'p' }));
-
-      expect(mockChooser.setSelectedItem).not.toHaveBeenCalled();
-      expect(mockChooser.setSelectedItem).not.toHaveBeenCalled();
-    });
+        expect(mockChooser.setSelectedItem).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe('updateKeymapForMode', () => {

@@ -1,5 +1,5 @@
 import { AnySuggestion, Mode } from 'src/types';
-import { Scope, KeymapContext, Chooser, Hotkey } from 'obsidian';
+import { Scope, KeymapContext, Chooser, Hotkey, Modifier } from 'obsidian';
 
 export class Keymap {
   private backupKeys: Hotkey[];
@@ -22,16 +22,26 @@ export class Keymap {
   }
 
   private registerBindings(scope: Scope): void {
-    scope.register(['Ctrl'], 'n', this.navigateItems.bind(this));
-    scope.register(['Ctrl'], 'p', this.navigateItems.bind(this));
+    const keys: [Modifier[], string][] = [
+      [['Ctrl'], 'n'],
+      [['Ctrl'], 'p'],
+      [['Ctrl'], 'j'],
+      [['Ctrl'], 'k'],
+    ];
+
+    keys.forEach((v) => {
+      scope.register(v[0], v[1], this.navigateItems.bind(this));
+    });
   }
 
   private navigateItems(_evt: KeyboardEvent, ctx: KeymapContext): boolean | void {
     const { isOpen, chooser } = this;
 
     if (isOpen) {
+      const nextKeys = ['n', 'j'];
+
       let index = chooser.selectedItem;
-      index = ctx.key === 'n' ? ++index : --index;
+      index = nextKeys.includes(ctx.key) ? ++index : --index;
       chooser.setSelectedItem(index, true);
     }
 
