@@ -1,4 +1,4 @@
-import { AnySuggestion, EditorSuggestion, Mode } from 'src/types';
+import { AnySuggestion, EditorSuggestion, Mode, SuggestionType } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import {
   renderResults,
@@ -15,7 +15,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     return this.settings?.editorListCommand;
   }
 
-  override validateCommand(
+  validateCommand(
     inputInfo: InputInfo,
     index: number,
     filterText: string,
@@ -30,7 +30,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     editorCmd.isValidated = true;
   }
 
-  override getSuggestions(inputInfo: InputInfo): EditorSuggestion[] {
+  getSuggestions(inputInfo: InputInfo): EditorSuggestion[] {
     const suggestions: EditorSuggestion[] = [];
 
     if (inputInfo) {
@@ -51,7 +51,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
 
         if (shouldPush) {
           const file = item.view?.file;
-          suggestions.push({ type: 'editor', file, item, match });
+          suggestions.push({ type: SuggestionType.EditorList, file, item, match });
         }
       });
 
@@ -63,16 +63,13 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     return suggestions;
   }
 
-  override renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): void {
+  renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       renderResults(parentEl, sugg.item.getDisplayText(), sugg.match);
     }
   }
 
-  override onChooseSuggestion(
-    sugg: EditorSuggestion,
-    evt: MouseEvent | KeyboardEvent,
-  ): void {
+  onChooseSuggestion(sugg: EditorSuggestion, evt: MouseEvent | KeyboardEvent): void {
     if (sugg) {
       this.navigateToLeafOrOpenFile(
         Keymap.isModEvent(evt),

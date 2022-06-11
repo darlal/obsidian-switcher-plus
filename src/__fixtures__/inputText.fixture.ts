@@ -18,82 +18,34 @@ interface InputExpectation {
   };
 }
 
+const triggerMap = new Map<Mode, string>([
+  [Mode.CommandList, commandTrigger],
+  [Mode.EditorList, editorTrigger],
+  [Mode.HeadingsList, headingsTrigger],
+  [Mode.RelatedItemsList, relatedItemsTrigger],
+  [Mode.StarredList, starredTrigger],
+  [Mode.SymbolList, symbolTrigger],
+  [Mode.WorkspaceList, workspaceTrigger],
+]);
+
 function makeInputExpectation(
   input: string,
   mode: Mode,
   expectedParsedInput?: string,
+  isValidated = true,
 ): InputExpectation {
   return {
     input,
     expected: {
       mode,
-      isValidated: true,
+      isValidated,
       parsedInput: expectedParsedInput,
     },
   };
 }
 
-function editorExpectation(
-  input: string,
-  expectedParsedInput?: string,
-): InputExpectation {
-  return makeInputExpectation(input, Mode.EditorList, expectedParsedInput);
-}
-
-function symbolExpectation(
-  input: string,
-  expectedParsedInput?: string,
-): InputExpectation {
-  return makeInputExpectation(input, Mode.SymbolList, expectedParsedInput);
-}
-
-function workspaceExpectation(
-  input: string,
-  expectedParsedInput?: string,
-): InputExpectation {
-  return makeInputExpectation(input, Mode.WorkspaceList, expectedParsedInput);
-}
-
-function headingsExpectation(
-  input: string,
-  expectedParsedInput?: string,
-): InputExpectation {
-  return makeInputExpectation(input, Mode.HeadingsList, expectedParsedInput);
-}
-
-function starredExpectation(
-  input: string,
-  expectedParsedInput?: string,
-): InputExpectation {
-  return makeInputExpectation(input, Mode.StarredList, expectedParsedInput);
-}
-
-function commandExpectation(
-  input: string,
-  expectedParsedInput?: string,
-): InputExpectation {
-  return makeInputExpectation(input, Mode.CommandList, expectedParsedInput);
-}
-
-function relatedItemsExpectation(
-  input: string,
-  expectedParsedInput?: string,
-): InputExpectation {
-  return makeInputExpectation(input, Mode.RelatedItemsList, expectedParsedInput);
-}
-
-interface InputExpectationStandard {
-  input: string;
-  expected: {
-    mode: Mode;
-  };
-}
-
-function standardExpectation(input: string): InputExpectationStandard {
-  return {
-    input,
-    expected: { mode: Mode.Standard },
-  };
+function standardExpectation(input: string): InputExpectation {
+  return makeInputExpectation(input, Mode.Standard, input, false);
 }
 
 export const standardModeInputFixture = [
@@ -146,118 +98,6 @@ export const standardModeInputFixture = [
   standardExpectation(`     ${relatedItemsTrigger}test string ${relatedItemsTrigger}`),
 ];
 
-// Used for editor mode tests
-export const editorPrefixOnlyInputFixture = [
-  editorExpectation(`${editorTrigger}`, ''),
-  editorExpectation(`${editorTrigger}test string`, 'test string'),
-  editorExpectation(`${editorTrigger}${symbolTrigger}`, `${symbolTrigger}`),
-  editorExpectation(`${editorTrigger} ${symbolTrigger}`, ` ${symbolTrigger}`),
-  editorExpectation(`${editorTrigger}${symbolTrigger}  `, `${symbolTrigger}  `),
-  editorExpectation(`${editorTrigger}${symbolTrigger}foo`, `${symbolTrigger}foo`),
-  editorExpectation(`${editorTrigger}${symbolTrigger} fooo`, `${symbolTrigger} fooo`),
-  editorExpectation(`${editorTrigger}bar${symbolTrigger}`, `bar${symbolTrigger}`),
-  editorExpectation(`${editorTrigger}bar${symbolTrigger}  `, `bar${symbolTrigger}  `),
-  editorExpectation(`${editorTrigger}bar ${symbolTrigger}`, `bar ${symbolTrigger}`),
-  editorExpectation(`${editorTrigger}bar ${symbolTrigger}   `, `bar ${symbolTrigger}   `),
-  editorExpectation(`${editorTrigger}bar${symbolTrigger}foo`, `bar${symbolTrigger}foo`),
-  editorExpectation(`${editorTrigger}bar${symbolTrigger} foo`, `bar${symbolTrigger} foo`),
-  editorExpectation(
-    `${editorTrigger}bar ${symbolTrigger}foo  `,
-    `bar ${symbolTrigger}foo  `,
-  ),
-  editorExpectation(
-    `${editorTrigger}bar ${symbolTrigger} foo`,
-    `bar ${symbolTrigger} foo`,
-  ),
-];
-
-// Used for tests with active leaf only (no suggestions)
-export const symbolPrefixOnlyInputFixture = [
-  symbolExpectation(`${symbolTrigger}`, ''),
-  symbolExpectation(`${symbolTrigger}test string`, 'test string'),
-  symbolExpectation(`${symbolTrigger}${symbolTrigger}`, `${symbolTrigger}`),
-  symbolExpectation(`${symbolTrigger}bar${symbolTrigger}`, `bar${symbolTrigger}`),
-  symbolExpectation(`${symbolTrigger}bar ${symbolTrigger}`, `bar ${symbolTrigger}`),
-  symbolExpectation(`${symbolTrigger}bar ${symbolTrigger}   `, `bar ${symbolTrigger}   `),
-  symbolExpectation(`${symbolTrigger}bar${symbolTrigger}foo`, `bar${symbolTrigger}foo`),
-  symbolExpectation(`${symbolTrigger}bar${symbolTrigger} foo`, `bar${symbolTrigger} foo`),
-  symbolExpectation(`${symbolTrigger}bar ${symbolTrigger}foo`, `bar ${symbolTrigger}foo`),
-  symbolExpectation(
-    `${symbolTrigger}bar ${symbolTrigger} foo`,
-    `bar ${symbolTrigger} foo`,
-  ),
-  symbolExpectation(
-    `${symbolTrigger}${symbolTrigger}fooooo${symbolTrigger}${symbolTrigger}`,
-    `${symbolTrigger}fooooo${symbolTrigger}${symbolTrigger}`,
-  ),
-  symbolExpectation(
-    `${symbolTrigger}${symbolTrigger}${symbolTrigger}`,
-    `${symbolTrigger}${symbolTrigger}`,
-  ),
-];
-
-// Used for tests with different types of suggestions (File, Editor)
-export const symbolModeInputFixture = [
-  symbolExpectation(`${symbolTrigger}`, ''),
-  symbolExpectation(`${symbolTrigger}test string`, 'test string'),
-  symbolExpectation(`${symbolTrigger} `, ' '),
-  symbolExpectation(` ${symbolTrigger}`, ''),
-  symbolExpectation(`/${symbolTrigger}`, ''),
-  symbolExpectation(`${symbolTrigger}${symbolTrigger}`, `${symbolTrigger}`),
-  symbolExpectation(`${symbolTrigger}foo`, 'foo'),
-  symbolExpectation(`${symbolTrigger} foo`, ' foo'),
-  symbolExpectation(` ${symbolTrigger}foo`, 'foo'),
-  symbolExpectation(` ${symbolTrigger} foo`, ' foo'),
-  symbolExpectation(`bar/${symbolTrigger}foo${symbolTrigger}`, `foo${symbolTrigger}`),
-  symbolExpectation(
-    `bar${symbolTrigger}${symbolTrigger}foo${symbolTrigger}`,
-    `${symbolTrigger}foo${symbolTrigger}`,
-  ),
-  symbolExpectation(`bar//${symbolTrigger}foo${symbolTrigger}`, `foo${symbolTrigger}`),
-  symbolExpectation(`bar${symbolTrigger}`, ''),
-  symbolExpectation(`bar ${symbolTrigger}`, ''),
-  symbolExpectation(`bar!${symbolTrigger}foo`, 'foo'),
-  symbolExpectation(`bar${symbolTrigger}foo`, 'foo'),
-  symbolExpectation(`bar${symbolTrigger} foo`, ' foo'),
-  symbolExpectation(`bar ${symbolTrigger}foo`, 'foo'),
-  symbolExpectation(`bar ${symbolTrigger} foo`, ' foo'),
-  symbolExpectation(`${symbolTrigger}bar${symbolTrigger}`, `bar${symbolTrigger}`),
-  symbolExpectation(`${symbolTrigger}bar ${symbolTrigger}`, `bar ${symbolTrigger}`),
-  symbolExpectation(`${symbolTrigger}bar ${symbolTrigger}   `, `bar ${symbolTrigger}   `),
-  symbolExpectation(`${symbolTrigger}bar${symbolTrigger}foo`, `bar${symbolTrigger}foo`),
-  symbolExpectation(`${symbolTrigger}bar${symbolTrigger} foo`, `bar${symbolTrigger} foo`),
-  symbolExpectation(`${symbolTrigger}bar ${symbolTrigger}foo`, `bar ${symbolTrigger}foo`),
-  symbolExpectation(
-    `${symbolTrigger}bar ${symbolTrigger} foo`,
-    `bar ${symbolTrigger} foo`,
-  ),
-  symbolExpectation(
-    `${symbolTrigger}${symbolTrigger}fooooo${symbolTrigger}${symbolTrigger}`,
-    `${symbolTrigger}fooooo${symbolTrigger}${symbolTrigger}`,
-  ),
-  symbolExpectation(
-    `${symbolTrigger}${symbolTrigger}${symbolTrigger}`,
-    `${symbolTrigger}${symbolTrigger}`,
-  ),
-  symbolExpectation(
-    `${symbolTrigger}${editorTrigger}sfsas${symbolTrigger}`,
-    `${editorTrigger}sfsas${symbolTrigger}`,
-  ),
-  symbolExpectation(`${editorTrigger}${symbolTrigger}`, ''),
-  symbolExpectation(`${editorTrigger} ${symbolTrigger}`, ''),
-  symbolExpectation(`${editorTrigger}${symbolTrigger}  `, `  `),
-  symbolExpectation(`${editorTrigger}${symbolTrigger}foo`, `foo`),
-  symbolExpectation(`${editorTrigger}${symbolTrigger} fooo`, ' fooo'),
-  symbolExpectation(`${editorTrigger}bar${symbolTrigger}`, ''),
-  symbolExpectation(`${editorTrigger}bar${symbolTrigger}  `, '  '),
-  symbolExpectation(`${editorTrigger}bar ${symbolTrigger}$   `, '$   '),
-  symbolExpectation(`${editorTrigger}bar.+${symbolTrigger}*foo`, '*foo'),
-  symbolExpectation(
-    `${editorTrigger}   \\bar  ${symbolTrigger} ^[]foo    `,
-    ' ^[]foo    ',
-  ),
-];
-
 export const unicodeInputFixture = [
   {
     editorTrigger: 'ë',
@@ -287,276 +127,139 @@ export const unicodeInputFixture = [
   },
 ];
 
-// Used for workspace mode tests
-export const workspacePrefixOnlyInputFixture = [
-  workspaceExpectation(`${workspaceTrigger}`, ''),
-  workspaceExpectation(`${workspaceTrigger}test string`, 'test string'),
-  workspaceExpectation(`${workspaceTrigger}${symbolTrigger}`, `${symbolTrigger}`),
-  workspaceExpectation(`${workspaceTrigger} ${symbolTrigger}`, ` ${symbolTrigger}`),
-  workspaceExpectation(`${workspaceTrigger}${symbolTrigger}  `, `${symbolTrigger}  `),
-  workspaceExpectation(`${workspaceTrigger}${symbolTrigger}foo`, `${symbolTrigger}foo`),
-  workspaceExpectation(
-    `${workspaceTrigger}${symbolTrigger} fooo`,
-    `${symbolTrigger} fooo`,
-  ),
-  workspaceExpectation(`${workspaceTrigger}bar${symbolTrigger}`, `bar${symbolTrigger}`),
-  workspaceExpectation(
-    `${workspaceTrigger}bar${editorTrigger}  `,
-    `bar${editorTrigger}  `,
-  ),
-  workspaceExpectation(`${workspaceTrigger}bar ${symbolTrigger}`, `bar ${symbolTrigger}`),
-  workspaceExpectation(
-    `${workspaceTrigger}bar ${symbolTrigger}   `,
-    `bar ${symbolTrigger}   `,
-  ),
-  workspaceExpectation(
-    `${workspaceTrigger}bar${symbolTrigger}foo`,
-    `bar${symbolTrigger}foo`,
-  ),
-  workspaceExpectation(
-    `${workspaceTrigger}bar${symbolTrigger} foo`,
-    `bar${symbolTrigger} foo`,
-  ),
-  workspaceExpectation(
-    `${workspaceTrigger}bar ${symbolTrigger}foo  `,
-    `bar ${symbolTrigger}foo  `,
-  ),
-  workspaceExpectation(
-    `${workspaceTrigger}bar ${symbolTrigger} foo`,
-    `bar ${symbolTrigger} foo`,
-  ),
-];
-
-// Used for headings mode tests
-export const headingsPrefixOnlyInputFixture = [
-  headingsExpectation(`${headingsTrigger}`, ''),
-  headingsExpectation(`${headingsTrigger}test string`, 'test string'),
-  headingsExpectation(`${headingsTrigger}${symbolTrigger}`, `${symbolTrigger}`),
-  headingsExpectation(`${headingsTrigger} ${symbolTrigger}`, ` ${symbolTrigger}`),
-  headingsExpectation(`${headingsTrigger}${symbolTrigger}  `, `${symbolTrigger}  `),
-  headingsExpectation(`${headingsTrigger}${symbolTrigger}foo`, `${symbolTrigger}foo`),
-  headingsExpectation(`${headingsTrigger}${symbolTrigger} fooo`, `${symbolTrigger} fooo`),
-  headingsExpectation(`${headingsTrigger}bar${symbolTrigger}`, `bar${symbolTrigger}`),
-  headingsExpectation(
-    `${headingsTrigger}bar$${symbolTrigger}  `,
-    `bar$${symbolTrigger}  `,
-  ),
-  headingsExpectation(`${headingsTrigger}bar ${symbolTrigger}`, `bar ${symbolTrigger}`),
-  headingsExpectation(
-    `${headingsTrigger}bar ${symbolTrigger}   `,
-    `bar ${symbolTrigger}   `,
-  ),
-  headingsExpectation(
-    `${headingsTrigger}bar${symbolTrigger}foo`,
-    `bar${symbolTrigger}foo`,
-  ),
-  headingsExpectation(
-    `${headingsTrigger}bar${editorTrigger} foo`,
-    `bar${editorTrigger} foo`,
-  ),
-  headingsExpectation(
-    `${headingsTrigger}bar ${workspaceTrigger}foo  `,
-    `bar ${workspaceTrigger}foo  `,
-  ),
-  headingsExpectation(
-    `${headingsTrigger}bar ${symbolTrigger} foo`,
-    `bar ${symbolTrigger} foo`,
-  ),
-];
-
-// Used for starred mode tests
-export const starredPrefixOnlyInputFixture = [
-  starredExpectation(`${starredTrigger}`, ''),
-  starredExpectation(`${starredTrigger}test string`, 'test string'),
-  starredExpectation(`${starredTrigger}${symbolTrigger}`, `${symbolTrigger}`),
-  starredExpectation(`${starredTrigger} ${symbolTrigger}`, ` ${symbolTrigger}`),
-  starredExpectation(`${starredTrigger}${symbolTrigger}  `, `${symbolTrigger}  `),
-  starredExpectation(`${starredTrigger}${symbolTrigger}foo`, `${symbolTrigger}foo`),
-  starredExpectation(`${starredTrigger}${symbolTrigger} fooo`, `${symbolTrigger} fooo`),
-  starredExpectation(`${starredTrigger}bar${symbolTrigger}`, `bar${symbolTrigger}`),
-  starredExpectation(`${starredTrigger}bar$${symbolTrigger}  `, `bar$${symbolTrigger}  `),
-  starredExpectation(`${starredTrigger}bar ${symbolTrigger}`, `bar ${symbolTrigger}`),
-  starredExpectation(
-    `${starredTrigger}bar ${symbolTrigger}   `,
-    `bar ${symbolTrigger}   `,
-  ),
-  starredExpectation(`${starredTrigger}bar${symbolTrigger}foo`, `bar${symbolTrigger}foo`),
-  starredExpectation(
-    `${starredTrigger}bar${editorTrigger} foo`,
-    `bar${editorTrigger} foo`,
-  ),
-  starredExpectation(
-    `${starredTrigger}bar ${workspaceTrigger}foo  `,
-    `bar ${workspaceTrigger}foo  `,
-  ),
-  starredExpectation(
-    `${starredTrigger}bar ${symbolTrigger} foo`,
-    `bar ${symbolTrigger} foo`,
-  ),
-];
-
-// Used for command mode tests
-export const commandPrefixOnlyInputFixture = [
-  commandExpectation(`${commandTrigger}`, ''),
-  commandExpectation(`${commandTrigger}test string`, 'test string'),
-  commandExpectation(`${commandTrigger}${symbolTrigger}`, `${symbolTrigger}`),
-  commandExpectation(`${commandTrigger} ${symbolTrigger}`, ` ${symbolTrigger}`),
-  commandExpectation(`${commandTrigger}${symbolTrigger}  `, `${symbolTrigger}  `),
-  commandExpectation(`${commandTrigger}${symbolTrigger}foo`, `${symbolTrigger}foo`),
-  commandExpectation(`${commandTrigger}${symbolTrigger} fooo`, `${symbolTrigger} fooo`),
-  commandExpectation(`${commandTrigger}bar${symbolTrigger}`, `bar${symbolTrigger}`),
-  commandExpectation(`${commandTrigger}bar${editorTrigger}  `, `bar${editorTrigger}  `),
-  commandExpectation(`${commandTrigger}bar ${symbolTrigger}`, `bar ${symbolTrigger}`),
-  commandExpectation(
-    `${commandTrigger}bar ${symbolTrigger}   `,
-    `bar ${symbolTrigger}   `,
-  ),
-  commandExpectation(`${commandTrigger}bar${symbolTrigger}foo`, `bar${symbolTrigger}foo`),
-  commandExpectation(
-    `${commandTrigger}bar${symbolTrigger} foo`,
-    `bar${symbolTrigger} foo`,
-  ),
-  commandExpectation(
-    `${commandTrigger}bar ${symbolTrigger}foo  `,
-    `bar ${symbolTrigger}foo  `,
-  ),
-  commandExpectation(
-    `${commandTrigger}bar ${symbolTrigger} foo`,
-    `bar ${symbolTrigger} foo`,
-  ),
-];
-
 // Used for tests with active leaf only (no suggestions)
-export const relatedItemsPrefixOnlyInputFixture = [
-  relatedItemsExpectation(`${relatedItemsTrigger}`, ''),
-  relatedItemsExpectation(`${relatedItemsTrigger}test string`, 'test string'),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}${relatedItemsTrigger}`,
-    `${relatedItemsTrigger}`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}bar${relatedItemsTrigger}`,
-    `bar${relatedItemsTrigger}`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}bar ${relatedItemsTrigger}`,
-    `bar ${relatedItemsTrigger}`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}bar ${relatedItemsTrigger}   `,
-    `bar ${relatedItemsTrigger}   `,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}bar${relatedItemsTrigger}foo`,
-    `bar${relatedItemsTrigger}foo`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}bar${relatedItemsTrigger} foo`,
-    `bar${relatedItemsTrigger} foo`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}bar ${relatedItemsTrigger}foo`,
-    `bar ${relatedItemsTrigger}foo`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}bar ${relatedItemsTrigger} foo`,
-    `bar ${relatedItemsTrigger} foo`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}${relatedItemsTrigger}fooooo${relatedItemsTrigger}${relatedItemsTrigger}`,
-    `${relatedItemsTrigger}fooooo${relatedItemsTrigger}${relatedItemsTrigger}`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}${relatedItemsTrigger}${relatedItemsTrigger}`,
-    `${relatedItemsTrigger}${relatedItemsTrigger}`,
-  ),
-];
+export function makePrefixOnlyInputFixture(triggerMode: Mode): InputExpectation[] {
+  const trigger = triggerMap.get(triggerMode);
+
+  return [
+    makeInputExpectation(`${trigger}`, triggerMode, ''),
+    makeInputExpectation(`${trigger}test string`, triggerMode, 'test string'),
+    makeInputExpectation(`${trigger}${symbolTrigger}`, triggerMode, `${symbolTrigger}`),
+    makeInputExpectation(`${trigger} ${symbolTrigger}`, triggerMode, ` ${symbolTrigger}`),
+    makeInputExpectation(
+      `${trigger}${symbolTrigger}  `,
+      triggerMode,
+      `${symbolTrigger}  `,
+    ),
+    makeInputExpectation(
+      `${trigger}${symbolTrigger}foo`,
+      triggerMode,
+      `${symbolTrigger}foo`,
+    ),
+    makeInputExpectation(
+      `${trigger}bar${symbolTrigger}`,
+      triggerMode,
+      `bar${symbolTrigger}`,
+    ),
+    makeInputExpectation(
+      `${trigger}bar$${symbolTrigger}  `,
+      triggerMode,
+      `bar$${symbolTrigger}  `,
+    ),
+    makeInputExpectation(
+      `${trigger}bar ${symbolTrigger}`,
+      triggerMode,
+      `bar ${symbolTrigger}`,
+    ),
+    makeInputExpectation(
+      `${trigger}bar ${symbolTrigger}   `,
+      triggerMode,
+      `bar ${symbolTrigger}   `,
+    ),
+    makeInputExpectation(
+      `${trigger}bar${symbolTrigger}foo`,
+      triggerMode,
+      `bar${symbolTrigger}foo`,
+    ),
+    makeInputExpectation(
+      `${trigger}bar${symbolTrigger} foo`,
+      triggerMode,
+      `bar${symbolTrigger} foo`,
+    ),
+    makeInputExpectation(
+      `${trigger}bar ${symbolTrigger}foo  `,
+      triggerMode,
+      `bar ${symbolTrigger}foo  `,
+    ),
+    makeInputExpectation(
+      `${trigger}bar ${symbolTrigger} foo`,
+      triggerMode,
+      `bar ${symbolTrigger} foo`,
+    ),
+    makeInputExpectation(
+      `${trigger}bar ${symbolTrigger}foo`,
+      triggerMode,
+      `bar ${symbolTrigger}foo`,
+    ),
+    makeInputExpectation(
+      `${trigger}${symbolTrigger}${symbolTrigger}`,
+      triggerMode,
+      `${symbolTrigger}${symbolTrigger}`,
+    ),
+  ];
+}
 
 // Used for tests with different types of suggestions (File, Editor)
-export const relatedItemsModeInputFixture = [
-  relatedItemsExpectation(`${relatedItemsTrigger}`, ''),
-  relatedItemsExpectation(`${relatedItemsTrigger}test string`, 'test string'),
-  relatedItemsExpectation(`${relatedItemsTrigger} `, ' '),
-  relatedItemsExpectation(` ${relatedItemsTrigger}`, ''),
-  relatedItemsExpectation(`/${relatedItemsTrigger}`, ''),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}${relatedItemsTrigger}`,
-    `${relatedItemsTrigger}`,
-  ),
-  relatedItemsExpectation(`${relatedItemsTrigger}foo`, 'foo'),
-  relatedItemsExpectation(`${relatedItemsTrigger} foo`, ' foo'),
-  relatedItemsExpectation(` ${relatedItemsTrigger}foo`, 'foo'),
-  relatedItemsExpectation(` ${relatedItemsTrigger} foo`, ' foo'),
-  relatedItemsExpectation(
-    `bar/${relatedItemsTrigger}foo${relatedItemsTrigger}`,
-    `foo${relatedItemsTrigger}`,
-  ),
-  relatedItemsExpectation(
-    `bar${relatedItemsTrigger}${relatedItemsTrigger}foo${relatedItemsTrigger}`,
-    `${relatedItemsTrigger}foo${relatedItemsTrigger}`,
-  ),
-  relatedItemsExpectation(
-    `bar//${relatedItemsTrigger}foo${relatedItemsTrigger}`,
-    `foo${relatedItemsTrigger}`,
-  ),
-  relatedItemsExpectation(`bar${relatedItemsTrigger}`, ''),
-  relatedItemsExpectation(`bar ${relatedItemsTrigger}`, ''),
-  relatedItemsExpectation(`bar!${relatedItemsTrigger}foo`, 'foo'),
-  relatedItemsExpectation(`bar${relatedItemsTrigger}foo`, 'foo'),
-  relatedItemsExpectation(`bar${relatedItemsTrigger} foo`, ' foo'),
-  relatedItemsExpectation(`bar ${relatedItemsTrigger}foo`, 'foo'),
-  relatedItemsExpectation(`bar ${relatedItemsTrigger} foo`, ' foo'),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}bar${relatedItemsTrigger}`,
-    `bar${relatedItemsTrigger}`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}bar ${relatedItemsTrigger}`,
-    `bar ${relatedItemsTrigger}`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}bar ${relatedItemsTrigger}   `,
-    `bar ${relatedItemsTrigger}   `,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}bar${relatedItemsTrigger}foo`,
-    `bar${relatedItemsTrigger}foo`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}bar${relatedItemsTrigger} foo`,
-    `bar${relatedItemsTrigger} foo`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}bar ${relatedItemsTrigger}foo`,
-    `bar ${relatedItemsTrigger}foo`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}bar ${relatedItemsTrigger} foo`,
-    `bar ${relatedItemsTrigger} foo`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}${relatedItemsTrigger}fooooo${relatedItemsTrigger}${relatedItemsTrigger}`,
-    `${relatedItemsTrigger}fooooo${relatedItemsTrigger}${relatedItemsTrigger}`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}${relatedItemsTrigger}${relatedItemsTrigger}`,
-    `${relatedItemsTrigger}${relatedItemsTrigger}`,
-  ),
-  relatedItemsExpectation(
-    `${relatedItemsTrigger}${editorTrigger}sfsas${relatedItemsTrigger}`,
-    `${editorTrigger}sfsas${relatedItemsTrigger}`,
-  ),
-  relatedItemsExpectation(`${editorTrigger}${relatedItemsTrigger}`, ''),
-  relatedItemsExpectation(`${editorTrigger} ${relatedItemsTrigger}`, ''),
-  relatedItemsExpectation(`${editorTrigger}${relatedItemsTrigger}  `, `  `),
-  relatedItemsExpectation(`${editorTrigger}${relatedItemsTrigger}foo`, `foo`),
-  relatedItemsExpectation(`${editorTrigger}${relatedItemsTrigger} fooo`, ' fooo'),
-  relatedItemsExpectation(`${editorTrigger}bar${relatedItemsTrigger}`, ''),
-  relatedItemsExpectation(`${editorTrigger}bar${relatedItemsTrigger}  `, '  '),
-  relatedItemsExpectation(`${editorTrigger}bar ${relatedItemsTrigger}$   `, '$   '),
-  relatedItemsExpectation(`${editorTrigger}bar.+${relatedItemsTrigger}*foo`, '*foo'),
-  relatedItemsExpectation(
-    `${editorTrigger}   \\bar  ${relatedItemsTrigger} ^[]foo    `,
-    ' ^[]foo    ',
-  ),
-];
+export function makeSourcedCmdEmbeddedInputFixture(
+  triggerMode: Mode,
+): InputExpectation[] {
+  const trigger = triggerMap.get(triggerMode);
+
+  const ret = makePrefixOnlyInputFixture(triggerMode);
+
+  return ret.concat([
+    makeInputExpectation(`${trigger} `, triggerMode, ' '),
+    makeInputExpectation(` ${trigger}`, triggerMode, ''),
+    makeInputExpectation(`/${trigger}`, triggerMode, ''),
+    makeInputExpectation(`${trigger}foo`, triggerMode, 'foo'),
+    makeInputExpectation(`${trigger} foo`, triggerMode, ' foo'),
+    makeInputExpectation(` ${trigger}foo`, triggerMode, 'foo'),
+    makeInputExpectation(` ${trigger} foo`, triggerMode, ' foo'),
+    makeInputExpectation(`bar${trigger}`, triggerMode, ''),
+    makeInputExpectation(`bar ${trigger}`, triggerMode, ''),
+    makeInputExpectation(`bar!${trigger}foo`, triggerMode, 'foo'),
+    makeInputExpectation(`bar${trigger}foo`, triggerMode, 'foo'),
+    makeInputExpectation(`bar${trigger} foo`, triggerMode, ' foo'),
+    makeInputExpectation(`bar ${trigger}foo`, triggerMode, 'foo'),
+    makeInputExpectation(`bar ${trigger} foo`, triggerMode, ' foo'),
+    makeInputExpectation(`${editorTrigger}${trigger}`, triggerMode, ''),
+    makeInputExpectation(`${editorTrigger} ${trigger}`, triggerMode, ''),
+    makeInputExpectation(`${editorTrigger}${trigger}  `, triggerMode, `  `),
+    makeInputExpectation(`${editorTrigger}${trigger}foo`, triggerMode, `foo`),
+    makeInputExpectation(`${editorTrigger}${trigger} fooo`, triggerMode, ' fooo'),
+    makeInputExpectation(`${editorTrigger}bar${trigger}`, triggerMode, ''),
+    makeInputExpectation(`${editorTrigger}bar${trigger}  `, triggerMode, '  '),
+    makeInputExpectation(`${editorTrigger}bar ${trigger}$   `, triggerMode, '$   '),
+    makeInputExpectation(`${editorTrigger}bar.+${trigger}*foo`, triggerMode, '*foo'),
+    makeInputExpectation(
+      `bar/${trigger}foo${symbolTrigger}`,
+      triggerMode,
+      `foo${symbolTrigger}`,
+    ),
+    makeInputExpectation(
+      `bar${trigger}${symbolTrigger}foo${symbolTrigger}`,
+      triggerMode,
+      `${symbolTrigger}foo${symbolTrigger}`,
+    ),
+    makeInputExpectation(
+      `bar//${trigger}foo${symbolTrigger}`,
+      triggerMode,
+      `foo${symbolTrigger}`,
+    ),
+    makeInputExpectation(
+      `${trigger}bar ${symbolTrigger} foo`,
+      triggerMode,
+      `bar ${symbolTrigger} foo`,
+    ),
+    makeInputExpectation(
+      `${trigger}${editorTrigger}sfsas${symbolTrigger}`,
+      triggerMode,
+      `${editorTrigger}sfsas${symbolTrigger}`,
+    ),
+    makeInputExpectation(
+      `${editorTrigger}   \\bar  ${trigger} ^[]foo    `,
+      triggerMode,
+      ' ^[]foo    ',
+    ),
+  ]);
+}

@@ -21,6 +21,7 @@ import {
   UnresolvedSuggestion,
   HeadingIndicators,
   AnySuggestion,
+  SuggestionType,
 } from 'src/types';
 import {
   isTFile,
@@ -42,7 +43,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     return this.settings?.headingsListCommand;
   }
 
-  override validateCommand(
+  validateCommand(
     inputInfo: InputInfo,
     index: number,
     filterText: string,
@@ -57,10 +58,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     headingsCmd.isValidated = true;
   }
 
-  override onChooseSuggestion(
-    sugg: HeadingSuggestion,
-    evt: MouseEvent | KeyboardEvent,
-  ): void {
+  onChooseSuggestion(sugg: HeadingSuggestion, evt: MouseEvent | KeyboardEvent): void {
     if (sugg) {
       const {
         start: { line, col },
@@ -89,7 +87,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     }
   }
 
-  override renderSuggestion(sugg: HeadingSuggestion, parentEl: HTMLElement): void {
+  renderSuggestion(sugg: HeadingSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       const { item } = sugg;
       renderResults(parentEl, item.heading, sugg.match);
@@ -107,7 +105,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     }
   }
 
-  override getSuggestions(inputInfo: InputInfo): SupportedSuggestionTypes[] {
+  getSuggestions(inputInfo: InputInfo): SupportedSuggestionTypes[] {
     let suggestions: SupportedSuggestionTypes[] = [];
 
     if (inputInfo) {
@@ -204,7 +202,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
         const { match } = this.matchStrings(prepQuery, alias, null);
 
         if (match) {
-          suggestions.push(this.makeAliasSuggestion(alias, file, match));
+          suggestions.push(this.createAliasSuggestion(alias, file, match));
         }
       }
     }
@@ -225,7 +223,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     }
 
     if (match) {
-      suggestions.push(this.makeFileSuggestion(file, match));
+      suggestions.push(this.createFileSuggestion(file, match));
     }
   }
 
@@ -275,7 +273,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     const { match } = this.matchStrings(prepQuery, heading.heading, null);
 
     if (match) {
-      suggestions.push(this.makeHeadingSuggestion(heading, file, match));
+      suggestions.push(this.createHeadingSuggestion(heading, file, match));
     }
 
     return !!match;
@@ -314,12 +312,12 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       const { match } = this.matchStrings(prepQuery, unresolved, null);
 
       if (match) {
-        suggestions.push(this.makeUnresolvedSuggestion(unresolved, match));
+        suggestions.push(this.createUnresolvedSuggestion(unresolved, match));
       }
     }
   }
 
-  private makeAliasSuggestion(
+  private createAliasSuggestion(
     alias: string,
     file: TFile,
     match: SearchResult,
@@ -328,30 +326,30 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       alias,
       file,
       match,
-      type: 'alias',
+      type: SuggestionType.Alias,
     };
   }
 
-  private makeUnresolvedSuggestion(
+  private createUnresolvedSuggestion(
     linktext: string,
     match: SearchResult,
   ): UnresolvedSuggestion {
     return {
       linktext,
       match,
-      type: 'unresolved',
+      type: SuggestionType.Unresolved,
     };
   }
 
-  private makeFileSuggestion(file: TFile, match: SearchResult): FileSuggestion {
+  private createFileSuggestion(file: TFile, match: SearchResult): FileSuggestion {
     return {
       file,
       match,
-      type: 'file',
+      type: SuggestionType.File,
     };
   }
 
-  private makeHeadingSuggestion(
+  private createHeadingSuggestion(
     item: HeadingCache,
     file: TFile,
     match: SearchResult,
@@ -360,7 +358,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       item,
       file,
       match,
-      type: 'heading',
+      type: SuggestionType.HeadingsList,
     };
   }
 
@@ -420,8 +418,8 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
         }
 
         const sugg = h1
-          ? this.makeHeadingSuggestion(h1, f, null)
-          : this.makeFileSuggestion(f, null);
+          ? this.createHeadingSuggestion(h1, f, null)
+          : this.createFileSuggestion(f, null);
 
         suggestions.push(sugg);
       }

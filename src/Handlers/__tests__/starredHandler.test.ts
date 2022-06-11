@@ -2,7 +2,7 @@ import { SwitcherPlusSettings } from 'src/settings';
 import { mock, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler, StarredHandler, STARRED_PLUGIN_ID } from 'src/Handlers';
 import { InputInfo } from 'src/switcherPlus';
-import { Mode, StarredSuggestion } from 'src/types';
+import { Mode, StarredSuggestion, SuggestionType } from 'src/types';
 import {
   makeFuzzyMatch,
   makePreparedQuery,
@@ -191,7 +191,9 @@ describe('starredHandler', () => {
         true,
       );
 
-      expect(results.every((sugg) => sugg.type === 'starred')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.StarredList)).toBe(
+        true,
+      );
       expect(mockInternalPlugins.getPluginById).toHaveBeenCalledWith(STARRED_PLUGIN_ID);
       expect(results.every((sugg) => sugg.item.type === 'file')).toBe(true);
     });
@@ -220,7 +222,7 @@ describe('starredHandler', () => {
       expect(results).toHaveLength(1);
 
       const onlyResult = results[0];
-      expect(onlyResult).toHaveProperty('type', 'starred');
+      expect(onlyResult).toHaveProperty('type', SuggestionType.StarredList);
       expect((onlyResult.item as FileStarredItem).path).toBe(expectedItem.path);
 
       expect(mockFuzzySearch).toHaveBeenCalled();

@@ -1,4 +1,4 @@
-import { Mode, CommandSuggestion } from 'src/types';
+import { Mode, CommandSuggestion, SuggestionType } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { CommandHandler, COMMAND_PALETTE_PLUGIN_ID } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
@@ -136,7 +136,9 @@ describe('commandHandler', () => {
       expect(mockCommands.every((command) => resultCommandIds.has(command.id))).toBe(
         true,
       );
-      expect(results.every((sugg) => sugg.type === 'command')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.CommandList)).toBe(
+        true,
+      );
       expect(mockInternalPlugins.getPluginById).toHaveBeenCalledWith(
         COMMAND_PALETTE_PLUGIN_ID,
       );
@@ -166,7 +168,7 @@ describe('commandHandler', () => {
       expect(results).toHaveLength(1);
 
       const onlyResult = results[0];
-      expect(onlyResult).toHaveProperty('type', 'command');
+      expect(onlyResult).toHaveProperty('type', SuggestionType.CommandList);
       expect(onlyResult.item.id).toBe(expectedItem.id);
       expect(onlyResult.item.name).toBe(expectedItem.name);
 

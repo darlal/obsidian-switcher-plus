@@ -18,6 +18,7 @@ import {
   SymbolType,
   HeadingIndicators,
   SymbolIndicators,
+  SuggestionType,
 } from 'src/types';
 import { getLinkType, isHeadingCache, isTagCache } from 'src/utils';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
@@ -30,7 +31,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     return this.settings?.symbolListCommand;
   }
 
-  override validateCommand(
+  validateCommand(
     inputInfo: InputInfo,
     index: number,
     filterText: string,
@@ -55,7 +56,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     }
   }
 
-  override getSuggestions(inputInfo: InputInfo): SymbolSuggestion[] {
+  getSuggestions(inputInfo: InputInfo): SymbolSuggestion[] {
     const suggestions: SymbolSuggestion[] = [];
 
     if (inputInfo) {
@@ -77,7 +78,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
         if (shouldPush) {
           const { file } = symbolCmd.source;
-          suggestions.push({ type: 'symbol', file, item, match });
+          suggestions.push({ type: SuggestionType.SymbolList, file, item, match });
         }
       });
 
@@ -89,7 +90,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     return suggestions;
   }
 
-  override renderSuggestion(sugg: SymbolSuggestion, parentEl: HTMLElement): void {
+  renderSuggestion(sugg: SymbolSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       const { item } = sugg;
       let containerEl = parentEl;
@@ -113,10 +114,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     }
   }
 
-  override onChooseSuggestion(
-    sugg: SymbolSuggestion,
-    evt: MouseEvent | KeyboardEvent,
-  ): void {
+  onChooseSuggestion(sugg: SymbolSuggestion, evt: MouseEvent | KeyboardEvent): void {
     if (sugg) {
       const symbolCmd = this.inputInfo.parsedCommand() as SourcedParsedCommand;
 

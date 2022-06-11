@@ -1,5 +1,5 @@
 import { SwitcherPlusSettings } from 'src/settings';
-import { Mode, EditorSuggestion } from 'src/types';
+import { Mode, EditorSuggestion, SuggestionType } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import {
   WorkspaceLeaf,
@@ -12,7 +12,6 @@ import {
   View,
   WorkspaceItem,
   WorkspaceSplit,
-  TFile,
   Keymap,
 } from 'obsidian';
 import {
@@ -20,9 +19,9 @@ import {
   leftSplitEditorFixtures,
   rightSplitEditorFixtures,
   editorTrigger,
-  makeFuzzyMatch,
   makeLeaf,
   defaultOpenViewState,
+  makeEditorSuggestion,
 } from '@fixtures';
 import { EditorHandler, Handler } from 'src/Handlers';
 import { mock, MockProxy } from 'jest-mock-extended';
@@ -146,7 +145,7 @@ describe('editorHandler', () => {
       expect(resultLeaves.has(mockRootSplitLeaf)).toBe(true);
       expect(resultLeaves.has(mockLeftSplitLeaf)).toBe(true);
       expect(resultLeaves.has(mockRightSplitLeaf)).toBe(true);
-      expect(results.every((sugg) => sugg.type === 'editor')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.EditorList)).toBe(true);
 
       expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
@@ -173,7 +172,7 @@ describe('editorHandler', () => {
       expect(resultLeaves.has(mockRootSplitLeaf)).toBe(true);
       expect(resultLeaves.has(mockLeftSplitLeaf)).toBe(false);
       expect(resultLeaves.has(mockRightSplitLeaf)).toBe(false);
-      expect(results[0]).toHaveProperty('type', 'editor');
+      expect(results[0]).toHaveProperty('type', SuggestionType.EditorList);
 
       expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockFuzzySearch).toHaveBeenCalled();
@@ -208,7 +207,7 @@ describe('editorHandler', () => {
       expect(resultLeaves.has(mockRootSplitLeaf)).toBe(true);
       expect(resultLeaves.has(mockLeftSplitLeaf)).toBe(true);
       expect(resultLeaves.has(mockRightSplitLeaf)).toBe(false);
-      expect(results.every((sugg) => sugg.type === 'editor')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.EditorList)).toBe(true);
 
       expect(includeViewTypesSpy).toHaveBeenCalled();
       expect(mockView.getViewType).toHaveBeenCalled();
@@ -241,7 +240,7 @@ describe('editorHandler', () => {
       expect(resultLeaves.has(mockRootSplitLeaf)).toBe(false);
       expect(resultLeaves.has(mockLeftSplitLeaf)).toBe(true);
       expect(resultLeaves.has(mockRightSplitLeaf)).toBe(true);
-      expect(results.every((sugg) => sugg.type === 'editor')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.EditorList)).toBe(true);
 
       expect(excludeViewTypesSpy).toHaveBeenCalled();
       expect(mockView.getViewType).toHaveBeenCalled();
@@ -265,13 +264,7 @@ describe('editorHandler', () => {
       const displayText = 'foo';
       const mockLeaf = makeLeafWithRoot(displayText, null);
       const mockRenderResults = jest.mocked(renderResults);
-
-      const sugg: EditorSuggestion = {
-        type: 'editor',
-        file: null,
-        item: mockLeaf,
-        match: makeFuzzyMatch(),
-      };
+      const sugg = makeEditorSuggestion(mockLeaf);
 
       sut.renderSuggestion(sugg, mockParentEl);
 
@@ -298,12 +291,7 @@ describe('editorHandler', () => {
     it('should activate the selected leaf', () => {
       const activateLeafSpy = jest.spyOn(Handler.prototype, 'activateLeaf');
       const mockLeaf = makeLeafWithRoot(null, null);
-      const sugg: EditorSuggestion = {
-        type: 'editor',
-        file: new TFile(),
-        item: mockLeaf,
-        match: makeFuzzyMatch(),
-      };
+      const sugg = makeEditorSuggestion(mockLeaf);
 
       sut.onChooseSuggestion(sugg, null);
 
@@ -327,12 +315,7 @@ describe('editorHandler', () => {
 
       mockKeymap.isModEvent.mockReturnValueOnce(isModDown);
 
-      const sugg: EditorSuggestion = {
-        type: 'editor',
-        file: new TFile(),
-        item: mockLeaf,
-        match: null,
-      };
+      const sugg = makeEditorSuggestion(mockLeaf);
 
       sut.onChooseSuggestion(sugg, null);
 

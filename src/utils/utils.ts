@@ -20,9 +20,8 @@ import {
   AnySuggestion,
   AnyExSuggestion,
   LinkType,
-  StarredSuggestion,
   CommandSuggestion,
-  RelatedItemsSuggestion,
+  SuggestionType,
 } from 'src/types';
 
 export function isOfType<T>(
@@ -43,43 +42,35 @@ export function isOfType<T>(
 }
 
 export function isSymbolSuggestion(obj: unknown): obj is SymbolSuggestion {
-  return isOfType<SymbolSuggestion>(obj, 'type', 'symbol');
+  return isOfType<SymbolSuggestion>(obj, 'type', SuggestionType.SymbolList);
 }
 
 export function isEditorSuggestion(obj: unknown): obj is EditorSuggestion {
-  return isOfType<EditorSuggestion>(obj, 'type', 'editor');
+  return isOfType<EditorSuggestion>(obj, 'type', SuggestionType.EditorList);
 }
 
 export function isWorkspaceSuggestion(obj: unknown): obj is WorkspaceSuggestion {
-  return isOfType<WorkspaceSuggestion>(obj, 'type', 'workspace');
+  return isOfType<WorkspaceSuggestion>(obj, 'type', SuggestionType.WorkspaceList);
 }
 
 export function isHeadingSuggestion(obj: unknown): obj is HeadingSuggestion {
-  return isOfType<HeadingSuggestion>(obj, 'type', 'heading');
-}
-
-export function isStarredSuggestion(obj: unknown): obj is StarredSuggestion {
-  return isOfType<StarredSuggestion>(obj, 'type', 'starred');
+  return isOfType<HeadingSuggestion>(obj, 'type', SuggestionType.HeadingsList);
 }
 
 export function isCommandSuggestion(obj: unknown): obj is CommandSuggestion {
-  return isOfType<CommandSuggestion>(obj, 'type', 'command');
-}
-
-export function isRelatedItemsSuggestion(obj: unknown): obj is RelatedItemsSuggestion {
-  return isOfType<RelatedItemsSuggestion>(obj, 'type', 'relatedItems');
+  return isOfType<CommandSuggestion>(obj, 'type', SuggestionType.CommandList);
 }
 
 export function isFileSuggestion(obj: unknown): obj is FileSuggestion {
-  return isOfType<FileSuggestion>(obj, 'type', 'file');
+  return isOfType<FileSuggestion>(obj, 'type', SuggestionType.File);
 }
 
 export function isAliasSuggestion(obj: unknown): obj is AliasSuggestion {
-  return isOfType<AliasSuggestion>(obj, 'type', 'alias');
+  return isOfType<AliasSuggestion>(obj, 'type', SuggestionType.Alias);
 }
 
 export function isUnresolvedSuggestion(obj: unknown): obj is UnresolvedSuggestion {
-  return isOfType<UnresolvedSuggestion>(obj, 'type', 'unresolved');
+  return isOfType<UnresolvedSuggestion>(obj, 'type', SuggestionType.Unresolved);
 }
 
 export function isSystemSuggestion(obj: unknown): obj is AnySystemSuggestion {

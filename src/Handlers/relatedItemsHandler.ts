@@ -9,7 +9,13 @@ import {
   renderResults,
   Keymap,
 } from 'obsidian';
-import { AnySuggestion, Mode, RelatedItemsSuggestion, SourceInfo } from 'src/types';
+import {
+  AnySuggestion,
+  Mode,
+  RelatedItemsSuggestion,
+  SourceInfo,
+  SuggestionType,
+} from 'src/types';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler } from './handler';
 import { isTFile, matcherFnForRegExList, stripMDExtensionFromPath } from 'src/utils';
@@ -21,7 +27,7 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
     return this.settings?.relatedItemsListCommand;
   }
 
-  override validateCommand(
+  validateCommand(
     inputInfo: InputInfo,
     index: number,
     filterText: string,
@@ -42,7 +48,7 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
     }
   }
 
-  override getSuggestions(inputInfo: InputInfo): RelatedItemsSuggestion[] {
+  getSuggestions(inputInfo: InputInfo): RelatedItemsSuggestion[] {
     const suggestions: RelatedItemsSuggestion[] = [];
 
     if (inputInfo) {
@@ -64,7 +70,7 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
 
         if (shouldPush) {
           suggestions.push({
-            type: 'relatedItems',
+            type: SuggestionType.RelatedItemsList,
             relationType: 'diskLocation',
             file: item,
             match,
@@ -80,13 +86,13 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
     return suggestions;
   }
 
-  override renderSuggestion(sugg: RelatedItemsSuggestion, parentEl: HTMLElement): void {
+  renderSuggestion(sugg: RelatedItemsSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       renderResults(parentEl, this.getTitleText(sugg.file), sugg.match);
     }
   }
 
-  override onChooseSuggestion(
+  onChooseSuggestion(
     sugg: RelatedItemsSuggestion,
     evt: MouseEvent | KeyboardEvent,
   ): void {

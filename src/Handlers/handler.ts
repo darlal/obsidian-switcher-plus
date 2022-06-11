@@ -28,27 +28,16 @@ export abstract class Handler<T> {
 
   constructor(protected app: App, protected settings: SwitcherPlusSettings) {}
 
-  validateCommand(
-    _inputInfo: InputInfo,
-    _index: number,
-    _filterText: string,
-    _activeSuggestion: AnySuggestion,
-    _activeLeaf: WorkspaceLeaf,
-  ): void {
-    // no op
-  }
-
-  getSuggestions(_inputInfo: InputInfo): T[] {
-    return [];
-  }
-
-  renderSuggestion(_sugg: T, _parentEl: HTMLElement): void {
-    // no op
-  }
-
-  onChooseSuggestion(_sugg: T, _evt: MouseEvent | KeyboardEvent): void {
-    // no op
-  }
+  abstract validateCommand(
+    inputInfo: InputInfo,
+    index: number,
+    filterText: string,
+    activeSuggestion: AnySuggestion,
+    activeLeaf: WorkspaceLeaf,
+  ): void;
+  abstract renderSuggestion(sugg: T, parentEl: HTMLElement): void;
+  abstract onChooseSuggestion(sugg: T, evt: MouseEvent | KeyboardEvent): void;
+  abstract getSuggestions(inputInfo: InputInfo): T[];
 
   getEditorInfo(leaf: WorkspaceLeaf): SourceInfo {
     const { excludeViewTypes } = this.settings;

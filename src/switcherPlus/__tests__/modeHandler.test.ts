@@ -1,18 +1,6 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 import { SwitcherPlusSettings } from 'src/settings';
-import {
-  Mode,
-  FileSuggestion,
-  EditorSuggestion,
-  WorkspaceSuggestion,
-  HeadingSuggestion,
-  SymbolSuggestion,
-  SymbolType,
-  AnySuggestion,
-  StarredSuggestion,
-  CommandSuggestion,
-  RelatedItemsSuggestion,
-} from 'src/types';
+import { AnySuggestion, Mode, SymbolType } from 'src/types';
 import { Keymap, ModeHandler, SourcedParsedCommand } from 'src/switcherPlus';
 import {
   EditorHandler,
@@ -23,50 +11,91 @@ import {
   CommandHandler,
   RelatedItemsHandler,
 } from 'src/Handlers';
-import {
-  TFile,
-  WorkspaceLeaf,
-  App,
-  Chooser,
-  debounce,
-  View,
-  InternalPlugins,
-  Workspace,
-} from 'obsidian';
+import { App, Chooser, debounce, View, InternalPlugins, Workspace } from 'obsidian';
 import {
   editorTrigger,
   symbolTrigger,
   workspaceTrigger,
   standardModeInputFixture,
-  editorPrefixOnlyInputFixture,
-  symbolPrefixOnlyInputFixture,
-  symbolModeInputFixture,
   unicodeInputFixture,
-  workspacePrefixOnlyInputFixture,
   headingsTrigger,
-  headingsPrefixOnlyInputFixture,
-  starredPrefixOnlyInputFixture,
   makeHeading,
   getHeadings,
   starredTrigger,
-  makeFileStarredItem,
   commandTrigger,
-  commandPrefixOnlyInputFixture,
-  makeCommandItem,
   relatedItemsTrigger,
-  relatedItemsPrefixOnlyInputFixture,
-  relatedItemsModeInputFixture,
+  makeFileSuggestion,
+  makeEditorSuggestion,
+  makeStarredSuggestion,
+  makeCommandSuggestion,
+  makeRelatedItemsSuggestion,
+  makeHeadingSuggestion,
+  makeWorkspaceSuggestion,
+  makeSymbolSuggestion,
+  makeLeaf,
+  makePrefixOnlyInputFixture,
+  makeSourcedCmdEmbeddedInputFixture,
 } from '@fixtures';
 
-function makeLeaf(): MockProxy<WorkspaceLeaf> {
-  const view = mock<View>({ file: new TFile() });
-  return mock<WorkspaceLeaf>({ view });
-}
+// dataset used for various test scenarios
+const modeHandlingData = [
+  {
+    title: 'EDITOR MODE',
+    mode: Mode.EditorList,
+    handlerPrototype: EditorHandler.prototype,
+    trigger: editorTrigger,
+    suggestions: [makeEditorSuggestion(makeLeaf())],
+  },
+  {
+    title: 'STARRED MODE',
+    mode: Mode.StarredList,
+    handlerPrototype: StarredHandler.prototype,
+    trigger: starredTrigger,
+    suggestions: [makeStarredSuggestion()],
+  },
+  {
+    title: 'WORKSPACE MODE',
+    mode: Mode.WorkspaceList,
+    handlerPrototype: WorkspaceHandler.prototype,
+    trigger: workspaceTrigger,
+    suggestions: [makeWorkspaceSuggestion('foo')],
+  },
+  {
+    title: 'HEADING MODE',
+    mode: Mode.HeadingsList,
+    handlerPrototype: HeadingsHandler.prototype,
+    trigger: headingsTrigger,
+    suggestions: [makeHeadingSuggestion(makeHeading('foo', 1))],
+  },
+  {
+    title: 'COMMAND MODE',
+    mode: Mode.CommandList,
+    handlerPrototype: CommandHandler.prototype,
+    trigger: commandTrigger,
+    suggestions: [makeCommandSuggestion()],
+  },
+  {
+    title: 'SYMBOL MODE',
+    mode: Mode.SymbolList,
+    handlerPrototype: SymbolHandler.prototype,
+    trigger: symbolTrigger,
+    isSourcedCmd: true, // requires source file
+    suggestions: [makeSymbolSuggestion(getHeadings()[0], SymbolType.Heading)],
+  },
+  {
+    title: 'RELATEDITEMS MODE',
+    mode: Mode.RelatedItemsList,
+    handlerPrototype: RelatedItemsHandler.prototype,
+    trigger: relatedItemsTrigger,
+    isSourcedCmd: true, // requires source file
+    suggestions: [makeRelatedItemsSuggestion()],
+  },
+];
 
 describe('modeHandler', () => {
+  const excludedViewType = 'excludedViewType';
   let mockApp: MockProxy<App>;
-  let settings: SwitcherPlusSettings;
-  let sut: ModeHandler;
+  let mockSettings: MockProxy<SwitcherPlusSettings>;
 
   beforeAll(() => {
     const mockInternalPlugins = mock<InternalPlugins>();
@@ -78,33 +107,32 @@ describe('modeHandler', () => {
     });
 
     const mockWorkspace = mock<Workspace>({ activeLeaf: null });
-    mockWorkspace.iterateAllLeaves.mockImplementation((_callback) => {
-      //noop
-    });
+    mockWorkspace.iterateAllLeaves.mockImplementation();
 
     mockApp = mock<App>({
       internalPlugins: mockInternalPlugins,
       workspace: mockWorkspace,
     });
 
-    settings = new SwitcherPlusSettings(null);
-
-    jest.spyOn(settings, 'editorListCommand', 'get').mockReturnValue(editorTrigger);
-    jest.spyOn(settings, 'symbolListCommand', 'get').mockReturnValue(symbolTrigger);
-    jest.spyOn(settings, 'workspaceListCommand', 'get').mockReturnValue(workspaceTrigger);
-    jest.spyOn(settings, 'headingsListCommand', 'get').mockReturnValue(headingsTrigger);
-    jest.spyOn(settings, 'starredListCommand', 'get').mockReturnValue(starredTrigger);
-    jest.spyOn(settings, 'commandListCommand', 'get').mockReturnValue(commandTrigger);
-    jest
-      .spyOn(settings, 'relatedItemsListCommand', 'get')
-      .mockReturnValue(relatedItemsTrigger);
+    mockSettings = mock<SwitcherPlusSettings>({
+      editorListCommand: editorTrigger,
+      symbolListCommand: symbolTrigger,
+      workspaceListCommand: workspaceTrigger,
+      headingsListCommand: headingsTrigger,
+      starredListCommand: starredTrigger,
+      commandListCommand: commandTrigger,
+      relatedItemsListCommand: relatedItemsTrigger,
+      excludeViewTypes: [excludedViewType],
+      referenceViews: [],
+    });
   });
 
   describe('opening and closing the modal', () => {
     const mockKeymap = mock<Keymap>();
+    let sut: ModeHandler;
 
     beforeAll(() => {
-      sut = new ModeHandler(mockApp, settings, mockKeymap);
+      sut = new ModeHandler(mockApp, mockSettings, mockKeymap);
     });
 
     test('onOpen() should open the keymap', () => {
@@ -126,9 +154,10 @@ describe('modeHandler', () => {
 
   describe('Starting sessions with explicit command string', () => {
     let commandStringSpy: jest.SpyInstance;
+    let sut: ModeHandler;
 
     beforeAll(() => {
-      sut = new ModeHandler(mockApp, settings, null);
+      sut = new ModeHandler(mockApp, mockSettings, null);
     });
 
     describe('setSessionOpenMode', () => {
@@ -144,37 +173,18 @@ describe('modeHandler', () => {
         commandStringSpy.mockRestore();
       });
 
-      it('should not save the command string for any Ex modes', () => {
-        const sSpy = jest.spyOn(SymbolHandler.prototype, 'commandString', 'get');
-        const eSpy = jest.spyOn(EditorHandler.prototype, 'commandString', 'get');
-        const wSpy = jest.spyOn(WorkspaceHandler.prototype, 'commandString', 'get');
-        const hSpy = jest.spyOn(HeadingsHandler.prototype, 'commandString', 'get');
-        const starredSpy = jest.spyOn(StarredHandler.prototype, 'commandString', 'get');
-        const commandsSpy = jest.spyOn(CommandHandler.prototype, 'commandString', 'get');
-        const relatedItemsSpy = jest.spyOn(
-          RelatedItemsHandler.prototype,
-          'commandString',
-          'get',
-        );
+      test.each(modeHandlingData)(
+        '$title: should not save the command string for Ex mode: $mode',
+        ({ handlerPrototype }) => {
+          const commandStringSpy = jest.spyOn(handlerPrototype, 'commandString', 'get');
 
-        sut.setSessionOpenMode(Mode.Standard, null);
+          sut.setSessionOpenMode(Mode.Standard, null);
 
-        expect(sSpy).not.toHaveBeenCalled();
-        expect(eSpy).not.toHaveBeenCalled();
-        expect(wSpy).not.toHaveBeenCalled();
-        expect(hSpy).not.toHaveBeenCalled();
-        expect(starredSpy).not.toHaveBeenCalled();
-        expect(commandsSpy).not.toHaveBeenCalled();
-        expect(relatedItemsSpy).not.toHaveBeenCalled();
+          expect(commandStringSpy).not.toHaveBeenCalled();
 
-        sSpy.mockRestore();
-        eSpy.mockRestore();
-        wSpy.mockRestore();
-        hSpy.mockRestore();
-        starredSpy.mockRestore();
-        commandsSpy.mockRestore();
-        relatedItemsSpy.mockRestore();
-      });
+          commandStringSpy.mockRestore();
+        },
+      );
     });
 
     describe('insertSessionOpenModeCommandString', () => {
@@ -201,8 +211,10 @@ describe('modeHandler', () => {
   });
 
   describe('determineRunMode', () => {
+    let sut: ModeHandler;
+
     beforeAll(() => {
-      sut = new ModeHandler(mockApp, settings, null);
+      sut = new ModeHandler(mockApp, mockSettings, null);
     });
 
     it('should reset on falsy input', () => {
@@ -235,15 +247,7 @@ describe('modeHandler', () => {
           }
 
           const leaf = makeLeaf();
-          const es: EditorSuggestion = {
-            item: leaf,
-            file: leaf.view.file,
-            type: 'editor',
-            match: {
-              score: 0,
-              matches: [[0, 0]],
-            },
-          };
+          const es = makeEditorSuggestion(leaf, leaf.view.file);
 
           const inputInfo = mh.determineRunMode(input, es, makeLeaf());
           const parsed = inputInfo.parsedCommand().parsedInput;
@@ -259,23 +263,15 @@ describe('modeHandler', () => {
       test(`with excluded active view for input: "${symbolTrigger} test"`, () => {
         const mockLeaf = makeLeaf();
         const mockView = mockLeaf.view as MockProxy<View>;
-        const excludedType = 'foo';
         const input = `${symbolTrigger} test`;
 
-        const excludeViewTypesSpy = jest
-          .spyOn(settings, 'excludeViewTypes', 'get')
-          .mockReturnValue([excludedType]);
-
-        mockView.getViewType.mockReturnValue(excludedType);
+        mockView.getViewType.mockReturnValue(excludedViewType);
 
         const inputInfo = sut.determineRunMode(input, null, mockLeaf);
 
         expect(inputInfo.mode).toBe(Mode.Standard);
         expect(inputInfo.inputText).toBe(input);
-        expect(excludeViewTypesSpy).toHaveBeenCalled();
         expect(mockView.getViewType).toHaveBeenCalled();
-
-        excludeViewTypesSpy.mockRestore();
       });
 
       test.each(standardModeInputFixture)(
@@ -289,730 +285,248 @@ describe('modeHandler', () => {
       );
     });
 
-    describe('should parse as editor mode', () => {
-      test.each(editorPrefixOnlyInputFixture)(
-        'for input: "$input" (array data index: $#)',
-        ({ input, expected: { mode, isValidated, parsedInput } }) => {
-          const inputInfo = sut.determineRunMode(input, null, null);
+    describe.each(
+      // exclude sourced modes (modes that require a source file) since they
+      // are handled separately
+      modeHandlingData.filter((v) => !v.isSourcedCmd),
+    )(
+      '$title: should parse as Mode: $mode using trigger: $trigger',
+      ({ mode: triggerMode }) => {
+        test.each(makePrefixOnlyInputFixture(triggerMode))(
+          'for input (array data index: $#): "$input"',
+          ({ input, expected: { mode, isValidated, parsedInput } }) => {
+            const inputInfo = sut.determineRunMode(input, null, null);
 
-          expect(inputInfo.mode).toBe(mode);
-          expect(inputInfo.inputText).toBe(input);
+            expect(inputInfo.mode).toBe(mode);
+            expect(inputInfo.inputText).toBe(input);
 
-          const editorCmd = inputInfo.parsedCommand();
-          expect(editorCmd.isValidated).toBe(isValidated);
-          expect(editorCmd.parsedInput).toBe(parsedInput);
-        },
-      );
-    });
+            const cmd = inputInfo.parsedCommand();
+            expect(cmd.isValidated).toBe(isValidated);
+            expect(cmd.parsedInput).toBe(parsedInput);
+          },
+        );
+      },
+    );
 
-    describe('should parse as symbol mode', () => {
-      test.each(symbolPrefixOnlyInputFixture)(
-        'with ACTIVE LEAF for input: "$input" (array data index: $#)',
-        ({ input, expected: { mode, isValidated, parsedInput } }) => {
-          const mockLeaf = makeLeaf();
-          const inputInfo = sut.determineRunMode(input, null, mockLeaf);
+    describe.each(
+      // include only the sourced modes (mode that require a source file)
+      modeHandlingData.filter((v) => v.isSourcedCmd),
+    )(
+      '$title: should parse as Sourced Mode: $mode using trigger: $trigger',
+      ({ mode: triggerMode }) => {
+        const embeddedCases = makeSourcedCmdEmbeddedInputFixture(triggerMode);
 
-          expect(inputInfo.mode).toBe(mode);
-          expect(inputInfo.inputText).toBe(input);
+        test.each(makePrefixOnlyInputFixture(triggerMode))(
+          'with ACTIVE LEAF for input: "$input" (array data index: $#)',
+          ({ input, expected: { mode, isValidated, parsedInput } }) => {
+            const mockLeaf = makeLeaf();
+            const inputInfo = sut.determineRunMode(input, null, mockLeaf);
 
-          const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
-          expect(symbolCmd.isValidated).toBe(isValidated);
-          expect(symbolCmd.parsedInput).toBe(parsedInput);
+            expect(inputInfo.mode).toBe(mode);
+            expect(inputInfo.inputText).toBe(input);
 
-          const { source } = symbolCmd;
-          expect(source.isValidSource).toBe(true);
-          expect(source.file).toBe(mockLeaf.view.file);
-          expect(source.leaf).toBe(mockLeaf);
-          expect(source.suggestion).toBe(null);
-        },
-      );
+            const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
+            expect(symbolCmd.isValidated).toBe(isValidated);
+            expect(symbolCmd.parsedInput).toBe(parsedInput);
 
-      test.each(symbolModeInputFixture)(
-        'with FILE SUGGESTION for input: "$input" (array data index: $#)',
-        ({ input, expected: { mode, isValidated, parsedInput } }) => {
-          const fileSuggestion: FileSuggestion = {
-            file: new TFile(),
-            type: 'file',
-            match: {
-              score: 0,
-              matches: [[0, 0]],
-            },
-          };
+            const { source } = symbolCmd;
+            expect(source.isValidSource).toBe(true);
+            expect(source.file).toBe(mockLeaf.view.file);
+            expect(source.leaf).toBe(mockLeaf);
+            expect(source.suggestion).toBe(null);
+          },
+        );
 
-          const inputInfo = sut.determineRunMode(input, fileSuggestion, null);
+        test.each(embeddedCases)(
+          'with FILE SUGGESTION for input: "$input" (array data index: $#)',
+          ({ input, expected: { mode, isValidated, parsedInput } }) => {
+            const fileSuggestion = makeFileSuggestion(null, [[0, 0]], 0);
 
-          expect(inputInfo.mode).toBe(mode);
-          expect(inputInfo.inputText).toBe(input);
+            const inputInfo = sut.determineRunMode(input, fileSuggestion, null);
 
-          const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
-          expect(symbolCmd.isValidated).toBe(isValidated);
-          expect(symbolCmd.parsedInput).toBe(parsedInput);
+            expect(inputInfo.mode).toBe(mode);
+            expect(inputInfo.inputText).toBe(input);
 
-          const { source } = symbolCmd;
-          expect(source.isValidSource).toBe(true);
-          expect(source.file).toBe(fileSuggestion.file);
-          expect(source.leaf).toBe(null);
-          expect(source.suggestion).toBe(fileSuggestion);
-        },
-      );
+            const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
+            expect(symbolCmd.isValidated).toBe(isValidated);
+            expect(symbolCmd.parsedInput).toBe(parsedInput);
 
-      test.each(symbolModeInputFixture)(
-        'with EDITOR SUGGESTION for input: "$input" (array data index: $#)',
-        ({ input, expected: { mode, isValidated, parsedInput } }) => {
-          const leaf = makeLeaf();
-          const editorSuggestion: EditorSuggestion = {
-            item: leaf,
-            file: leaf.view.file,
-            type: 'editor',
-            match: {
-              score: 0,
-              matches: [[0, 0]],
-            },
-          };
+            const { source } = symbolCmd;
+            expect(source.isValidSource).toBe(true);
+            expect(source.file).toBe(fileSuggestion.file);
+            expect(source.leaf).toBe(null);
+            expect(source.suggestion).toBe(fileSuggestion);
+          },
+        );
 
-          mockApp.workspace.activeLeaf = leaf;
+        test.each(embeddedCases)(
+          'with EDITOR SUGGESTION for input: "$input" (array data index: $#)',
+          ({ input, expected: { mode, isValidated, parsedInput } }) => {
+            const leaf = makeLeaf();
+            const editorSuggestion = makeEditorSuggestion(leaf, leaf.view.file);
 
-          const inputInfo = sut.determineRunMode(input, editorSuggestion, null);
+            mockApp.workspace.activeLeaf = leaf;
 
-          expect(inputInfo.mode).toBe(mode);
-          expect(inputInfo.inputText).toBe(input);
+            const inputInfo = sut.determineRunMode(input, editorSuggestion, null);
 
-          const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
-          expect(symbolCmd.isValidated).toBe(isValidated);
-          expect(symbolCmd.parsedInput).toBe(parsedInput);
+            expect(inputInfo.mode).toBe(mode);
+            expect(inputInfo.inputText).toBe(input);
 
-          const { source } = symbolCmd;
-          expect(source.isValidSource).toBe(true);
-          expect(source.file).toBe(leaf.view.file);
-          expect(source.leaf).toBe(leaf);
-          expect(source.suggestion).toBe(editorSuggestion);
+            const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
+            expect(symbolCmd.isValidated).toBe(isValidated);
+            expect(symbolCmd.parsedInput).toBe(parsedInput);
 
-          mockApp.workspace.activeLeaf = null;
-        },
-      );
-    });
+            const { source } = symbolCmd;
+            expect(source.isValidSource).toBe(true);
+            expect(source.file).toBe(leaf.view.file);
+            expect(source.leaf).toBe(leaf);
+            expect(source.suggestion).toBe(editorSuggestion);
 
-    describe('should parse as workspace mode', () => {
-      test.each(workspacePrefixOnlyInputFixture)(
-        'for input: "$input" (array data index: $#)',
-        ({ input, expected: { mode, isValidated, parsedInput } }) => {
-          const inputInfo = sut.determineRunMode(input, null, null);
-
-          expect(inputInfo.mode).toBe(mode);
-          expect(inputInfo.inputText).toBe(input);
-
-          const workspaceCmd = inputInfo.parsedCommand();
-          expect(workspaceCmd.isValidated).toBe(isValidated);
-          expect(workspaceCmd.parsedInput).toBe(parsedInput);
-        },
-      );
-    });
-
-    describe('should parse as starred mode', () => {
-      test.each(starredPrefixOnlyInputFixture)(
-        'for input: "$input" (array data index: $#)',
-        ({ input, expected: { mode, isValidated, parsedInput } }) => {
-          const inputInfo = sut.determineRunMode(input, null, null);
-
-          expect(inputInfo.mode).toBe(mode);
-          expect(inputInfo.inputText).toBe(input);
-
-          const starredCmd = inputInfo.parsedCommand();
-          expect(starredCmd.isValidated).toBe(isValidated);
-          expect(starredCmd.parsedInput).toBe(parsedInput);
-        },
-      );
-    });
-
-    describe('should parse as headings mode', () => {
-      test.each(headingsPrefixOnlyInputFixture)(
-        'for input: "$input" (array data index: $#)',
-        ({ input, expected: { mode, isValidated, parsedInput } }) => {
-          const inputInfo = sut.determineRunMode(input, null, null);
-
-          expect(inputInfo.mode).toBe(mode);
-          expect(inputInfo.inputText).toBe(input);
-
-          const headingsCmd = inputInfo.parsedCommand();
-          expect(headingsCmd.isValidated).toBe(isValidated);
-          expect(headingsCmd.parsedInput).toBe(parsedInput);
-        },
-      );
-    });
-
-    describe('should parse as command mode', () => {
-      test.each(commandPrefixOnlyInputFixture)(
-        'for input: "$input" (array data index: $#)',
-        ({ input, expected: { mode, isValidated, parsedInput } }) => {
-          const inputInfo = sut.determineRunMode(input, null, null);
-
-          expect(inputInfo.mode).toBe(mode);
-          expect(inputInfo.inputText).toBe(input);
-
-          const commandCmd = inputInfo.parsedCommand();
-          expect(commandCmd.isValidated).toBe(isValidated);
-          expect(commandCmd.parsedInput).toBe(parsedInput);
-        },
-      );
-    });
-
-    describe('should parse as related mode', () => {
-      test.each(relatedItemsPrefixOnlyInputFixture)(
-        'with ACTIVE LEAF for input: "$input" (array data index: $#)',
-        ({ input, expected: { mode, isValidated, parsedInput } }) => {
-          const mockLeaf = makeLeaf();
-          const inputInfo = sut.determineRunMode(input, null, mockLeaf);
-
-          expect(inputInfo.mode).toBe(mode);
-          expect(inputInfo.inputText).toBe(input);
-
-          const cmd = inputInfo.parsedCommand() as SourcedParsedCommand;
-          expect(cmd.isValidated).toBe(isValidated);
-          expect(cmd.parsedInput).toBe(parsedInput);
-
-          const { source } = cmd;
-          expect(source.isValidSource).toBe(true);
-          expect(source.file).toBe(mockLeaf.view.file);
-          expect(source.leaf).toBe(mockLeaf);
-          expect(source.suggestion).toBe(null);
-        },
-      );
-
-      test.each(relatedItemsModeInputFixture)(
-        'with FILE SUGGESTION for input: "$input" (array data index: $#)',
-        ({ input, expected: { mode, isValidated, parsedInput } }) => {
-          const fileSuggestion: FileSuggestion = {
-            file: new TFile(),
-            type: 'file',
-            match: {
-              score: 0,
-              matches: [[0, 0]],
-            },
-          };
-
-          const inputInfo = sut.determineRunMode(input, fileSuggestion, null);
-
-          expect(inputInfo.mode).toBe(mode);
-          expect(inputInfo.inputText).toBe(input);
-
-          const cmd = inputInfo.parsedCommand() as SourcedParsedCommand;
-          expect(cmd.isValidated).toBe(isValidated);
-          expect(cmd.parsedInput).toBe(parsedInput);
-
-          const { source } = cmd;
-          expect(source.isValidSource).toBe(true);
-          expect(source.file).toBe(fileSuggestion.file);
-          expect(source.leaf).toBe(null);
-          expect(source.suggestion).toBe(fileSuggestion);
-        },
-      );
-
-      test.each(relatedItemsModeInputFixture)(
-        'with EDITOR SUGGESTION for input: "$input" (array data index: $#)',
-        ({ input, expected: { mode, isValidated, parsedInput } }) => {
-          const leaf = makeLeaf();
-          const editorSuggestion: EditorSuggestion = {
-            item: leaf,
-            file: leaf.view.file,
-            type: 'editor',
-            match: {
-              score: 0,
-              matches: [[0, 0]],
-            },
-          };
-
-          mockApp.workspace.activeLeaf = leaf;
-
-          const inputInfo = sut.determineRunMode(input, editorSuggestion, null);
-
-          expect(inputInfo.mode).toBe(mode);
-          expect(inputInfo.inputText).toBe(input);
-
-          const cmd = inputInfo.parsedCommand() as SourcedParsedCommand;
-          expect(cmd.isValidated).toBe(isValidated);
-          expect(cmd.parsedInput).toBe(parsedInput);
-
-          const { source } = cmd;
-          expect(source.isValidSource).toBe(true);
-          expect(source.file).toBe(leaf.view.file);
-          expect(source.leaf).toBe(leaf);
-          expect(source.suggestion).toBe(editorSuggestion);
-
-          mockApp.workspace.activeLeaf = null;
-        },
-      );
-    });
+            mockApp.workspace.activeLeaf = null;
+          },
+        );
+      },
+    );
   });
 
   describe('managing suggestions', () => {
-    const editorSugg: EditorSuggestion = {
-      type: 'editor',
-      file: null,
-      item: makeLeaf(),
-      match: null,
-    };
-
-    const symbolSugg: SymbolSuggestion = {
-      type: 'symbol',
-      file: null,
-      item: {
-        type: 'symbolInfo',
-        symbol: getHeadings()[0],
-        symbolType: SymbolType.Heading,
-        isSelected: false,
-      },
-      match: null,
-    };
-
-    const workspaceSugg: WorkspaceSuggestion = {
-      type: 'workspace',
-      item: {
-        type: 'workspaceInfo',
-        id: 'foo',
-      },
-      match: null,
-    };
-
-    const headingsSugg: HeadingSuggestion = {
-      type: 'heading',
-      item: makeHeading('foo', 1),
-      file: null,
-      match: null,
-    };
-
-    const starredSugg: StarredSuggestion = {
-      type: 'starred',
-      file: new TFile(),
-      item: makeFileStarredItem(),
-      match: null,
-    };
-
-    const commandSugg: CommandSuggestion = {
-      type: 'command',
-      item: makeCommandItem(),
-      match: null,
-    };
-
-    const relatedItemSugg: RelatedItemsSuggestion = {
-      type: 'relatedItems',
-      relationType: 'diskLocation',
-      file: new TFile(),
-      match: null,
-    };
+    const mockEvt = mock<MouseEvent>();
+    const mockParentEl = mock<HTMLElement>();
+    const mockChooser = mock<Chooser<AnySuggestion>>();
+    const mockSetSuggestion = mockChooser.setSuggestions.mockImplementation();
+    let sut: ModeHandler;
 
     beforeAll(() => {
-      sut = new ModeHandler(mockApp, settings, mock<Keymap>());
+      // needed for file sourced command modes i.e. Symbol, RelatedItems
+      mockApp.workspace.activeLeaf = makeLeaf();
+
+      sut = new ModeHandler(mockApp, mockSettings, mock<Keymap>());
     });
 
-    describe('updateSuggestions', () => {
-      const mockChooser = mock<Chooser<AnySuggestion>>();
-      const mockSetSuggestion = mockChooser.setSuggestions.mockImplementation();
-      let getSuggestionSpy: jest.SpyInstance;
-
-      test('with falsy input (Standard mode), it should return not handled', () => {
-        const results = sut.updateSuggestions(null, null);
-        expect(results).toBe(false);
-      });
-
-      it('should debounce in Headings mode with filter text', () => {
-        const validateCommandSpy = jest
-          .spyOn(HeadingsHandler.prototype, 'validateCommand')
-          .mockImplementation((inputInfo) => {
-            inputInfo.mode = Mode.HeadingsList;
-            const cmd = inputInfo.parsedCommand(Mode.HeadingsList);
-            cmd.parsedInput = 'foo';
-          });
-
-        const mockDebouncedFn = jest.fn();
-        const mockDebounce = debounce as jest.Mock;
-        mockDebounce.mockImplementation(() => mockDebouncedFn);
-        sut = new ModeHandler(mockApp, settings, mock<Keymap>());
-
-        const results = sut.updateSuggestions(headingsTrigger, mockChooser);
-
-        expect(results).toBe(true);
-        expect(mockDebounce).toHaveBeenCalled();
-        expect(mockDebouncedFn).toHaveBeenCalled();
-        expect(validateCommandSpy).toHaveBeenCalled();
-
-        validateCommandSpy.mockRestore();
-        mockDebounce.mockReset();
-      });
-
-      it('should get suggestions for Editor Mode', () => {
-        const expectedSuggestions = [editorSugg];
-        getSuggestionSpy = jest
-          .spyOn(EditorHandler.prototype, 'getSuggestions')
-          .mockReturnValue(expectedSuggestions);
-
-        const results = sut.updateSuggestions(editorTrigger, mockChooser);
-
-        expect(results).toBe(true);
-        expect(getSuggestionSpy).toHaveBeenCalled();
-        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
-
-        getSuggestionSpy.mockRestore();
-        mockSetSuggestion.mockReset();
-      });
-
-      it('should get suggestions for Symbol Mode', () => {
-        const expectedSuggestions = [symbolSugg];
-        getSuggestionSpy = jest
-          .spyOn(SymbolHandler.prototype, 'getSuggestions')
-          .mockReturnValue(expectedSuggestions);
-
-        const validateCommandSpy = jest
-          .spyOn(SymbolHandler.prototype, 'validateCommand')
-          .mockImplementation((inputInfo) => {
-            inputInfo.mode = Mode.SymbolList;
-          });
-
-        const mockSetSelectedItem = mockChooser.setSelectedItem.mockImplementation();
-        mockChooser.values = expectedSuggestions;
-
-        const results = sut.updateSuggestions(symbolTrigger, mockChooser);
-
-        expect(results).toBe(true);
-        expect(getSuggestionSpy).toHaveBeenCalled();
-        expect(validateCommandSpy).toHaveBeenCalled();
-        expect(mockSetSelectedItem).not.toHaveBeenCalled();
-        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
-
-        getSuggestionSpy.mockRestore();
-        validateCommandSpy.mockRestore();
-        mockSetSelectedItem.mockRestore();
-        mockSetSuggestion.mockReset();
-      });
-
-      it('should set the active suggestion in Symbol Mode', () => {
-        const symbolSugg2: SymbolSuggestion = {
-          type: 'symbol',
-          file: null,
-          item: {
-            type: 'symbolInfo',
-            symbol: getHeadings()[0],
-            symbolType: SymbolType.Heading,
-            isSelected: true, // <-- here
-          },
-          match: null,
-        };
-
-        const expectedSuggestions = [symbolSugg2];
-        getSuggestionSpy = jest
-          .spyOn(SymbolHandler.prototype, 'getSuggestions')
-          .mockReturnValue(expectedSuggestions);
-
-        const validateCommandSpy = jest
-          .spyOn(SymbolHandler.prototype, 'validateCommand')
-          .mockImplementation((inputInfo) => {
-            inputInfo.mode = Mode.SymbolList;
-          });
-
-        const mockSetSelectedItem = mockChooser.setSelectedItem.mockImplementation();
-        mockChooser.values = expectedSuggestions;
-
-        const results = sut.updateSuggestions(symbolTrigger, mockChooser);
-
-        expect(results).toBe(true);
-        expect(getSuggestionSpy).toHaveBeenCalled();
-        expect(validateCommandSpy).toHaveBeenCalled();
-        expect(mockSetSelectedItem).toHaveBeenCalledWith(0, true); // <-- here
-        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
-
-        getSuggestionSpy.mockRestore();
-        validateCommandSpy.mockRestore();
-        mockSetSelectedItem.mockRestore();
-        mockSetSuggestion.mockReset();
-      });
-
-      it('should get suggestions for Workspace Mode', () => {
-        const expectedSuggestions = [workspaceSugg];
-        getSuggestionSpy = jest
-          .spyOn(WorkspaceHandler.prototype, 'getSuggestions')
-          .mockReturnValue(expectedSuggestions);
-
-        const results = sut.updateSuggestions(workspaceTrigger, mockChooser);
-
-        expect(results).toBe(true);
-        expect(getSuggestionSpy).toHaveBeenCalled();
-        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
-
-        getSuggestionSpy.mockRestore();
-        mockSetSuggestion.mockReset();
-      });
-
-      it('should get suggestions for Starred Mode', () => {
-        const expectedSuggestions = [starredSugg];
-        getSuggestionSpy = jest
-          .spyOn(StarredHandler.prototype, 'getSuggestions')
-          .mockReturnValue(expectedSuggestions);
-
-        const results = sut.updateSuggestions(starredTrigger, mockChooser);
-
-        expect(results).toBe(true);
-        expect(getSuggestionSpy).toHaveBeenCalled();
-        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
-
-        getSuggestionSpy.mockRestore();
-        mockSetSuggestion.mockReset();
-      });
-
-      it('should get suggestions for Headings Mode', () => {
-        const expectedSuggestions = [headingsSugg];
-        getSuggestionSpy = jest
-          .spyOn(HeadingsHandler.prototype, 'getSuggestions')
-          .mockReturnValue(expectedSuggestions);
-
-        const results = sut.updateSuggestions(headingsTrigger, mockChooser);
-
-        expect(results).toBe(true);
-        expect(getSuggestionSpy).toHaveBeenCalled();
-        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
-
-        getSuggestionSpy.mockRestore();
-        mockSetSuggestion.mockReset();
-      });
-
-      it('should get suggestions for Command Mode', () => {
-        const expectedSuggestions = [commandSugg];
-        getSuggestionSpy = jest
-          .spyOn(CommandHandler.prototype, 'getSuggestions')
-          .mockReturnValue(expectedSuggestions);
-
-        const results = sut.updateSuggestions(commandTrigger, mockChooser);
-
-        expect(results).toBe(true);
-        expect(getSuggestionSpy).toHaveBeenCalled();
-        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
-
-        getSuggestionSpy.mockRestore();
-        mockSetSuggestion.mockReset();
-      });
-
-      it('should get suggestions for RelatedItems Mode', () => {
-        const expectedSuggestions = [relatedItemSugg];
-        getSuggestionSpy = jest
-          .spyOn(RelatedItemsHandler.prototype, 'getSuggestions')
-          .mockReturnValue(expectedSuggestions);
-
-        const validateCommandSpy = jest
-          .spyOn(RelatedItemsHandler.prototype, 'validateCommand')
-          .mockImplementation((inputInfo) => {
-            inputInfo.mode = Mode.RelatedItemsList;
-          });
-
-        const results = sut.updateSuggestions(relatedItemsTrigger, mockChooser);
-
-        expect(results).toBe(true);
-        expect(getSuggestionSpy).toHaveBeenCalled();
-        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
-
-        getSuggestionSpy.mockRestore();
-        validateCommandSpy.mockRestore();
-        mockSetSuggestion.mockReset();
-      });
+    afterAll(() => {
+      mockApp.workspace.activeLeaf = null;
     });
 
-    describe('renderSuggestions', () => {
-      const mockParentEl = mock<HTMLElement>();
-      let renderSuggestionSpy: jest.SpyInstance;
-
-      it('should return false with falsy input', () => {
-        const result = sut.renderSuggestion(null, null);
-        expect(result).toBe(false);
-      });
-
-      it('should render suggestions for Editor Mode', () => {
-        renderSuggestionSpy = jest
-          .spyOn(EditorHandler.prototype, 'renderSuggestion')
-          .mockImplementation();
-
-        const result = sut.renderSuggestion(editorSugg, mockParentEl);
-
-        expect(result).toBe(true);
-        expect(renderSuggestionSpy).toHaveBeenCalledWith(editorSugg, mockParentEl);
-
-        renderSuggestionSpy.mockRestore();
-      });
-
-      it('should render suggestions for Symbol Mode', () => {
-        renderSuggestionSpy = jest
-          .spyOn(SymbolHandler.prototype, 'renderSuggestion')
-          .mockImplementation();
-
-        const result = sut.renderSuggestion(symbolSugg, mockParentEl);
-
-        expect(result).toBe(true);
-        expect(renderSuggestionSpy).toHaveBeenCalledWith(symbolSugg, mockParentEl);
-
-        renderSuggestionSpy.mockRestore();
-      });
-
-      it('should render suggestions for Headings Mode', () => {
-        renderSuggestionSpy = jest
-          .spyOn(HeadingsHandler.prototype, 'renderSuggestion')
-          .mockImplementation();
-
-        const result = sut.renderSuggestion(headingsSugg, mockParentEl);
-
-        expect(result).toBe(true);
-        expect(renderSuggestionSpy).toHaveBeenCalledWith(headingsSugg, mockParentEl);
-
-        renderSuggestionSpy.mockRestore();
-      });
-
-      it('should render suggestions for Workspace Mode', () => {
-        renderSuggestionSpy = jest
-          .spyOn(WorkspaceHandler.prototype, 'renderSuggestion')
-          .mockImplementation();
-
-        const result = sut.renderSuggestion(workspaceSugg, mockParentEl);
-
-        expect(result).toBe(true);
-        expect(renderSuggestionSpy).toHaveBeenCalledWith(workspaceSugg, mockParentEl);
-
-        renderSuggestionSpy.mockRestore();
-      });
-
-      it('should render suggestions for Starred Mode', () => {
-        renderSuggestionSpy = jest
-          .spyOn(StarredHandler.prototype, 'renderSuggestion')
-          .mockImplementation();
-
-        const result = sut.renderSuggestion(starredSugg, mockParentEl);
-
-        expect(result).toBe(true);
-        expect(renderSuggestionSpy).toHaveBeenCalledWith(starredSugg, mockParentEl);
-
-        renderSuggestionSpy.mockRestore();
-      });
-
-      it('should render suggestions for Command Mode', () => {
-        renderSuggestionSpy = jest
-          .spyOn(CommandHandler.prototype, 'renderSuggestion')
-          .mockImplementation();
-
-        const result = sut.renderSuggestion(commandSugg, mockParentEl);
-
-        expect(result).toBe(true);
-        expect(renderSuggestionSpy).toHaveBeenCalledWith(commandSugg, mockParentEl);
-
-        renderSuggestionSpy.mockRestore();
-      });
-
-      it('should render suggestions for RelatedItems Mode', () => {
-        renderSuggestionSpy = jest
-          .spyOn(RelatedItemsHandler.prototype, 'renderSuggestion')
-          .mockImplementation();
-
-        const result = sut.renderSuggestion(relatedItemSugg, mockParentEl);
-
-        expect(result).toBe(true);
-        expect(renderSuggestionSpy).toHaveBeenCalledWith(relatedItemSugg, mockParentEl);
-
-        renderSuggestionSpy.mockRestore();
-      });
+    test('updateSuggestions should return not handled (false) with falsy input', () => {
+      const results = sut.updateSuggestions(null, null);
+      expect(results).toBe(false);
     });
 
-    describe('onchooseSuggestions', () => {
-      const mockEvt = mock<MouseEvent>();
-      let onChooseSuggestionSpy: jest.SpyInstance;
-
-      it('should return false with falsy input', () => {
-        const result = sut.onChooseSuggestion(null, null);
-        expect(result).toBe(false);
-      });
-
-      it('should action suggestions for Editor Mode', () => {
-        onChooseSuggestionSpy = jest
-          .spyOn(EditorHandler.prototype, 'onChooseSuggestion')
-          .mockImplementation();
-
-        const result = sut.onChooseSuggestion(editorSugg, mockEvt);
-
-        expect(result).toBe(true);
-        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(editorSugg, mockEvt);
-
-        onChooseSuggestionSpy.mockRestore();
-      });
-
-      it('should action suggestions for Symbol Mode', () => {
-        onChooseSuggestionSpy = jest
-          .spyOn(SymbolHandler.prototype, 'onChooseSuggestion')
-          .mockImplementation();
-
-        const result = sut.onChooseSuggestion(symbolSugg, mockEvt);
-
-        expect(result).toBe(true);
-        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(symbolSugg, mockEvt);
-
-        onChooseSuggestionSpy.mockRestore();
-      });
-
-      it('should action suggestions for Headings Mode', () => {
-        onChooseSuggestionSpy = jest
-          .spyOn(HeadingsHandler.prototype, 'onChooseSuggestion')
-          .mockImplementation();
-
-        const result = sut.onChooseSuggestion(headingsSugg, mockEvt);
-
-        expect(result).toBe(true);
-        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(headingsSugg, mockEvt);
-
-        onChooseSuggestionSpy.mockRestore();
-      });
-
-      it('should action suggestions for Workspace Mode', () => {
-        onChooseSuggestionSpy = jest
-          .spyOn(WorkspaceHandler.prototype, 'onChooseSuggestion')
-          .mockImplementation();
-
-        const result = sut.onChooseSuggestion(workspaceSugg, mockEvt);
-
-        expect(result).toBe(true);
-        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(workspaceSugg, mockEvt);
-
-        onChooseSuggestionSpy.mockRestore();
-      });
-
-      it('should action suggestions for Starred Mode', () => {
-        onChooseSuggestionSpy = jest
-          .spyOn(StarredHandler.prototype, 'onChooseSuggestion')
-          .mockImplementation();
-
-        const result = sut.onChooseSuggestion(starredSugg, mockEvt);
-
-        expect(result).toBe(true);
-        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(starredSugg, mockEvt);
-
-        onChooseSuggestionSpy.mockRestore();
-      });
-
-      it('should action suggestions for Command Mode', () => {
-        onChooseSuggestionSpy = jest
-          .spyOn(CommandHandler.prototype, 'onChooseSuggestion')
-          .mockImplementation();
-
-        const result = sut.onChooseSuggestion(commandSugg, mockEvt);
-
-        expect(result).toBe(true);
-        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(commandSugg, mockEvt);
-
-        onChooseSuggestionSpy.mockRestore();
-      });
-
-      it('should action suggestions for RelatedItems Mode', () => {
-        onChooseSuggestionSpy = jest
-          .spyOn(RelatedItemsHandler.prototype, 'onChooseSuggestion')
-          .mockImplementation();
-
-        const result = sut.onChooseSuggestion(relatedItemSugg, mockEvt);
-
-        expect(result).toBe(true);
-        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(relatedItemSugg, mockEvt);
-
-        onChooseSuggestionSpy.mockRestore();
-      });
+    test('renderSuggestion should return not handled (false) with falsy input', () => {
+      const result = sut.renderSuggestion(null, null);
+      expect(result).toBe(false);
     });
+
+    test('onChooseSuggestion should return not handled (false) with falsy input', () => {
+      const result = sut.onChooseSuggestion(null, null);
+      expect(result).toBe(false);
+    });
+
+    it('should debounce searches in Headings mode with filter text', () => {
+      const validateCommandSpy = jest
+        .spyOn(HeadingsHandler.prototype, 'validateCommand')
+        .mockImplementation((inputInfo) => {
+          inputInfo.mode = Mode.HeadingsList;
+          const cmd = inputInfo.parsedCommand(Mode.HeadingsList);
+          cmd.parsedInput = 'foo';
+        });
+
+      const mockDebouncedFn = jest.fn();
+      const mockDebounce = debounce as jest.Mock;
+      mockDebounce.mockImplementation(() => mockDebouncedFn);
+      sut = new ModeHandler(mockApp, mockSettings, mock<Keymap>());
+
+      const results = sut.updateSuggestions(headingsTrigger, mockChooser);
+
+      expect(results).toBe(true);
+      expect(mockDebounce).toHaveBeenCalled();
+      expect(mockDebouncedFn).toHaveBeenCalled();
+      expect(validateCommandSpy).toHaveBeenCalled();
+
+      validateCommandSpy.mockRestore();
+      mockDebounce.mockReset();
+    });
+
+    it('should set the active suggestion in Symbol Mode', () => {
+      const sugg = makeSymbolSuggestion(getHeadings()[0], SymbolType.Heading, null, true);
+      const expectedSuggestions = [sugg];
+
+      const getSuggestionSpy = jest
+        .spyOn(SymbolHandler.prototype, 'getSuggestions')
+        .mockReturnValue(expectedSuggestions);
+
+      const validateCommandSpy = jest
+        .spyOn(SymbolHandler.prototype, 'validateCommand')
+        .mockImplementation((inputInfo) => {
+          inputInfo.mode = Mode.SymbolList;
+        });
+
+      const mockSetSelectedItem = mockChooser.setSelectedItem.mockImplementation();
+      mockChooser.values = expectedSuggestions;
+
+      const results = sut.updateSuggestions(symbolTrigger, mockChooser);
+
+      expect(results).toBe(true);
+      expect(getSuggestionSpy).toHaveBeenCalled();
+      expect(validateCommandSpy).toHaveBeenCalled();
+      expect(mockSetSelectedItem).toHaveBeenCalledWith(0, true); // <-- here
+      expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
+
+      getSuggestionSpy.mockRestore();
+      validateCommandSpy.mockRestore();
+      mockSetSelectedItem.mockRestore();
+      mockSetSuggestion.mockReset();
+    });
+
+    describe.each(modeHandlingData)(
+      '$title',
+      ({ handlerPrototype, trigger, suggestions }) => {
+        it('should get suggestions', () => {
+          const getSuggestionSpy = jest
+            .spyOn(handlerPrototype, 'getSuggestions')
+            .mockReturnValue(suggestions);
+
+          // this value is checked in symbol mode
+          mockChooser.values = suggestions;
+
+          const results = sut.updateSuggestions(trigger, mockChooser);
+
+          expect(results).toBe(true);
+          expect(getSuggestionSpy).toHaveBeenCalled();
+          expect(mockSetSuggestion).toHaveBeenLastCalledWith(suggestions);
+
+          getSuggestionSpy.mockRestore();
+          mockSetSuggestion.mockReset();
+        });
+
+        it('should render suggestions', () => {
+          const expected = suggestions[0];
+          const renderSuggestionSpy = jest
+            .spyOn(handlerPrototype, 'renderSuggestion')
+            .mockImplementation();
+
+          const result = sut.renderSuggestion(expected, mockParentEl);
+
+          expect(result).toBe(true);
+          expect(renderSuggestionSpy).toHaveBeenCalledWith(expected, mockParentEl);
+
+          renderSuggestionSpy.mockRestore();
+        });
+
+        it('should action the chosen suggestion', () => {
+          const expected = suggestions[0];
+          const onChooseSuggestionSpy = jest
+            .spyOn(handlerPrototype, 'onChooseSuggestion')
+            .mockImplementation();
+
+          const result = sut.onChooseSuggestion(expected, mockEvt);
+
+          expect(result).toBe(true);
+          expect(onChooseSuggestionSpy).toHaveBeenCalledWith(expected, mockEvt);
+
+          onChooseSuggestionSpy.mockRestore();
+        });
+      },
+    );
   });
 });

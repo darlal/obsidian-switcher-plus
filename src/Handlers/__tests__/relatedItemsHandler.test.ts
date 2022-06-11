@@ -2,13 +2,7 @@ import { stripMDExtensionFromPath } from 'src/utils';
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler, RelatedItemsHandler } from 'src/Handlers';
-import {
-  AliasSuggestion,
-  Mode,
-  EditorSuggestion,
-  StarredSuggestion,
-  RelatedItemsSuggestion,
-} from 'src/types';
+import { Mode, RelatedItemsSuggestion, SuggestionType } from 'src/types';
 import {
   WorkspaceLeaf,
   App,
@@ -29,9 +23,13 @@ import {
   rootSplitEditorFixtures,
   relatedItemsTrigger,
   makeFileStarredItem,
+  makeAliasSuggestion,
   makeLeaf,
   makeFuzzyMatch,
   makePreparedQuery,
+  makeEditorSuggestion,
+  makeRelatedItemsSuggestion,
+  makeStarredSuggestion,
 } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
 
@@ -130,12 +128,7 @@ describe('relatedItemsHandler', () => {
     it('should validate parsed input for file based suggestion', () => {
       const targetFile = new TFile();
       const inputInfo = new InputInfo('', Mode.Standard);
-      const sugg: AliasSuggestion = {
-        file: targetFile,
-        alias: 'foo',
-        type: 'alias',
-        match: null,
-      };
+      const sugg = makeAliasSuggestion(targetFile, 'foo');
 
       sut.validateCommand(inputInfo, 0, '', sugg, null);
 
@@ -158,12 +151,7 @@ describe('relatedItemsHandler', () => {
       const inputInfo = new InputInfo('', Mode.EditorList);
       mockWorkspace.activeLeaf = targetLeaf; // <-- set the target as a currently open leaf
 
-      const sugg: EditorSuggestion = {
-        item: targetLeaf,
-        file: targetLeaf.view.file,
-        type: 'editor',
-        match: null,
-      };
+      const sugg = makeEditorSuggestion(targetLeaf, targetLeaf.view.file);
 
       sut.validateCommand(inputInfo, 0, '', sugg, null);
 
@@ -187,13 +175,7 @@ describe('relatedItemsHandler', () => {
       const targetFile = new TFile();
       const inputInfo = new InputInfo('', Mode.StarredList);
       const item = makeFileStarredItem(targetFile.basename);
-
-      const sugg: StarredSuggestion = {
-        item,
-        type: 'starred',
-        file: targetFile,
-        match: null,
-      };
+      const sugg = makeStarredSuggestion(item, targetFile);
 
       (mockApp.vault as MockProxy<Vault>).getAbstractFileByPath
         .calledWith(targetFile.path)
@@ -218,14 +200,8 @@ describe('relatedItemsHandler', () => {
     it('should validate and identify active editor as matching the file suggestion target', () => {
       const targetLeaf = makeLeaf();
       const inputInfo = new InputInfo('', Mode.Standard);
+      const sugg = makeAliasSuggestion(targetLeaf.view.file, 'foo');
       mockWorkspace.activeLeaf = targetLeaf; // <-- set the target as a currently open leaf
-
-      const sugg: AliasSuggestion = {
-        file: targetLeaf.view.file,
-        alias: 'foo',
-        type: 'alias',
-        match: null,
-      };
 
       sut.validateCommand(inputInfo, 0, '', sugg, null);
 
@@ -248,12 +224,7 @@ describe('relatedItemsHandler', () => {
     it('should validate and identify in-active editor as matching the file suggestion target file', () => {
       const targetLeaf = makeLeaf();
       const inputInfo = new InputInfo('', Mode.Standard);
-      const sugg: AliasSuggestion = {
-        file: targetLeaf.view.file,
-        alias: 'foo',
-        type: 'alias',
-        match: null,
-      };
+      const sugg = makeAliasSuggestion(targetLeaf.view.file, 'foo');
 
       mockWorkspace.activeLeaf = null; // <-- clear out active leaf
       mockWorkspace.iterateAllLeaves.mockImplementation((callback) => {
@@ -309,7 +280,9 @@ describe('relatedItemsHandler', () => {
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(2);
-      expect(results.every((sugg) => sugg.type === 'relatedItems')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.RelatedItemsList)).toBe(
+        true,
+      );
       expect(results.every((sugg) => sugg.relationType === 'diskLocation')).toBe(true);
 
       const files = results.map((v) => v.file);
@@ -336,7 +309,9 @@ describe('relatedItemsHandler', () => {
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(1);
-      expect(results.every((sugg) => sugg.type === 'relatedItems')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.RelatedItemsList)).toBe(
+        true,
+      );
       expect(results.every((sugg) => sugg.relationType === 'diskLocation')).toBe(true);
 
       expect(mockPrepareQuery).toHaveBeenCalled();
@@ -363,7 +338,9 @@ describe('relatedItemsHandler', () => {
 
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
       expect(results).toBeInstanceOf(Array);
-      expect(results.every((sugg) => sugg.type === 'relatedItems')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.RelatedItemsList)).toBe(
+        true,
+      );
       expect(results.every((sugg) => sugg.relationType === 'diskLocation')).toBe(true);
 
       let cmd = inputInfo.parsedCommand() as SourcedParsedCommand;
@@ -392,7 +369,9 @@ describe('relatedItemsHandler', () => {
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(1);
       expect(results[0].file).toEqual(file1);
-      expect(results.every((sugg) => sugg.type === 'relatedItems')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.RelatedItemsList)).toBe(
+        true,
+      );
       expect(results.every((sugg) => sugg.relationType === 'diskLocation')).toBe(true);
       expect(mockPrepareQuery).toHaveBeenCalled();
 
@@ -440,7 +419,7 @@ describe('relatedItemsHandler', () => {
       expect(() => sut.onChooseSuggestion(null, null)).not.toThrow();
     });
 
-    test('with Mod down, it should it should create a new workspaceLeaf for the target file', () => {
+    test('with Mod down, it should create a new workspaceLeaf for the target file', () => {
       const isModDown = true;
       const navigateToLeafOrOpenFileSpy = jest.spyOn(
         Handler.prototype,
@@ -448,13 +427,7 @@ describe('relatedItemsHandler', () => {
       );
 
       mockKeymap.isModEvent.mockReturnValueOnce(isModDown);
-
-      const sugg: RelatedItemsSuggestion = {
-        type: 'relatedItems',
-        relationType: 'diskLocation',
-        file: file1,
-        match: null,
-      };
+      const sugg = makeRelatedItemsSuggestion(file1);
 
       sut.onChooseSuggestion(sugg, null);
 

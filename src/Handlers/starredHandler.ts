@@ -1,6 +1,6 @@
 import { getInternalPluginById, isFileStarredItem, isTFile } from 'src/utils';
 import { InputInfo } from 'src/switcherPlus';
-import { AnySuggestion, Mode, StarredSuggestion } from 'src/types';
+import { AnySuggestion, Mode, StarredSuggestion, SuggestionType } from 'src/types';
 import {
   InstalledPlugin,
   SearchResult,
@@ -28,7 +28,7 @@ export class StarredHandler extends Handler<StarredSuggestion> {
     return this.settings?.starredListCommand;
   }
 
-  override validateCommand(
+  validateCommand(
     inputInfo: InputInfo,
     index: number,
     filterText: string,
@@ -45,7 +45,7 @@ export class StarredHandler extends Handler<StarredSuggestion> {
     }
   }
 
-  override getSuggestions(inputInfo: InputInfo): StarredSuggestion[] {
+  getSuggestions(inputInfo: InputInfo): StarredSuggestion[] {
     const suggestions: StarredSuggestion[] = [];
 
     if (inputInfo) {
@@ -63,7 +63,7 @@ export class StarredHandler extends Handler<StarredSuggestion> {
         }
 
         if (shouldPush) {
-          suggestions.push({ type: 'starred', file, item, match });
+          suggestions.push({ type: SuggestionType.StarredList, file, item, match });
         }
       });
 
@@ -75,16 +75,13 @@ export class StarredHandler extends Handler<StarredSuggestion> {
     return suggestions;
   }
 
-  override renderSuggestion(sugg: StarredSuggestion, parentEl: HTMLElement): void {
+  renderSuggestion(sugg: StarredSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       renderResults(parentEl, sugg.item.title, sugg.match);
     }
   }
 
-  override onChooseSuggestion(
-    sugg: StarredSuggestion,
-    evt: MouseEvent | KeyboardEvent,
-  ): void {
+  onChooseSuggestion(sugg: StarredSuggestion, evt: MouseEvent | KeyboardEvent): void {
     if (sugg) {
       const { item } = sugg;
 

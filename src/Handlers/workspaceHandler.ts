@@ -1,5 +1,11 @@
 import { getInternalPluginById } from 'src/utils';
-import { AnySuggestion, Mode, WorkspaceInfo, WorkspaceSuggestion } from 'src/types';
+import {
+  AnySuggestion,
+  Mode,
+  SuggestionType,
+  WorkspaceInfo,
+  WorkspaceSuggestion,
+} from 'src/types';
 import { InputInfo } from 'src/switcherPlus/inputInfo';
 import {
   fuzzySearch,
@@ -19,7 +25,7 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
     return this.settings?.workspaceListCommand;
   }
 
-  override validateCommand(
+  validateCommand(
     inputInfo: InputInfo,
     index: number,
     filterText: string,
@@ -36,7 +42,7 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
     }
   }
 
-  override getSuggestions(inputInfo: InputInfo): WorkspaceSuggestion[] {
+  getSuggestions(inputInfo: InputInfo): WorkspaceSuggestion[] {
     const suggestions: WorkspaceSuggestion[] = [];
 
     if (inputInfo) {
@@ -54,7 +60,7 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
         }
 
         if (shouldPush) {
-          suggestions.push({ type: 'workspace', item, match });
+          suggestions.push({ type: SuggestionType.WorkspaceList, item, match });
         }
       });
 
@@ -66,16 +72,13 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
     return suggestions;
   }
 
-  override renderSuggestion(sugg: WorkspaceSuggestion, parentEl: HTMLElement): void {
+  renderSuggestion(sugg: WorkspaceSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       renderResults(parentEl, sugg.item.id, sugg.match);
     }
   }
 
-  override onChooseSuggestion(
-    sugg: WorkspaceSuggestion,
-    _evt: MouseEvent | KeyboardEvent,
-  ): void {
+  onChooseSuggestion(sugg: WorkspaceSuggestion, _evt: MouseEvent | KeyboardEvent): void {
     if (sugg) {
       const { id } = sugg.item;
       const pluginInstance = this.getSystemWorkspacesPluginInstance();

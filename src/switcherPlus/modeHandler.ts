@@ -8,26 +8,23 @@ import {
   StarredHandler,
   CommandHandler,
 } from 'src/Handlers';
-import {
-  isSymbolSuggestion,
-  isEditorSuggestion,
-  escapeRegExp,
-  isWorkspaceSuggestion,
-  isHeadingSuggestion,
-  isExSuggestion,
-  isStarredSuggestion,
-  isCommandSuggestion,
-  isRelatedItemsSuggestion,
-} from 'src/utils';
+import { isSymbolSuggestion, escapeRegExp, isExSuggestion, isOfType } from 'src/utils';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import { WorkspaceLeaf, App, Chooser, Debouncer, debounce } from 'obsidian';
-import { Mode, AnySuggestion, AnyExSuggestion, SymbolSuggestion } from 'src/types';
+import {
+  Mode,
+  AnySuggestion,
+  AnyExSuggestion,
+  SymbolSuggestion,
+  SuggestionType,
+} from 'src/types';
 import { Keymap } from './keymap';
 
 export class ModeHandler {
   private inputInfo: InputInfo;
   private handlersByMode: Map<Omit<Mode, 'Standard'>, Handler<AnySuggestion>>;
+  private handlersByType: Map<SuggestionType, Handler<AnySuggestion>>;
   private debouncedGetSuggestions: Debouncer<[InputInfo, Chooser<AnySuggestion>]>;
   private sessionOpenModeString: string;
 
@@ -36,15 +33,26 @@ export class ModeHandler {
     private settings: SwitcherPlusSettings,
     public exKeymap: Keymap,
   ) {
-    const handlersByMode = new Map<Omit<Mode, 'Standard'>, Handler<AnySuggestion>>();
+    const handlersByMode = new Map<Omit<Mode, 'Standard'>, Handler<AnySuggestion>>([
+      [Mode.SymbolList, new SymbolHandler(app, settings)],
+      [Mode.WorkspaceList, new WorkspaceHandler(app, settings)],
+      [Mode.HeadingsList, new HeadingsHandler(app, settings)],
+      [Mode.EditorList, new EditorHandler(app, settings)],
+      [Mode.StarredList, new StarredHandler(app, settings)],
+      [Mode.CommandList, new CommandHandler(app, settings)],
+      [Mode.RelatedItemsList, new RelatedItemsHandler(app, settings)],
+    ]);
+
     this.handlersByMode = handlersByMode;
-    handlersByMode.set(Mode.SymbolList, new SymbolHandler(app, settings));
-    handlersByMode.set(Mode.WorkspaceList, new WorkspaceHandler(app, settings));
-    handlersByMode.set(Mode.HeadingsList, new HeadingsHandler(app, settings));
-    handlersByMode.set(Mode.EditorList, new EditorHandler(app, settings));
-    handlersByMode.set(Mode.StarredList, new StarredHandler(app, settings));
-    handlersByMode.set(Mode.CommandList, new CommandHandler(app, settings));
-    handlersByMode.set(Mode.RelatedItemsList, new RelatedItemsHandler(app, settings));
+    this.handlersByType = new Map<SuggestionType, Handler<AnySuggestion>>([
+      [SuggestionType.CommandList, handlersByMode.get(Mode.CommandList)],
+      [SuggestionType.EditorList, handlersByMode.get(Mode.EditorList)],
+      [SuggestionType.HeadingsList, handlersByMode.get(Mode.HeadingsList)],
+      [SuggestionType.RelatedItemsList, handlersByMode.get(Mode.RelatedItemsList)],
+      [SuggestionType.StarredList, handlersByMode.get(Mode.StarredList)],
+      [SuggestionType.SymbolList, handlersByMode.get(Mode.SymbolList)],
+      [SuggestionType.WorkspaceList, handlersByMode.get(Mode.WorkspaceList)],
+    ]);
 
     this.debouncedGetSuggestions = debounce(this.getSuggestions.bind(this), 400, true);
     this.reset();
@@ -148,7 +156,7 @@ export class ModeHandler {
     return info;
   }
 
-  private getSuggestions(inputInfo: InputInfo, chooser: Chooser<AnySuggestion>): void {
+  getSuggestions(inputInfo: InputInfo, chooser: Chooser<AnySuggestion>): void {
     this.inputInfo = inputInfo;
     const { mode } = inputInfo;
 
@@ -165,60 +173,31 @@ export class ModeHandler {
     activeSugg: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
   ): void {
-    const { inputText } = inputInfo;
-    const {
-      editorListCommand,
-      workspaceListCommand,
-      headingsListCommand,
-      starredListCommand,
-      commandListCommand,
-    } = this.settings;
-
-    const escEditorCmd = escapeRegExp(editorListCommand);
-    const escWorkspaceCmd = escapeRegExp(workspaceListCommand);
-    const escHeadingsCmd = escapeRegExp(headingsListCommand);
-    const escStarredCmd = escapeRegExp(starredListCommand);
-    const escCommandListCmd = escapeRegExp(commandListCommand);
-
-    // account for potential overlapping command strings
+    const { settings } = this;
     const prefixCmds = [
-      `(?<ep>${escEditorCmd})`,
-      `(?<wp>${escWorkspaceCmd})`,
-      `(?<hp>${escHeadingsCmd})`,
-      `(?<sp>${escStarredCmd})`,
-      `(?<cp>${escCommandListCmd})`,
-    ].sort((a, b) => b.length - a.length);
+      settings.editorListCommand,
+      settings.workspaceListCommand,
+      settings.headingsListCommand,
+      settings.starredListCommand,
+      settings.commandListCommand,
+    ]
+      .map((v) => `(${escapeRegExp(v)})`)
+      // account for potential overlapping command strings
+      .sort((a, b) => b.length - a.length);
 
-    // regex that matches editor, workspace, headings prefixes, and extract filter text
-    // ^(?:(?<ep>edt )|(?<wp>+)|(?<hp>#)|(?<sp>*))(?<ft>.*)$
-    const match = new RegExp(
-      `^(?:${prefixCmds[0]}|${prefixCmds[1]}|${prefixCmds[2]}|${prefixCmds[3]}|${prefixCmds[4]})(?<ft>.*)$`,
-    ).exec(inputText);
+    // regex that matches any of the prefix commands, and extract filter text
+    const match = new RegExp(`^(${prefixCmds.join('|')})(.*)$`).exec(inputInfo.inputText);
 
-    if (match?.groups) {
-      let mode: Mode = null;
-      const {
-        index,
-        groups: { ep, wp, hp, sp, cp, ft },
-      } = match;
+    if (match) {
+      const cmdStr = match[1];
+      const filterText = match[match.length - 1];
+      const handler = this.getHandler(cmdStr);
 
-      if (ep) {
-        mode = Mode.EditorList;
-      } else if (wp) {
-        mode = Mode.WorkspaceList;
-      } else if (hp) {
-        mode = Mode.HeadingsList;
-      } else if (sp) {
-        mode = Mode.StarredList;
-      } else if (cp) {
-        mode = Mode.CommandList;
-      }
-
-      if (mode) {
-        this.getHandler(mode).validateCommand(
+      if (handler) {
+        handler.validateCommand(
           inputInfo,
-          index,
-          ft,
+          match.index,
+          filterText,
           activeSugg,
           activeLeaf,
         );
@@ -232,7 +211,6 @@ export class ModeHandler {
     activeLeaf: WorkspaceLeaf,
   ): void {
     const { mode, inputText } = inputInfo;
-    const { symbolListCommand, relatedItemsListCommand } = this.settings;
 
     // Standard, Headings, Starred, and EditorList mode can have an embedded command
     const supportedModes = [
@@ -243,36 +221,24 @@ export class ModeHandler {
     ];
 
     if (supportedModes.includes(mode)) {
-      const escSymbolCmd = escapeRegExp(symbolListCommand);
-      const escRelatedCmd = escapeRegExp(relatedItemsListCommand);
+      const { settings } = this;
+      const embeddedCmds = [settings.symbolListCommand, settings.relatedItemsListCommand]
+        .map((v) => `(${escapeRegExp(v)})`)
+        .sort((a, b) => b.length - a.length);
 
-      const embeddedCmds = [`(?<se>${escSymbolCmd})`, `(?<re>${escRelatedCmd})`].sort(
-        (a, b) => b.length - a.length,
-      );
+      // regex that matches any sourced command, and extract filter text
+      const match = new RegExp(`(${embeddedCmds.join('|')})(.*)$`).exec(inputText);
 
-      // regex that matches symbol command, and extract filter text
-      // (?:(?<se>@)|(?<re>~))(?<ft>.*)$
-      const match = new RegExp(
-        `(?:${embeddedCmds[0]}|${embeddedCmds[1]})(?<ft>.*)$`,
-      ).exec(inputText);
+      if (match) {
+        const cmdStr = match[1];
+        const filterText = match[match.length - 1];
+        const handler = this.getHandler(cmdStr);
 
-      if (match?.groups) {
-        const { index, groups } = match;
-        const cmdToModeMap = new Map<string, Mode>([
-          [symbolListCommand, Mode.SymbolList],
-          [relatedItemsListCommand, Mode.RelatedItemsList],
-        ]);
-
-        // find the group that is not filter text (ft),
-        // and the value of the group is truthy
-        const groupKey = Object.keys(groups).find((v) => v !== 'ft' && groups[v]);
-        const targetMode = cmdToModeMap.get(groups[groupKey]);
-
-        if (targetMode) {
-          this.getHandler(targetMode).validateCommand(
+        if (handler) {
+          handler.validateCommand(
             inputInfo,
-            index,
-            groups.ft,
+            match.index,
+            filterText,
             activeSugg,
             activeLeaf,
           );
@@ -312,30 +278,30 @@ export class ModeHandler {
   }
 
   private getHandler(
-    kind: Omit<Mode, 'Standard'> | AnyExSuggestion,
+    kind: Omit<Mode, 'Standard'> | AnyExSuggestion | string,
   ): Handler<AnySuggestion> {
-    let mode: Mode;
+    let handler: Handler<AnySuggestion>;
+    const { handlersByMode, handlersByType } = this;
 
     if (typeof kind === 'number') {
-      mode = kind;
-    } else {
-      if (isEditorSuggestion(kind)) {
-        mode = Mode.EditorList;
-      } else if (isWorkspaceSuggestion(kind)) {
-        mode = Mode.WorkspaceList;
-      } else if (isHeadingSuggestion(kind)) {
-        mode = Mode.HeadingsList;
-      } else if (isSymbolSuggestion(kind)) {
-        mode = Mode.SymbolList;
-      } else if (isStarredSuggestion(kind)) {
-        mode = Mode.StarredList;
-      } else if (isCommandSuggestion(kind)) {
-        mode = Mode.CommandList;
-      } else if (isRelatedItemsSuggestion(kind)) {
-        mode = Mode.RelatedItemsList;
-      }
+      handler = handlersByMode.get(kind);
+    } else if (isOfType<AnySuggestion>(kind, 'type')) {
+      handler = handlersByType.get(kind.type);
+    } else if (typeof kind === 'string') {
+      const { settings } = this;
+      const handlersByCommand = new Map<string, Handler<AnySuggestion>>([
+        [settings.editorListCommand, handlersByMode.get(Mode.EditorList)],
+        [settings.workspaceListCommand, handlersByMode.get(Mode.WorkspaceList)],
+        [settings.headingsListCommand, handlersByMode.get(Mode.HeadingsList)],
+        [settings.starredListCommand, handlersByMode.get(Mode.StarredList)],
+        [settings.commandListCommand, handlersByMode.get(Mode.CommandList)],
+        [settings.symbolListCommand, handlersByMode.get(Mode.SymbolList)],
+        [settings.relatedItemsListCommand, handlersByMode.get(Mode.RelatedItemsList)],
+      ]);
+
+      handler = handlersByCommand.get(kind);
     }
 
-    return this.handlersByMode.get(mode);
+    return handler;
   }
 }

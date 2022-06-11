@@ -95,54 +95,67 @@ export interface WorkspaceInfo {
   id: string;
 }
 
+export enum SuggestionType {
+  EditorList = 'editorList',
+  SymbolList = 'symbolList',
+  WorkspaceList = 'workspaceList',
+  HeadingsList = 'headingsList',
+  StarredList = 'starredList',
+  CommandList = 'commandList',
+  RelatedItemsList = 'relatedItemsList',
+  File = 'file',
+  Alias = 'alias',
+  Unresolved = 'unresolved',
+}
+
 export interface SymbolSuggestion extends FuzzyMatch<SymbolInfo> {
   file: TFile;
-  type: 'symbol';
+  type: SuggestionType.SymbolList;
 }
 
 export interface EditorSuggestion extends FuzzyMatch<WorkspaceLeaf> {
   file: TFile;
-  type: 'editor';
+  type: SuggestionType.EditorList;
 }
 
 export interface WorkspaceSuggestion extends FuzzyMatch<WorkspaceInfo> {
-  type: 'workspace';
+  type: SuggestionType.WorkspaceList;
 }
 
 export interface HeadingSuggestion extends FuzzyMatch<HeadingCache> {
   file: TFile;
-  type: 'heading';
+  type: SuggestionType.HeadingsList;
 }
 
 export interface StarredSuggestion extends FuzzyMatch<StarredPluginItem> {
   file: TFile;
-  type: 'starred';
+  type: SuggestionType.StarredList;
 }
 
 export interface RelatedItemsSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
   file: TFile;
-  type: 'relatedItems';
+  type: SuggestionType.RelatedItemsList;
   relationType: 'diskLocation';
 }
 
 export interface FileSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
   file: TFile;
-  type: 'file';
+  type: SuggestionType.File;
 }
 
 export interface AliasSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
   file: TFile;
   alias: string;
-  type: 'alias';
+  type: SuggestionType.Alias;
 }
 
 export interface UnresolvedSuggestion extends Omit<FuzzyMatch<string>, 'item'> {
   linktext: string;
-  type: 'unresolved';
+  type: SuggestionType.Unresolved;
 }
 
 export interface CommandSuggestion extends FuzzyMatch<Command> {
-  type: 'command';
+  type: SuggestionType.CommandList;
 }
 
 export type AnyExSuggestionPayload = WorkspaceLeaf | SymbolInfo | WorkspaceInfo;

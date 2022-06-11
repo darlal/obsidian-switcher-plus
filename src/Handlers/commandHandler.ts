@@ -1,6 +1,6 @@
 import { getInternalPluginById } from 'src/utils';
 import { InputInfo } from 'src/switcherPlus';
-import { AnySuggestion, Mode, CommandSuggestion } from 'src/types';
+import { AnySuggestion, Mode, CommandSuggestion, SuggestionType } from 'src/types';
 import { Handler } from './handler';
 import {
   InstalledPlugin,
@@ -20,7 +20,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     return this.settings?.commandListCommand;
   }
 
-  override validateCommand(
+  validateCommand(
     inputInfo: InputInfo,
     index: number,
     filterText: string,
@@ -35,7 +35,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     commandCmd.isValidated = true;
   }
 
-  override getSuggestions(inputInfo: InputInfo): CommandSuggestion[] {
+  getSuggestions(inputInfo: InputInfo): CommandSuggestion[] {
     const suggestions: CommandSuggestion[] = [];
 
     if (inputInfo) {
@@ -54,7 +54,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
 
         if (shouldPush) {
           suggestions.push({
-            type: 'command',
+            type: SuggestionType.CommandList,
             item,
             match,
           });
@@ -69,13 +69,13 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     return suggestions;
   }
 
-  override renderSuggestion(sugg: CommandSuggestion, parentEl: HTMLElement): void {
+  renderSuggestion(sugg: CommandSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       renderResults(parentEl, sugg.item.name, sugg.match);
     }
   }
 
-  override onChooseSuggestion(sugg: CommandSuggestion): void {
+  onChooseSuggestion(sugg: CommandSuggestion): void {
     if (sugg) {
       const { item } = sugg;
       this.app.commands.executeCommandById(item.id);

@@ -14,17 +14,37 @@ import {
   WorkspaceSplit,
   View,
 } from 'obsidian';
-import { defaultOpenViewState, makeLeaf } from '@fixtures';
-import { AnySuggestion, EditorSuggestion, Mode } from 'src/types';
+import { defaultOpenViewState, makeLeaf, makeEditorSuggestion } from '@fixtures';
+import { AnySuggestion, Mode } from 'src/types';
 import { mock, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
 import { SwitcherPlusSettings } from 'src/settings';
 import { stripMDExtensionFromPath } from 'src/utils';
 import { Chance } from 'chance';
+import { InputInfo } from 'src/switcherPlus';
 
 const chance = new Chance();
 
-class SUT extends Handler<AnySuggestion> {}
+class SUT extends Handler<AnySuggestion> {
+  validateCommand(
+    _inputInfo: InputInfo,
+    _index: number,
+    _filterText: string,
+    _activeSuggestion: AnySuggestion,
+    _activeLeaf: WorkspaceLeaf,
+  ): void {
+    throw new Error('Method not implemented.');
+  }
+  getSuggestions(_inputInfo: InputInfo): AnySuggestion[] {
+    throw new Error('Method not implemented.');
+  }
+  renderSuggestion(_sugg: AnySuggestion, _parentEl: HTMLElement): void {
+    throw new Error('Method not implemented.');
+  }
+  onChooseSuggestion(_sugg: AnySuggestion, _evt: MouseEvent | KeyboardEvent): void {
+    throw new Error('Method not implemented.');
+  }
+}
 
 describe('Handler', () => {
   let mockApp: MockProxy<App>;
@@ -55,33 +75,6 @@ describe('Handler', () => {
   describe('commandString property', () => {
     it('should return null', () => {
       expect(sut.commandString).toBeNull();
-    });
-  });
-
-  describe('validateCommand', () => {
-    it('should not throw', () => {
-      expect(() => sut.validateCommand(null, 0, null, null, null)).not.toThrow();
-    });
-  });
-
-  describe('getSuggestions', () => {
-    it('should return an empy array', () => {
-      const result = sut.getSuggestions(null);
-
-      expect(result).toBeInstanceOf(Array);
-      expect(result).toHaveLength(0);
-    });
-  });
-
-  describe('renderSuggestion', () => {
-    it('should not throw', () => {
-      expect(() => sut.renderSuggestion(null, null)).not.toThrow();
-    });
-  });
-
-  describe('onChooseSuggestion', () => {
-    it('should not throw', () => {
-      expect(() => sut.onChooseSuggestion(null, null)).not.toThrow();
     });
   });
 
@@ -160,12 +153,7 @@ describe('Handler', () => {
 
       mockWorkspace.activeLeaf = mockLeaf; // <- set as active leaf
 
-      const sugg: EditorSuggestion = {
-        type: 'editor',
-        file: mockFile,
-        item: mockLeaf,
-        match: null,
-      };
+      const sugg = makeEditorSuggestion(mockLeaf, mockFile);
 
       const result = sut.getSuggestionInfo(sugg);
 

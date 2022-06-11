@@ -1,15 +1,12 @@
 import { SwitcherPlusSettings } from 'src/settings';
 import {
-  AliasSuggestion,
   Mode,
   SymbolSuggestion,
   SymbolType,
-  EditorSuggestion,
   HeadingIndicators,
-  HeadingSuggestion,
   AnySymbolInfoPayload,
-  StarredSuggestion,
   LinkType,
+  SuggestionType,
 } from 'src/types';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler, SymbolHandler } from 'src/Handlers';
@@ -44,9 +41,13 @@ import {
   getTags,
   getLinks,
   makeHeading,
-  makeFileStarredItem,
-  makeSearchStarredItem,
+  makeSymbolSuggestion,
   makeLeaf,
+  makeAliasSuggestion,
+  makeEditorSuggestion,
+  makeStarredSuggestion,
+  makeHeadingSuggestion,
+  makeSearchStarredItem,
 } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
 
@@ -82,16 +83,7 @@ describe('symbolHandler', () => {
     mockRootSplitLeaf = makeLeaf();
     mockLeftSplitLeaf = makeLeaf();
 
-    symbolSugg = {
-      type: 'symbol',
-      file: new TFile(),
-      item: {
-        type: 'symbolInfo',
-        symbol: getHeadings()[0],
-        symbolType: SymbolType.Heading,
-      },
-      match: null,
-    };
+    symbolSugg = makeSymbolSuggestion(getHeadings()[0], SymbolType.Heading, new TFile());
   });
 
   beforeEach(() => {
@@ -126,13 +118,7 @@ describe('symbolHandler', () => {
 
     it('should validate parsed input for file based suggestion', () => {
       const targetFile = new TFile();
-
-      const sugg: AliasSuggestion = {
-        file: targetFile,
-        alias: 'foo',
-        type: 'alias',
-        match: null,
-      };
+      const sugg = makeAliasSuggestion(targetFile, 'foo');
 
       const inputInfo = new InputInfo('', Mode.Standard);
       sut.validateCommand(inputInfo, 0, '', sugg, null);
@@ -155,12 +141,7 @@ describe('symbolHandler', () => {
       const targetLeaf = makeLeaf();
       mockWorkspace.activeLeaf = targetLeaf; // <-- set the target as a currently open leaf
 
-      const sugg: EditorSuggestion = {
-        item: targetLeaf,
-        file: targetLeaf.view.file,
-        type: 'editor',
-        match: null,
-      };
+      const sugg = makeEditorSuggestion(targetLeaf, targetLeaf.view.file);
 
       const inputInfo = new InputInfo('', Mode.EditorList);
       sut.validateCommand(inputInfo, 0, '', sugg, null);
@@ -183,14 +164,7 @@ describe('symbolHandler', () => {
 
     it('should validate parsed input for starred file suggestion', () => {
       const targetFile = new TFile();
-      const item = makeFileStarredItem(targetFile.basename);
-
-      const sugg: StarredSuggestion = {
-        item,
-        type: 'starred',
-        file: targetFile,
-        match: null,
-      };
+      const sugg = makeStarredSuggestion(null, targetFile);
 
       (mockApp.vault as MockProxy<Vault>).getAbstractFileByPath
         .calledWith(targetFile.path)
@@ -215,13 +189,7 @@ describe('symbolHandler', () => {
 
     it('should not validate parsed input for starred search suggestion', () => {
       const item = makeSearchStarredItem();
-
-      const sugg: StarredSuggestion = {
-        item,
-        file: null,
-        type: 'starred',
-        match: null,
-      };
+      const sugg = makeStarredSuggestion(item);
 
       const inputInfo = new InputInfo('', Mode.StarredList);
       sut.validateCommand(inputInfo, 0, '', sugg, null);
@@ -235,14 +203,8 @@ describe('symbolHandler', () => {
 
     it('should validate and identify active editor as matching the file suggestion target', () => {
       const targetLeaf = makeLeaf();
+      const sugg = makeAliasSuggestion(targetLeaf.view.file, 'foo');
       mockWorkspace.activeLeaf = targetLeaf; // <-- set the target as a currently open leaf
-
-      const sugg: AliasSuggestion = {
-        file: targetLeaf.view.file,
-        alias: 'foo',
-        type: 'alias',
-        match: null,
-      };
 
       const inputInfo = new InputInfo('', Mode.Standard);
       sut.validateCommand(inputInfo, 0, '', sugg, null);
@@ -265,13 +227,7 @@ describe('symbolHandler', () => {
 
     it('should validate and identify in-active editor as matching the file suggestion target file', () => {
       const targetLeaf = makeLeaf();
-
-      const sugg: AliasSuggestion = {
-        file: targetLeaf.view.file,
-        alias: 'foo',
-        type: 'alias',
-        match: null,
-      };
+      const sugg = makeAliasSuggestion(targetLeaf.view.file, 'foo');
 
       mockWorkspace.activeLeaf = null; // <-- clear out active leaf
       mockWorkspace.iterateAllLeaves.mockImplementation((callback) => {
@@ -326,7 +282,7 @@ describe('symbolHandler', () => {
 
       expect(results).not.toBeNull();
       expect(results).toBeInstanceOf(Array);
-      expect(results.every((sugg) => sugg.type === 'symbol')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.SymbolList)).toBe(true);
 
       const set = new Set(results.map((sugg) => sugg.item.symbol));
 
@@ -366,12 +322,11 @@ describe('symbolHandler', () => {
 
       mockWorkspace.activeLeaf = mockRootSplitLeaf;
 
-      const activeSugg: HeadingSuggestion = {
-        item: makeHeading('foo heading', 1),
-        file: mockWorkspace.activeLeaf.view.file, // <-- here, use the same TFile as ActiveLeaf
-        match: null,
-        type: 'heading',
-      };
+      // here, use the same TFile as ActiveLeaf
+      const activeSugg = makeHeadingSuggestion(
+        makeHeading('foo heading', 1),
+        mockWorkspace.activeLeaf.view.file,
+      );
 
       // use headings prefix mode along with heading suggestion, note that the suggestion
       // has to point to the same TFile as 'activeLeaf'
@@ -388,7 +343,7 @@ describe('symbolHandler', () => {
 
       expect(inputInfo.mode).toBe(Mode.SymbolList);
       expect(results).toBeInstanceOf(Array);
-      expect(results.every((sugg) => sugg.type === 'symbol')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.SymbolList)).toBe(true);
 
       const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
       expect(selectedSuggestions).toHaveLength(1);
@@ -432,7 +387,7 @@ describe('symbolHandler', () => {
 
       expect(results).not.toBeNull();
       expect(results).toBeInstanceOf(Array);
-      expect(results.every((sugg) => sugg.type === 'symbol')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.SymbolList)).toBe(true);
 
       const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
       expect(selectedSuggestions).toHaveLength(1);
@@ -468,7 +423,7 @@ describe('symbolHandler', () => {
       expect(results).not.toBeNull();
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(2);
-      expect(results.every((sugg) => sugg.type === 'symbol')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.SymbolList)).toBe(true);
 
       const { tags } = leftFixture.cachedMetadata;
       const resTags = new Set(results.map((sugg) => sugg.item.symbol));
@@ -508,7 +463,7 @@ describe('symbolHandler', () => {
       expect(results).not.toBeNull();
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(2);
-      expect(results.every((sugg) => sugg.type === 'symbol')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.SymbolList)).toBe(true);
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
         mockLeftSplitLeaf.view.file,
       );
@@ -538,7 +493,7 @@ describe('symbolHandler', () => {
       expect(results).not.toBeNull();
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(1); // expect just 1 this time
-      expect(results[0]).toHaveProperty('type', 'symbol');
+      expect(results[0]).toHaveProperty('type', SuggestionType.SymbolList);
 
       const tag = leftFixture.cachedMetadata.tags.find((item) => item.tag === '#tag2');
       expect(results[0]).toHaveProperty('item.symbol', tag);
@@ -659,16 +614,7 @@ describe('symbolHandler', () => {
     });
 
     it('should render Tag suggestion', () => {
-      const tagSugg: SymbolSuggestion = {
-        type: 'symbol',
-        file: null,
-        item: {
-          type: 'symbolInfo',
-          symbol: getTags()[0],
-          symbolType: SymbolType.Tag,
-        },
-        match: null,
-      };
+      const tagSugg = makeSymbolSuggestion(getTags()[0], SymbolType.Tag);
 
       sut.renderSuggestion(tagSugg, mockParentEl);
 
@@ -684,16 +630,7 @@ describe('symbolHandler', () => {
     });
 
     it('should render Link suggestion', () => {
-      const linkSugg: SymbolSuggestion = {
-        type: 'symbol',
-        file: null,
-        item: {
-          type: 'symbolInfo',
-          symbol: getLinks()[1],
-          symbolType: SymbolType.Link,
-        },
-        match: null,
-      };
+      const linkSugg = makeSymbolSuggestion(getLinks()[1], SymbolType.Link);
 
       sut.renderSuggestion(linkSugg, mockParentEl);
 

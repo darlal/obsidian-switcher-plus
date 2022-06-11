@@ -1,4 +1,4 @@
-import { Mode, WorkspaceSuggestion } from 'src/types';
+import { Mode, WorkspaceSuggestion, SuggestionType } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { WorkspaceHandler, WORKSPACE_PLUGIN_ID } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
@@ -12,7 +12,12 @@ import {
   renderResults,
   WorkspacesPluginInstance,
 } from 'obsidian';
-import { makePreparedQuery, makeFuzzyMatch, workspaceTrigger } from '@fixtures';
+import {
+  makePreparedQuery,
+  makeFuzzyMatch,
+  workspaceTrigger,
+  makeWorkspaceSuggestion,
+} from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
 
 function makeWorkspacesPluginInstall(): MockProxy<InstalledPlugin> {
@@ -67,11 +72,7 @@ describe('workspaceHandler', () => {
     jest.spyOn(settings, 'workspaceListCommand', 'get').mockReturnValue(workspaceTrigger);
 
     expectedWorkspaceIds = Object.keys(mockWsPluginInstance.workspaces);
-    suggestionInstance = {
-      type: 'workspace',
-      item: { type: 'workspaceInfo', id: expectedWorkspaceIds[0] },
-      match: makeFuzzyMatch(),
-    };
+    suggestionInstance = makeWorkspaceSuggestion(expectedWorkspaceIds[0]);
 
     sut = new WorkspaceHandler(mockApp, settings);
   });
@@ -144,7 +145,9 @@ describe('workspaceHandler', () => {
 
       expect(results).toHaveLength(expectedWorkspaceIds.length);
       expect(expectedWorkspaceIds.every((id) => resultWorkspaceIds.has(id))).toBe(true);
-      expect(results.every((sugg) => sugg.type === 'workspace')).toBe(true);
+      expect(results.every((sugg) => sugg.type === SuggestionType.WorkspaceList)).toBe(
+        true,
+      );
       expect(mockInternalPlugins.getPluginById).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);
     });
 
@@ -167,7 +170,7 @@ describe('workspaceHandler', () => {
       expect(results).toHaveLength(1);
 
       const onlyResult = results[0];
-      expect(onlyResult).toHaveProperty('type', 'workspace');
+      expect(onlyResult).toHaveProperty('type', SuggestionType.WorkspaceList);
       expect(onlyResult.item.id).toBe(expectedWorkspaceIds[0]);
 
       expect(mockFuzzySearch).toHaveBeenCalled();

@@ -1,13 +1,19 @@
 import { mock, MockProxy } from 'jest-mock-extended';
+import { Chance } from 'chance';
 import {
+  Command,
   Editor,
+  FileStarredItem,
   MarkdownView,
   PreparedQuery,
   SearchMatches,
   SearchResult,
+  SearchStarredItem,
   TFile,
   WorkspaceLeaf,
 } from 'obsidian';
+
+const chance = new Chance();
 
 export function makePreparedQuery(filterText = ''): PreparedQuery {
   // WARNING: this is obviously not a faithful representation of the core obsidian
@@ -56,4 +62,30 @@ export function makeLeaf(sourceFile?: TFile): MockProxy<WorkspaceLeaf> {
   return mock<WorkspaceLeaf>({
     view: mockView,
   });
+}
+
+export function makeFileStarredItem(title?: string, path?: string): FileStarredItem {
+  const item = {} as FileStarredItem;
+
+  item.type = 'file';
+  item.title = title ?? chance.word({ length: 4 });
+  item.path = path ?? `path/to/${item.title}.md`;
+
+  return item;
+}
+
+export function makeSearchStarredItem(): SearchStarredItem {
+  const item = {} as SearchStarredItem;
+  item.type = 'search';
+  item.title = chance.word({ length: 4 });
+  item.query = chance.word({ length: 4 });
+
+  return item;
+}
+
+export function makeCommandItem(options?: { id?: string; name?: string }): Command {
+  return {
+    id: options?.id ?? chance.word(),
+    name: options?.name ?? chance.word(),
+  };
 }

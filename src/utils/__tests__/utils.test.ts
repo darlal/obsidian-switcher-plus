@@ -1,10 +1,5 @@
 import { TFile } from 'obsidian';
-import {
-  AliasSuggestion,
-  FileSuggestion,
-  UnresolvedSuggestion,
-  LinkType,
-} from 'src/types';
+import { LinkType } from 'src/types';
 import {
   filenameFromPath,
   stripMDExtensionFromPath,
@@ -12,39 +7,31 @@ import {
   matcherFnForRegExList,
   getLinkType,
 } from 'src/utils';
-import { makeLink } from '@fixtures';
+import {
+  makeAliasSuggestion,
+  makeFileSuggestion,
+  makeLink,
+  makeUnresolvedSuggestion,
+} from '@fixtures';
 
 describe('utils', () => {
   describe('isSystemSuggestion', () => {
     it('should return true for FileSuggestion', () => {
-      const sugg: FileSuggestion = {
-        file: null,
-        type: 'file',
-        match: null,
-      };
+      const sugg = makeFileSuggestion();
 
       const result = isSystemSuggestion(sugg);
       expect(result).toBe(true);
     });
 
     it('should return true for UnresolvedSuggestion', () => {
-      const sugg: UnresolvedSuggestion = {
-        linktext: null,
-        type: 'unresolved',
-        match: null,
-      };
+      const sugg = makeUnresolvedSuggestion();
 
       const result = isSystemSuggestion(sugg);
       expect(result).toBe(true);
     });
 
     it('should return true for AliasSuggestion', () => {
-      const sugg: AliasSuggestion = {
-        alias: null,
-        file: null,
-        type: 'alias',
-        match: null,
-      };
+      const sugg = makeAliasSuggestion();
 
       const result = isSystemSuggestion(sugg);
       expect(result).toBe(true);

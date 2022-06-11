@@ -24,6 +24,7 @@ import {
   makeLoc,
   makePreparedQuery,
   makeLeaf,
+  makeHeadingSuggestion,
 } from '@fixtures';
 import { InputInfo } from 'src/switcherPlus';
 import {
@@ -81,12 +82,7 @@ describe('headingsHandler', () => {
 
     jest.spyOn(settings, 'headingsListCommand', 'get').mockReturnValue(headingsTrigger);
 
-    headingSugg = {
-      item: makeHeading('foo heading', 1),
-      file: new TFile(),
-      match: null,
-      type: 'heading',
-    };
+    headingSugg = makeHeadingSuggestion(makeHeading('foo heading', 1), new TFile());
   });
 
   describe('commandString', () => {
@@ -542,21 +538,18 @@ describe('headingsHandler', () => {
   describe('addSuggestionsFromFile', () => {
     let sut: HeadingsHandler;
     let mockWorkspace: MockProxy<Workspace>;
-    // let mockVault: MockProxy<Vault>;
     let mockMetadataCache: MockProxy<MetadataCache>;
     let mockViewRegistry: MockProxy<ViewRegistry>;
     let builtInSystemOptionsSpy: jest.SpyInstance;
 
     beforeAll(() => {
       mockWorkspace = mock<Workspace>();
-      // mockVault = mock<Vault>();
       mockMetadataCache = mock<MetadataCache>();
       mockViewRegistry = mock<ViewRegistry>();
       mockViewRegistry.isExtensionRegistered.mockReturnValue(true);
 
       const mockApp = mock<App>({
         workspace: mockWorkspace,
-        // vault: mockVault,
         metadataCache: mockMetadataCache,
         viewRegistry: mockViewRegistry,
       });
