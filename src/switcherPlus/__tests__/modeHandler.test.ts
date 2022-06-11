@@ -1,7 +1,7 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 import { SwitcherPlusSettings } from 'src/settings';
 import { AnySuggestion, Mode, SymbolType } from 'src/types';
-import { Keymap, ModeHandler, SourcedParsedCommand } from 'src/switcherPlus';
+import { InputInfo, Keymap, ModeHandler, SourcedParsedCommand } from 'src/switcherPlus';
 import {
   EditorHandler,
   HeadingsHandler,
@@ -10,6 +10,7 @@ import {
   StarredHandler,
   CommandHandler,
   RelatedItemsHandler,
+  StandardExHandler,
 } from 'src/Handlers';
 import { App, Chooser, debounce, View, InternalPlugins, Workspace } from 'obsidian';
 import {
@@ -35,6 +36,7 @@ import {
   makeLeaf,
   makePrefixOnlyInputFixture,
   makeSourcedCmdEmbeddedInputFixture,
+  makeAliasSuggestion,
 } from '@fixtures';
 
 // dataset used for various test scenarios
@@ -477,6 +479,27 @@ describe('modeHandler', () => {
       mockSetSelectedItem.mockRestore();
       mockSetSuggestion.mockReset();
     });
+
+    test.each([makeFileSuggestion(), makeAliasSuggestion()])(
+      'onChooseSuggestion should use the StandardExHandler when in Headings mode for File & Alias Suggestions',
+      (sugg) => {
+        const inputInfo = new InputInfo('', Mode.HeadingsList);
+        const getSuggestionSpy = jest
+          .spyOn(HeadingsHandler.prototype, 'getSuggestions')
+          .mockReturnValue([]);
+        const onChooseSuggestionSpy = jest
+          .spyOn(StandardExHandler.prototype, 'onChooseSuggestion')
+          .mockImplementation();
+        sut.getSuggestions(inputInfo, mockChooser);
+
+        sut.onChooseSuggestion(sugg, mockEvt);
+
+        expect(onChooseSuggestionSpy).toHaveBeenCalledWith(sugg, mockEvt);
+
+        getSuggestionSpy.mockRestore();
+        onChooseSuggestionSpy.mockRestore();
+      },
+    );
 
     describe.each(modeHandlingData)(
       '$title',

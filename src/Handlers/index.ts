@@ -6,3 +6,4 @@ export * from './starredHandler';
 export * from './commandHandler';
 export * from './handler';
 export * from './relatedItemsHandler';
+export * from './standardExHandler';

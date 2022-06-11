@@ -7,18 +7,19 @@ import {
   SymbolHandler,
   StarredHandler,
   CommandHandler,
+  StandardExHandler,
 } from 'src/Handlers';
-import { isSymbolSuggestion, escapeRegExp, isExSuggestion, isOfType } from 'src/utils';
+import {
+  isSymbolSuggestion,
+  escapeRegExp,
+  isExSuggestion,
+  isOfType,
+  isUnresolvedSuggestion,
+} from 'src/utils';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import { WorkspaceLeaf, App, Chooser, Debouncer, debounce } from 'obsidian';
-import {
-  Mode,
-  AnySuggestion,
-  AnyExSuggestion,
-  SymbolSuggestion,
-  SuggestionType,
-} from 'src/types';
+import { Mode, AnySuggestion, SymbolSuggestion, SuggestionType } from 'src/types';
 import { Keymap } from './keymap';
 
 export class ModeHandler {
@@ -33,6 +34,9 @@ export class ModeHandler {
     private settings: SwitcherPlusSettings,
     public exKeymap: Keymap,
   ) {
+    // StandardExHandler one is special in that it is not a "full" handler,
+    // and not attached to a mode, as a result it is not in the handlersByMode list
+    const standardExHandler = new StandardExHandler(app, settings);
     const handlersByMode = new Map<Omit<Mode, 'Standard'>, Handler<AnySuggestion>>([
       [Mode.SymbolList, new SymbolHandler(app, settings)],
       [Mode.WorkspaceList, new WorkspaceHandler(app, settings)],
@@ -52,6 +56,8 @@ export class ModeHandler {
       [SuggestionType.StarredList, handlersByMode.get(Mode.StarredList)],
       [SuggestionType.SymbolList, handlersByMode.get(Mode.SymbolList)],
       [SuggestionType.WorkspaceList, handlersByMode.get(Mode.WorkspaceList)],
+      [SuggestionType.File, standardExHandler],
+      [SuggestionType.Alias, standardExHandler],
     ]);
 
     this.debouncedGetSuggestions = debounce(this.getSuggestions.bind(this), 400, true);
@@ -130,7 +136,12 @@ export class ModeHandler {
   onChooseSuggestion(sugg: AnySuggestion, evt: MouseEvent | KeyboardEvent): boolean {
     let handled = false;
 
-    if (isExSuggestion(sugg)) {
+    // in Headings mode, StandardExHandler should handle the onChoose action for File
+    // and Alias suggestion so that the preferOpenInNewPane setting can be handled properly
+    const useExHandler =
+      this.inputInfo.mode === Mode.HeadingsList && !isUnresolvedSuggestion(sugg);
+
+    if (useExHandler || isExSuggestion(sugg)) {
       this.getHandler(sugg).onChooseSuggestion(sugg, evt);
       handled = true;
     }
@@ -278,7 +289,7 @@ export class ModeHandler {
   }
 
   private getHandler(
-    kind: Omit<Mode, 'Standard'> | AnyExSuggestion | string,
+    kind: Omit<Mode, 'Standard'> | AnySuggestion | string,
   ): Handler<AnySuggestion> {
     let handler: Handler<AnySuggestion>;
     const { handlersByMode, handlersByType } = this;
