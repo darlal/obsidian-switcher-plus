@@ -167,26 +167,38 @@ export abstract class Handler<T> {
    * Finds the first open WorkspaceLeaf that is showing source file.
    * @param  {TFile} file The source file that is being shown to find
    * @param  {WorkspaceLeaf} leaf An already open editor, or, a 'reference' WorkspaceLeaf (example: backlinks, outline, etc.. views) that is used to find the associated editor if one exists.
+   * @param  {} shouldIncludeRefViews=false set to true to make reference view types valid return candidates.
    * @returns TargetInfo
    */
-  findOpenEditor(file: TFile, leaf?: WorkspaceLeaf): SourceInfo {
+  findOpenEditor(
+    file: TFile,
+    leaf?: WorkspaceLeaf,
+    shouldIncludeRefViews = false,
+  ): SourceInfo {
     let matchingLeaf = null;
-    const isTargetLeaf = !!leaf;
+    const hasSourceLeaf = !!leaf;
     const {
       settings: { referenceViews, excludeViewTypes, includeSidePanelViewTypes },
       app: { workspace },
     } = this;
 
-    const isMatch = (l: WorkspaceLeaf) => {
+    const isMatch = (candidateLeaf: WorkspaceLeaf) => {
       let val = false;
 
-      if (l?.view) {
-        const isRefView = referenceViews.includes(l.view.getViewType());
-        const isTargetRefView =
-          isTargetLeaf && referenceViews.includes(leaf.view.getViewType());
+      if (candidateLeaf?.view) {
+        const isCandidateRefView = referenceViews.includes(
+          candidateLeaf.view.getViewType(),
+        );
+        const isValidCandidate = shouldIncludeRefViews || !isCandidateRefView;
+        const isSourceRefView =
+          hasSourceLeaf && referenceViews.includes(leaf.view.getViewType());
 
-        if (!isRefView) {
-          val = isTargetLeaf && !isTargetRefView ? l === leaf : l.view.file === file;
+        if (isValidCandidate) {
+          if (hasSourceLeaf && (shouldIncludeRefViews || !isSourceRefView)) {
+            val = candidateLeaf === leaf;
+          } else {
+            val = candidateLeaf.view.file === file;
+          }
         }
       }
 
@@ -196,9 +208,7 @@ export abstract class Handler<T> {
     // Prioritize the active leaf matches first, otherwise find the first matching leaf
     if (isMatch(workspace.activeLeaf)) {
       matchingLeaf = workspace.activeLeaf;
-    }
-
-    if (!matchingLeaf) {
+    } else {
       const leaves = this.getOpenLeaves(excludeViewTypes, includeSidePanelViewTypes);
 
       // put leaf at the first index so it gets checked first
@@ -359,8 +369,9 @@ export abstract class Handler<T> {
     openState?: OpenViewState,
     leaf?: WorkspaceLeaf,
     mode?: Mode,
+    shouldIncludeRefViews = false,
   ): void {
-    const { leaf: targetLeaf } = this.findOpenEditor(file, leaf);
+    const { leaf: targetLeaf } = this.findOpenEditor(file, leaf, shouldIncludeRefViews);
     const isAlreadyOpen = !!targetLeaf;
     const shouldCreateNew = this.shouldCreateNewLeaf(isModDown, isAlreadyOpen, mode);
 

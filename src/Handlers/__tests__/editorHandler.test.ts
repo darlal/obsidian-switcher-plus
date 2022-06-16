@@ -326,6 +326,8 @@ describe('editorHandler', () => {
         expect.any(String),
         null,
         mockLeaf,
+        null,
+        true,
       );
 
       navigateToLeafOrOpenFileSpy.mockRestore();

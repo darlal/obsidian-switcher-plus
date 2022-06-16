@@ -77,6 +77,8 @@ export class EditorHandler extends Handler<EditorSuggestion> {
         'Unable to reopen existing editor in new Leaf.',
         null,
         sugg.item,
+        null,
+        true,
       );
     }
   }

@@ -784,9 +784,74 @@ describe('Handler', () => {
   });
 
   describe('findOpenEditor', () => {
-    it.todo('should match a file in the active editor');
-    it.todo('should match a file in an in-active editor');
-    it.todo('should match using a reference WorkspaceLeaf as a source');
-    it.todo('should not match any reference view types');
+    const refViewType = 'backlink';
+    let mockLeaf: MockProxy<WorkspaceLeaf>;
+    let mockView: jest.MockedObject<View>;
+
+    beforeAll(() => {
+      mockSettings.referenceViews.push(refViewType);
+      mockLeaf = makeLeaf();
+      mockView = jest.mocked<View>(mockLeaf.view);
+
+      mockWorkspace.activeLeaf = mockLeaf;
+    });
+
+    afterAll(() => {
+      mockSettings.referenceViews.splice(
+        mockSettings.referenceViews.indexOf(refViewType),
+        1,
+      );
+    });
+
+    it('should match a file in the active editor', () => {
+      const mockFile = mockView.file;
+      const getOpenLeavesSpy = jest.spyOn(sut, 'getOpenLeaves');
+
+      const result = sut.findOpenEditor(mockFile);
+
+      // not expected to be called because workspace.activeLeaf is prioritized first
+      expect(getOpenLeavesSpy).not.toHaveBeenCalled();
+      expect(mockView.getViewType).toHaveBeenCalled();
+      expect(result.leaf).toEqual(mockLeaf);
+
+      getOpenLeavesSpy.mockRestore();
+    });
+
+    it('should match using a reference WorkspaceLeaf as a source', () => {
+      const mockFile = mockView.file;
+      const mockRefLeaf = makeLeaf(mockFile);
+      const mockRefView = jest.mocked<View>(mockRefLeaf.view);
+      const getOpenLeavesSpy = jest
+        .spyOn(sut, 'getOpenLeaves')
+        .mockReturnValueOnce([mockLeaf, mockRefLeaf]);
+
+      mockRefView.getViewType.mockReturnValue(refViewType);
+
+      const result = sut.findOpenEditor(mockFile, mockRefLeaf, false);
+
+      expect(mockRefView.getViewType).toHaveBeenCalled();
+      expect(mockView.getViewType).toHaveBeenCalled();
+      expect(result.leaf).toEqual(mockLeaf);
+
+      getOpenLeavesSpy.mockRestore();
+    });
+
+    it('should not match any reference view types as target', () => {
+      mockView.getViewType.mockReturnValueOnce(refViewType);
+
+      const result = sut.findOpenEditor(mockView.file, null, false);
+
+      expect(mockView.getViewType).toHaveBeenCalled();
+      expect(result.leaf).toBeNull();
+    });
+
+    test('with includeReferenceViews enabled, it should match reference view types as a target', () => {
+      mockView.getViewType.mockReturnValueOnce(refViewType);
+
+      const result = sut.findOpenEditor(mockView.file, null, true);
+
+      expect(mockView.getViewType).toHaveBeenCalled();
+      expect(result.leaf).toBe(mockLeaf);
+    });
   });
 });
