@@ -124,6 +124,7 @@ export interface WorkspaceSuggestion extends FuzzyMatch<WorkspaceInfo> {
 
 export interface HeadingSuggestion extends FuzzyMatch<HeadingCache> {
   file: TFile;
+  downranked?: boolean;
   type: SuggestionType.HeadingsList;
 }
 
@@ -140,6 +141,7 @@ export interface RelatedItemsSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> 
 
 export interface FileSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
   file: TFile;
+  downranked?: boolean;
   type: SuggestionType.File;
 }
 
@@ -147,6 +149,7 @@ export interface AliasSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
   file: TFile;
   alias: string;
   type: SuggestionType.Alias;
+  downranked?: boolean;
 }
 
 export interface UnresolvedSuggestion extends Omit<FuzzyMatch<string>, 'item'> {
@@ -205,6 +208,7 @@ export interface SettingsData {
   excludeLinkSubTypes: number;
   excludeRelatedFolders: Array<string>;
   excludeOpenRelatedFiles: boolean;
+  excludeObsidianIgnoredFiles: boolean;
 }
 
 export interface SearchQuery {

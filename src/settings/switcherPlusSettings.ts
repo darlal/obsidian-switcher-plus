@@ -37,6 +37,7 @@ export class SwitcherPlusSettings {
       excludeLinkSubTypes: 0,
       excludeRelatedFolders: [''],
       excludeOpenRelatedFiles: false,
+      excludeObsidianIgnoredFiles: false,
     };
   }
 
@@ -264,6 +265,14 @@ export class SwitcherPlusSettings {
 
   set excludeOpenRelatedFiles(value: boolean) {
     this.data.excludeOpenRelatedFiles = value;
+  }
+
+  get excludeObsidianIgnoredFiles(): boolean {
+    return this.data.excludeObsidianIgnoredFiles;
+  }
+
+  set excludeObsidianIgnoredFiles(value: boolean) {
+    this.data.excludeObsidianIgnoredFiles = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

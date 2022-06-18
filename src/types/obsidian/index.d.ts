@@ -61,6 +61,10 @@ declare module 'obsidian' {
     isExtensionRegistered(extension: string): boolean;
   }
 
+  export interface MetadataCache {
+    isUserIgnored(path: string): boolean;
+  }
+
   export interface App {
     internalPlugins: InternalPlugins;
     viewRegistry: ViewRegistry;

@@ -60,6 +60,7 @@ Find the file you're looking for by searching through the headings contained in 
 | Show headings only | **Enabled**: strictly search through only the first H1 contained in the file. <br />**Disabled**: if there is not a match in the first H1, fallback to search against the filename and path. This will also for searching through Aliases, and Unresolved links to be enabled. | disabled |
 | Search all headings | **Enabled**: search through all headings contained in the file. <br />**Disabled**: only search through the first H1 in each file. | enabled |
 | Exclude folders | List of folder path regex that will be used to exclude folders and their sub-directories from suggestion search. One per line. | None |
+| Hide Obsidian "Excluded files" | **Enabled**, suggestions for files that are in Obsidian\'s "Options > Files & Links > Excluded files" list will not be displayed. **Disabled**, suggestions for those files will be displayed but downranked. | disabled |
 
 ## Symbol Navigation (Headings, Hashtags, Links, Embeddings)
 

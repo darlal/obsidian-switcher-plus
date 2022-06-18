@@ -70,6 +70,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     SwitcherPlusSettingTab.setStrictHeadingsOnly(containerEl, config);
     SwitcherPlusSettingTab.setSearchAllHeadings(containerEl, config);
     this.setExcludeFolders(containerEl, config);
+    SwitcherPlusSettingTab.setHideObsidianExcludedFiles(containerEl, config);
   }
 
   private static setAlwaysNewPaneForSymbols(
@@ -329,6 +330,23 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
           }
         });
       });
+  }
+
+  private static setHideObsidianExcludedFiles(
+    containerEl: HTMLElement,
+    config: SwitcherPlusSettings,
+  ): void {
+    new Setting(containerEl)
+      .setName('Hide Obsidian "Excluded files"')
+      .setDesc(
+        'Enabled, do not display suggestions for files that are in Obsidian\'s "Options > Files & Links > Excluded files" list. Disabled, suggestions for those files will be displayed but downranked.',
+      )
+      .addToggle((toggle) =>
+        toggle.setValue(config.excludeObsidianIgnoredFiles).onChange((value) => {
+          config.excludeObsidianIgnoredFiles = value;
+          config.save();
+        }),
+      );
   }
 
   private validateExcludeFolderList(settingName: string, excludes: string[]) {

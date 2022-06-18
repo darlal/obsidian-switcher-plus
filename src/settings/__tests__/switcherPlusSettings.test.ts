@@ -46,6 +46,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     excludeFolders: [],
     excludeRelatedFolders: [''],
     excludeOpenRelatedFiles: false,
+    excludeObsidianIgnoredFiles: false,
   };
 
   if (!useDefault) {
@@ -67,6 +68,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     data.relatedItemsListCommand = chance.word();
     data.excludeLinkSubTypes = LinkType.Block;
     data.excludeOpenRelatedFiles = chance.bool();
+    data.excludeObsidianIgnoredFiles = chance.bool();
 
     data.includeSidePanelViewTypes = [
       chance.word(),
@@ -159,6 +161,7 @@ describe('SwitcherPlusSettings', () => {
     sut.excludeLinkSubTypes = settings.excludeLinkSubTypes;
     sut.excludeRelatedFolders = settings.excludeRelatedFolders;
     sut.excludeOpenRelatedFiles = settings.excludeOpenRelatedFiles;
+    sut.excludeObsidianIgnoredFiles = settings.excludeObsidianIgnoredFiles;
 
     sut.setSymbolTypeEnabled(
       SymbolType.Heading,

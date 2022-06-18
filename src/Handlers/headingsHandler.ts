@@ -102,6 +102,10 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
         cls: 'suggestion-note',
         text: stripMDExtensionFromPath(sugg.file),
       });
+
+      if (sugg.downranked) {
+        parentEl.addClass('mod-downranked');
+      }
     }
   }
 
@@ -184,6 +188,43 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     }
   }
 
+  downrankScoreIfIgnored<
+    T extends Exclude<SupportedSuggestionTypes, UnresolvedSuggestion>,
+  >(sugg: T): T {
+    if (this.app.metadataCache.isUserIgnored(sugg?.file?.path)) {
+      sugg.downranked = true;
+
+      if (sugg.match) {
+        sugg.match.score -= 10;
+      }
+    }
+
+    return sugg;
+  }
+
+  shouldIncludeFile(file: TAbstractFile): boolean {
+    let retVal = false;
+    const {
+      settings: {
+        excludeObsidianIgnoredFiles,
+        builtInSystemOptions: { showAttachments, showAllFileTypes },
+      },
+      app: { viewRegistry, metadataCache },
+    } = this;
+
+    if (isTFile(file)) {
+      const { extension } = file;
+
+      if (!metadataCache.isUserIgnored(file.path) || !excludeObsidianIgnoredFiles) {
+        retVal = viewRegistry.isExtensionRegistered(extension)
+          ? showAttachments || extension === 'md'
+          : showAllFileTypes;
+      }
+    }
+
+    return retVal;
+  }
+
   private addAliasSuggestions(
     suggestions: AliasSuggestion[],
     prepQuery: PreparedQuery,
@@ -199,7 +240,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       // create suggestions where there is a match with an alias
       while (i--) {
         const alias = aliases[i];
-        const { match } = this.matchStrings(prepQuery, alias, null);
+        const { match } = this.fuzzySearchWithFallback(prepQuery, alias, null);
 
         if (match) {
           suggestions.push(this.createAliasSuggestion(alias, file, match));
@@ -216,7 +257,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     const path = stripMDExtensionFromPath(file);
     const filename = filenameFromPath(path);
 
-    const { isPrimary, match } = this.matchStrings(prepQuery, filename, path);
+    const { isPrimary, match } = this.fuzzySearchWithFallback(prepQuery, filename, path);
 
     if (isPrimary) {
       this.adjustMatchIndicesForPath(match.matches, path.length - filename.length);
@@ -270,7 +311,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     file: TFile,
     heading: HeadingCache,
   ): boolean {
-    const { match } = this.matchStrings(prepQuery, heading.heading, null);
+    const { match } = this.fuzzySearchWithFallback(prepQuery, heading.heading, null);
 
     if (match) {
       suggestions.push(this.createHeadingSuggestion(heading, file, match));
@@ -309,7 +350,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     // create suggestions where there is a match with an unresolved link
     while (i--) {
       const unresolved = unresolvedList[i];
-      const { match } = this.matchStrings(prepQuery, unresolved, null);
+      const { match } = this.fuzzySearchWithFallback(prepQuery, unresolved, null);
 
       if (match) {
         suggestions.push(this.createUnresolvedSuggestion(unresolved, match));
@@ -322,12 +363,14 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     file: TFile,
     match: SearchResult,
   ): AliasSuggestion {
-    return {
+    const sugg: AliasSuggestion = {
       alias,
       file,
       match,
       type: SuggestionType.Alias,
     };
+
+    return this.downrankScoreIfIgnored(sugg);
   }
 
   private createUnresolvedSuggestion(
@@ -342,11 +385,13 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   }
 
   private createFileSuggestion(file: TFile, match: SearchResult): FileSuggestion {
-    return {
+    const sugg: FileSuggestion = {
       file,
       match,
       type: SuggestionType.File,
     };
+
+    return this.downrankScoreIfIgnored(sugg);
   }
 
   private createHeadingSuggestion(
@@ -354,15 +399,17 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     file: TFile,
     match: SearchResult,
   ): HeadingSuggestion {
-    return {
+    const sugg: HeadingSuggestion = {
       item,
       file,
       match,
       type: SuggestionType.HeadingsList,
     };
+
+    return this.downrankScoreIfIgnored(sugg);
   }
 
-  private matchStrings(
+  private fuzzySearchWithFallback(
     prepQuery: PreparedQuery,
     primaryString: string,
     secondaryString: string,
@@ -426,25 +473,5 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     });
 
     return suggestions;
-  }
-
-  private shouldIncludeFile(file: TAbstractFile): boolean {
-    let retVal = false;
-    const {
-      settings: {
-        builtInSystemOptions: { showAttachments, showAllFileTypes },
-      },
-      app: { viewRegistry },
-    } = this;
-
-    if (isTFile(file)) {
-      const { extension } = file;
-
-      retVal = viewRegistry.isExtensionRegistered(extension)
-        ? showAttachments || extension === 'md'
-        : showAllFileTypes;
-    }
-
-    return retVal;
   }
 }

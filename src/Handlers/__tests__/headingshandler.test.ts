@@ -25,6 +25,7 @@ import {
   makePreparedQuery,
   makeLeaf,
   makeHeadingSuggestion,
+  makeFileSuggestion,
 } from '@fixtures';
 import { InputInfo } from 'src/switcherPlus';
 import {
@@ -680,6 +681,15 @@ describe('headingsHandler', () => {
         }),
       );
     });
+
+    it('should add CSS class to downranked suggestions', () => {
+      const sugg = makeHeadingSuggestion(makeHeading('foo heading', 1));
+      sugg.downranked = true;
+
+      sut.renderSuggestion(sugg, mockParentEl);
+
+      expect(mockParentEl.addClass).toHaveBeenCalledWith('mod-downranked');
+    });
   });
 
   describe('onChooseSuggestion', () => {
@@ -724,6 +734,156 @@ describe('headingsHandler', () => {
       );
 
       navigateToLeafOrOpenFileSpy.mockRestore();
+    });
+  });
+
+  describe('downrankScoreIfIgnored', () => {
+    let sut: HeadingsHandler;
+    let mockMetadataCache: MockProxy<MetadataCache>;
+
+    beforeAll(() => {
+      mockMetadataCache = mock<MetadataCache>();
+      const mockApp = mock<App>({
+        metadataCache: mockMetadataCache,
+      });
+
+      sut = new HeadingsHandler(mockApp, settings);
+    });
+
+    it('should not throw on falsy input', () => {
+      const sugg = makeFileSuggestion();
+
+      mockMetadataCache.isUserIgnored.mockReturnValue(false);
+
+      expect((): void => {
+        sugg.file = null;
+        sut.downrankScoreIfIgnored(sugg);
+      }).not.toThrow();
+
+      expect((): void => {
+        sugg.match = null;
+        sut.downrankScoreIfIgnored(sugg);
+      }).not.toThrow();
+
+      expect((): void => {
+        sut.downrankScoreIfIgnored(null);
+      }).not.toThrow();
+
+      mockMetadataCache.isUserIgnored.mockReset();
+    });
+
+    it('should downrank suggestions for file that are excluded by Obsidian exclude files setting', () => {
+      const sugg = makeFileSuggestion();
+      sugg.match.score = 0;
+
+      mockMetadataCache.isUserIgnored
+        .calledWith(sugg.file.path)
+        .mockReturnValueOnce(true);
+
+      const result = sut.downrankScoreIfIgnored(sugg);
+
+      // by default scores are downranked by -10
+      expect(result.match.score).toBe(-10);
+      expect(result.downranked).toBe(true);
+      expect(mockMetadataCache.isUserIgnored).toBeCalledWith(sugg.file.path);
+
+      mockMetadataCache.isUserIgnored.mockReset();
+    });
+  });
+
+  describe('shouldIncludeFile', () => {
+    let sut: HeadingsHandler;
+    let mockMetadataCache: MockProxy<MetadataCache>;
+    let mockViewRegistry: MockProxy<ViewRegistry>;
+    let builtInSystemOptionsSpy: jest.SpyInstance;
+    let excludeObsidianIgnoredFilesSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      mockMetadataCache = mock<MetadataCache>();
+      mockViewRegistry = mock<ViewRegistry>();
+
+      const mockApp = mock<App>({
+        metadataCache: mockMetadataCache,
+        viewRegistry: mockViewRegistry,
+      });
+
+      builtInSystemOptionsSpy = jest
+        .spyOn(settings, 'builtInSystemOptions', 'get')
+        .mockReturnValue({
+          showAllFileTypes: true,
+          showAttachments: true,
+          showExistingOnly: false,
+        });
+
+      excludeObsidianIgnoredFilesSpy = jest.spyOn(
+        settings,
+        'excludeObsidianIgnoredFiles',
+        'get',
+      );
+
+      sut = new HeadingsHandler(mockApp, settings);
+    });
+
+    afterAll(() => {
+      builtInSystemOptionsSpy.mockRestore();
+      excludeObsidianIgnoredFilesSpy.mockRestore();
+    });
+
+    it('should not throw on falsy input', () => {
+      expect((): void => {
+        sut.shouldIncludeFile(null);
+      }).not.toThrow();
+    });
+
+    test('with excludeObsidianIgnoredFiles enabled, it should return false', () => {
+      const mockFile = new TFile();
+
+      excludeObsidianIgnoredFilesSpy.mockReturnValueOnce(true);
+      mockMetadataCache.isUserIgnored.calledWith(mockFile.path).mockReturnValueOnce(true);
+
+      const result = sut.shouldIncludeFile(mockFile);
+
+      expect(result).toBe(false);
+      expect(mockMetadataCache.isUserIgnored).toBeCalledWith(mockFile.path);
+
+      mockMetadataCache.isUserIgnored.mockReset();
+    });
+
+    test('with excludeObsidianIgnoredFiles disabled, it should return true', () => {
+      const mockFile = new TFile();
+
+      excludeObsidianIgnoredFilesSpy.mockReturnValueOnce(false);
+      mockMetadataCache.isUserIgnored.calledWith(mockFile.path).mockReturnValueOnce(true);
+
+      const result = sut.shouldIncludeFile(mockFile);
+
+      expect(result).toBe(true);
+      expect(mockMetadataCache.isUserIgnored).toBeCalledWith(mockFile.path);
+
+      mockMetadataCache.isUserIgnored.mockReset();
+    });
+
+    test('with showAttachments disabled it should return true for files with .md extension', () => {
+      const mockFile = new TFile();
+
+      mockViewRegistry.isExtensionRegistered.mockReturnValueOnce(true);
+      mockMetadataCache.isUserIgnored
+        .calledWith(mockFile.path)
+        .mockReturnValueOnce(false);
+
+      builtInSystemOptionsSpy.mockReturnValue({
+        showAllFileTypes: true,
+        showAttachments: false, // <-- here
+        showExistingOnly: false,
+      });
+
+      const result = sut.shouldIncludeFile(mockFile);
+
+      expect(result).toBe(true);
+
+      mockViewRegistry.isExtensionRegistered.mockReset();
+      mockMetadataCache.isUserIgnored.mockReset();
+      builtInSystemOptionsSpy.mockReset();
     });
   });
 });
