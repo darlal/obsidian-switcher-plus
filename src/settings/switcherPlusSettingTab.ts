@@ -4,8 +4,9 @@ import { RelatedItemsSettingsTabSection } from './relatedItemsSettingsTabSection
 import { GeneralSettingsTabSection } from './generalSettingsTabSection';
 import { WorkspaceSettingsTabSection } from './workspaceSettingsTabSection';
 import { EditorSettingsTabSection } from './editorSettingsTabSection';
+import { HeadingsSettingsTabSection } from './headingsSettingsTabSection';
 import { SwitcherPlusSettings } from './switcherPlusSettings';
-import { App, Modal, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting } from 'obsidian';
 import { LinkType, SymbolType } from 'src/types';
 import type SwitcherPlusPlugin from '../main';
 
@@ -19,17 +20,16 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
   }
 
   display(): void {
-    const { containerEl, config } = this;
-    const generalSection = new GeneralSettingsTabSection(this.app, this, config);
-    const editorSection = new EditorSettingsTabSection(this.app, this, config);
-    const starredSection = new StarredSettingsTabSection(this.app, this, config);
-    const commandListSection = new CommandListSettingsTabSection(this.app, this, config);
-    const workspaceListSection = new WorkspaceSettingsTabSection(this.app, this, config);
-    const relatedItemsSection = new RelatedItemsSettingsTabSection(
-      this.app,
-      this,
-      config,
-    );
+    const { app, containerEl, config } = this;
+    const generalSection = new GeneralSettingsTabSection(app, this, config);
+    const tabSections = [
+      HeadingsSettingsTabSection,
+      EditorSettingsTabSection,
+      RelatedItemsSettingsTabSection,
+      StarredSettingsTabSection,
+      CommandListSettingsTabSection,
+      WorkspaceSettingsTabSection,
+    ];
 
     containerEl.empty();
     containerEl.createEl('h2', { text: 'Quick Switcher++ Settings' });
@@ -37,13 +37,11 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     generalSection.display(containerEl);
 
     this.setSymbolModeSettingsGroup(containerEl, config);
-    this.setHeadingsModeSettingsGroup(containerEl, config);
 
-    editorSection.display(containerEl);
-    relatedItemsSection.display(containerEl);
-    starredSection.display(containerEl);
-    commandListSection.display(containerEl);
-    workspaceListSection.display(containerEl);
+    tabSections.forEach((tabSectionClass) => {
+      const tabSection = new tabSectionClass(app, this, config);
+      tabSection.display(containerEl);
+    });
   }
 
   private setSymbolModeSettingsGroup(
@@ -58,19 +56,6 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     SwitcherPlusSettingTab.setUseActivePaneForSymbolsOnMobile(containerEl, config);
     SwitcherPlusSettingTab.setSelectNearestHeading(containerEl, config);
     this.setEnabledSymbolTypes(containerEl, config);
-  }
-
-  private setHeadingsModeSettingsGroup(
-    containerEl: HTMLElement,
-    config: SwitcherPlusSettings,
-  ): void {
-    new Setting(containerEl).setHeading().setName('Headings List Mode Settings');
-
-    SwitcherPlusSettingTab.setHeadingsListCommand(containerEl, config);
-    SwitcherPlusSettingTab.setStrictHeadingsOnly(containerEl, config);
-    SwitcherPlusSettingTab.setSearchAllHeadings(containerEl, config);
-    this.setExcludeFolders(containerEl, config);
-    SwitcherPlusSettingTab.setHideObsidianExcludedFiles(containerEl, config);
   }
 
   private static setAlwaysNewPaneForSymbols(
@@ -251,125 +236,5 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
             config.save();
           }),
       );
-  }
-
-  private static setHeadingsListCommand(
-    containerEl: HTMLElement,
-    config: SwitcherPlusSettings,
-  ): void {
-    new Setting(containerEl)
-      .setName('Headings list mode trigger')
-      .setDesc('Character that will trigger headings list mode in the switcher')
-      .addText((text) =>
-        text
-          .setPlaceholder(config.headingsListPlaceholderText)
-          .setValue(config.headingsListCommand)
-          .onChange((value) => {
-            const val = value.length ? value : config.headingsListPlaceholderText;
-            config.headingsListCommand = val;
-            config.save();
-          }),
-      );
-  }
-
-  private static setStrictHeadingsOnly(
-    containerEl: HTMLElement,
-    config: SwitcherPlusSettings,
-  ): void {
-    new Setting(containerEl)
-      .setName('Show headings only')
-      .setDesc(
-        'Enabled, only show suggestions where there is a match in the first H1 contained in the file. Disabled, if there is not a match in the first H1, fallback to showing suggestions where there is a filename or path match.',
-      )
-      .addToggle((toggle) =>
-        toggle.setValue(config.strictHeadingsOnly).onChange((value) => {
-          config.strictHeadingsOnly = value;
-          config.save();
-        }),
-      );
-  }
-
-  private static setSearchAllHeadings(
-    containerEl: HTMLElement,
-    config: SwitcherPlusSettings,
-  ): void {
-    new Setting(containerEl)
-      .setName('Search all headings')
-      .setDesc(
-        'Enabled, search through all headings contained in each file. Disabled, only search through the first H1 in each file.',
-      )
-      .addToggle((toggle) =>
-        toggle.setValue(config.searchAllHeadings).onChange((value) => {
-          config.searchAllHeadings = value;
-          config.save();
-        }),
-      );
-  }
-
-  private setExcludeFolders(
-    containerEl: HTMLElement,
-    config: SwitcherPlusSettings,
-  ): void {
-    const settingName = 'Exclude folders';
-    new Setting(containerEl)
-      .setName(settingName)
-      .setDesc(
-        `When in Headings list mode, folder path that match any regex listed here will not be searched for suggestions. Path should start from the Vault Root. Add one path per line.`,
-      )
-      .addTextArea((textArea) => {
-        textArea.setValue(config.excludeFolders.join('\n'));
-        textArea.inputEl.addEventListener('blur', () => {
-          const excludes = textArea
-            .getValue()
-            .split('\n')
-            .filter((v) => v.length > 0);
-
-          if (this.validateExcludeFolderList(settingName, excludes)) {
-            config.excludeFolders = excludes;
-            config.save();
-          }
-        });
-      });
-  }
-
-  private static setHideObsidianExcludedFiles(
-    containerEl: HTMLElement,
-    config: SwitcherPlusSettings,
-  ): void {
-    new Setting(containerEl)
-      .setName('Hide Obsidian "Excluded files"')
-      .setDesc(
-        'Enabled, do not display suggestions for files that are in Obsidian\'s "Options > Files & Links > Excluded files" list. Disabled, suggestions for those files will be displayed but downranked.',
-      )
-      .addToggle((toggle) =>
-        toggle.setValue(config.excludeObsidianIgnoredFiles).onChange((value) => {
-          config.excludeObsidianIgnoredFiles = value;
-          config.save();
-        }),
-      );
-  }
-
-  private validateExcludeFolderList(settingName: string, excludes: string[]) {
-    let isValid = true;
-    let failedMsg = '';
-
-    for (const str of excludes) {
-      try {
-        new RegExp(str);
-      } catch (err) {
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        failedMsg += `<span class="qsp-warning">${str}</span><br/>${err}<br/><br/>`;
-        isValid = false;
-      }
-    }
-
-    if (!isValid) {
-      const popup = new Modal(this.app);
-      popup.titleEl.setText(settingName);
-      popup.contentEl.innerHTML = `Changes not saved. The following regex contain errors:<br/><br/>${failedMsg}`;
-      popup.open();
-    }
-
-    return isValid;
   }
 }

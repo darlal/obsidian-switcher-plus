@@ -14,6 +14,7 @@ import {
   sortSearchResults,
   TFile,
   Keymap,
+  Modal,
 } from 'obsidian';
 import {
   MockSetting,
@@ -30,6 +31,14 @@ const mockKeymap = mock<typeof Keymap>();
 const mockPlatform = mock<typeof Platform>({
   isDesktop: true,
   isMobile: false,
+});
+
+const mockModal = jest.fn<Modal, [app: App]>((app) => {
+  return mock<Modal>({
+    app,
+    titleEl: mock<HTMLElement>(),
+    contentEl: mock<HTMLElement>(),
+  });
 });
 
 const mockPlugin = jest.fn<Plugin, [app: App, manifest: PluginManifest]>(
@@ -75,6 +84,7 @@ const mockDebounce = mockFn<typeof debounce>().mockImplementation();
 
 export {
   mockPlatform as Platform,
+  mockModal as Modal,
   mockPlugin as Plugin,
   mockPluginSettingTab as PluginSettingTab,
   mockTFile as TFile,
