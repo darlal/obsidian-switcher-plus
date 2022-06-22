@@ -20,7 +20,7 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
     this.addToggleSetting(
       containerEl,
       'Show headings only',
-      'Enabled, only show suggestions where there is a match in the first H1 contained in the file. Disabled, if there is not a match in the first H1, fallback to showing suggestions where there is a filename or path match.',
+      'Enabled, strictly search through only the headings contained in the file. Note: this setting overrides the "Show existing only", and "Search filenames" settings. Disabled, fallback to searching against the filename when there is not a match in the first H1 contained in the file. This will also allow searching through filenames, Aliases, and Unresolved links to be enabled.',
       config.strictHeadingsOnly,
       'strictHeadingsOnly',
     );
@@ -31,6 +31,14 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
       'Enabled, search through all headings contained in each file. Disabled, only search through the first H1 in each file.',
       config.searchAllHeadings,
       'searchAllHeadings',
+    );
+
+    this.addToggleSetting(
+      containerEl,
+      'Search filenames',
+      "Enabled, search and show suggestions for filenames. Disabled, Don't search through filenames (except for fallback searches)",
+      config.shouldSearchFilenames,
+      'shouldSearchFilenames',
     );
 
     this.setExcludeFolders(containerEl, config);

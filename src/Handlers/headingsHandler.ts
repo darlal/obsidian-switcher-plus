@@ -164,24 +164,29 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     file: TFile,
     prepQuery: PreparedQuery,
   ): void {
-    const { settings } = this;
+    const {
+      searchAllHeadings,
+      strictHeadingsOnly,
+      shouldSearchFilenames,
+      shouldShowAlias,
+    } = this.settings;
 
     if (this.shouldIncludeFile(file)) {
       const isH1Matched = this.addHeadingSuggestions(
         suggestions as HeadingSuggestion[],
         prepQuery,
         file,
-        settings.searchAllHeadings,
+        searchAllHeadings,
       );
 
-      if (!settings.strictHeadingsOnly) {
-        if (!isH1Matched) {
-          // if there isn't a H1 heading match and strict is disabled,
-          // do a fallback search against the filename, then path
+      if (!strictHeadingsOnly) {
+        if (shouldSearchFilenames || !isH1Matched) {
+          // if strict is disabled and filename search is enabled or there
+          // isn't an H1 match, then do a fallback search against the filename, then path
           this.addFileSuggestions(suggestions as FileSuggestion[], prepQuery, file);
         }
 
-        if (settings.shouldShowAlias) {
+        if (shouldShowAlias) {
           this.addAliasSuggestions(suggestions as AliasSuggestion[], prepQuery, file);
         }
       }

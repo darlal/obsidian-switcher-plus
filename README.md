@@ -57,8 +57,9 @@ Find the file you're looking for by searching through the headings contained in 
 | Setting                  | Description | Default |
 |--------------------------|-------------|---------|
 | Headings list mode trigger | Character that will trigger headings list mode in the switcher. | `#` |
-| Show headings only | **Enabled**: strictly search through only the first H1 contained in the file. <br />**Disabled**: if there is not a match in the first H1, fallback to search against the filename and path. This will also for searching through Aliases, and Unresolved links to be enabled. | disabled |
+| Show headings only | **Enabled**: strictly search through only the headings contained in the file. Note: this setting overrides the "Show existing only", and "Search filenames" settings. <br />**Disabled**: fallback to searching against the filename when there is not a match in the first H1 contained in the file. This will also allow searching through filenames, Aliases, and Unresolved links to be enabled. | disabled |
 | Search all headings | **Enabled**: search through all headings contained in the file. <br />**Disabled**: only search through the first H1 in each file. | enabled |
+| Search filenames | **Enabled**: search and show suggestions for filenames <br />**Disabled**: Don't search through filenames (except for fallback searches) | disabled |
 | Exclude folders | List of folder path regex that will be used to exclude folders and their sub-directories from suggestion search. One per line. | None |
 | Hide Obsidian "Excluded files" | **Enabled**, suggestions for files that are in Obsidian\'s "Options > Files & Links > Excluded files" list will not be displayed. **Disabled**, suggestions for those files will be displayed but downranked. | disabled |
 

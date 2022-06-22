@@ -38,6 +38,7 @@ export class SwitcherPlusSettings {
       excludeRelatedFolders: [''],
       excludeOpenRelatedFiles: false,
       excludeObsidianIgnoredFiles: false,
+      shouldSearchFilenames: false,
     };
   }
 
@@ -273,6 +274,14 @@ export class SwitcherPlusSettings {
 
   set excludeObsidianIgnoredFiles(value: boolean) {
     this.data.excludeObsidianIgnoredFiles = value;
+  }
+
+  get shouldSearchFilenames(): boolean {
+    return this.data.shouldSearchFilenames;
+  }
+
+  set shouldSearchFilenames(value: boolean) {
+    this.data.shouldSearchFilenames = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

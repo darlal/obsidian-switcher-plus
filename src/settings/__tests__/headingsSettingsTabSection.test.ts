@@ -96,6 +96,20 @@ describe('headingsSettingsTabSection', () => {
     addToggleSettingSpy.mockReset();
   });
 
+  it('should show the shouldSearchFilenames setting', () => {
+    sut.display(mockContainerEl);
+
+    expect(addToggleSettingSpy).toBeCalledWith(
+      mockContainerEl,
+      'Search filenames',
+      expect.any(String),
+      config.shouldSearchFilenames,
+      'shouldSearchFilenames',
+    );
+
+    addToggleSettingSpy.mockReset();
+  });
+
   it('should show the excludeObsidianIgnoredFiles setting', () => {
     sut.display(mockContainerEl);
 

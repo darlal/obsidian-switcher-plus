@@ -209,6 +209,7 @@ export interface SettingsData {
   excludeRelatedFolders: Array<string>;
   excludeOpenRelatedFiles: boolean;
   excludeObsidianIgnoredFiles: boolean;
+  shouldSearchFilenames: boolean;
 }
 
 export interface SearchQuery {

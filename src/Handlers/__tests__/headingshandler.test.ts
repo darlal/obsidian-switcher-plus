@@ -602,6 +602,42 @@ describe('headingsHandler', () => {
       mockFuzzySearch.mockReset();
     });
 
+    test('with shouldSearchFilenames enabled, it should return matching suggestions using file name even when there is an H1 match', () => {
+      const filterText = 'foo';
+      const filename = `${filterText} filename`;
+      const path = `path/to/bar/${filename}`; // only path matters for this test
+      const results: Array<FileSuggestion> = [];
+      const expectedFile = new TFile();
+      expectedFile.path = path;
+
+      const shouldSearchFilenameSpy = jest
+        .spyOn(settings, 'shouldSearchFilenames', 'get')
+        .mockReturnValueOnce(true);
+
+      mockMetadataCache.getFileCache.calledWith(expectedFile).mockReturnValue({
+        headings: [makeHeading(filterText, 1)], // <-- ensure heading match
+      });
+
+      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
+        return text === filterText || text === filename ? makeFuzzyMatch() : null;
+      });
+
+      sut.addSuggestionsFromFile(results, expectedFile, makePreparedQuery(filterText));
+
+      const H1Sugg = results.find(isHeadingSuggestion);
+      const fileSugg = results.find(isFileSuggestion);
+      expect(results).toHaveLength(2);
+      expect(H1Sugg).not.toBeFalsy();
+      expect(fileSugg).not.toBeFalsy();
+      expect(fileSugg.file).toBe(expectedFile);
+      expect(mockFuzzySearch).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(expectedFile);
+
+      mockMetadataCache.getFileCache.mockReset();
+      mockFuzzySearch.mockReset();
+      shouldSearchFilenameSpy.mockRestore();
+    });
+
     test('with filter search term, it should fallback match against file path when there is no H1 match and no match against the filename (leaf segment)', () => {
       const filterText = 'foo';
       const path = `path/${filterText}/bar/filename`; // only path matters for this test
