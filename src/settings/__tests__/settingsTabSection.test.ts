@@ -3,6 +3,7 @@ import { Chance } from 'chance';
 import { mock, MockProxy, mockReset } from 'jest-mock-extended';
 import {
   App,
+  DropdownComponent,
   PluginSettingTab,
   Setting,
   TextAreaComponent,
@@ -363,6 +364,112 @@ describe('settingsTabSection', () => {
       expect(mockTextComp.onChange).toHaveBeenCalled();
       expect(mockConfig.save).toHaveBeenCalled();
       expect(mockConfig.includeSidePanelViewTypes).toEqual(initValue);
+
+      mockReset(mockConfig);
+    });
+  });
+
+  describe('addDropdown', () => {
+    let mockSetting: MockProxy<Setting>;
+    let mockDropdownComp: MockProxy<DropdownComponent>;
+    let createSettingSpy: jest.SpyInstance;
+    const options: Record<string, string> = {
+      first: 'One',
+      second: 'Two',
+      third: 'Three',
+    };
+    const initValue = options.first;
+
+    beforeAll(() => {
+      mockSetting = mock<Setting>();
+      mockDropdownComp = mock<DropdownComponent>();
+
+      mockSetting.addDropdown.mockImplementation((cb) => {
+        cb(mockDropdownComp);
+        return mockSetting;
+      });
+
+      createSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'createSetting');
+      createSettingSpy.mockReturnValue(mockSetting);
+    });
+
+    afterAll(() => {
+      createSettingSpy.mockRestore();
+    });
+
+    it('should show the setting with the initial value', () => {
+      const name = chance.sentence();
+      const desc = chance.sentence();
+
+      const result = sut.addDropdownSetting(
+        mockContainerEl,
+        name,
+        desc,
+        initValue,
+        options,
+        'editorListCommand',
+      );
+
+      expect(result).not.toBeNull();
+      expect(createSettingSpy).toHaveBeenCalledWith(mockContainerEl, name, desc);
+      expect(mockDropdownComp.addOptions).toHaveBeenCalledWith(options);
+      expect(mockDropdownComp.setValue).toHaveBeenCalledWith(initValue);
+    });
+
+    it('should save the modified setting', () => {
+      mockConfig.editorListCommand = 'editor command';
+      const finalValue = 'final value';
+
+      let onChangeFn: (v: string) => void;
+      mockDropdownComp.onChange.mockImplementationOnce((cb) => {
+        onChangeFn = cb;
+        return mockDropdownComp;
+      });
+
+      sut.addDropdownSetting(
+        mockContainerEl,
+        chance.word(),
+        chance.sentence(),
+        initValue,
+        options,
+        'editorListCommand',
+      );
+
+      // trigger the value change here
+      onChangeFn(finalValue);
+
+      expect(mockDropdownComp.onChange).toHaveBeenCalled();
+      expect(mockConfig.save).toHaveBeenCalled();
+      expect(mockConfig.editorListCommand).toBe(finalValue);
+
+      mockReset(mockConfig);
+    });
+
+    it('should execute the onChange callback if supplied', () => {
+      const expectedValue = 'final value';
+      const cb = jest.fn();
+
+      let onChangeFn: (v: string) => void;
+      mockDropdownComp.onChange.mockImplementationOnce((cb) => {
+        onChangeFn = cb;
+        return mockDropdownComp;
+      });
+
+      sut.addDropdownSetting(
+        mockContainerEl,
+        chance.word(),
+        chance.sentence(),
+        chance.word(),
+        options,
+        null,
+        cb,
+      );
+
+      // trigger the value change here
+      onChangeFn(expectedValue);
+
+      expect(mockDropdownComp.onChange).toHaveBeenCalled();
+      expect(cb).toHaveBeenCalledWith(expectedValue, mockConfig);
 
       mockReset(mockConfig);
     });

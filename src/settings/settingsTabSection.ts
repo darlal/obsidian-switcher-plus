@@ -140,6 +140,33 @@ export abstract class SettingsTabSection {
     return setting;
   }
 
+  addDropdownSetting(
+    containerEl: HTMLElement,
+    name: string,
+    desc: string,
+    initialValue: string,
+    options: Record<string, string>,
+    configStorageKey: StringTypedConfigKey,
+    onChange?: (rawValue: string, config: SwitcherPlusSettings) => void,
+  ): Setting {
+    const setting = this.createSetting(containerEl, name, desc);
+
+    setting.addDropdown((comp) => {
+      comp.addOptions(options);
+      comp.setValue(initialValue);
+
+      comp.onChange((rawValue) => {
+        if (onChange) {
+          onChange(rawValue, this.config);
+        } else {
+          this.saveChangesToConfig(configStorageKey, rawValue);
+        }
+      });
+    });
+
+    return setting;
+  }
+
   /**
    * Updates the internal SwitcherPlusSettings configStorageKey with value, and writes it to disk.
    * @param  {K} configStorageKey The SwitcherPlusSettings key where the value for this setting should be stored.
@@ -150,8 +177,10 @@ export abstract class SettingsTabSection {
     configStorageKey: K,
     value: SwitcherPlusSettings[K],
   ): void {
-    const { config } = this;
-    config[configStorageKey] = value;
-    config.save();
+    if (configStorageKey) {
+      const { config } = this;
+      config[configStorageKey] = value;
+      config.save();
+    }
   }
 }

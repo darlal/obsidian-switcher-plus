@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { mock } from 'jest-mock-extended';
-import { TextAreaComponent, TextComponent, ToggleComponent } from 'obsidian';
+import {
+  DropdownComponent,
+  TextAreaComponent,
+  TextComponent,
+  ToggleComponent,
+} from 'obsidian';
 
 export class MockSetting {
   private containerEl;
@@ -33,6 +38,11 @@ export class MockSetting {
 
   addTextArea(cb: (component: TextAreaComponent) => any): this {
     cb(new MockTextAreaComponent(this.containerEl));
+    return this;
+  }
+
+  addDropdown(cb: (component: DropdownComponent) => any): this {
+    cb(new MockDropdownComponent(this.containerEl));
     return this;
   }
 }
@@ -170,6 +180,57 @@ export class MockTextAreaComponent implements TextAreaComponent {
     throw new Error('Method not implemented.');
   }
   onChanged(): void {
+    throw new Error('Method not implemented.');
+  }
+  registerOptionListener(
+    _listeners: Record<string, (value?: string) => string>,
+    _key: string,
+  ): this {
+    throw new Error('Method not implemented.');
+  }
+  disabled: boolean;
+  then(_cb: (component: this) => any): this {
+    throw new Error('Method not implemented.');
+  }
+}
+
+export class MockDropdownComponent implements DropdownComponent {
+  selectEl: HTMLSelectElement;
+  onChangeCB: (value: string) => any;
+  options: Record<string, string>;
+
+  constructor(public containerEl: HTMLElement) {
+    this.selectEl = mock<HTMLSelectElement>();
+  }
+
+  getValue(): string {
+    return this.selectEl.value;
+  }
+
+  setValue(value: string): this {
+    this.selectEl.value = value;
+
+    if (this.onChangeCB) {
+      this.onChangeCB(value);
+    }
+
+    return this;
+  }
+
+  addOptions(options: Record<string, string>): this {
+    this.options = options;
+    return this;
+  }
+
+  onChange(callback: (value: string) => any): this {
+    this.onChangeCB = callback;
+    return this;
+  }
+
+  setDisabled(_disabled: boolean): this {
+    throw new Error('Method not implemented.');
+  }
+  addOption(_value: string, _display: string): this {
     throw new Error('Method not implemented.');
   }
   registerOptionListener(
