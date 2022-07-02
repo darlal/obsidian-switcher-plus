@@ -166,6 +166,7 @@ Related Items can be viewed by opening Quick Switcher++, typing some characters 
 | Setting                         | Description | Default |
 |---------------------------------|-------------|---------|
 | Default to open in new pane | **Enabled**: navigating to un-opened files will open a new editor pane whenever possible (as if cmd/ctrl were held). When the file is already open, the existing pane will be activated. This overrides all other pane settings. | enabled |
+| Preferred file path display format | The preferred way to display file paths in suggestions. Note: by default, path information will not be displayed for files at the root of the vault. | `Parent folder & filename` |
 
 ## Global Commands for Hotkeys
 

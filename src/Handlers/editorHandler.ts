@@ -66,6 +66,8 @@ export class EditorHandler extends Handler<EditorSuggestion> {
   renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       renderResults(parentEl, sugg.item.getDisplayText(), sugg.match);
+
+      this.renderPath(parentEl, sugg.file);
     }
   }
 

@@ -15,6 +15,8 @@ import {
   TFile,
   Keymap,
   Modal,
+  normalizePath,
+  setIcon,
 } from 'obsidian';
 import {
   MockSetting,
@@ -82,6 +84,8 @@ const mockPrepareQuery = mockFn<typeof prepareQuery>().mockImplementation((_quer
 const mockSortSearchResults = mockFn<typeof sortSearchResults>().mockImplementation();
 const mockRenderResults = mockFn<typeof renderResults>().mockImplementation();
 const mockDebounce = mockFn<typeof debounce>().mockImplementation();
+const mockNormalizePath = mockFn<typeof normalizePath>().mockImplementation();
+const mockSetIcon = mockFn<typeof setIcon>().mockImplementation();
 
 export {
   mockPlatform as Platform,
@@ -94,6 +98,8 @@ export {
   mockSortSearchResults as sortSearchResults,
   mockRenderResults as renderResults,
   mockDebounce as debounce,
+  mockNormalizePath as normalizePath,
+  mockSetIcon as setIcon,
   mockKeymap as Keymap,
   MockSetting as Setting,
   MockTextComponent as TextComponent,

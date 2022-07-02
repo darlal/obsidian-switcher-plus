@@ -41,7 +41,6 @@ import {
   isFileSuggestion,
   isHeadingSuggestion,
   isUnresolvedSuggestion,
-  stripMDExtensionFromPath,
 } from 'src/utils';
 import { mock, MockProxy } from 'jest-mock-extended';
 
@@ -677,6 +676,7 @@ describe('headingsHandler', () => {
     beforeAll(() => {
       sut = new HeadingsHandler(mock<App>(), settings);
       mockParentEl = mock<HTMLElement>();
+      mockParentEl.createDiv.mockReturnValue(mock<HTMLDivElement>());
     });
 
     it('should not throw an error with a null suggestion', () => {
@@ -697,25 +697,20 @@ describe('headingsHandler', () => {
 
     test('with HeadingCache, it should render a suggestion with match offsets', () => {
       const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
+      const renderPathSpy = jest
+        .spyOn(Handler.prototype, 'renderPath')
+        .mockReturnValueOnce();
 
       sut.renderSuggestion(headingSugg, mockParentEl);
 
+      expect(renderPathSpy).toHaveBeenCalledWith(mockParentEl, headingSugg.file);
       expect(mockRenderResults).toHaveBeenCalledWith(
         mockParentEl,
         headingSugg.item.heading,
         headingSugg.match,
       );
-    });
 
-    it('should render a div element with the text of the suggestion file path', () => {
-      sut.renderSuggestion(headingSugg, mockParentEl);
-
-      expect(mockParentEl.createDiv).toHaveBeenCalledWith(
-        expect.objectContaining({
-          cls: 'suggestion-note',
-          text: stripMDExtensionFromPath(headingSugg.file),
-        }),
-      );
+      renderPathSpy.mockRestore();
     });
 
     it('should add CSS class to downranked suggestions', () => {

@@ -247,10 +247,17 @@ describe('starredHandler', () => {
         isFileStarredItem(v),
       );
 
-      const sugg = mock<StarredSuggestion>({ item, match });
+      const sugg = mock<StarredSuggestion>({ file: new TFile(), item, match });
+      const renderPathSpy = jest
+        .spyOn(Handler.prototype, 'renderPath')
+        .mockReturnValueOnce();
+
       sut.renderSuggestion(sugg, mockParentEl);
 
       expect(mockRenderResults).toHaveBeenCalledWith(mockParentEl, item.title, match);
+      expect(renderPathSpy).toHaveBeenCalledWith(mockParentEl, sugg.file);
+
+      renderPathSpy.mockRestore();
     });
   });
 

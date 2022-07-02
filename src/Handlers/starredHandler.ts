@@ -78,6 +78,8 @@ export class StarredHandler extends Handler<StarredSuggestion> {
   renderSuggestion(sugg: StarredSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       renderResults(parentEl, sugg.item.title, sugg.match);
+
+      this.renderPath(parentEl, sugg.file);
     }
   }
 

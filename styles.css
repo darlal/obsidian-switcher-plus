@@ -3,7 +3,12 @@
   --symbol-indent-padding: 12px;
 }
 
-.qsp-headings-indicator {
+.qsp-headings-indicator {}
+.qsp-note {}
+.qsp-path {}
+
+.qsp-path-indicator {
+  margin-right:4px;
 }
 
 .qsp-symbol-indicator {
@@ -14,8 +19,7 @@
   font-weight: 800;
 }
 
-.qsp-symbol-text {
-}
+.qsp-symbol-text {}
 
 .qsp-symbol-l0 {
   padding-left: var(--symbol-base-padding);

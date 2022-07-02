@@ -98,10 +98,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
         prepend: true,
       });
 
-      parentEl.createDiv({
-        cls: 'suggestion-note',
-        text: stripMDExtensionFromPath(sugg.file),
-      });
+      this.renderPath(parentEl, sugg.file);
 
       if (sugg.downranked) {
         parentEl.addClass('mod-downranked');

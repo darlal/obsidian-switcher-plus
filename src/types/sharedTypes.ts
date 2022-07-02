@@ -18,6 +18,13 @@ import { PickKeys, WritableKeys } from 'ts-essentials';
 // Pick from T the keys that are writable and whose value is of type K
 export type WritableKeysWithValueOfType<T, K> = PickKeys<Pick<T, WritableKeys<T>>, K>;
 
+export enum PathDisplayFormat {
+  None,
+  Full,
+  FolderOnly,
+  FolderWithFilename,
+}
+
 export enum Mode {
   Standard = 1,
   EditorList = 2,
@@ -210,6 +217,8 @@ export interface SettingsData {
   excludeOpenRelatedFiles: boolean;
   excludeObsidianIgnoredFiles: boolean;
   shouldSearchFilenames: boolean;
+  pathDisplayFormat: PathDisplayFormat;
+  hidePathIfRoot: boolean;
 }
 
 export interface SearchQuery {

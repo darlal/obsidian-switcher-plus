@@ -1,3 +1,5 @@
+import { SwitcherPlusSettings } from 'src/settings';
+import { PathDisplayFormat } from 'src/types';
 import { SettingsTabSection } from './settingsTabSection';
 
 export class GeneralSettingsTabSection extends SettingsTabSection {
@@ -10,6 +12,29 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       'When enabled, navigating to un-opened files will open a new editor pane whenever possible (as if cmd/ctrl were held). When the file is already open, the existing pane will be activated. This overrides all other pane settings.',
       this.config.onOpenPreferNewPane,
       'onOpenPreferNewPane',
+    );
+
+    this.setPathDisplayFormat(containerEl, this.config);
+  }
+
+  setPathDisplayFormat(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
+    const options: Record<string, string> = {};
+    options[PathDisplayFormat.Full.toString()] = 'Full path';
+    options[PathDisplayFormat.FolderWithFilename.toString()] = 'Parent folder & filename';
+    options[PathDisplayFormat.FolderOnly.toString()] = 'Only parent folder';
+    options[PathDisplayFormat.None.toString()] = 'Hide path';
+
+    this.addDropdownSetting(
+      containerEl,
+      'Preferred file path display format',
+      'The preferred way to display file paths in suggestions',
+      config.pathDisplayFormat.toString(),
+      options,
+      null,
+      (rawValue, config) => {
+        config.pathDisplayFormat = Number(rawValue);
+        config.save();
+      },
     );
   }
 }

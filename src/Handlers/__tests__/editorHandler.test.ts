@@ -265,15 +265,21 @@ describe('editorHandler', () => {
       const mockLeaf = makeLeafWithRoot(displayText, null);
       const mockRenderResults = jest.mocked(renderResults);
       const sugg = makeEditorSuggestion(mockLeaf);
+      const renderPathSpy = jest
+        .spyOn(Handler.prototype, 'renderPath')
+        .mockReturnValueOnce();
 
       sut.renderSuggestion(sugg, mockParentEl);
 
+      expect(mockLeaf.getDisplayText).toHaveBeenCalled();
+      expect(renderPathSpy).toHaveBeenCalledWith(mockParentEl, sugg.file);
       expect(mockRenderResults).toHaveBeenCalledWith(
         mockParentEl,
         displayText,
         sugg.match,
       );
-      expect(mockLeaf.getDisplayText).toHaveBeenCalled();
+
+      renderPathSpy.mockRestore();
     });
   });
 

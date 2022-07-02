@@ -1,4 +1,4 @@
-import { LinkType, SettingsData, SymbolType } from 'src/types';
+import { LinkType, PathDisplayFormat, SettingsData, SymbolType } from 'src/types';
 import SwitcherPlusPlugin from 'src/main';
 import { SwitcherPlusSettings } from 'src/settings';
 import { Chance } from 'chance';
@@ -48,6 +48,8 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     excludeOpenRelatedFiles: false,
     excludeObsidianIgnoredFiles: false,
     shouldSearchFilenames: false,
+    pathDisplayFormat: PathDisplayFormat.FolderWithFilename,
+    hidePathIfRoot: true,
   };
 
   if (!useDefault) {
@@ -71,6 +73,8 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     data.excludeOpenRelatedFiles = chance.bool();
     data.excludeObsidianIgnoredFiles = chance.bool();
     data.shouldSearchFilenames = chance.bool();
+    data.pathDisplayFormat = PathDisplayFormat.Full;
+    data.hidePathIfRoot = chance.bool();
 
     data.includeSidePanelViewTypes = [
       chance.word(),
@@ -165,6 +169,8 @@ describe('SwitcherPlusSettings', () => {
     sut.excludeOpenRelatedFiles = settings.excludeOpenRelatedFiles;
     sut.excludeObsidianIgnoredFiles = settings.excludeObsidianIgnoredFiles;
     sut.shouldSearchFilenames = settings.shouldSearchFilenames;
+    sut.pathDisplayFormat = settings.pathDisplayFormat;
+    sut.hidePathIfRoot = settings.hidePathIfRoot;
 
     sut.setSymbolTypeEnabled(
       SymbolType.Heading,

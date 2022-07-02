@@ -1,4 +1,4 @@
-import { SettingsData, SymbolType } from 'src/types';
+import { PathDisplayFormat, SettingsData, SymbolType } from 'src/types';
 import { getSystemSwitcherInstance } from 'src/utils';
 import type SwitcherPlusPlugin from 'src/main';
 import { QuickSwitcherOptions } from 'obsidian';
@@ -39,6 +39,8 @@ export class SwitcherPlusSettings {
       excludeOpenRelatedFiles: false,
       excludeObsidianIgnoredFiles: false,
       shouldSearchFilenames: false,
+      pathDisplayFormat: PathDisplayFormat.FolderWithFilename,
+      hidePathIfRoot: true,
     };
   }
 
@@ -282,6 +284,22 @@ export class SwitcherPlusSettings {
 
   set shouldSearchFilenames(value: boolean) {
     this.data.shouldSearchFilenames = value;
+  }
+
+  get pathDisplayFormat(): PathDisplayFormat {
+    return this.data.pathDisplayFormat;
+  }
+
+  set pathDisplayFormat(value: PathDisplayFormat) {
+    this.data.pathDisplayFormat = value;
+  }
+
+  get hidePathIfRoot(): boolean {
+    return this.data.hidePathIfRoot;
+  }
+
+  set hidePathIfRoot(value: boolean) {
+    this.data.hidePathIfRoot = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

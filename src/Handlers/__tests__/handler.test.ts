@@ -13,10 +13,13 @@ import {
   Platform,
   WorkspaceSplit,
   View,
+  TFolder,
+  setIcon,
+  normalizePath,
 } from 'obsidian';
 import { defaultOpenViewState, makeLeaf, makeEditorSuggestion } from '@fixtures';
-import { AnySuggestion, Mode } from 'src/types';
-import { mock, MockProxy, mockReset } from 'jest-mock-extended';
+import { AnySuggestion, Mode, PathDisplayFormat } from 'src/types';
+import { mock, mockClear, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
 import { SwitcherPlusSettings } from 'src/settings';
 import { stripMDExtensionFromPath } from 'src/utils';
@@ -852,6 +855,137 @@ describe('Handler', () => {
 
       expect(mockView.getViewType).toHaveBeenCalled();
       expect(result.leaf).toBe(mockLeaf);
+    });
+  });
+
+  describe('renderPath', () => {
+    const mockSetIcon = jest.mocked(setIcon);
+    let mockParentEl: MockProxy<HTMLElement>;
+    let mockRootFile: TFile;
+
+    beforeAll(() => {
+      mockParentEl = mock<HTMLElement>();
+      mockParentEl.createDiv.mockReturnValue(mock<HTMLDivElement>());
+
+      mockRootFile = new TFile();
+      mockRootFile.parent = mock<TFolder>();
+      mockRootFile.parent.name = '';
+    });
+
+    afterEach(() => {
+      mockClear(mockParentEl);
+      mockReset(mockSettings);
+    });
+
+    it('should not throw on falsy input', () => {
+      expect(() => sut.renderPath(null, null)).not.toThrow();
+    });
+
+    test('with PathDisplayFormat.None, it should not render anything', () => {
+      mockSettings.pathDisplayFormat = PathDisplayFormat.None;
+
+      sut.renderPath(mockParentEl, mockRootFile);
+
+      expect(mockParentEl.createDiv).not.toHaveBeenCalled();
+      expect(mockParentEl.createSpan).not.toHaveBeenCalled();
+      expect(mockSetIcon).not.toHaveBeenCalled();
+    });
+
+    test('with hidePathIfRoot enabled, it should not render anything', () => {
+      mockSettings.pathDisplayFormat = PathDisplayFormat.Full;
+      mockSettings.hidePathIfRoot = true;
+
+      sut.renderPath(mockParentEl, mockRootFile);
+
+      expect(mockParentEl.createDiv).not.toHaveBeenCalled();
+      expect(mockParentEl.createSpan).not.toHaveBeenCalled();
+      expect(mockSetIcon).not.toHaveBeenCalled();
+    });
+
+    it('should render path information', () => {
+      const getDisplayTextSpy = jest.spyOn(Handler.prototype, 'getPathDisplayText');
+      mockSettings.pathDisplayFormat = PathDisplayFormat.Full;
+      mockSettings.hidePathIfRoot = false;
+
+      sut.renderPath(mockParentEl, mockRootFile);
+
+      expect(mockParentEl.createDiv).toHaveBeenCalled();
+      expect(mockSetIcon).toHaveBeenCalled();
+      expect(getDisplayTextSpy).toHaveBeenCalledWith(
+        mockRootFile,
+        mockSettings.pathDisplayFormat,
+      );
+
+      getDisplayTextSpy.mockRestore();
+    });
+  });
+
+  describe('getPathDisplayText', () => {
+    const mockNormalizePath = jest.mocked(normalizePath);
+    let mockRootFile: TFile;
+    let mockNestedFile: TFile;
+
+    beforeAll(() => {
+      mockRootFile = new TFile();
+      mockRootFile.parent = mock<TFolder>();
+      mockRootFile.parent.name = '';
+      mockRootFile.parent.path = '/';
+
+      mockNestedFile = new TFile();
+      mockNestedFile.parent = mock<TFolder>();
+      mockNestedFile.parent.name = 'parentFolderName';
+    });
+
+    afterEach(() => {
+      mockReset(mockSettings);
+    });
+
+    it('should not throw on falsy input', () => {
+      expect(() => sut.getPathDisplayText(null, null)).not.toThrow();
+    });
+
+    test('with PathDisplayFormat.FolderWithFilename, it should return just the filename for a file a the root of the vault', () => {
+      const result = sut.getPathDisplayText(
+        mockRootFile,
+        PathDisplayFormat.FolderWithFilename,
+      );
+
+      expect(result).toBe(mockRootFile.name);
+    });
+
+    test('with PathDisplayFormat.FolderWithFilename, it should return just the parentFolderName/filename for a nested file', () => {
+      mockNormalizePath.mockImplementationOnce((path) => path);
+
+      const result = sut.getPathDisplayText(
+        mockNestedFile,
+        PathDisplayFormat.FolderWithFilename,
+      );
+
+      expect(result).toBe(`${mockNestedFile.parent.name}/${mockNestedFile.name}`);
+    });
+
+    test('with PathDisplayFormat.FolderOnly, it should return just "/" for a file at the root of the vault', () => {
+      const result = sut.getPathDisplayText(mockRootFile, PathDisplayFormat.FolderOnly);
+
+      expect(result).toBe(mockRootFile.parent.path);
+    });
+
+    test('with PathDisplayFormat.FolderOnly, it should return just the parentFolderName for a nested file', () => {
+      const result = sut.getPathDisplayText(mockNestedFile, PathDisplayFormat.FolderOnly);
+
+      expect(result).toBe(mockNestedFile.parent.name);
+    });
+
+    test('with PathDisplayFormat.Full, it should return the file path', () => {
+      const result = sut.getPathDisplayText(mockNestedFile, PathDisplayFormat.Full);
+
+      expect(result).toBe(mockNestedFile.path);
+    });
+
+    test('with PathDisplayFormat.None, it should return an empty string', () => {
+      const result = sut.getPathDisplayText(mockNestedFile, PathDisplayFormat.None);
+
+      expect(result).toBe('');
     });
   });
 });

@@ -3,13 +3,15 @@ import {
   EditorPosition,
   HeadingCache,
   MarkdownView,
+  normalizePath,
   OpenViewState,
   Platform,
+  setIcon,
   TFile,
   View,
   WorkspaceLeaf,
 } from 'obsidian';
-import { AnySuggestion, Mode, SourceInfo } from 'src/types';
+import { AnySuggestion, Mode, PathDisplayFormat, SourceInfo } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
@@ -384,5 +386,65 @@ export abstract class Handler<T> {
     } else {
       this.openFileInLeaf(file, shouldCreateNew, openState, errorContext);
     }
+  }
+
+  /**
+   * Renders the UI elements to display path information for file using the
+   * stored configuration settings
+   * @param  {HTMLElement} parentEl
+   * @param  {TFile} file
+   * @returns void
+   */
+  renderPath(parentEl: HTMLElement, file: TFile): void {
+    if (parentEl && file) {
+      const { pathDisplayFormat, hidePathIfRoot } = this.settings;
+      const isRoot = file.parent?.name.length === 0;
+      const hidePath =
+        pathDisplayFormat === PathDisplayFormat.None || (isRoot && hidePathIfRoot);
+
+      if (!hidePath) {
+        const path = this.getPathDisplayText(file, pathDisplayFormat);
+
+        const wrapperEl = parentEl.createDiv({
+          cls: ['suggestion-note', 'qsp-note'],
+          text: path,
+        });
+
+        const iconEl = wrapperEl.createSpan({
+          cls: ['qsp-path-indicator'],
+          prepend: true,
+        });
+
+        setIcon(iconEl, 'folder', 13);
+      }
+    }
+  }
+
+  /**
+   * Formats the path of file based on displayFormat
+   * @param  {TFile} file
+   * @param  {PathDisplayFormat} displayFormat
+   * @returns string
+   */
+  getPathDisplayText(file: TFile, displayFormat: PathDisplayFormat): string {
+    let text = '';
+
+    if (file) {
+      const dirname = file.parent.name;
+
+      // rootdir name is an empty string by default
+      const isRoot = dirname.length === 0;
+
+      if (displayFormat === PathDisplayFormat.FolderWithFilename) {
+        text = isRoot ? `${file.name}` : normalizePath(`${dirname}/${file.name}`);
+      } else if (displayFormat === PathDisplayFormat.FolderOnly) {
+        // parent path here should just be '/'
+        text = isRoot ? file.parent.path : dirname;
+      } else if (displayFormat === PathDisplayFormat.Full) {
+        text = file.path;
+      }
+    }
+
+    return text;
   }
 }
