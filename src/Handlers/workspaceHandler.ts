@@ -10,7 +10,6 @@ import { InputInfo } from 'src/switcherPlus/inputInfo';
 import {
   fuzzySearch,
   InstalledPlugin,
-  renderResults,
   SearchResult,
   sortSearchResults,
   WorkspaceLeaf,
@@ -74,7 +73,8 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
 
   renderSuggestion(sugg: WorkspaceSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      renderResults(parentEl, sugg.item.id, sugg.match);
+      parentEl.addClass('qsp-suggestion-workspace');
+      this.renderContent(parentEl, sugg.item.id, sugg.match);
     }
   }
 

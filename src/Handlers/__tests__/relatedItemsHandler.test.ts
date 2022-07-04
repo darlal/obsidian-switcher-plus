@@ -2,7 +2,7 @@ import { stripMDExtensionFromPath } from 'src/utils';
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler, RelatedItemsHandler } from 'src/Handlers';
-import { Mode, RelatedItemsSuggestion, SuggestionType } from 'src/types';
+import { Mode, SuggestionType } from 'src/types';
 import {
   WorkspaceLeaf,
   App,
@@ -16,7 +16,6 @@ import {
   fuzzySearch,
   PreparedQuery,
   SearchResult,
-  renderResults,
   Keymap,
 } from 'obsidian';
 import {
@@ -391,18 +390,20 @@ describe('relatedItemsHandler', () => {
 
     it('should render a suggestion with match offsets', () => {
       const mockParentEl = mock<HTMLElement>();
-      const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
+      const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
 
-      const match = makeFuzzyMatch();
-      const sugg = mock<RelatedItemsSuggestion>({ file: file1, match });
+      const sugg = makeRelatedItemsSuggestion(file1);
 
       sut.renderSuggestion(sugg, mockParentEl);
 
-      expect(mockRenderResults).toHaveBeenCalledWith(
+      expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-suggestion-related');
+      expect(renderContentSpy).toBeCalledWith(
         mockParentEl,
         stripMDExtensionFromPath(file1),
-        match,
+        sugg.match,
       );
+
+      renderContentSpy.mockRestore();
     });
   });
 

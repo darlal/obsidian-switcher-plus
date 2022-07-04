@@ -8,7 +8,6 @@ import {
   sortSearchResults,
   WorkspaceLeaf,
   fuzzySearch,
-  renderResults,
   CommandPalettePluginInstance,
   Command,
 } from 'obsidian';
@@ -71,7 +70,8 @@ export class CommandHandler extends Handler<CommandSuggestion> {
 
   renderSuggestion(sugg: CommandSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      renderResults(parentEl, sugg.item.name, sugg.match);
+      parentEl.addClass('qsp-suggestion-command');
+      this.renderContent(parentEl, sugg.item.name, sugg.match);
     }
   }
 

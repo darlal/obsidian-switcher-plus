@@ -8,7 +8,6 @@ import {
   fuzzySearch,
   App,
   Workspace,
-  renderResults,
   View,
   WorkspaceItem,
   WorkspaceSplit,
@@ -263,8 +262,10 @@ describe('editorHandler', () => {
       const mockParentEl = mock<HTMLElement>();
       const displayText = 'foo';
       const mockLeaf = makeLeafWithRoot(displayText, null);
-      const mockRenderResults = jest.mocked(renderResults);
       const sugg = makeEditorSuggestion(mockLeaf);
+
+      const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
+
       const renderPathSpy = jest
         .spyOn(Handler.prototype, 'renderPath')
         .mockReturnValueOnce();
@@ -272,13 +273,11 @@ describe('editorHandler', () => {
       sut.renderSuggestion(sugg, mockParentEl);
 
       expect(mockLeaf.getDisplayText).toHaveBeenCalled();
+      expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-suggestion-editor');
+      expect(renderContentSpy).toBeCalledWith(mockParentEl, displayText, sugg.match);
       expect(renderPathSpy).toHaveBeenCalledWith(mockParentEl, sugg.file);
-      expect(mockRenderResults).toHaveBeenCalledWith(
-        mockParentEl,
-        displayText,
-        sugg.match,
-      );
 
+      renderContentSpy.mockRestore();
       renderPathSpy.mockRestore();
     });
   });

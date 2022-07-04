@@ -6,6 +6,8 @@ import {
   normalizePath,
   OpenViewState,
   Platform,
+  renderResults,
+  SearchResult,
   setIcon,
   TFile,
   View,
@@ -404,18 +406,15 @@ export abstract class Handler<T> {
 
       if (!hidePath) {
         const path = this.getPathDisplayText(file, pathDisplayFormat);
+        const wrapperEl = parentEl.createDiv({ cls: ['suggestion-note', 'qsp-note'] });
 
-        const wrapperEl = parentEl.createDiv({
-          cls: ['suggestion-note', 'qsp-note'],
+        const iconEl = wrapperEl.createSpan({ cls: ['qsp-path-indicator'] });
+        setIcon(iconEl, 'folder', 13);
+
+        wrapperEl.createSpan({
+          cls: 'qsp-path',
           text: path,
         });
-
-        const iconEl = wrapperEl.createSpan({
-          cls: ['qsp-path-indicator'],
-          prepend: true,
-        });
-
-        setIcon(iconEl, 'folder', 13);
       }
     }
   }
@@ -446,5 +445,20 @@ export abstract class Handler<T> {
     }
 
     return text;
+  }
+
+  renderContent(
+    parentEl: HTMLElement,
+    content: string,
+    result: SearchResult,
+    offset?: number,
+  ): HTMLSpanElement {
+    const contentEl = parentEl.createSpan({
+      cls: ['suggestion-content', 'qsp-content'],
+    });
+
+    renderResults(contentEl, content, result, offset);
+
+    return contentEl;
   }
 }

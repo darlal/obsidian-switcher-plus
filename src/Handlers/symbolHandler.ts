@@ -3,7 +3,6 @@ import {
   Keymap,
   LinkCache,
   ReferenceCache,
-  renderResults,
   SearchResult,
   sortSearchResults,
   WorkspaceLeaf,
@@ -93,24 +92,20 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
   renderSuggestion(sugg: SymbolSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       const { item } = sugg;
-      let containerEl = parentEl;
+      const parentElClasses = ['qsp-suggestion-symbol'];
 
       if (
         this.settings.symbolsInLineOrder &&
-        this.inputInfo &&
-        !this.inputInfo.searchQuery.hasSearchTerm
+        !this.inputInfo?.searchQuery?.hasSearchTerm
       ) {
-        containerEl.addClass(`qsp-symbol-l${item.indentLevel}`);
+        parentElClasses.push(`qsp-symbol-l${item.indentLevel}`);
       }
 
+      parentEl.addClasses(parentElClasses);
+      SymbolHandler.addSymbolIndicator(item, parentEl);
+
       const text = SymbolHandler.getSuggestionTextForSymbol(item);
-
-      SymbolHandler.addSymbolIndicator(item, containerEl);
-      containerEl = parentEl.createSpan({
-        cls: 'qsp-symbol-text',
-      });
-
-      renderResults(containerEl, text, sugg.match);
+      this.renderContent(parentEl, text, sugg.match);
     }
   }
 
@@ -314,9 +309,9 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       indicator = SymbolIndicators[symbolType];
     }
 
-    parentEl.createDiv({
+    parentEl.createSpan({
+      cls: ['suggestion-flair', 'qsp-symbol-indicator'],
       text: indicator,
-      cls: 'qsp-symbol-indicator',
     });
   }
 

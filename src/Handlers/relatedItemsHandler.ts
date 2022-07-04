@@ -6,7 +6,6 @@ import {
   TFile,
   TAbstractFile,
   TFolder,
-  renderResults,
   Keymap,
 } from 'obsidian';
 import {
@@ -88,7 +87,8 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
 
   renderSuggestion(sugg: RelatedItemsSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      renderResults(parentEl, this.getTitleText(sugg.file), sugg.match);
+      parentEl.addClass('qsp-suggestion-related');
+      this.renderContent(parentEl, this.getTitleText(sugg.file), sugg.match);
     }
   }
 

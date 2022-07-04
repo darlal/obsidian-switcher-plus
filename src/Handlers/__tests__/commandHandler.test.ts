@@ -1,6 +1,6 @@
 import { Mode, CommandSuggestion, SuggestionType } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
-import { CommandHandler, COMMAND_PALETTE_PLUGIN_ID } from 'src/Handlers';
+import { CommandHandler, COMMAND_PALETTE_PLUGIN_ID, Handler } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
 import {
   App,
@@ -8,7 +8,6 @@ import {
   InstalledPlugin,
   InternalPlugins,
   prepareQuery,
-  renderResults,
   CommandPalettePluginInstance,
   Command,
 } from 'obsidian';
@@ -17,6 +16,7 @@ import {
   makeFuzzyMatch,
   commandTrigger,
   makeCommandItem,
+  makeCommandSuggestion,
 } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
 
@@ -187,15 +187,16 @@ describe('commandHandler', () => {
 
     it('should render a suggestion with match offsets', () => {
       const mockParentEl = mock<HTMLElement>();
-      const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
-
-      const match = makeFuzzyMatch();
       const item = mockCommands[0];
+      const sugg = makeCommandSuggestion(item);
+      const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
 
-      const sugg = mock<CommandSuggestion>({ item, match });
       sut.renderSuggestion(sugg, mockParentEl);
 
-      expect(mockRenderResults).toHaveBeenCalledWith(mockParentEl, item.name, match);
+      expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-suggestion-command');
+      expect(renderContentSpy).toBeCalledWith(mockParentEl, item.name, sugg.match);
+
+      renderContentSpy.mockRestore();
     });
   });
 

@@ -9,7 +9,6 @@ import {
   fuzzySearch,
   StarredPluginItem,
   StarredPluginInstance,
-  renderResults,
   Keymap,
   TFile,
   FileStarredItem,
@@ -77,8 +76,8 @@ export class StarredHandler extends Handler<StarredSuggestion> {
 
   renderSuggestion(sugg: StarredSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      renderResults(parentEl, sugg.item.title, sugg.match);
-
+      parentEl.addClass('qsp-suggestion-starred');
+      this.renderContent(parentEl, sugg.item.title, sugg.match);
       this.renderPath(parentEl, sugg.file);
     }
   }

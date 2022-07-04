@@ -6,7 +6,6 @@ import {
   MetadataCache,
   PreparedQuery,
   prepareQuery,
-  renderResults,
   TAbstractFile,
   TFile,
   TFolder,
@@ -690,13 +689,13 @@ describe('headingsHandler', () => {
         expect.objectContaining({
           cls: ['suggestion-flair', 'qsp-headings-indicator'],
           text: HeadingIndicators[headingSugg.item.level],
-          prepend: true,
         }),
       );
     });
 
     test('with HeadingCache, it should render a suggestion with match offsets', () => {
-      const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
+      const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
+
       const renderPathSpy = jest
         .spyOn(Handler.prototype, 'renderPath')
         .mockReturnValueOnce();
@@ -704,12 +703,17 @@ describe('headingsHandler', () => {
       sut.renderSuggestion(headingSugg, mockParentEl);
 
       expect(renderPathSpy).toHaveBeenCalledWith(mockParentEl, headingSugg.file);
-      expect(mockRenderResults).toHaveBeenCalledWith(
+      expect(renderContentSpy).toBeCalledWith(
         mockParentEl,
         headingSugg.item.heading,
         headingSugg.match,
       );
+      expect(mockParentEl.addClasses).toHaveBeenCalledWith([
+        'qsp-suggestion-headings',
+        `qsp-headings-l${headingSugg.item.level}`,
+      ]);
 
+      renderContentSpy.mockRestore();
       renderPathSpy.mockRestore();
     });
 

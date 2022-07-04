@@ -18,7 +18,6 @@ import {
   App,
   SearchResult,
   MarkdownView,
-  renderResults,
   HeadingCache,
   TagCache,
   ReferenceCache,
@@ -585,14 +584,20 @@ describe('symbolHandler', () => {
   });
 
   describe('renderSuggestion', () => {
-    const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
-    let mockTextSpan: MockProxy<HTMLSpanElement>;
+    let renderContentSpy: jest.SpyInstance;
     let mockParentEl: MockProxy<HTMLElement>;
 
     beforeAll(() => {
-      mockTextSpan = mock<HTMLSpanElement>();
       mockParentEl = mock<HTMLElement>();
-      mockParentEl.createSpan.mockImplementation(() => mockTextSpan);
+      renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
+    });
+
+    afterEach(() => {
+      renderContentSpy.mockClear();
+    });
+
+    afterAll(() => {
+      renderContentSpy.mockRestore();
     });
 
     it('should not throw an error with a null suggestion', () => {
@@ -602,14 +607,13 @@ describe('symbolHandler', () => {
     it('should render Heading suggestion', () => {
       sut.renderSuggestion(symbolSugg, mockParentEl);
 
-      expect(mockRenderResults).toHaveBeenCalledWith(
-        mockTextSpan,
+      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
+        expect.arrayContaining(['qsp-suggestion-symbol']),
+      );
+      expect(renderContentSpy).toHaveBeenCalledWith(
+        mockParentEl,
         (symbolSugg.item.symbol as HeadingCache).heading,
         symbolSugg.match,
-      );
-
-      expect(mockParentEl.createSpan).toHaveBeenCalledWith(
-        expect.objectContaining({ cls: 'qsp-symbol-text' }),
       );
     });
 
@@ -618,14 +622,10 @@ describe('symbolHandler', () => {
 
       sut.renderSuggestion(tagSugg, mockParentEl);
 
-      expect(mockRenderResults).toHaveBeenCalledWith(
-        mockTextSpan,
+      expect(renderContentSpy).toHaveBeenCalledWith(
+        mockParentEl,
         (tagSugg.item.symbol as TagCache).tag.slice(1),
         tagSugg.match,
-      );
-
-      expect(mockParentEl.createSpan).toHaveBeenCalledWith(
-        expect.objectContaining({ cls: 'qsp-symbol-text' }),
       );
     });
 
@@ -635,24 +635,20 @@ describe('symbolHandler', () => {
       sut.renderSuggestion(linkSugg, mockParentEl);
 
       const { link, displayText } = linkSugg.item.symbol as ReferenceCache;
-      expect(mockRenderResults).toHaveBeenCalledWith(
-        mockTextSpan,
+      expect(renderContentSpy).toHaveBeenCalledWith(
+        mockParentEl,
         `${link}|${displayText}`,
         linkSugg.match,
-      );
-
-      expect(mockParentEl.createSpan).toHaveBeenCalledWith(
-        expect.objectContaining({ cls: 'qsp-symbol-text' }),
       );
     });
 
     it('should add a symbol indicator', () => {
       sut.renderSuggestion(symbolSugg, mockParentEl);
 
-      expect(mockParentEl.createDiv).toHaveBeenCalledWith(
+      expect(mockParentEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
           text: HeadingIndicators[(symbolSugg.item.symbol as HeadingCache).level],
-          cls: 'qsp-symbol-indicator',
+          cls: ['suggestion-flair', 'qsp-symbol-indicator'],
         }),
       );
     });
@@ -662,15 +658,15 @@ describe('symbolHandler', () => {
       jest.spyOn(settings, 'symbolsInLineOrder', 'get').mockReturnValue(true);
 
       const inputInfo = new InputInfo(symbolTrigger);
-      sut.validateCommand(inputInfo, 0, 'foo', null, mockRootSplitLeaf);
+      const handler = new SymbolHandler(mockApp, settings);
 
-      sut = new SymbolHandler(mockApp, settings);
-      sut.getSuggestions(inputInfo);
+      handler.validateCommand(inputInfo, 0, 'foo', null, mockRootSplitLeaf);
+      handler.getSuggestions(inputInfo);
 
-      sut.renderSuggestion(symbolSugg, mockParentEl);
+      handler.renderSuggestion(symbolSugg, mockParentEl);
 
-      expect(mockParentEl.addClass).toHaveBeenCalledWith(
-        `qsp-symbol-l${symbolSugg.item.indentLevel}`,
+      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
+        expect.arrayContaining([`qsp-symbol-l${symbolSugg.item.indentLevel}`]),
       );
     });
   });

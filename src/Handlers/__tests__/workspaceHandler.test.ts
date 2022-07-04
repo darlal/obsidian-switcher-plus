@@ -1,6 +1,6 @@
 import { Mode, WorkspaceSuggestion, SuggestionType } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
-import { WorkspaceHandler, WORKSPACE_PLUGIN_ID } from 'src/Handlers';
+import { Handler, WorkspaceHandler, WORKSPACE_PLUGIN_ID } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
 import {
   App,
@@ -9,7 +9,6 @@ import {
   InternalPlugins,
   PreparedQuery,
   prepareQuery,
-  renderResults,
   WorkspacesPluginInstance,
 } from 'obsidian';
 import {
@@ -188,7 +187,7 @@ describe('workspaceHandler', () => {
 
     it('should render a suggestion with match offsets', () => {
       const mockParentEl = mock<HTMLElement>();
-      const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
+      const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
 
       sut.renderSuggestion(suggestionInstance, mockParentEl);
 
@@ -196,7 +195,11 @@ describe('workspaceHandler', () => {
         item: { id },
         match,
       } = suggestionInstance;
-      expect(mockRenderResults).toHaveBeenCalledWith(mockParentEl, id, match);
+
+      expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-suggestion-workspace');
+      expect(renderContentSpy).toBeCalledWith(mockParentEl, id, match);
+
+      renderContentSpy.mockRestore();
     });
   });
 

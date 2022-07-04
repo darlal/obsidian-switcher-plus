@@ -6,7 +6,6 @@ import {
   TFile,
   SearchMatches,
   TAbstractFile,
-  renderResults,
   sortSearchResults,
   WorkspaceLeaf,
   TFolder,
@@ -90,15 +89,16 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   renderSuggestion(sugg: HeadingSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       const { item } = sugg;
-      renderResults(parentEl, item.heading, sugg.match);
+
+      parentEl.addClasses(['qsp-suggestion-headings', `qsp-headings-l${item.level}`]);
+
+      this.renderContent(parentEl, item.heading, sugg.match);
+      this.renderPath(parentEl, sugg.file);
 
       parentEl.createSpan({
         cls: ['suggestion-flair', 'qsp-headings-indicator'],
         text: HeadingIndicators[item.level],
-        prepend: true,
       });
-
-      this.renderPath(parentEl, sugg.file);
 
       if (sugg.downranked) {
         parentEl.addClass('mod-downranked');

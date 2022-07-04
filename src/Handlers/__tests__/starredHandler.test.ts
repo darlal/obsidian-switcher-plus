@@ -10,6 +10,7 @@ import {
   makeFileStarredItem,
   makeSearchStarredItem,
   makeLeaf,
+  makeStarredSuggestion,
 } from '@fixtures';
 import {
   App,
@@ -17,7 +18,6 @@ import {
   InstalledPlugin,
   InternalPlugins,
   prepareQuery,
-  renderResults,
   StarredPluginInstance,
   Workspace,
   Vault,
@@ -240,23 +240,25 @@ describe('starredHandler', () => {
 
     it('should render a suggestion with match offsets', () => {
       const mockParentEl = mock<HTMLElement>();
-      const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
+      const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
 
-      const match = makeFuzzyMatch();
-      const item = mockPluginInstance.items.find((v): v is FileStarredItem =>
-        isFileStarredItem(v),
-      );
-
-      const sugg = mock<StarredSuggestion>({ file: new TFile(), item, match });
       const renderPathSpy = jest
         .spyOn(Handler.prototype, 'renderPath')
         .mockReturnValueOnce();
 
+      const item = mockPluginInstance.items.find((v): v is FileStarredItem =>
+        isFileStarredItem(v),
+      );
+
+      const sugg = makeStarredSuggestion(item, new TFile());
+
       sut.renderSuggestion(sugg, mockParentEl);
 
-      expect(mockRenderResults).toHaveBeenCalledWith(mockParentEl, item.title, match);
+      expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-suggestion-starred');
+      expect(renderContentSpy).toBeCalledWith(mockParentEl, item.title, sugg.match);
       expect(renderPathSpy).toHaveBeenCalledWith(mockParentEl, sugg.file);
 
+      renderContentSpy.mockRestore();
       renderPathSpy.mockRestore();
     });
   });

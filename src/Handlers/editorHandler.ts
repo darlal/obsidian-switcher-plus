@@ -1,7 +1,6 @@
 import { AnySuggestion, EditorSuggestion, Mode, SuggestionType } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import {
-  renderResults,
   SearchResult,
   sortSearchResults,
   fuzzySearch,
@@ -65,8 +64,8 @@ export class EditorHandler extends Handler<EditorSuggestion> {
 
   renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      renderResults(parentEl, sugg.item.getDisplayText(), sugg.match);
-
+      parentEl.addClass('qsp-suggestion-editor');
+      this.renderContent(parentEl, sugg.item.getDisplayText(), sugg.match);
       this.renderPath(parentEl, sugg.file);
     }
   }
