@@ -683,6 +683,10 @@ describe('headingsHandler', () => {
     });
 
     it('should render a span with the heading level indicator', () => {
+      const renderPathSpy = jest
+        .spyOn(Handler.prototype, 'renderPath')
+        .mockReturnValueOnce();
+
       sut.renderSuggestion(headingSugg, mockParentEl);
 
       expect(mockParentEl.createSpan).toHaveBeenCalledWith(
@@ -691,6 +695,8 @@ describe('headingsHandler', () => {
           text: HeadingIndicators[headingSugg.item.level],
         }),
       );
+
+      renderPathSpy.mockRestore();
     });
 
     test('with HeadingCache, it should render a suggestion with match offsets', () => {

@@ -16,6 +16,7 @@ import {
   TFolder,
   setIcon,
   normalizePath,
+  Vault,
 } from 'obsidian';
 import { defaultOpenViewState, makeLeaf, makeEditorSuggestion } from '@fixtures';
 import { AnySuggestion, Mode, PathDisplayFormat } from 'src/types';
@@ -53,6 +54,7 @@ describe('Handler', () => {
   let mockApp: MockProxy<App>;
   let mockWorkspace: MockProxy<Workspace>;
   let mockMetadataCache: MockProxy<MetadataCache>;
+  let mockVault: MockProxy<Vault>;
   let mockSettings: MockProxy<SwitcherPlusSettings>;
   let sut: SUT;
 
@@ -64,7 +66,12 @@ describe('Handler', () => {
     });
 
     mockMetadataCache = mock<MetadataCache>();
-    mockApp = mock<App>({ workspace: mockWorkspace, metadataCache: mockMetadataCache });
+    mockVault = mock<Vault>();
+    mockApp = mock<App>({
+      workspace: mockWorkspace,
+      metadataCache: mockMetadataCache,
+      vault: mockVault,
+    });
 
     mockSettings = mock<SwitcherPlusSettings>({
       excludeViewTypes: [],
@@ -862,14 +869,19 @@ describe('Handler', () => {
     const mockSetIcon = jest.mocked(setIcon);
     let mockParentEl: MockProxy<HTMLElement>;
     let mockRootFile: TFile;
+    let mockVaultRoot: MockProxy<TFolder>;
 
     beforeAll(() => {
       mockParentEl = mock<HTMLElement>();
       mockParentEl.createDiv.mockReturnValue(mock<HTMLDivElement>());
+      mockVaultRoot = mock<TFolder>({
+        isRoot: () => true,
+        path: '/',
+        name: '',
+      });
 
       mockRootFile = new TFile();
-      mockRootFile.parent = mock<TFolder>();
-      mockRootFile.parent.name = '';
+      mockRootFile.parent = mockVaultRoot;
     });
 
     afterEach(() => {
@@ -906,6 +918,7 @@ describe('Handler', () => {
       const getDisplayTextSpy = jest.spyOn(Handler.prototype, 'getPathDisplayText');
       mockSettings.pathDisplayFormat = PathDisplayFormat.Full;
       mockSettings.hidePathIfRoot = false;
+      mockVault.getRoot.mockReturnValueOnce(mockVaultRoot);
 
       sut.renderPath(mockParentEl, mockRootFile);
 
@@ -914,6 +927,7 @@ describe('Handler', () => {
       expect(getDisplayTextSpy).toHaveBeenCalledWith(
         mockRootFile,
         mockSettings.pathDisplayFormat,
+        undefined,
       );
 
       getDisplayTextSpy.mockRestore();
@@ -924,20 +938,33 @@ describe('Handler', () => {
     const mockNormalizePath = jest.mocked(normalizePath);
     let mockRootFile: TFile;
     let mockNestedFile: TFile;
+    let mockVaultRoot: MockProxy<TFolder>;
 
     beforeAll(() => {
+      mockVaultRoot = mock<TFolder>({
+        isRoot: () => true,
+        path: '/',
+        name: '',
+      });
+      mockVault.getRoot.mockReturnValue(mockVaultRoot);
+
       mockRootFile = new TFile();
-      mockRootFile.parent = mock<TFolder>();
-      mockRootFile.parent.name = '';
-      mockRootFile.parent.path = '/';
+      mockRootFile.parent = mockVaultRoot;
 
       mockNestedFile = new TFile();
-      mockNestedFile.parent = mock<TFolder>();
-      mockNestedFile.parent.name = 'parentFolderName';
+      mockNestedFile.parent = mock<TFolder>({
+        name: 'parentFolderName',
+        path: 'path/to/parentFolderName',
+        isRoot: () => false,
+      });
     });
 
     afterEach(() => {
       mockReset(mockSettings);
+    });
+
+    afterAll(() => {
+      mockVault.getRoot.mockReset();
     });
 
     it('should not throw on falsy input', () => {
@@ -986,6 +1013,25 @@ describe('Handler', () => {
       const result = sut.getPathDisplayText(mockNestedFile, PathDisplayFormat.None);
 
       expect(result).toBe('');
+    });
+
+    test('with PathDisplayFormat.FolderPathFilenameOptional, it should return the file path', () => {
+      const result = sut.getPathDisplayText(
+        mockNestedFile,
+        PathDisplayFormat.FolderPathFilenameOptional,
+      );
+
+      expect(result).toBe(mockNestedFile.path);
+    });
+
+    test('with PathDisplayFormat.FolderPathFilenameOptional and excludeOptionalFilename enabled, it should return the full parent folder path with trailing "/"', () => {
+      const result = sut.getPathDisplayText(
+        mockNestedFile,
+        PathDisplayFormat.FolderPathFilenameOptional,
+        true,
+      );
+
+      expect(result).toBe(mockNestedFile.parent.path + '/');
     });
   });
 });

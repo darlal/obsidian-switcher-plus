@@ -23,6 +23,7 @@ export enum PathDisplayFormat {
   Full,
   FolderOnly,
   FolderWithFilename,
+  FolderPathFilenameOptional,
 }
 
 export enum Mode {

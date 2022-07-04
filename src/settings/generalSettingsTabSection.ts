@@ -19,10 +19,12 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
 
   setPathDisplayFormat(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
     const options: Record<string, string> = {};
-    options[PathDisplayFormat.Full.toString()] = 'Full path';
-    options[PathDisplayFormat.FolderWithFilename.toString()] = 'Parent folder & filename';
-    options[PathDisplayFormat.FolderOnly.toString()] = 'Only parent folder';
     options[PathDisplayFormat.None.toString()] = 'Hide path';
+    options[PathDisplayFormat.Full.toString()] = 'Full path';
+    options[PathDisplayFormat.FolderOnly.toString()] = 'Only parent folder';
+    options[PathDisplayFormat.FolderWithFilename.toString()] = 'Parent folder & filename';
+    options[PathDisplayFormat.FolderPathFilenameOptional.toString()] =
+      'Parent folder path (filename optional)';
 
     this.addDropdownSetting(
       containerEl,

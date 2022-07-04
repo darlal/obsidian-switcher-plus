@@ -78,7 +78,7 @@ export class StarredHandler extends Handler<StarredSuggestion> {
     if (sugg) {
       parentEl.addClass('qsp-suggestion-starred');
       this.renderContent(parentEl, sugg.item.title, sugg.match);
-      this.renderPath(parentEl, sugg.file);
+      this.renderPath(parentEl, sugg.file, true);
     }
   }
 

@@ -395,9 +395,15 @@ export abstract class Handler<T> {
    * stored configuration settings
    * @param  {HTMLElement} parentEl
    * @param  {TFile} file
+   * @param  {boolean} excludeOptionalFilename? set to true to hide the filename in cases
+   * where it's optional
    * @returns void
    */
-  renderPath(parentEl: HTMLElement, file: TFile): void {
+  renderPath(
+    parentEl: HTMLElement,
+    file: TFile,
+    excludeOptionalFilename?: boolean,
+  ): void {
     if (parentEl && file) {
       const { pathDisplayFormat, hidePathIfRoot } = this.settings;
       const isRoot = file.parent?.name.length === 0;
@@ -405,8 +411,12 @@ export abstract class Handler<T> {
         pathDisplayFormat === PathDisplayFormat.None || (isRoot && hidePathIfRoot);
 
       if (!hidePath) {
-        const path = this.getPathDisplayText(file, pathDisplayFormat);
         const wrapperEl = parentEl.createDiv({ cls: ['suggestion-note', 'qsp-note'] });
+        const path = this.getPathDisplayText(
+          file,
+          pathDisplayFormat,
+          excludeOptionalFilename,
+        );
 
         const iconEl = wrapperEl.createSpan({ cls: ['qsp-path-indicator'] });
         setIcon(iconEl, 'folder', 13);
@@ -423,29 +433,52 @@ export abstract class Handler<T> {
    * Formats the path of file based on displayFormat
    * @param  {TFile} file
    * @param  {PathDisplayFormat} displayFormat
+   * @param  {boolean} excludeOptionalFilename? Only applicable to
+   * {PathDisplayFormat.FolderPathFilenameOptional}. When true will exclude the filename from the returned string
    * @returns string
    */
-  getPathDisplayText(file: TFile, displayFormat: PathDisplayFormat): string {
+  getPathDisplayText(
+    file: TFile,
+    displayFormat: PathDisplayFormat,
+    excludeOptionalFilename?: boolean,
+  ): string {
     let text = '';
 
     if (file) {
-      const dirname = file.parent.name;
+      const { parent } = file;
+      const dirname = parent.name;
+      const isRoot = parent.isRoot();
 
-      // rootdir name is an empty string by default
-      const isRoot = dirname.length === 0;
+      // root path is expected to always be "/"
+      const rootPath = this.app.vault.getRoot().path;
 
-      if (displayFormat === PathDisplayFormat.FolderWithFilename) {
-        text = isRoot ? `${file.name}` : normalizePath(`${dirname}/${file.name}`);
-      } else if (displayFormat === PathDisplayFormat.FolderOnly) {
-        // parent path here should just be '/'
-        text = isRoot ? file.parent.path : dirname;
-      } else if (displayFormat === PathDisplayFormat.Full) {
-        text = file.path;
+      switch (displayFormat) {
+        case PathDisplayFormat.FolderWithFilename:
+          text = isRoot ? `${file.name}` : normalizePath(`${dirname}/${file.name}`);
+          break;
+        case PathDisplayFormat.FolderOnly:
+          text = isRoot ? rootPath : dirname;
+          break;
+        case PathDisplayFormat.Full:
+          text = file.path;
+          break;
+        case PathDisplayFormat.FolderPathFilenameOptional:
+          if (excludeOptionalFilename) {
+            text = parent.path;
+
+            if (!isRoot) {
+              text += rootPath; // add explicit trailing /
+            }
+          } else {
+            text = this.getPathDisplayText(file, PathDisplayFormat.Full);
+          }
+          break;
       }
     }
 
     return text;
   }
+
   /**
    * Creates the UI elements to display the primary suggestion text using
    * the correct styles.

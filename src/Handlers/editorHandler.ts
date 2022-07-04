@@ -66,7 +66,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     if (sugg) {
       parentEl.addClass('qsp-suggestion-editor');
       this.renderContent(parentEl, sugg.item.getDisplayText(), sugg.match);
-      this.renderPath(parentEl, sugg.file);
+      this.renderPath(parentEl, sugg.file, true);
     }
   }
 

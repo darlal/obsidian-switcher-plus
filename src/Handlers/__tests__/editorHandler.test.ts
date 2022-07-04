@@ -275,7 +275,7 @@ describe('editorHandler', () => {
       expect(mockLeaf.getDisplayText).toHaveBeenCalled();
       expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-suggestion-editor');
       expect(renderContentSpy).toBeCalledWith(mockParentEl, displayText, sugg.match);
-      expect(renderPathSpy).toHaveBeenCalledWith(mockParentEl, sugg.file);
+      expect(renderPathSpy).toHaveBeenCalledWith(mockParentEl, sugg.file, true);
 
       renderContentSpy.mockRestore();
       renderPathSpy.mockRestore();
