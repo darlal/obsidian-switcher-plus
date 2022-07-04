@@ -446,7 +446,15 @@ export abstract class Handler<T> {
 
     return text;
   }
-
+  /**
+   * Creates the UI elements to display the primary suggestion text using
+   * the correct styles.
+   * @param  {HTMLElement} parentEl
+   * @param  {string} content
+   * @param  {SearchResult} result
+   * @param  {number} offset?
+   * @returns HTMLSpanElement
+   */
   renderContent(
     parentEl: HTMLElement,
     content: string,
