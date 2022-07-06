@@ -186,8 +186,9 @@ describe('workspaceHandler', () => {
     });
 
     it('should render a suggestion with match offsets', () => {
-      const mockParentEl = mock<HTMLElement>();
       const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
+      const mockParentEl = mock<HTMLElement>();
+      mockParentEl.createDiv.mockReturnValue(mock<HTMLDivElement>());
 
       sut.renderSuggestion(suggestionInstance, mockParentEl);
 

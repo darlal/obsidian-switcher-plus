@@ -393,7 +393,8 @@ export abstract class Handler<T> {
   /**
    * Renders the UI elements to display path information for file using the
    * stored configuration settings
-   * @param  {HTMLElement} parentEl
+   * @param  {HTMLElement} parentEl containing element, this should be the element with
+   * the "suggestion-content" style
    * @param  {TFile} file
    * @param  {boolean} excludeOptionalFilename? set to true to hide the filename in cases
    * where it's optional
@@ -482,23 +483,28 @@ export abstract class Handler<T> {
   /**
    * Creates the UI elements to display the primary suggestion text using
    * the correct styles.
-   * @param  {HTMLElement} parentEl
+   * @param  {HTMLElement} parentEl containing element, this should be the element with
+   * the "suggestion-item" style
    * @param  {string} content
    * @param  {SearchResult} result
    * @param  {number} offset?
-   * @returns HTMLSpanElement
+   * @returns HTMLDivElement
    */
   renderContent(
     parentEl: HTMLElement,
     content: string,
     result: SearchResult,
     offset?: number,
-  ): HTMLSpanElement {
-    const contentEl = parentEl.createSpan({
+  ): HTMLDivElement {
+    const contentEl = parentEl.createDiv({
       cls: ['suggestion-content', 'qsp-content'],
     });
 
-    renderResults(contentEl, content, result, offset);
+    const titleEl = contentEl.createDiv({
+      cls: ['suggestion-title', 'qsp-title'],
+    });
+
+    renderResults(titleEl, content, result, offset);
 
     return contentEl;
   }

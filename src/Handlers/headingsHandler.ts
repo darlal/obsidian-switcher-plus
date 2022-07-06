@@ -92,10 +92,12 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
       parentEl.addClasses(['qsp-suggestion-headings', `qsp-headings-l${item.level}`]);
 
-      this.renderContent(parentEl, item.heading, sugg.match);
-      this.renderPath(parentEl, sugg.file);
+      const contentEl = this.renderContent(parentEl, item.heading, sugg.match);
+      this.renderPath(contentEl, sugg.file);
 
-      parentEl.createSpan({
+      // render the flair icon
+      const auxEl = parentEl.createDiv({ cls: ['suggestion-aux', 'qsp-aux'] });
+      auxEl.createSpan({
         cls: ['suggestion-flair', 'qsp-headings-indicator'],
         text: HeadingIndicators[item.level],
       });

@@ -102,10 +102,10 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       }
 
       parentEl.addClasses(parentElClasses);
-      SymbolHandler.addSymbolIndicator(item, parentEl);
 
       const text = SymbolHandler.getSuggestionTextForSymbol(item);
       this.renderContent(parentEl, text, sugg.match);
+      SymbolHandler.addSymbolIndicator(item, parentEl);
     }
   }
 
@@ -309,7 +309,9 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       indicator = SymbolIndicators[symbolType];
     }
 
-    parentEl.createSpan({
+    // render the flair icon
+    const auxEl = parentEl.createDiv({ cls: ['suggestion-aux', 'qsp-aux'] });
+    auxEl.createSpan({
       cls: ['suggestion-flair', 'qsp-symbol-indicator'],
       text: indicator,
     });

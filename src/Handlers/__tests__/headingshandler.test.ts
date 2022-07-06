@@ -670,12 +670,9 @@ describe('headingsHandler', () => {
 
   describe('renderSuggestion', () => {
     let sut: HeadingsHandler;
-    let mockParentEl: MockProxy<HTMLElement>;
 
     beforeAll(() => {
       sut = new HeadingsHandler(mock<App>(), settings);
-      mockParentEl = mock<HTMLElement>();
-      mockParentEl.createDiv.mockReturnValue(mock<HTMLDivElement>());
     });
 
     it('should not throw an error with a null suggestion', () => {
@@ -683,13 +680,24 @@ describe('headingsHandler', () => {
     });
 
     it('should render a span with the heading level indicator', () => {
+      const mockAuxEl = mock<HTMLDivElement>();
+      mockAuxEl.createSpan.mockReturnValue(mock<HTMLSpanElement>());
+
+      const mockParentEl = mock<HTMLElement>();
+      mockParentEl.createDiv.mockReturnValue(mockAuxEl);
+
       const renderPathSpy = jest
         .spyOn(Handler.prototype, 'renderPath')
         .mockReturnValueOnce();
 
       sut.renderSuggestion(headingSugg, mockParentEl);
 
-      expect(mockParentEl.createSpan).toHaveBeenCalledWith(
+      expect(mockParentEl.createDiv).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: ['suggestion-aux', 'qsp-aux'],
+        }),
+      );
+      expect(mockAuxEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
           cls: ['suggestion-flair', 'qsp-headings-indicator'],
           text: HeadingIndicators[headingSugg.item.level],
@@ -701,6 +709,9 @@ describe('headingsHandler', () => {
 
     test('with HeadingCache, it should render a suggestion with match offsets', () => {
       const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
+      const mockContentEl = mock<HTMLDivElement>();
+      const mockParentEl = mock<HTMLElement>();
+      mockParentEl.createDiv.mockReturnValue(mockContentEl);
 
       const renderPathSpy = jest
         .spyOn(Handler.prototype, 'renderPath')
@@ -708,7 +719,7 @@ describe('headingsHandler', () => {
 
       sut.renderSuggestion(headingSugg, mockParentEl);
 
-      expect(renderPathSpy).toHaveBeenCalledWith(mockParentEl, headingSugg.file);
+      expect(renderPathSpy).toHaveBeenCalledWith(mockContentEl, headingSugg.file);
       expect(renderContentSpy).toBeCalledWith(
         mockParentEl,
         headingSugg.item.heading,
@@ -724,6 +735,8 @@ describe('headingsHandler', () => {
     });
 
     it('should add CSS class to downranked suggestions', () => {
+      const mockParentEl = mock<HTMLElement>();
+      mockParentEl.createDiv.mockReturnValue(mock<HTMLDivElement>());
       const sugg = makeHeadingSuggestion(makeHeading('foo heading', 1));
       sugg.downranked = true;
 

@@ -28,31 +28,14 @@
   padding-left: 36px;
 }
 
-/* on mobile primary text should display as full row */
-.is-mobile .qsp-content {
-  display: block;
+/* symbol suggestion should align to the left */
+.suggestion-item.qsp-suggestion-symbol {
+  justify-content: left;
 }
 
-/* allow multi-line wrapping for heading suggestions */
-.suggestion-item.qsp-suggestion-headings {
-  flex-wrap: wrap;
-}
-
-/* headings primary should leave space for the indicator icon */
-.qsp-suggestion-headings > .qsp-content {
-  flex-basis: 95%;
-}
-
-/* re-order headings indicator icon to be displayed on same line as primary content */
-.qsp-suggestion-headings > .qsp-headings-indicator {
-  order: 1;
-  margin-left: auto;
-}
-
-/* headings folder path displays on its separate row */
-.qsp-suggestion-headings > .qsp-note {
-  order: 2;
-  flex-basis: 100%;
+/* symbol suggestion display the icon first (on the left side) */
+.qsp-suggestion-symbol > .qsp-aux {
+  order: -1;
 }
 
 /* symbol suggestion indentation when in outline mode */
@@ -105,11 +88,17 @@
 /* workspace suggestion item */
 .qsp-suggestion-workspace {}
 
-/* suggestion primary text element */
+/* suggestion primary content container */
 .qsp-content {}
+
+/* suggestion title element */
+.qsp-title {}
 
 /* suggestion secondary information element (like file path information) */
 .qsp-note {}
+
+/* suggestion flair/icon container */
+.qsp-aux {}
 
 /* suggestion file path element */
 .qsp-path {}

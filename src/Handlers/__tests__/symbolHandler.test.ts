@@ -588,11 +588,13 @@ describe('symbolHandler', () => {
     let mockParentEl: MockProxy<HTMLElement>;
 
     beforeAll(() => {
-      mockParentEl = mock<HTMLElement>();
       renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
+      mockParentEl = mock<HTMLElement>();
+      mockParentEl.createDiv.mockReturnValue(mock<HTMLDivElement>());
     });
 
     afterEach(() => {
+      mockParentEl.createDiv.mockClear();
       renderContentSpy.mockClear();
     });
 
@@ -643,9 +645,20 @@ describe('symbolHandler', () => {
     });
 
     it('should add a symbol indicator', () => {
-      sut.renderSuggestion(symbolSugg, mockParentEl);
+      const mockAuxEl = mock<HTMLDivElement>();
+      mockAuxEl.createSpan.mockReturnValue(mock<HTMLSpanElement>());
 
-      expect(mockParentEl.createSpan).toHaveBeenCalledWith(
+      const mockContainerEl = mock<HTMLElement>();
+      mockContainerEl.createDiv.mockReturnValue(mockAuxEl);
+
+      sut.renderSuggestion(symbolSugg, mockContainerEl);
+
+      expect(mockContainerEl.createDiv).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: ['suggestion-aux', 'qsp-aux'],
+        }),
+      );
+      expect(mockAuxEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
           text: HeadingIndicators[(symbolSugg.item.symbol as HeadingCache).level],
           cls: ['suggestion-flair', 'qsp-symbol-indicator'],

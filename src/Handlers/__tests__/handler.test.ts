@@ -17,8 +17,14 @@ import {
   setIcon,
   normalizePath,
   Vault,
+  renderResults,
 } from 'obsidian';
-import { defaultOpenViewState, makeLeaf, makeEditorSuggestion } from '@fixtures';
+import {
+  defaultOpenViewState,
+  makeLeaf,
+  makeEditorSuggestion,
+  makeFuzzyMatch,
+} from '@fixtures';
 import { AnySuggestion, Mode, PathDisplayFormat } from 'src/types';
 import { mock, mockClear, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
@@ -862,6 +868,35 @@ describe('Handler', () => {
 
       expect(mockView.getViewType).toHaveBeenCalled();
       expect(result.leaf).toBe(mockLeaf);
+    });
+  });
+
+  describe('renderContent', () => {
+    it('should render the primary content UI elements', () => {
+      const content = chance.sentence();
+      const results = makeFuzzyMatch();
+      const offset = 10;
+      const mockRenderResults = jest.mocked(renderResults);
+      const mockTitleEl = mock<HTMLDivElement>();
+      const mockContentEl = mock<HTMLDivElement>();
+      mockContentEl.createDiv.mockReturnValue(mockTitleEl);
+
+      const mockParentEl = mock<HTMLDivElement>();
+      mockParentEl.createDiv.mockReturnValue(mockContentEl);
+
+      sut.renderContent(mockParentEl, content, results, offset);
+
+      expect(mockRenderResults).toBeCalledWith(mockTitleEl, content, results, offset);
+      expect(mockParentEl.createDiv).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: ['suggestion-content', 'qsp-content'],
+        }),
+      );
+      expect(mockContentEl.createDiv).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: ['suggestion-title', 'qsp-title'],
+        }),
+      );
     });
   });
 

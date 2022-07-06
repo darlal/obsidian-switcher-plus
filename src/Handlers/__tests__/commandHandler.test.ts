@@ -186,10 +186,11 @@ describe('commandHandler', () => {
     });
 
     it('should render a suggestion with match offsets', () => {
-      const mockParentEl = mock<HTMLElement>();
       const item = mockCommands[0];
       const sugg = makeCommandSuggestion(item);
       const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
+      const mockParentEl = mock<HTMLElement>();
+      mockParentEl.createDiv.mockReturnValue(mock<HTMLDivElement>());
 
       sut.renderSuggestion(sugg, mockParentEl);
 

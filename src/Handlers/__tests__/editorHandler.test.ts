@@ -259,12 +259,13 @@ describe('editorHandler', () => {
     });
 
     it('should render a suggestion with match offsets', () => {
-      const mockParentEl = mock<HTMLElement>();
       const displayText = 'foo';
       const mockLeaf = makeLeafWithRoot(displayText, null);
       const sugg = makeEditorSuggestion(mockLeaf);
-
       const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
+      const mockContentEl = mock<HTMLDivElement>();
+      const mockParentEl = mock<HTMLElement>();
+      mockParentEl.createDiv.mockReturnValue(mockContentEl);
 
       const renderPathSpy = jest
         .spyOn(Handler.prototype, 'renderPath')
@@ -275,7 +276,7 @@ describe('editorHandler', () => {
       expect(mockLeaf.getDisplayText).toHaveBeenCalled();
       expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-suggestion-editor');
       expect(renderContentSpy).toBeCalledWith(mockParentEl, displayText, sugg.match);
-      expect(renderPathSpy).toHaveBeenCalledWith(mockParentEl, sugg.file, true);
+      expect(renderPathSpy).toHaveBeenCalledWith(mockContentEl, sugg.file, true);
 
       renderContentSpy.mockRestore();
       renderPathSpy.mockRestore();
