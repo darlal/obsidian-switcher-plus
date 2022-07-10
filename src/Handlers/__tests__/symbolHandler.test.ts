@@ -26,7 +26,6 @@ import {
   Workspace,
   TFile,
   Vault,
-  Keymap,
   OpenViewState,
 } from 'obsidian';
 import {
@@ -685,8 +684,6 @@ describe('symbolHandler', () => {
   });
 
   describe('onChooseSuggestion', () => {
-    const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
-
     beforeAll(() => {
       const fileContainerLeaf = makeLeaf();
       fileContainerLeaf.openFile.mockResolvedValueOnce();
@@ -722,11 +719,10 @@ describe('symbolHandler', () => {
     });
 
     it('should activate the existing workspaceLeaf that contains the target symbol and scroll that view via eState', () => {
-      const isModDown = false;
+      const mockEvt = mock<KeyboardEvent>();
       const expectedState = getExpectedEphemeralState(symbolSugg);
       const mockLeaf = makeLeaf(symbolSugg.file);
 
-      mockKeymap.isModEvent.mockReturnValueOnce(isModDown);
       const navigateToLeafOrOpenFileSpy = jest.spyOn(
         Handler.prototype,
         'navigateToLeafOrOpenFile',
@@ -737,12 +733,11 @@ describe('symbolHandler', () => {
       sut.getSuggestions(inputInfo);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
-      sut.onChooseSuggestion(symbolSugg, null);
+      sut.onChooseSuggestion(symbolSugg, mockEvt);
 
       expect(inputInfo.mode).toBe(Mode.SymbolList);
-      expect(mockKeymap.isModEvent).toHaveBeenCalled();
       expect(navigateToLeafOrOpenFileSpy).toHaveBeenCalledWith(
-        isModDown,
+        mockEvt,
         symbolSugg.file,
         expect.any(String),
         expectedState,

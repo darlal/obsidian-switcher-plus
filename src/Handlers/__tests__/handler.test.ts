@@ -17,6 +17,7 @@ import {
   setIcon,
   normalizePath,
   Vault,
+  Keymap,
   renderResults,
 } from 'obsidian';
 import {
@@ -25,7 +26,7 @@ import {
   makeEditorSuggestion,
   makeFuzzyMatch,
 } from '@fixtures';
-import { AnySuggestion, Mode, PathDisplayFormat } from 'src/types';
+import { AnySuggestion, EditorNavigationType, Mode, PathDisplayFormat } from 'src/types';
 import { mock, mockClear, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
 import { SwitcherPlusSettings } from 'src/settings';
@@ -629,31 +630,11 @@ describe('Handler', () => {
           }
         });
 
-      sut.openFileInLeaf(null, false);
+      sut.openFileInLeaf(null, EditorNavigationType.ReuseExistingLeaf);
 
       expect(logWasCalled).toBe(true);
 
       consoleLogSpy.mockRestore();
-    });
-
-    it('should load a file in a leaf', () => {
-      const mockLeaf = makeLeaf();
-      const mockFile = new TFile();
-      const shouldCreateNewLeaf = false;
-      const openState = { active: true };
-
-      mockLeaf.openFile.mockResolvedValueOnce();
-      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
-
-      sut.openFileInLeaf(
-        mockFile,
-        shouldCreateNewLeaf,
-        openState,
-        'panelUtils unit test.',
-      );
-
-      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(shouldCreateNewLeaf);
-      expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
     });
 
     it('should log a message to the console if openFile fails', () => {
@@ -691,7 +672,7 @@ describe('Handler', () => {
       // wait for the other promises to resolve before this promise can resolve
       const allPromises = Promise.all([openFilePromise, consoleLogPromise]);
 
-      sut.openFileInLeaf(mockFile, false, openState);
+      sut.openFileInLeaf(mockFile, EditorNavigationType.ReuseExistingLeaf, openState);
 
       // when all the promises are resolved check expectations and clean up
       return allPromises.finally(() => {
@@ -701,9 +682,154 @@ describe('Handler', () => {
         consoleLogSpy.mockRestore();
       });
     });
+
+    it('should load a file in an existing leaf', () => {
+      const mockLeaf = makeLeaf();
+      const mockFile = new TFile();
+      const openState = { active: true };
+
+      mockLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
+
+      sut.openFileInLeaf(
+        mockFile,
+        EditorNavigationType.ReuseExistingLeaf,
+        openState,
+        'panelUtils unit test.',
+      );
+
+      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(false);
+      expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
+    });
+
+    it('should load a file in a new leaf', () => {
+      const mockLeaf = makeLeaf();
+      const mockFile = new TFile();
+      const openState = { active: true };
+
+      mockLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
+
+      sut.openFileInLeaf(
+        mockFile,
+        EditorNavigationType.NewLeaf,
+        openState,
+        'panelUtils unit test.',
+      );
+
+      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(true);
+      expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
+    });
+
+    it('should load a file in a popout window', () => {
+      const mockLeaf = makeLeaf();
+      const mockFile = new TFile();
+      const openState = { active: true };
+
+      mockLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.openPopoutLeaf.mockReturnValueOnce(mockLeaf);
+
+      sut.openFileInLeaf(
+        mockFile,
+        EditorNavigationType.PopoutLeaf,
+        openState,
+        'panelUtils unit test.',
+      );
+
+      expect(mockWorkspace.openPopoutLeaf).toHaveBeenCalled();
+      expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
+    });
   });
 
   describe('navigateToLeafOrOpenFile', () => {
+    const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
+    const errContext = chance.sentence();
+    let mockLeaf: MockProxy<WorkspaceLeaf>;
+    let activateLeafOrOpenFileSpy: jest.SpyInstance;
+    let mockFile: TFile;
+
+    beforeAll(() => {
+      activateLeafOrOpenFileSpy = jest.spyOn(Handler.prototype, 'activateLeafOrOpenFile');
+      mockFile = new TFile();
+      mockLeaf = makeLeaf();
+    });
+
+    beforeEach(() => {
+      activateLeafOrOpenFileSpy.mockReset();
+    });
+
+    afterAll(() => {
+      activateLeafOrOpenFileSpy.mockRestore();
+    });
+
+    it('should navigate to a new Popout window', () => {
+      const mockEvt = mock<KeyboardEvent>({
+        key: 'o',
+      });
+
+      mockKeymap.isModEvent.mockReturnValueOnce(true);
+
+      sut.navigateToLeafOrOpenFile(
+        mockEvt,
+        mockFile,
+        errContext,
+        defaultOpenViewState,
+        mockLeaf,
+      );
+
+      expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
+        EditorNavigationType.PopoutLeaf,
+        mockFile,
+        errContext,
+        mockLeaf,
+        defaultOpenViewState,
+      );
+    });
+
+    it('should navigate to a new leaf', () => {
+      const mockEvt = mock<KeyboardEvent>();
+      mockKeymap.isModEvent.mockReturnValueOnce(true);
+
+      sut.navigateToLeafOrOpenFile(
+        mockEvt,
+        mockFile,
+        errContext,
+        defaultOpenViewState,
+        mockLeaf,
+      );
+
+      expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
+        EditorNavigationType.NewLeaf,
+        mockFile,
+        errContext,
+        mockLeaf,
+        defaultOpenViewState,
+      );
+    });
+
+    it('should navigate to an existing leaf', () => {
+      const mockEvt = mock<KeyboardEvent>();
+      mockKeymap.isModEvent.mockReturnValueOnce(false);
+
+      sut.navigateToLeafOrOpenFile(
+        mockEvt,
+        mockFile,
+        errContext,
+        defaultOpenViewState,
+        mockLeaf,
+      );
+
+      expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
+        EditorNavigationType.ReuseExistingLeaf,
+        mockFile,
+        errContext,
+        mockLeaf,
+        defaultOpenViewState,
+      );
+    });
+  });
+
+  describe('activateLeafOrOpenFile', () => {
     let openFileInLeafSpy: jest.SpyInstance;
     let activateLeafSpy: jest.SpyInstance;
 
@@ -724,40 +850,40 @@ describe('Handler', () => {
 
     it('should open the file', () => {
       const file = new TFile();
-      const isModDown = false;
+      const navType = EditorNavigationType.ReuseExistingLeaf;
       const errorContext = chance.sentence();
 
-      sut.navigateToLeafOrOpenFile(isModDown, file, errorContext);
+      sut.activateLeafOrOpenFile(navType, file, errorContext);
 
       expect(openFileInLeafSpy).toHaveBeenCalledWith(
         file,
-        false,
+        navType,
         defaultOpenViewState,
         errorContext,
       );
     });
 
-    it('should open the file in a new leaf with isModDown enabled', () => {
+    it('should open the file in a new leaf with EditorNavigationType.NewLeaf', () => {
       const file = new TFile();
-      const isModDown = true;
+      const navType = EditorNavigationType.NewLeaf;
       const errorContext = chance.sentence();
 
-      sut.navigateToLeafOrOpenFile(isModDown, file, errorContext);
+      sut.activateLeafOrOpenFile(navType, file, errorContext);
 
       expect(openFileInLeafSpy).toHaveBeenCalledWith(
         file,
-        true,
+        navType,
         defaultOpenViewState,
         errorContext,
       );
     });
 
-    test('with existing leaf and isModDown disabled, it should activate the existing leaf', () => {
+    test('with existing leaf and EditorNavigationType.ReuseExistingLeaf, it should activate the existing leaf', () => {
       const file = new TFile();
-      const isModDown = false;
+      const navType = EditorNavigationType.ReuseExistingLeaf;
       const leaf = makeLeaf();
 
-      sut.navigateToLeafOrOpenFile(isModDown, file, null, null, leaf);
+      sut.activateLeafOrOpenFile(navType, file, null, leaf);
 
       expect(openFileInLeafSpy).not.toHaveBeenCalled();
       expect(activateLeafSpy).toHaveBeenCalledWith(
@@ -767,18 +893,18 @@ describe('Handler', () => {
       );
     });
 
-    test('with existing leaf and isModDown enabled, it should create a new leaf', () => {
+    test('with existing leaf and EditorNavigationType.NewLeaf, it should create a new leaf', () => {
       const file = new TFile();
-      const isModDown = true;
+      const navType = EditorNavigationType.NewLeaf;
       const leaf = makeLeaf();
       const errorContext = chance.sentence();
 
-      sut.navigateToLeafOrOpenFile(isModDown, file, errorContext, null, leaf);
+      sut.activateLeafOrOpenFile(navType, file, errorContext, leaf);
 
       expect(activateLeafSpy).not.toHaveBeenCalled();
       expect(openFileInLeafSpy).toBeCalledWith(
         file,
-        isModDown,
+        navType,
         defaultOpenViewState,
         errorContext,
       );
@@ -786,20 +912,20 @@ describe('Handler', () => {
 
     it('should use the default OpenViewState when a falsy value is passed in for opening files', () => {
       const file = new TFile();
-      const isModDown = false;
+      const navType = EditorNavigationType.ReuseExistingLeaf;
 
-      sut.navigateToLeafOrOpenFile(isModDown, file, null);
+      sut.activateLeafOrOpenFile(navType, file, null);
 
       expect(openFileInLeafSpy).toHaveBeenCalledWith(
         file,
-        isModDown,
+        navType,
         defaultOpenViewState,
         null,
       );
     });
   });
 
-  describe('findOpenEditor', () => {
+  describe('findMatchingLeaf', () => {
     const refViewType = 'backlink';
     let mockLeaf: MockProxy<WorkspaceLeaf>;
     let mockView: jest.MockedObject<View>;
@@ -823,7 +949,7 @@ describe('Handler', () => {
       const mockFile = mockView.file;
       const getOpenLeavesSpy = jest.spyOn(sut, 'getOpenLeaves');
 
-      const result = sut.findOpenEditor(mockFile);
+      const result = sut.findMatchingLeaf(mockFile);
 
       // not expected to be called because workspace.activeLeaf is prioritized first
       expect(getOpenLeavesSpy).not.toHaveBeenCalled();
@@ -843,7 +969,7 @@ describe('Handler', () => {
 
       mockRefView.getViewType.mockReturnValue(refViewType);
 
-      const result = sut.findOpenEditor(mockFile, mockRefLeaf, false);
+      const result = sut.findMatchingLeaf(mockFile, mockRefLeaf, false);
 
       expect(mockRefView.getViewType).toHaveBeenCalled();
       expect(mockView.getViewType).toHaveBeenCalled();
@@ -855,7 +981,7 @@ describe('Handler', () => {
     it('should not match any reference view types as target', () => {
       mockView.getViewType.mockReturnValueOnce(refViewType);
 
-      const result = sut.findOpenEditor(mockView.file, null, false);
+      const result = sut.findMatchingLeaf(mockView.file, null, false);
 
       expect(mockView.getViewType).toHaveBeenCalled();
       expect(result.leaf).toBeNull();
@@ -864,7 +990,7 @@ describe('Handler', () => {
     test('with includeReferenceViews enabled, it should match reference view types as a target', () => {
       mockView.getViewType.mockReturnValueOnce(refViewType);
 
-      const result = sut.findOpenEditor(mockView.file, null, true);
+      const result = sut.findMatchingLeaf(mockView.file, null, true);
 
       expect(mockView.getViewType).toHaveBeenCalled();
       expect(result.leaf).toBe(mockLeaf);

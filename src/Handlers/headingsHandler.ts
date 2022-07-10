@@ -9,7 +9,6 @@ import {
   sortSearchResults,
   WorkspaceLeaf,
   TFolder,
-  Keymap,
 } from 'obsidian';
 import { InputInfo } from 'src/switcherPlus';
 import {
@@ -78,7 +77,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       };
 
       this.navigateToLeafOrOpenFile(
-        Keymap.isModEvent(evt),
+        evt,
         sugg.file,
         'Unable to navigate to heading for file.',
         { active: true, eState },

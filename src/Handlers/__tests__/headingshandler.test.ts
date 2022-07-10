@@ -2,7 +2,6 @@ import {
   App,
   CachedMetadata,
   fuzzySearch,
-  Keymap,
   MetadataCache,
   PreparedQuery,
   prepareQuery,
@@ -747,7 +746,6 @@ describe('headingsHandler', () => {
   });
 
   describe('onChooseSuggestion', () => {
-    const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
     let sut: HeadingsHandler;
     let mockWorkspace: MockProxy<Workspace>;
 
@@ -769,19 +767,16 @@ describe('headingsHandler', () => {
     });
 
     it('should open the file associated with the suggestion', () => {
-      const isModDown = false;
+      const mockEvt = mock<KeyboardEvent>();
       const navigateToLeafOrOpenFileSpy = jest.spyOn(
         Handler.prototype,
         'navigateToLeafOrOpenFile',
       );
 
-      mockKeymap.isModEvent.mockReturnValueOnce(isModDown);
+      sut.onChooseSuggestion(headingSugg, mockEvt);
 
-      sut.onChooseSuggestion(headingSugg, null);
-
-      expect(mockKeymap.isModEvent).toHaveBeenCalled();
       expect(navigateToLeafOrOpenFileSpy).toHaveBeenCalledWith(
-        isModDown,
+        mockEvt,
         headingSugg.file,
         expect.any(String),
         expect.anything(),

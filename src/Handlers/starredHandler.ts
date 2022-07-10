@@ -9,7 +9,6 @@ import {
   fuzzySearch,
   StarredPluginItem,
   StarredPluginInstance,
-  Keymap,
   TFile,
   FileStarredItem,
 } from 'obsidian';
@@ -91,7 +90,7 @@ export class StarredHandler extends Handler<StarredSuggestion> {
         const { file } = sugg;
 
         this.navigateToLeafOrOpenFile(
-          Keymap.isModEvent(evt),
+          evt,
           file,
           `Unable to open Starred file ${file.path}`,
         );

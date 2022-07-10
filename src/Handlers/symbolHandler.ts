@@ -1,6 +1,5 @@
 import {
   fuzzySearch,
-  Keymap,
   LinkCache,
   ReferenceCache,
   SearchResult,
@@ -112,8 +111,35 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
   onChooseSuggestion(sugg: SymbolSuggestion, evt: MouseEvent | KeyboardEvent): void {
     if (sugg) {
       const symbolCmd = this.inputInfo.parsedCommand() as SourcedParsedCommand;
+      const { leaf, file } = symbolCmd.source;
 
-      this.navigateToSymbol(sugg, symbolCmd, Keymap.isModEvent(evt));
+      const {
+        start: { line, col },
+        end: endLoc,
+      } = sugg.item.symbol.position;
+
+      // object containing the state information for the target editor,
+      // start with the range to highlight in target editor
+      const eState = {
+        active: true,
+        focus: true,
+        startLoc: { line, col },
+        endLoc,
+        line,
+        cursor: {
+          from: { line, ch: col },
+          to: { line, ch: col },
+        },
+      };
+
+      this.navigateToLeafOrOpenFile(
+        evt,
+        file,
+        `Unable to navigate to symbol for file ${file.path}`,
+        { active: true, eState },
+        leaf,
+        Mode.SymbolList,
+      );
     }
   }
 
@@ -315,41 +341,5 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       cls: ['suggestion-flair', 'qsp-symbol-indicator'],
       text: indicator,
     });
-  }
-
-  navigateToSymbol(
-    sugg: SymbolSuggestion,
-    symbolCmd: SourcedParsedCommand,
-    isModDown: boolean,
-  ): void {
-    const { leaf, file } = symbolCmd.source;
-
-    const {
-      start: { line, col },
-      end: endLoc,
-    } = sugg.item.symbol.position;
-
-    // object containing the state information for the target editor,
-    // start with the range to highlight in target editor
-    const eState = {
-      active: true,
-      focus: true,
-      startLoc: { line, col },
-      endLoc,
-      line,
-      cursor: {
-        from: { line, ch: col },
-        to: { line, ch: col },
-      },
-    };
-
-    this.navigateToLeafOrOpenFile(
-      isModDown,
-      file,
-      `Unable to navigate to symbol for file ${file.path}`,
-      { active: true, eState },
-      leaf,
-      Mode.SymbolList,
-    );
   }
 }

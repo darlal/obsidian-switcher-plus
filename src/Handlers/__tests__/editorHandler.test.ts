@@ -11,7 +11,6 @@ import {
   View,
   WorkspaceItem,
   WorkspaceSplit,
-  Keymap,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -19,7 +18,6 @@ import {
   rightSplitEditorFixtures,
   editorTrigger,
   makeLeaf,
-  defaultOpenViewState,
   makeEditorSuggestion,
 } from '@fixtures';
 import { EditorHandler, Handler } from 'src/Handlers';
@@ -295,39 +293,19 @@ describe('editorHandler', () => {
     });
 
     it('should activate the selected leaf', () => {
-      const activateLeafSpy = jest.spyOn(Handler.prototype, 'activateLeaf');
+      const mockEvt = mock<KeyboardEvent>();
       const mockLeaf = makeLeafWithRoot(null, null);
-      const sugg = makeEditorSuggestion(mockLeaf);
-
-      sut.onChooseSuggestion(sugg, null);
-
-      expect(activateLeafSpy).toHaveBeenCalledWith(
-        sugg.item,
-        true,
-        defaultOpenViewState.eState,
-      );
-
-      activateLeafSpy.mockRestore();
-    });
-
-    it('should open file in new leaf when Mod is down', () => {
-      const isModDown = true;
-      const mockLeaf = makeLeafWithRoot(null, null);
-      const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
       const navigateToLeafOrOpenFileSpy = jest.spyOn(
         Handler.prototype,
         'navigateToLeafOrOpenFile',
       );
 
-      mockKeymap.isModEvent.mockReturnValueOnce(isModDown);
-
       const sugg = makeEditorSuggestion(mockLeaf);
 
-      sut.onChooseSuggestion(sugg, null);
+      sut.onChooseSuggestion(sugg, mockEvt);
 
-      expect(mockKeymap.isModEvent).toHaveBeenCalled();
       expect(navigateToLeafOrOpenFileSpy).toHaveBeenCalledWith(
-        isModDown,
+        mockEvt,
         sugg.file,
         expect.any(String),
         null,

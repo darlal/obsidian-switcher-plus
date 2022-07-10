@@ -2,6 +2,7 @@ import {
   App,
   EditorPosition,
   HeadingCache,
+  Keymap,
   MarkdownView,
   normalizePath,
   OpenViewState,
@@ -13,7 +14,13 @@ import {
   View,
   WorkspaceLeaf,
 } from 'obsidian';
-import { AnySuggestion, Mode, PathDisplayFormat, SourceInfo } from 'src/types';
+import {
+  AnySuggestion,
+  EditorNavigationType,
+  Mode,
+  PathDisplayFormat,
+  SourceInfo,
+} from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
@@ -75,7 +82,7 @@ export abstract class Handler<T> {
       // try to find a matching leaf for suggestion types that don't explicitly
       // provide one. This is primarily needed to be able to focus an
       // existing pane if there is one
-      ({ leaf } = this.findOpenEditor(info.file, info.leaf));
+      ({ leaf } = this.findMatchingLeaf(info.file, info.leaf));
     }
 
     // Get the cursor information to support `selectNearestHeading`
@@ -174,7 +181,7 @@ export abstract class Handler<T> {
    * @param  {} shouldIncludeRefViews=false set to true to make reference view types valid return candidates.
    * @returns TargetInfo
    */
-  findOpenEditor(
+  findMatchingLeaf(
     file: TFile,
     leaf?: WorkspaceLeaf,
     shouldIncludeRefViews = false,
@@ -228,28 +235,33 @@ export abstract class Handler<T> {
   }
 
   /**
-   * Determines whether or not a new leaf should be created
-   * @param  {boolean} isModDown Set to true if the user holding cmd/ctrl
+   * Determines whether or not a new leaf should be created taking user
+   * settings into account
+   * @param  {boolean} isNewPaneRequested Set to true if the user holding cmd/ctrl
    * @param  {} isAlreadyOpen=false Set to true if there is a pane showing the file already
    * @param  {Mode} mode? Only Symbol mode has special handling.
    * @returns boolean
    */
-  shouldCreateNewLeaf(isModDown: boolean, isAlreadyOpen = false, mode?: Mode): boolean {
+  shouldCreateNewLeaf(
+    isNewPaneRequested: boolean,
+    isAlreadyOpen = false,
+    mode?: Mode,
+  ): boolean {
     const {
       onOpenPreferNewPane,
       alwaysNewPaneForSymbols,
       useActivePaneForSymbolsOnMobile,
     } = this.settings;
 
-    const isNewPaneRequested = !isAlreadyOpen && onOpenPreferNewPane;
-    let shouldCreateNew = isModDown || isNewPaneRequested;
+    const isNewPanePreferred = !isAlreadyOpen && onOpenPreferNewPane;
+    let shouldCreateNew = isNewPaneRequested || isNewPanePreferred;
 
     if (mode === Mode.SymbolList && !onOpenPreferNewPane) {
       const { isMobile } = Platform;
-      shouldCreateNew = alwaysNewPaneForSymbols || isModDown;
+      shouldCreateNew = alwaysNewPaneForSymbols || isNewPaneRequested;
 
       if (isMobile) {
-        shouldCreateNew = isModDown || !useActivePaneForSymbolsOnMobile;
+        shouldCreateNew = isNewPaneRequested || !useActivePaneForSymbolsOnMobile;
       }
     }
 
@@ -322,25 +334,38 @@ export abstract class Handler<T> {
   }
 
   /**
-   * Loads a file into a (optionally new) WorkspaceLeaf
+   * Loads a file into a WorkspaceLeaf based on {@link EditorNavigationType}
    * @param  {TFile} file
-   * @param  {boolean} shouldCreateNewLeaf
+   * @param  {EditorNavigationType} navType
    * @param  {OpenViewState} openState?
    * @param  {} errorContext=''
    * @returns void
    */
   openFileInLeaf(
     file: TFile,
-    shouldCreateNewLeaf: boolean,
+    navType: EditorNavigationType,
     openState?: OpenViewState,
     errorContext?: string,
   ): void {
+    const { workspace } = this.app;
     errorContext = errorContext ?? '';
     const message = `Switcher++: error opening file. ${errorContext}`;
 
+    const getLeaf = () => {
+      let leaf: WorkspaceLeaf = null;
+
+      if (navType === EditorNavigationType.PopoutLeaf) {
+        leaf = workspace.openPopoutLeaf();
+      } else {
+        const shouldCreateNew = navType === EditorNavigationType.NewLeaf;
+        leaf = workspace.getLeaf(shouldCreateNew);
+      }
+
+      return leaf;
+    };
+
     try {
-      this.app.workspace
-        .getLeaf(shouldCreateNewLeaf)
+      getLeaf()
         .openFile(file, openState)
         .catch((reason) => {
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -353,21 +378,24 @@ export abstract class Handler<T> {
   }
 
   /**
-   * Determines whether to activate (make active and focused) an existing WorkspaceLeaf,
-   * or, create a new WorkspaceLeaf, or, reuse an unpinned WorkspaceLeaf in order to
-   * dispay file. This takes user settings and Mod key status into account.
-   * @param  {boolean} isModDown Set to true if the user is holding down cmd/ctrl keys
+   * Determines whether to activate (make active and focused) an existing WorkspaceLeaf
+   * (searches through all leaves), or create a new WorkspaceLeaf, or reuse an unpinned
+   * WorkspaceLeaf, or create a new window in order to display file. This takes user
+   * settings and event status into account.
+   * @param  {MouseEvent|KeyboardEvent} evt navigation trigger event
    * @param  {TFile} file The file to display
    * @param  {string} errorContext Custom text to save in error messages
    * @param  {OpenViewState} openState? State to pass to the new, or activated view. If
    * falsy, default values will be used
-   * @param  {WorkspaceLeaf} leaf? Editor, or reference WorkspaceLeaf to activate if it's
-   * already known
+   * @param  {WorkspaceLeaf} leaf? WorkspaceLeaf, or reference WorkspaceLeaf
+   * (backlink, outline, etc..) to activate if it's already known
    * @param  {Mode} mode? Only Symbol mode has custom handling
+   * @param  {} shouldIncludeRefViews=false whether reference WorkspaceLeaves are valid
+   * targets for activation
    * @returns void
    */
   navigateToLeafOrOpenFile(
-    isModDown: boolean,
+    evt: MouseEvent | KeyboardEvent,
     file: TFile,
     errorContext: string,
     openState?: OpenViewState,
@@ -375,18 +403,48 @@ export abstract class Handler<T> {
     mode?: Mode,
     shouldIncludeRefViews = false,
   ): void {
-    const { leaf: targetLeaf } = this.findOpenEditor(file, leaf, shouldIncludeRefViews);
+    const { leaf: targetLeaf } = this.findMatchingLeaf(file, leaf, shouldIncludeRefViews);
     const isAlreadyOpen = !!targetLeaf;
-    const shouldCreateNew = this.shouldCreateNewLeaf(isModDown, isAlreadyOpen, mode);
 
+    const isModDown = Keymap.isModEvent(evt);
+    const key = (evt as KeyboardEvent).key;
+    const isPopoutRequested = isModDown && key === 'o';
+    let navType = EditorNavigationType.ReuseExistingLeaf;
+
+    if (isPopoutRequested) {
+      navType = EditorNavigationType.PopoutLeaf;
+    } else if (this.shouldCreateNewLeaf(isModDown, isAlreadyOpen, mode)) {
+      navType = EditorNavigationType.NewLeaf;
+    }
+
+    this.activateLeafOrOpenFile(navType, file, errorContext, targetLeaf, openState);
+  }
+
+  /**
+   * Activates leaf (if provided), or load file into another leaf based on navType
+   * @param  {EditorNavigationType} navType
+   * @param  {TFile} file
+   * @param  {string} errorContext
+   * @param  {WorkspaceLeaf} leaf? optional if supplied and navType is
+   * {@link EditorNavigationType.ReuseExistingLeaf} then leaf will be activated
+   * @param  {OpenViewState} openState?
+   * @returns void
+   */
+  activateLeafOrOpenFile(
+    navType: EditorNavigationType,
+    file: TFile,
+    errorContext: string,
+    leaf?: WorkspaceLeaf,
+    openState?: OpenViewState,
+  ): void {
     // default to having the pane active and focused
     openState = openState ?? { active: true, eState: { active: true, focus: true } };
 
-    if (targetLeaf && !shouldCreateNew) {
+    if (leaf && navType === EditorNavigationType.ReuseExistingLeaf) {
       const eState = openState?.eState as Record<string, unknown>;
-      this.activateLeaf(targetLeaf, true, eState);
+      this.activateLeaf(leaf, true, eState);
     } else {
-      this.openFileInLeaf(file, shouldCreateNew, openState, errorContext);
+      this.openFileInLeaf(file, navType, openState, errorContext);
     }
   }
 

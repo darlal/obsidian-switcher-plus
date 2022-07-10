@@ -72,6 +72,14 @@ export class SwitcherPlusKeymap {
     // Note: modifiers should be a comma separated string of Modifiers
     const customKeysInfo: CustomKeymapInfo[] = [
       {
+        modes: customFileBasedModes,
+        modifiers: 'Mod',
+        key: 'o',
+        func: this.useSelectedItem.bind(this),
+        command: `${modKeyText} o`,
+        purpose: 'open in new window',
+      },
+      {
         isInstructionOnly: true,
         modes: customFileBasedModes,
         modifiers: null,

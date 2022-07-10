@@ -1,12 +1,6 @@
 import { AnySuggestion, EditorSuggestion, Mode, SuggestionType } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
-import {
-  SearchResult,
-  sortSearchResults,
-  fuzzySearch,
-  WorkspaceLeaf,
-  Keymap,
-} from 'obsidian';
+import { SearchResult, sortSearchResults, fuzzySearch, WorkspaceLeaf } from 'obsidian';
 import { Handler } from './handler';
 
 export class EditorHandler extends Handler<EditorSuggestion> {
@@ -75,7 +69,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
   onChooseSuggestion(sugg: EditorSuggestion, evt: MouseEvent | KeyboardEvent): void {
     if (sugg) {
       this.navigateToLeafOrOpenFile(
-        Keymap.isModEvent(evt),
+        evt,
         sugg.file,
         'Unable to reopen existing editor in new Leaf.',
         null,

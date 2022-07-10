@@ -1,6 +1,6 @@
 import { Handler } from './handler';
 import { FileSuggestion, AliasSuggestion, AnySuggestion } from 'src/types';
-import { Keymap, WorkspaceLeaf } from 'obsidian';
+import { WorkspaceLeaf } from 'obsidian';
 import { InputInfo } from 'src/switcherPlus';
 
 type SupportedSystemSuggestions = FileSuggestion | AliasSuggestion;
@@ -32,7 +32,7 @@ export class StandardExHandler extends Handler<SupportedSystemSuggestions> {
       const { file } = sugg;
 
       this.navigateToLeafOrOpenFile(
-        Keymap.isModEvent(evt),
+        evt,
         file,
         `Unable to open file from SystemSuggestion ${file.path}`,
       );

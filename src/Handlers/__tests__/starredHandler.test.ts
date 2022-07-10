@@ -23,7 +23,6 @@ import {
   Vault,
   TFile,
   FileStarredItem,
-  Keymap,
   StarredPluginItem,
 } from 'obsidian';
 import { filenameFromPath, isFileStarredItem, stripMDExtensionFromPath } from 'src/utils';
@@ -267,8 +266,7 @@ describe('starredHandler', () => {
 
   describe('onChooseSuggestion', () => {
     let sugg: MockProxy<StarredSuggestion>;
-    const evt = mock<MouseEvent>();
-    const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
+    const mockEvt = mock<MouseEvent>();
 
     beforeAll(() => {
       const item = mockPluginInstance.items.find((v): v is FileStarredItem =>
@@ -287,18 +285,15 @@ describe('starredHandler', () => {
     });
 
     it('should open a new leaf for the chosen suggestion', () => {
-      const isModDown = true;
       const navigateToLeafOrOpenFileSpy = jest.spyOn(
         Handler.prototype,
         'navigateToLeafOrOpenFile',
       );
-      mockKeymap.isModEvent.mockReturnValueOnce(isModDown);
 
-      sut.onChooseSuggestion(sugg, evt);
+      sut.onChooseSuggestion(sugg, mockEvt);
 
-      expect(mockKeymap.isModEvent).toHaveBeenCalledWith(evt);
       expect(navigateToLeafOrOpenFileSpy).toHaveBeenCalledWith(
-        isModDown,
+        mockEvt,
         sugg.file,
         expect.any(String),
       );

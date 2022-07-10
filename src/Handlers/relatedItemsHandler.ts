@@ -6,7 +6,6 @@ import {
   TFile,
   TAbstractFile,
   TFolder,
-  Keymap,
 } from 'obsidian';
 import {
   AnySuggestion,
@@ -100,7 +99,7 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
       const { file } = sugg;
 
       this.navigateToLeafOrOpenFile(
-        Keymap.isModEvent(evt),
+        evt,
         file,
         `Unable to open related file ${file.path}`,
       );
@@ -124,7 +123,7 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
       if (isTFile(node)) {
         const isSourceFile = node === sourceFile;
         const isExcluded =
-          isSourceFile || (excludeOpenRelatedFiles && !!this.findOpenEditor(node).leaf);
+          isSourceFile || (excludeOpenRelatedFiles && !!this.findMatchingLeaf(node).leaf);
 
         if (!isExcluded) {
           relatedFiles.push(node);

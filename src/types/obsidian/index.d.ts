@@ -92,5 +92,8 @@ declare module 'obsidian' {
   export interface Scope {
     keys: KeymapEventHandler[];
   }
+
+  export interface Workspace {
+    openPopoutLeaf(options?: Record<string, unknown>): WorkspaceLeaf;
   }
 }

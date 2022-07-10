@@ -16,7 +16,6 @@ import {
   fuzzySearch,
   PreparedQuery,
   SearchResult,
-  Keymap,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -409,8 +408,6 @@ describe('relatedItemsHandler', () => {
   });
 
   describe('onChooseSuggestion', () => {
-    const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
-
     beforeAll(() => {
       const fileContainerLeaf = makeLeaf();
       fileContainerLeaf.openFile.mockResolvedValueOnce();
@@ -422,20 +419,17 @@ describe('relatedItemsHandler', () => {
     });
 
     test('with Mod down, it should create a new workspaceLeaf for the target file', () => {
-      const isModDown = true;
+      const mockEvt = mock<KeyboardEvent>();
+      const sugg = makeRelatedItemsSuggestion(file1);
       const navigateToLeafOrOpenFileSpy = jest.spyOn(
         Handler.prototype,
         'navigateToLeafOrOpenFile',
       );
 
-      mockKeymap.isModEvent.mockReturnValueOnce(isModDown);
-      const sugg = makeRelatedItemsSuggestion(file1);
+      sut.onChooseSuggestion(sugg, mockEvt);
 
-      sut.onChooseSuggestion(sugg, null);
-
-      expect(mockKeymap.isModEvent).toHaveBeenCalled();
       expect(navigateToLeafOrOpenFileSpy).toHaveBeenCalledWith(
-        isModDown,
+        mockEvt,
         sugg.file,
         expect.any(String),
       );
@@ -469,7 +463,7 @@ describe('relatedItemsHandler', () => {
     });
 
     it('should include files that are already open in an editor', () => {
-      const findOpenEditorSpy = jest.spyOn(sut, 'findOpenEditor');
+      const findMatchingLeafSpy = jest.spyOn(sut, 'findMatchingLeaf');
       const sourceFile = new TFile();
       sourceFile.parent = makeFileTree(sourceFile);
 
@@ -483,9 +477,9 @@ describe('relatedItemsHandler', () => {
 
       expect(results).toHaveLength(2);
       expect(results).toEqual(expect.arrayContaining([file1, file2]));
-      expect(findOpenEditorSpy).not.toHaveBeenCalled();
+      expect(findMatchingLeafSpy).not.toHaveBeenCalled();
 
-      findOpenEditorSpy.mockRestore();
+      findMatchingLeafSpy.mockRestore();
     });
 
     test('with excludeOpenRelatedFiles enabled, it should exclude files that are already open in an editor', () => {

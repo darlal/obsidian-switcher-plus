@@ -18,6 +18,12 @@ import { PickKeys, WritableKeys } from 'ts-essentials';
 // Pick from T the keys that are writable and whose value is of type K
 export type WritableKeysWithValueOfType<T, K> = PickKeys<Pick<T, WritableKeys<T>>, K>;
 
+export enum EditorNavigationType {
+  ReuseExistingLeaf = 1,
+  NewLeaf,
+  PopoutLeaf,
+}
+
 export enum PathDisplayFormat {
   None,
   Full,
