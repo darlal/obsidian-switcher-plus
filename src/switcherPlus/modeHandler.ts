@@ -20,7 +20,7 @@ import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import { WorkspaceLeaf, App, Chooser, Debouncer, debounce } from 'obsidian';
 import { Mode, AnySuggestion, SymbolSuggestion, SuggestionType } from 'src/types';
-import { Keymap } from './keymap';
+import { SwitcherPlusKeymap } from './switcherPlusKeymap';
 
 export class ModeHandler {
   private inputInfo: InputInfo;
@@ -32,7 +32,7 @@ export class ModeHandler {
   constructor(
     private app: App,
     private settings: SwitcherPlusSettings,
-    public exKeymap: Keymap,
+    public exKeymap: SwitcherPlusKeymap,
   ) {
     // StandardExHandler one is special in that it is not a "full" handler,
     // and not attached to a mode, as a result it is not in the handlersByMode list

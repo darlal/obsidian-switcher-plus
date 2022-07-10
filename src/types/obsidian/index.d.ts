@@ -79,13 +79,18 @@ declare module 'obsidian' {
     values: T[];
     setSelectedItem(index: number, scrollIntoView: boolean): void;
     setSuggestions(suggestions: T[]): void;
+    useSelectedItem(evt: KeyboardEvent): void;
   }
 
   export interface View {
     file?: TFile;
   }
 
+  export interface KeymapEventHandler {
+    func: KeymapEventListener;
+  }
   export interface Scope {
-    keys: Hotkey[];
+    keys: KeymapEventHandler[];
+  }
   }
 }

@@ -1,7 +1,12 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 import { SwitcherPlusSettings } from 'src/settings';
 import { AnySuggestion, Mode, SymbolType } from 'src/types';
-import { InputInfo, Keymap, ModeHandler, SourcedParsedCommand } from 'src/switcherPlus';
+import {
+  InputInfo,
+  SwitcherPlusKeymap,
+  ModeHandler,
+  SourcedParsedCommand,
+} from 'src/switcherPlus';
 import {
   EditorHandler,
   HeadingsHandler,
@@ -130,7 +135,7 @@ describe('modeHandler', () => {
   });
 
   describe('opening and closing the modal', () => {
-    const mockKeymap = mock<Keymap>();
+    const mockKeymap = mock<SwitcherPlusKeymap>();
     let sut: ModeHandler;
 
     beforeAll(() => {
@@ -402,7 +407,7 @@ describe('modeHandler', () => {
       // needed for file sourced command modes i.e. Symbol, RelatedItems
       mockApp.workspace.activeLeaf = makeLeaf();
 
-      sut = new ModeHandler(mockApp, mockSettings, mock<Keymap>());
+      sut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
     });
 
     afterAll(() => {
@@ -436,7 +441,7 @@ describe('modeHandler', () => {
       const mockDebouncedFn = jest.fn();
       const mockDebounce = debounce as jest.Mock;
       mockDebounce.mockImplementation(() => mockDebouncedFn);
-      sut = new ModeHandler(mockApp, mockSettings, mock<Keymap>());
+      sut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
 
       const results = sut.updateSuggestions(headingsTrigger, mockChooser);
 

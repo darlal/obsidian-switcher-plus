@@ -1,18 +1,36 @@
-import { mock, mockReset } from 'jest-mock-extended';
-import { Chooser, Hotkey, KeymapContext, KeymapEventListener, Scope } from 'obsidian';
-import { Keymap } from 'src/switcherPlus';
-import { AnySuggestion, Mode } from 'src/types';
+import { mock, mockClear, mockReset } from 'jest-mock-extended';
+import {
+  Chooser,
+  KeymapContext,
+  KeymapEventHandler,
+  KeymapEventListener,
+  Modifier,
+  Scope,
+} from 'obsidian';
+import { SwitcherPlusKeymap } from 'src/switcherPlus';
+import { AnySuggestion, Mode, SwitcherPlus } from 'src/types';
 
-describe('keymap', () => {
-  const mockScope = mock<Scope>();
+describe('SwitcherPlusKeymap', () => {
+  const selector = '.prompt-instructions';
+  const selectorCustomInstructions = `${selector}:not([data-mode="standard"])`;
+  const mockScope = mock<Scope>({ keys: [] });
   const mockChooser = mock<Chooser<AnySuggestion>>();
   const mockModalContainer = mock<HTMLElement>();
+  const mockModal = mock<SwitcherPlus>({ containerEl: mockModalContainer });
+
+  it('should add a data-mode attribute to the standard instructions element', () => {
+    const mockEl = mock<HTMLElement>();
+    mockModalContainer.querySelector.mockReturnValueOnce(mockEl);
+    new SwitcherPlusKeymap(mockScope, mockChooser, mockModal);
+
+    expect(mockEl.setAttribute).toHaveBeenCalledWith('data-mode', 'standard');
+  });
 
   describe('isOpen property', () => {
-    let sut: Keymap;
+    let sut: SwitcherPlusKeymap;
 
     beforeAll(() => {
-      sut = new Keymap(mockScope, mockChooser, mockModalContainer);
+      sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal);
     });
 
     it('should save the value provided for isOpen', () => {
@@ -22,7 +40,7 @@ describe('keymap', () => {
     });
   });
 
-  describe('Next/Previous keyboard navigation', () => {
+  describe('registerNavigationBindings', () => {
     const navKeys = [
       ['n', 'p'],
       ['j', 'k'],
@@ -36,7 +54,7 @@ describe('keymap', () => {
     it.each(navKeys)(
       'should register Next/Previous navigation keys: ctrl-%s/%s',
       (nextKey, previousKey) => {
-        new Keymap(mockScope, null, null);
+        new SwitcherPlusKeymap(mockScope, mockChooser, mockModal);
 
         expect(mockScope.register).toHaveBeenCalledWith(
           expect.arrayContaining(['Ctrl']),
@@ -65,7 +83,7 @@ describe('keymap', () => {
 
         mockChooser.selectedItem = selectedIndex;
 
-        const sut = new Keymap(mockScope, mockChooser, null);
+        const sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal);
         sut.isOpen = true; // here
 
         evtHandlers[nextKey](
@@ -95,7 +113,7 @@ describe('keymap', () => {
 
         mockChooser.selectedItem = selectedIndex;
 
-        const sut = new Keymap(mockScope, mockChooser, null);
+        const sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal);
         sut.isOpen = false; // here
 
         evtHandlers[nextKey](
@@ -113,64 +131,61 @@ describe('keymap', () => {
   });
 
   describe('updateKeymapForMode', () => {
-    const selector = '.prompt-instructions';
+    let sut: SwitcherPlusKeymap;
     const mockInstructionsEl = mock<HTMLElement>();
-    const mockMetaEnter = mock<Hotkey>({
-      modifiers: ['Meta'],
+    const mockMetaEnter = mock<KeymapEventHandler>({
+      modifiers: 'Meta',
       key: 'Enter',
     });
-    const mockShiftEnter = mock<Hotkey>({
-      modifiers: ['Shift'],
+    const mockShiftEnter = mock<KeymapEventHandler>({
+      modifiers: 'Shift',
       key: 'Enter',
+    });
+
+    beforeAll(() => {
+      sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal);
+      mockModalContainer.querySelectorAll
+        .calledWith(selectorCustomInstructions)
+        .mockReturnValue(mock<NodeListOf<Element>>());
+      mockModalContainer.querySelector
+        .calledWith(selector)
+        .mockReturnValue(mockInstructionsEl);
     });
 
     beforeEach(() => {
-      mockReset(mockScope);
-      mockReset(mockModalContainer);
+      mockClear(mockScope);
+      mockClear(mockInstructionsEl);
+      mockClear(mockModalContainer);
+      mockClear(mockModal);
     });
 
-    it('should do nothing if the helper text (prompt instructions) element is not found', () => {
-      const mockQuerySelector =
-        mockModalContainer.querySelector.mockReturnValueOnce(null);
-
-      const sut = new Keymap(mockScope, mockChooser, mockModalContainer);
-
-      expect(() => sut.updateKeymapForMode(Mode.Standard)).not.toThrow();
-      expect(mockQuerySelector).toHaveBeenCalledWith(selector);
-    });
-
-    it('should hide the helper text (prompt instructions) in non-standard modes', () => {
-      const mockQuerySelector =
-        mockModalContainer.querySelector.mockReturnValueOnce(mockInstructionsEl);
-
-      const sut = new Keymap(mockScope, mockChooser, mockModalContainer);
-
+    it('should hide the default helper text (prompt instructions) in non-standard modes', () => {
       sut.updateKeymapForMode(Mode.EditorList);
 
-      expect(mockQuerySelector).toHaveBeenCalledWith(selector);
       expect(mockInstructionsEl.style.display).toBe('none');
     });
 
     it('should show the helper text (prompt instructions) in standard modes', () => {
-      const mockQuerySelector =
-        mockModalContainer.querySelector.mockReturnValueOnce(mockInstructionsEl);
-
-      const sut = new Keymap(mockScope, mockChooser, mockModalContainer);
-
       sut.updateKeymapForMode(Mode.Standard);
 
-      expect(mockQuerySelector).toHaveBeenCalledWith(selector);
       expect(mockInstructionsEl.style.display).toBe('');
     });
 
+    it('should show the helper text (prompt instructions) in custom modes', () => {
+      const mode = Mode.EditorList;
+      const keymaps = sut.customKeysInfo.filter((keymap) => keymap.modes?.includes(mode));
+
+      sut.updateKeymapForMode(mode);
+
+      expect(mockModal.setInstructions).toHaveBeenCalledWith(keymaps);
+    });
+
     it('should not remove Enter hotkey without shift/meta modifier', () => {
-      const mockEnter = mock<Hotkey>({
-        modifiers: [],
+      const mockEnter = mock<KeymapEventHandler>({
         key: 'Enter',
       });
 
       mockScope.keys = [mockEnter];
-      const sut = new Keymap(mockScope, null, mockModalContainer);
 
       sut.updateKeymapForMode(Mode.EditorList);
 
@@ -179,37 +194,84 @@ describe('keymap', () => {
 
     it('should remove the shift-enter hotkey in non-standard modes', () => {
       mockScope.keys = [mockMetaEnter, mockShiftEnter];
-      const sut = new Keymap(mockScope, null, mockModalContainer);
 
       sut.updateKeymapForMode(Mode.EditorList);
 
-      expect(mockScope.keys).toHaveLength(1);
+      expect(mockScope.unregister).toHaveBeenCalledWith(mockShiftEnter);
     });
 
     it('should keep the meta-enter hotkey registered in non-standard modes', () => {
       mockScope.keys = [mockMetaEnter, mockShiftEnter];
-      const sut = new Keymap(mockScope, null, mockModalContainer);
 
       sut.updateKeymapForMode(Mode.StarredList);
 
-      expect(mockScope.keys).toHaveLength(1);
+      expect(mockScope.keys).toHaveLength(2);
       expect(mockScope.keys).toContain(mockMetaEnter);
     });
 
     it('should restore the shift/meta hotkey in standard mode', () => {
       mockScope.keys = [mockMetaEnter, mockShiftEnter];
-      const sut = new Keymap(mockScope, null, mockModalContainer);
 
       // should first remove shift-enter in non-standard mode
       sut.updateKeymapForMode(Mode.EditorList);
-      const extendedModeKeyCount = mockScope.keys.length;
 
       // should restore all hotkeys in standard mode
       sut.updateKeymapForMode(Mode.Standard);
 
-      expect(extendedModeKeyCount).toBe(1);
       expect(mockScope.keys).toContain(mockMetaEnter);
       expect(mockScope.keys).toContain(mockShiftEnter);
+    });
+
+    it('should registeer custom keymaps for non-standard modes', () => {
+      const mode = Mode.StarredList;
+      const customKeymaps = sut.customKeysInfo.filter(
+        (v) => v.modes?.includes(mode) && !v.isInstructionOnly,
+      );
+
+      sut.updateKeymapForMode(mode);
+
+      // convert to [][] so each call can be checked separately
+      const expected = customKeymaps.map((v) => {
+        const modifiers = v.modifiers.split(',') as Modifier[];
+        return [modifiers, v.key, v.func];
+      });
+      expect(mockScope.register.mock.calls).toEqual(expected);
+    });
+  });
+
+  describe('clearCustomInstructions', () => {
+    let sut: SwitcherPlusKeymap;
+
+    beforeAll(() => {
+      sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal);
+    });
+
+    beforeEach(() => {
+      mockClear(mockScope);
+      mockClear(mockModalContainer);
+      mockClear(mockModal);
+    });
+
+    it('should remove found elements from their parents', () => {
+      const mockEl = mock<HTMLElement>();
+      const mockElements = [mockEl];
+      const mockContainer = mock<HTMLElement>();
+      mockContainer.querySelectorAll.mockReturnValueOnce(mockElements as never);
+
+      sut.clearCustomInstructions(mockContainer);
+
+      expect(mockEl.remove).toHaveBeenCalled();
+    });
+  });
+
+  describe('useSelectedItem', () => {
+    it('should forward the keyboard event to the modal chooser', () => {
+      const mockEvt = mock<KeyboardEvent>();
+      const sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal);
+
+      sut.useSelectedItem(mockEvt, null);
+
+      expect(mockChooser.useSelectedItem).toHaveBeenCalledWith(mockEvt);
     });
   });
 });

@@ -6,7 +6,7 @@ import { App, Chooser, QuickSwitcherPluginInstance } from 'obsidian';
 import { AnySuggestion, Mode, SwitcherPlus, EditorSuggestion } from 'src/types';
 
 jest.mock('src/switcherPlus/modeHandler');
-jest.mock('src/switcherPlus/keymap');
+jest.mock('src/switcherPlus/switcherPlusKeymap');
 jest.mock('src/utils/utils');
 
 const mockChooser = mock<Chooser<AnySuggestion>>();

@@ -1,4 +1,4 @@
-import { Keymap } from './keymap';
+import { SwitcherPlusKeymap } from './switcherPlusKeymap';
 import { getSystemSwitcherInstance } from 'src/utils';
 import { ModeHandler } from './modeHandler';
 import SwitcherPlusPlugin from 'src/main';
@@ -27,7 +27,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       super(app, plugin.options.builtInSystemOptions);
 
       plugin.options.shouldShowAlias = this.shouldShowAlias;
-      const exKeymap = new Keymap(this.scope, this.chooser, this.containerEl);
+      const exKeymap = new SwitcherPlusKeymap(this.scope, this.chooser, this);
       this.exMode = new ModeHandler(app, plugin.options, exKeymap);
     }
 
