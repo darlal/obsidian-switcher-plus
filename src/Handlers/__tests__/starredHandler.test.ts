@@ -255,9 +255,11 @@ describe('starredHandler', () => {
 
       sut.renderSuggestion(sugg, mockParentEl);
 
-      expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-suggestion-starred');
       expect(renderContentSpy).toBeCalledWith(mockParentEl, item.title, sugg.match);
       expect(renderPathSpy).toHaveBeenCalledWith(mockContentEl, sugg.file, true);
+      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
+        expect.arrayContaining(['mod-complex', 'qsp-suggestion-starred']),
+      );
 
       renderContentSpy.mockRestore();
       renderPathSpy.mockRestore();

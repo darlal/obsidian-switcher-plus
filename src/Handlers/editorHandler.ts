@@ -58,7 +58,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
 
   renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      parentEl.addClass('qsp-suggestion-editor');
+      this.addClassesToSuggestionContainer(parentEl, ['qsp-suggestion-editor']);
 
       const text = sugg.item.getDisplayText();
       const contentEl = this.renderContent(parentEl, text, sugg.match);

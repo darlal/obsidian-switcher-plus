@@ -566,4 +566,18 @@ export abstract class Handler<T> {
 
     return contentEl;
   }
+
+  /** add the base suggestion styles to the suggestion container element
+   * @param  {HTMLElement} parentEl container element
+   * @param  {string[]} additionalStyles? optional styles to add
+   */
+  addClassesToSuggestionContainer(parentEl: HTMLElement, additionalStyles?: string[]) {
+    const styles = ['mod-complex'];
+
+    if (additionalStyles) {
+      styles.push(...additionalStyles);
+    }
+
+    parentEl?.addClasses(styles);
+  }
 }

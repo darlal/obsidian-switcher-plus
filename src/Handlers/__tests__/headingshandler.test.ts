@@ -724,10 +724,13 @@ describe('headingsHandler', () => {
         headingSugg.item.heading,
         headingSugg.match,
       );
-      expect(mockParentEl.addClasses).toHaveBeenCalledWith([
-        'qsp-suggestion-headings',
-        `qsp-headings-l${headingSugg.item.level}`,
-      ]);
+      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          'mod-complex',
+          'qsp-suggestion-headings',
+          `qsp-headings-l${headingSugg.item.level}`,
+        ]),
+      );
 
       renderContentSpy.mockRestore();
       renderPathSpy.mockRestore();

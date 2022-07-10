@@ -609,7 +609,7 @@ describe('symbolHandler', () => {
       sut.renderSuggestion(symbolSugg, mockParentEl);
 
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
-        expect.arrayContaining(['qsp-suggestion-symbol']),
+        expect.arrayContaining(['mod-complex', 'qsp-suggestion-symbol']),
       );
       expect(renderContentSpy).toHaveBeenCalledWith(
         mockParentEl,

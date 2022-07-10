@@ -70,7 +70,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
 
   renderSuggestion(sugg: CommandSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      parentEl.addClass('qsp-suggestion-command');
+      this.addClassesToSuggestionContainer(parentEl, ['qsp-suggestion-command']);
       this.renderContent(parentEl, sugg.item.name, sugg.match);
     }
   }

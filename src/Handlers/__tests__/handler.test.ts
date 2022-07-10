@@ -1195,4 +1195,21 @@ describe('Handler', () => {
       expect(result).toBe(mockNestedFile.parent.path + '/');
     });
   });
+
+  describe('addClassesToSuggestionContainer', () => {
+    it('should not throw on falsy input', () => {
+      expect(() => sut.addClassesToSuggestionContainer(null, null)).not.toThrow();
+    });
+
+    it('should add the base and optional styles', () => {
+      const mockEl = mock<HTMLElement>();
+      const optionalStyles = ['test-style'];
+
+      sut.addClassesToSuggestionContainer(mockEl, optionalStyles);
+
+      expect(mockEl.addClasses).toHaveBeenCalledWith(
+        expect.arrayContaining(['mod-complex', ...optionalStyles]),
+      );
+    });
+  });
 });

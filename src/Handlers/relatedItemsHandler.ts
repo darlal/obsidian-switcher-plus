@@ -86,7 +86,7 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
 
   renderSuggestion(sugg: RelatedItemsSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      parentEl.addClass('qsp-suggestion-related');
+      this.addClassesToSuggestionContainer(parentEl, ['qsp-suggestion-related']);
       this.renderContent(parentEl, this.getTitleText(sugg.file), sugg.match);
     }
   }

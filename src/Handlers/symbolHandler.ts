@@ -100,7 +100,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
         parentElClasses.push(`qsp-symbol-l${item.indentLevel}`);
       }
 
-      parentEl.addClasses(parentElClasses);
+      this.addClassesToSuggestionContainer(parentEl, parentElClasses);
 
       const text = SymbolHandler.getSuggestionTextForSymbol(item);
       this.renderContent(parentEl, text, sugg.match);

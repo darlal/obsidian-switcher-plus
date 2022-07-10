@@ -73,7 +73,7 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
 
   renderSuggestion(sugg: WorkspaceSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      parentEl.addClass('qsp-suggestion-workspace');
+      this.addClassesToSuggestionContainer(parentEl, ['qsp-suggestion-workspace']);
       this.renderContent(parentEl, sugg.item.id, sugg.match);
     }
   }

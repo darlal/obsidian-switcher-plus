@@ -396,7 +396,9 @@ describe('relatedItemsHandler', () => {
 
       sut.renderSuggestion(sugg, mockParentEl);
 
-      expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-suggestion-related');
+      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
+        expect.arrayContaining(['mod-complex', 'qsp-suggestion-related']),
+      );
       expect(renderContentSpy).toBeCalledWith(
         mockParentEl,
         stripMDExtensionFromPath(file1),

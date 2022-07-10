@@ -89,7 +89,10 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     if (sugg) {
       const { item } = sugg;
 
-      parentEl.addClasses(['qsp-suggestion-headings', `qsp-headings-l${item.level}`]);
+      this.addClassesToSuggestionContainer(parentEl, [
+        'qsp-suggestion-headings',
+        `qsp-headings-l${item.level}`,
+      ]);
 
       const contentEl = this.renderContent(parentEl, item.heading, sugg.match);
       this.renderPath(contentEl, sugg.file);
