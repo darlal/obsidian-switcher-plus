@@ -1,4 +1,3 @@
-import { stripMDExtensionFromPath } from 'src/utils';
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler, RelatedItemsHandler } from 'src/Handlers';
@@ -389,23 +388,26 @@ describe('relatedItemsHandler', () => {
 
     it('should render a suggestion with match offsets', () => {
       const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
+      const mockContentEl = mock<HTMLDivElement>();
       const mockParentEl = mock<HTMLElement>();
-      mockParentEl.createDiv.mockReturnValue(mock<HTMLDivElement>());
+      mockParentEl.createDiv.mockReturnValue(mockContentEl);
+
+      const renderPathSpy = jest
+        .spyOn(Handler.prototype, 'renderPath')
+        .mockReturnValueOnce();
 
       const sugg = makeRelatedItemsSuggestion(file1);
 
       sut.renderSuggestion(sugg, mockParentEl);
 
+      expect(renderContentSpy).toBeCalledWith(mockParentEl, file1.basename, sugg.match);
+      expect(renderPathSpy).toHaveBeenCalledWith(mockContentEl, sugg.file, true);
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining(['mod-complex', 'qsp-suggestion-related']),
       );
-      expect(renderContentSpy).toBeCalledWith(
-        mockParentEl,
-        stripMDExtensionFromPath(file1),
-        sugg.match,
-      );
 
       renderContentSpy.mockRestore();
+      renderPathSpy.mockRestore();
     });
   });
 

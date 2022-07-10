@@ -16,7 +16,7 @@ import {
 } from 'src/types';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler } from './handler';
-import { isTFile, matcherFnForRegExList, stripMDExtensionFromPath } from 'src/utils';
+import { isTFile, matcherFnForRegExList } from 'src/utils';
 
 export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
   private inputInfo: InputInfo;
@@ -86,8 +86,11 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
 
   renderSuggestion(sugg: RelatedItemsSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
+      const { file } = sugg;
       this.addClassesToSuggestionContainer(parentEl, ['qsp-suggestion-related']);
-      this.renderContent(parentEl, this.getTitleText(sugg.file), sugg.match);
+
+      const contentEl = this.renderContent(parentEl, this.getTitleText(file), sugg.match);
+      this.renderPath(contentEl, file, true);
     }
   }
 
@@ -107,7 +110,7 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
   }
 
   override getTitleText(sourceFile: TFile): string {
-    return stripMDExtensionFromPath(sourceFile);
+    return sourceFile?.basename;
   }
 
   getRelatedFiles(sourceFile: TFile): TFile[] {
