@@ -1,12 +1,18 @@
 import { getInternalPluginById, isFileStarredItem, isTFile } from 'src/utils';
 import { InputInfo } from 'src/switcherPlus';
-import { AnySuggestion, Mode, StarredSuggestion, SuggestionType } from 'src/types';
+import {
+  AnySuggestion,
+  MatchType,
+  Mode,
+  SearchResultWithFallback,
+  StarredSuggestion,
+  SuggestionType,
+} from 'src/types';
 import {
   InstalledPlugin,
   SearchResult,
   sortSearchResults,
   WorkspaceLeaf,
-  fuzzySearch,
   StarredPluginItem,
   StarredPluginInstance,
   TFile,
@@ -53,15 +59,15 @@ export class StarredHandler extends Handler<StarredSuggestion> {
 
       itemsInfo.forEach(({ file, item }) => {
         let shouldPush = true;
-        let match: SearchResult = null;
+        let result: SearchResultWithFallback = { matchType: MatchType.None, match: null };
 
         if (hasSearchTerm) {
-          match = fuzzySearch(prepQuery, item.title);
-          shouldPush = !!match;
+          result = this.fuzzySearchWithFallback(prepQuery, item.title, file);
+          shouldPush = result.matchType !== MatchType.None;
         }
 
         if (shouldPush) {
-          suggestions.push({ type: SuggestionType.StarredList, file, item, match });
+          suggestions.push({ type: SuggestionType.StarredList, file, item, ...result });
         }
       });
 
@@ -75,10 +81,19 @@ export class StarredHandler extends Handler<StarredSuggestion> {
 
   renderSuggestion(sugg: StarredSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
+      const { file, matchType, match } = sugg;
+      let contentMatch: SearchResult = match;
+      let pathMatch: SearchResult = null;
+
+      if (matchType === MatchType.ParentPath) {
+        contentMatch = null;
+        pathMatch = match;
+      }
+
       this.addClassesToSuggestionContainer(parentEl, ['qsp-suggestion-starred']);
 
-      const contentEl = this.renderContent(parentEl, sugg.item.title, sugg.match);
-      this.renderPath(contentEl, sugg.file, true);
+      const contentEl = this.renderContent(parentEl, sugg.item.title, contentMatch);
+      this.renderPath(contentEl, file, true, pathMatch, !!pathMatch);
     }
   }
 

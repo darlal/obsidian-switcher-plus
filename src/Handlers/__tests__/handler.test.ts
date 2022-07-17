@@ -19,14 +19,22 @@ import {
   Vault,
   Keymap,
   renderResults,
+  fuzzySearch,
 } from 'obsidian';
 import {
   defaultOpenViewState,
   makeLeaf,
   makeEditorSuggestion,
   makeFuzzyMatch,
+  makePreparedQuery,
 } from '@fixtures';
-import { AnySuggestion, EditorNavigationType, Mode, PathDisplayFormat } from 'src/types';
+import {
+  AnySuggestion,
+  EditorNavigationType,
+  MatchType,
+  Mode,
+  PathDisplayFormat,
+} from 'src/types';
 import { mock, mockClear, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
 import { SwitcherPlusSettings } from 'src/settings';
@@ -1093,6 +1101,25 @@ describe('Handler', () => {
 
       getDisplayTextSpy.mockRestore();
     });
+
+    it('should override path display setting', () => {
+      const getDisplayTextSpy = jest.spyOn(Handler.prototype, 'getPathDisplayText');
+      mockSettings.pathDisplayFormat = PathDisplayFormat.Full;
+      mockSettings.hidePathIfRoot = true;
+      mockVault.getRoot.mockReturnValueOnce(mockVaultRoot);
+
+      sut.renderPath(mockParentEl, mockRootFile, true, null, true);
+
+      expect(mockParentEl.createDiv).toHaveBeenCalled();
+      expect(mockSetIcon).toHaveBeenCalled();
+      expect(getDisplayTextSpy).toHaveBeenCalledWith(
+        mockRootFile,
+        PathDisplayFormat.FolderPathFilenameOptional,
+        true,
+      );
+
+      getDisplayTextSpy.mockRestore();
+    });
   });
 
   describe('getPathDisplayText', () => {
@@ -1209,6 +1236,107 @@ describe('Handler', () => {
 
       expect(mockEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining(['mod-complex', ...optionalStyles]),
+      );
+    });
+  });
+
+  describe('fuzzySearchStrings', () => {
+    it('should return result for primary string', () => {
+      const filterText = 'primary';
+      const match = makeFuzzyMatch();
+      const mockFuzzySearch = jest
+        .mocked<typeof fuzzySearch>(fuzzySearch)
+        .mockImplementation((_q, text: string) => {
+          return text === filterText ? match : null;
+        });
+
+      const result = sut.fuzzySearchStrings(null, filterText, chance.sentence());
+
+      expect(result.isPrimary).toBe(true);
+      expect(result.match).toBe(match);
+      expect(mockFuzzySearch).toHaveBeenCalled();
+
+      mockFuzzySearch.mockRestore();
+    });
+
+    it('should return result for secondary string with a downranked score', () => {
+      const filterText = 'secondary';
+      const match = makeFuzzyMatch();
+      const initialScore = match.score;
+      const mockFuzzySearch = jest
+        .mocked<typeof fuzzySearch>(fuzzySearch)
+        .mockImplementation((_q, text: string) => {
+          return text === filterText ? match : null;
+        });
+
+      const result = sut.fuzzySearchStrings(null, chance.sentence(), filterText);
+
+      expect(result.isPrimary).toBe(false);
+      expect(result.match).toBe(match);
+      expect(result.match.score).toBe(initialScore - 1);
+      expect(mockFuzzySearch).toHaveBeenCalled();
+
+      mockFuzzySearch.mockRestore();
+    });
+  });
+
+  describe('fuzzySearchWithFallback', () => {
+    const filterText = 'foo';
+    const mockPrepQuery = makePreparedQuery(filterText);
+    const match = makeFuzzyMatch();
+    let mockFuzzySearch: jest.MockedFn<typeof fuzzySearch>;
+
+    beforeAll(() => {
+      mockFuzzySearch = jest
+        .mocked<typeof fuzzySearch>(fuzzySearch)
+        .mockImplementation((_q, text: string) => {
+          return text === filterText ? match : null;
+        });
+    });
+
+    afterAll(() => {
+      mockFuzzySearch.mockRestore();
+    });
+
+    it('should match for primary string', () => {
+      const result = sut.fuzzySearchWithFallback(mockPrepQuery, filterText);
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          matchType: MatchType.Primary,
+          matchText: filterText,
+          match,
+        }),
+      );
+    });
+
+    it('should match file basename', () => {
+      const mockFile = new TFile();
+      mockFile.basename = filterText;
+
+      const result = sut.fuzzySearchWithFallback(mockPrepQuery, null, mockFile);
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          matchType: MatchType.Basename,
+          matchText: filterText,
+          match,
+        }),
+      );
+    });
+
+    it('should match file path', () => {
+      const mockFile = new TFile();
+      mockFile.parent = mock<TFolder>({ path: filterText });
+
+      const result = sut.fuzzySearchWithFallback(mockPrepQuery, null, mockFile);
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          matchType: MatchType.ParentPath,
+          matchText: filterText,
+          match,
+        }),
       );
     });
   });

@@ -1,6 +1,13 @@
-import { AnySuggestion, EditorSuggestion, Mode, SuggestionType } from 'src/types';
+import {
+  AnySuggestion,
+  EditorSuggestion,
+  MatchType,
+  Mode,
+  SearchResultWithFallback,
+  SuggestionType,
+} from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
-import { SearchResult, sortSearchResults, fuzzySearch, WorkspaceLeaf } from 'obsidian';
+import { SearchResult, sortSearchResults, WorkspaceLeaf } from 'obsidian';
 import { Handler } from './handler';
 
 export class EditorHandler extends Handler<EditorSuggestion> {
@@ -34,17 +41,17 @@ export class EditorHandler extends Handler<EditorSuggestion> {
       const items = this.getOpenLeaves(excludeViewTypes, includeSidePanelViewTypes);
 
       items.forEach((item) => {
+        const file = item.view?.file;
         let shouldPush = true;
-        let match: SearchResult = null;
+        let result: SearchResultWithFallback = { matchType: MatchType.None, match: null };
 
         if (hasSearchTerm) {
-          match = fuzzySearch(prepQuery, item.getDisplayText());
-          shouldPush = !!match;
+          result = this.fuzzySearchWithFallback(prepQuery, item.getDisplayText(), file);
+          shouldPush = result.matchType !== MatchType.None;
         }
 
         if (shouldPush) {
-          const file = item.view?.file;
-          suggestions.push({ type: SuggestionType.EditorList, file, item, match });
+          suggestions.push({ type: SuggestionType.EditorList, file, item, ...result });
         }
       });
 
@@ -58,11 +65,20 @@ export class EditorHandler extends Handler<EditorSuggestion> {
 
   renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
+      const { file, matchType, match } = sugg;
+      const content = sugg.item.getDisplayText();
+      let contentMatch: SearchResult = match;
+      let pathMatch: SearchResult = null;
+
+      if (matchType === MatchType.ParentPath) {
+        contentMatch = null;
+        pathMatch = match;
+      }
+
       this.addClassesToSuggestionContainer(parentEl, ['qsp-suggestion-editor']);
 
-      const text = sugg.item.getDisplayText();
-      const contentEl = this.renderContent(parentEl, text, sugg.match);
-      this.renderPath(contentEl, sugg.file, true);
+      const contentEl = this.renderContent(parentEl, content, contentMatch);
+      this.renderPath(contentEl, file, true, pathMatch, !!pathMatch);
     }
   }
 

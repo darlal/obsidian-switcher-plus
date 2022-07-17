@@ -11,6 +11,7 @@ import {
   TFile,
   WorkspaceLeaf,
   Command,
+  SearchResult,
 } from 'obsidian';
 import type { SuggestModal, StarredPluginItem } from 'obsidian';
 import { PickKeys, WritableKeys } from 'ts-essentials';
@@ -122,56 +123,64 @@ export enum SuggestionType {
   Unresolved = 'unresolved',
 }
 
-export interface SymbolSuggestion extends FuzzyMatch<SymbolInfo> {
+export enum MatchType {
+  None = 0,
+  Primary,
+  Basename,
+  ParentPath,
+}
+
+export interface Suggestion<T> extends FuzzyMatch<T> {
+  type: SuggestionType;
   file: TFile;
+  // Obsidian created suggestions won't have these props
+  matchType?: MatchType;
+  matchText?: string;
+}
+
+export interface SymbolSuggestion extends Suggestion<SymbolInfo> {
   type: SuggestionType.SymbolList;
 }
 
-export interface EditorSuggestion extends FuzzyMatch<WorkspaceLeaf> {
-  file: TFile;
+export interface EditorSuggestion extends Suggestion<WorkspaceLeaf> {
   type: SuggestionType.EditorList;
 }
 
-export interface WorkspaceSuggestion extends FuzzyMatch<WorkspaceInfo> {
+export interface WorkspaceSuggestion extends Omit<Suggestion<WorkspaceInfo>, 'file'> {
   type: SuggestionType.WorkspaceList;
 }
 
-export interface HeadingSuggestion extends FuzzyMatch<HeadingCache> {
-  file: TFile;
+export interface HeadingSuggestion extends Suggestion<HeadingCache> {
   downranked?: boolean;
   type: SuggestionType.HeadingsList;
 }
 
-export interface StarredSuggestion extends FuzzyMatch<StarredPluginItem> {
-  file: TFile;
+export interface StarredSuggestion extends Suggestion<StarredPluginItem> {
   type: SuggestionType.StarredList;
 }
 
-export interface RelatedItemsSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
-  file: TFile;
+export interface RelatedItemsSuggestion extends Omit<Suggestion<TFile>, 'item'> {
   type: SuggestionType.RelatedItemsList;
   relationType: 'diskLocation';
 }
 
-export interface FileSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
-  file: TFile;
+export interface FileSuggestion extends Omit<Suggestion<TFile>, 'item'> {
   downranked?: boolean;
   type: SuggestionType.File;
 }
 
-export interface AliasSuggestion extends Omit<FuzzyMatch<TFile>, 'item'> {
-  file: TFile;
+export interface AliasSuggestion extends Omit<Suggestion<TFile>, 'item'> {
   alias: string;
   type: SuggestionType.Alias;
   downranked?: boolean;
 }
 
-export interface UnresolvedSuggestion extends Omit<FuzzyMatch<string>, 'item'> {
+export interface UnresolvedSuggestion extends Omit<Suggestion<string>, 'item' | 'file'> {
   linktext: string;
   type: SuggestionType.Unresolved;
 }
 
-export interface CommandSuggestion extends FuzzyMatch<Command> {
+export interface CommandSuggestion extends Omit<Suggestion<Command>, 'file'> {
   type: SuggestionType.CommandList;
 }
 
@@ -231,4 +240,10 @@ export interface SettingsData {
 export interface SearchQuery {
   hasSearchTerm: boolean;
   prepQuery: PreparedQuery;
+}
+
+export interface SearchResultWithFallback {
+  matchType: MatchType;
+  match: SearchResult;
+  matchText?: string;
 }

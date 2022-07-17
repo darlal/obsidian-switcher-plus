@@ -1,10 +1,8 @@
 import {
-  fuzzySearch,
   HeadingCache,
   PreparedQuery,
   SearchResult,
   TFile,
-  SearchMatches,
   TAbstractFile,
   sortSearchResults,
   WorkspaceLeaf,
@@ -20,14 +18,10 @@ import {
   HeadingIndicators,
   AnySuggestion,
   SuggestionType,
+  MatchType,
+  SearchResultWithFallback,
 } from 'src/types';
-import {
-  isTFile,
-  FrontMatterParser,
-  stripMDExtensionFromPath,
-  filenameFromPath,
-  matcherFnForRegExList,
-} from 'src/utils';
+import { isTFile, FrontMatterParser, matcherFnForRegExList } from 'src/utils';
 import { Handler } from './handler';
 
 type SupportedSuggestionTypes =
@@ -246,7 +240,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       // create suggestions where there is a match with an alias
       while (i--) {
         const alias = aliases[i];
-        const { match } = this.fuzzySearchWithFallback(prepQuery, alias, null);
+        const { match } = this.fuzzySearchWithFallback(prepQuery, alias);
 
         if (match) {
           suggestions.push(this.createAliasSuggestion(alias, file, match));
@@ -260,17 +254,14 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     prepQuery: PreparedQuery,
     file: TFile,
   ): void {
-    const path = stripMDExtensionFromPath(file);
-    const filename = filenameFromPath(path);
-
-    const { isPrimary, match } = this.fuzzySearchWithFallback(prepQuery, filename, path);
-
-    if (isPrimary) {
-      this.adjustMatchIndicesForPath(match.matches, path.length - filename.length);
-    }
+    const { match, matchType, matchText } = this.fuzzySearchWithFallback(
+      prepQuery,
+      null,
+      file,
+    );
 
     if (match) {
-      suggestions.push(this.createFileSuggestion(file, match));
+      suggestions.push(this.createFileSuggestion(file, match, matchType, matchText));
     }
   }
 
@@ -317,7 +308,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     file: TFile,
     heading: HeadingCache,
   ): boolean {
-    const { match } = this.fuzzySearchWithFallback(prepQuery, heading.heading, null);
+    const { match } = this.fuzzySearchWithFallback(prepQuery, heading.heading);
 
     if (match) {
       suggestions.push(this.createHeadingSuggestion(heading, file, match));
@@ -356,7 +347,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     // create suggestions where there is a match with an unresolved link
     while (i--) {
       const unresolved = unresolvedList[i];
-      const { match } = this.fuzzySearchWithFallback(prepQuery, unresolved, null);
+      const { match } = this.fuzzySearchWithFallback(prepQuery, unresolved);
 
       if (match) {
         suggestions.push(this.createUnresolvedSuggestion(unresolved, match));
@@ -372,7 +363,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     const sugg: AliasSuggestion = {
       alias,
       file,
-      match,
+      ...this.createSearchMatch(match, MatchType.Primary, alias),
       type: SuggestionType.Alias,
     };
 
@@ -385,15 +376,22 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   ): UnresolvedSuggestion {
     return {
       linktext,
-      match,
+      ...this.createSearchMatch(match, MatchType.Primary, linktext),
       type: SuggestionType.Unresolved,
     };
   }
 
-  private createFileSuggestion(file: TFile, match: SearchResult): FileSuggestion {
+  private createFileSuggestion(
+    file: TFile,
+    match: SearchResult,
+    matchType = MatchType.None,
+    matchText: string = null,
+  ): FileSuggestion {
     const sugg: FileSuggestion = {
       file,
       match,
+      matchType,
+      matchText,
       type: SuggestionType.File,
     };
 
@@ -408,45 +406,31 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     const sugg: HeadingSuggestion = {
       item,
       file,
-      match,
+      ...this.createSearchMatch(match, MatchType.Primary, item.heading),
       type: SuggestionType.HeadingsList,
     };
 
     return this.downrankScoreIfIgnored(sugg);
   }
 
-  private fuzzySearchWithFallback(
-    prepQuery: PreparedQuery,
-    primaryString: string,
-    secondaryString: string,
-  ): { isPrimary: boolean; match?: SearchResult } {
-    let isPrimary = false;
-    let match: SearchResult = null;
+  private createSearchMatch(
+    match: SearchResult,
+    type: MatchType,
+    text: string,
+  ): SearchResultWithFallback {
+    let matchType = MatchType.None;
+    let matchText = null;
 
-    if (primaryString) {
-      match = fuzzySearch(prepQuery, primaryString);
-      isPrimary = !!match;
-    }
-
-    if (!match && secondaryString) {
-      match = fuzzySearch(prepQuery, secondaryString);
-
-      if (match) {
-        match.score -= 1;
-      }
+    if (match) {
+      matchType = type;
+      matchText = text;
     }
 
     return {
-      isPrimary,
       match,
+      matchType,
+      matchText,
     };
-  }
-
-  private adjustMatchIndicesForPath(matches: SearchMatches, pathLen: number): void {
-    matches?.forEach((match) => {
-      match[0] += pathLen;
-      match[1] += pathLen;
-    });
   }
 
   private getRecentFilesSuggestions(): (HeadingSuggestion | FileSuggestion)[] {

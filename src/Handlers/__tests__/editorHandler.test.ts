@@ -1,5 +1,5 @@
 import { SwitcherPlusSettings } from 'src/settings';
-import { Mode, EditorSuggestion, SuggestionType } from 'src/types';
+import { Mode, EditorSuggestion, SuggestionType, MatchType } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import {
   WorkspaceLeaf,
@@ -273,9 +273,54 @@ describe('editorHandler', () => {
 
       expect(mockLeaf.getDisplayText).toHaveBeenCalled();
       expect(renderContentSpy).toBeCalledWith(mockParentEl, displayText, sugg.match);
-      expect(renderPathSpy).toHaveBeenCalledWith(mockContentEl, sugg.file, true);
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining(['mod-complex', 'qsp-suggestion-editor']),
+      );
+      expect(renderPathSpy).toHaveBeenCalledWith(
+        mockContentEl,
+        sugg.file,
+        true,
+        null,
+        false,
+      );
+
+      renderContentSpy.mockRestore();
+      renderPathSpy.mockRestore();
+    });
+
+    it('should render a suggestion with parent path match', () => {
+      const displayText = 'foo';
+      const mockLeaf = makeLeafWithRoot(displayText, null);
+      const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
+      const mockContentEl = mock<HTMLDivElement>();
+      const mockParentEl = mock<HTMLElement>();
+      mockParentEl.createDiv.mockReturnValue(mockContentEl);
+
+      const sugg = makeEditorSuggestion(
+        mockLeaf,
+        mockLeaf.view.file,
+        null,
+        null,
+        MatchType.ParentPath,
+      );
+
+      const renderPathSpy = jest
+        .spyOn(Handler.prototype, 'renderPath')
+        .mockReturnValueOnce();
+
+      sut.renderSuggestion(sugg, mockParentEl);
+
+      expect(mockLeaf.getDisplayText).toHaveBeenCalled();
+      expect(renderContentSpy).toBeCalledWith(mockParentEl, displayText, null);
+      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
+        expect.arrayContaining(['mod-complex', 'qsp-suggestion-editor']),
+      );
+      expect(renderPathSpy).toHaveBeenCalledWith(
+        mockContentEl,
+        sugg.file,
+        true,
+        sugg.match,
+        true,
       );
 
       renderContentSpy.mockRestore();

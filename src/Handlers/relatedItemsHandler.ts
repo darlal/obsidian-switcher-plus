@@ -1,16 +1,17 @@
 import {
-  fuzzySearch,
-  SearchResult,
   sortSearchResults,
   WorkspaceLeaf,
   TFile,
   TAbstractFile,
   TFolder,
+  SearchResult,
 } from 'obsidian';
 import {
   AnySuggestion,
+  MatchType,
   Mode,
   RelatedItemsSuggestion,
+  SearchResultWithFallback,
   SourceInfo,
   SuggestionType,
 } from 'src/types';
@@ -59,11 +60,11 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
 
       items.forEach((item) => {
         let shouldPush = true;
-        let match: SearchResult = null;
+        let result: SearchResultWithFallback = { matchType: MatchType.None, match: null };
 
         if (hasSearchTerm) {
-          match = fuzzySearch(prepQuery, this.getTitleText(item));
-          shouldPush = !!match;
+          result = this.fuzzySearchWithFallback(prepQuery, null, item);
+          shouldPush = result.matchType !== MatchType.None;
         }
 
         if (shouldPush) {
@@ -71,7 +72,7 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
             type: SuggestionType.RelatedItemsList,
             relationType: 'diskLocation',
             file: item,
-            match,
+            ...result,
           });
         }
       });
@@ -86,11 +87,20 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
 
   renderSuggestion(sugg: RelatedItemsSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      const { file } = sugg;
+      const { file, matchType, match } = sugg;
+      const content = this.getTitleText(file);
+      let contentMatch: SearchResult = match;
+      let pathMatch: SearchResult = null;
+
+      if (matchType === MatchType.ParentPath) {
+        contentMatch = null;
+        pathMatch = match;
+      }
+
       this.addClassesToSuggestionContainer(parentEl, ['qsp-suggestion-related']);
 
-      const contentEl = this.renderContent(parentEl, this.getTitleText(file), sugg.match);
-      this.renderPath(contentEl, file, true);
+      const contentEl = this.renderContent(parentEl, content, contentMatch);
+      this.renderPath(contentEl, file, true, pathMatch, !!pathMatch);
     }
   }
 

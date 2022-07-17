@@ -15,6 +15,7 @@ import {
   isExSuggestion,
   isOfType,
   isUnresolvedSuggestion,
+  isFileSuggestion,
 } from 'src/utils';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
@@ -125,7 +126,12 @@ export class ModeHandler {
   renderSuggestion(sugg: AnySuggestion, parentEl: HTMLElement): boolean {
     let handled = false;
 
-    if (isExSuggestion(sugg)) {
+    // in Headings mode, StandardExHandler should handle rendering for File
+    // suggestions
+    const useExHandler =
+      this.inputInfo.mode === Mode.HeadingsList && isFileSuggestion(sugg);
+
+    if (useExHandler || isExSuggestion(sugg)) {
       this.getHandler(sugg).renderSuggestion(sugg, parentEl);
       handled = true;
     }

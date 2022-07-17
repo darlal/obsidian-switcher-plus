@@ -1,12 +1,14 @@
 import {
   App,
   EditorPosition,
+  fuzzySearch,
   HeadingCache,
   Keymap,
   MarkdownView,
   normalizePath,
   OpenViewState,
   Platform,
+  PreparedQuery,
   renderResults,
   SearchResult,
   setIcon,
@@ -17,8 +19,10 @@ import {
 import {
   AnySuggestion,
   EditorNavigationType,
+  MatchType,
   Mode,
   PathDisplayFormat,
+  SearchResultWithFallback,
   SourceInfo,
 } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
@@ -455,35 +459,39 @@ export abstract class Handler<T> {
    * the "suggestion-content" style
    * @param  {TFile} file
    * @param  {boolean} excludeOptionalFilename? set to true to hide the filename in cases
-   * where it's optional
+   * where when {PathDisplayFormat} is set to FolderPathFilenameOptional
+   * @param  {SearchResult} match?
+   * @param  {boolean} overridePathFormat? set to true force display the path and set
+   * {PathDisplayFormat} to FolderPathFilenameOptional
    * @returns void
    */
   renderPath(
     parentEl: HTMLElement,
     file: TFile,
     excludeOptionalFilename?: boolean,
+    match?: SearchResult,
+    overridePathFormat?: boolean,
   ): void {
     if (parentEl && file) {
-      const { pathDisplayFormat, hidePathIfRoot } = this.settings;
-      const isRoot = file.parent?.name.length === 0;
-      const hidePath =
-        pathDisplayFormat === PathDisplayFormat.None || (isRoot && hidePathIfRoot);
+      const isRoot = file.parent.isRoot();
+      let format = this.settings.pathDisplayFormat;
+      let hidePath =
+        format === PathDisplayFormat.None || (isRoot && this.settings.hidePathIfRoot);
+
+      if (overridePathFormat) {
+        format = PathDisplayFormat.FolderPathFilenameOptional;
+        hidePath = false;
+      }
 
       if (!hidePath) {
         const wrapperEl = parentEl.createDiv({ cls: ['suggestion-note', 'qsp-note'] });
-        const path = this.getPathDisplayText(
-          file,
-          pathDisplayFormat,
-          excludeOptionalFilename,
-        );
+        const path = this.getPathDisplayText(file, format, excludeOptionalFilename);
 
         const iconEl = wrapperEl.createSpan({ cls: ['qsp-path-indicator'] });
         setIcon(iconEl, 'folder', 13);
 
-        wrapperEl.createSpan({
-          cls: 'qsp-path',
-          text: path,
-        });
+        const pathEl = wrapperEl.createSpan({ cls: 'qsp-path' });
+        renderResults(pathEl, path, match);
       }
     }
   }
@@ -544,14 +552,14 @@ export abstract class Handler<T> {
    * @param  {HTMLElement} parentEl containing element, this should be the element with
    * the "suggestion-item" style
    * @param  {string} content
-   * @param  {SearchResult} result
+   * @param  {SearchResult} match
    * @param  {number} offset?
    * @returns HTMLDivElement
    */
   renderContent(
     parentEl: HTMLElement,
     content: string,
-    result: SearchResult,
+    match: SearchResult,
     offset?: number,
   ): HTMLDivElement {
     const contentEl = parentEl.createDiv({
@@ -562,7 +570,7 @@ export abstract class Handler<T> {
       cls: ['suggestion-title', 'qsp-title'],
     });
 
-    renderResults(titleEl, content, result, offset);
+    renderResults(titleEl, content, match, offset);
 
     return contentEl;
   }
@@ -579,5 +587,87 @@ export abstract class Handler<T> {
     }
 
     parentEl?.addClasses(styles);
+  }
+
+  /**
+   * Searches through primaryString, if not match is found,
+   * searches through secondaryString
+   * @param  {PreparedQuery} prepQuery
+   * @param  {string} primaryString
+   * @param  {string} secondaryString?
+   * @returns { isPrimary: boolean; match?: SearchResult }
+   */
+  fuzzySearchStrings(
+    prepQuery: PreparedQuery,
+    primaryString: string,
+    secondaryString?: string,
+  ): { isPrimary: boolean; match?: SearchResult } {
+    let isPrimary = false;
+    let match: SearchResult = null;
+
+    if (primaryString) {
+      match = fuzzySearch(prepQuery, primaryString);
+      isPrimary = !!match;
+    }
+
+    if (!match && secondaryString) {
+      match = fuzzySearch(prepQuery, secondaryString);
+
+      if (match) {
+        match.score -= 1;
+      }
+    }
+
+    return {
+      isPrimary,
+      match,
+    };
+  }
+
+  /**
+   * Searches through primaryText, if no match is found and file is not null, it will
+   * fallback to searching 1) file.basename, 2) file parent path
+   * @param  {PreparedQuery} prepQuery
+   * @param  {TFile} file
+   * @param  {string} primaryString?
+   * @returns SearchResultWithFallback
+   */
+  fuzzySearchWithFallback(
+    prepQuery: PreparedQuery,
+    primaryString: string,
+    file?: TFile,
+  ): SearchResultWithFallback {
+    let matchType = MatchType.None;
+    let matchText: string;
+    let match: SearchResult = null;
+
+    const search = (matchTypes: [MatchType, MatchType], p1: string, p2?: string) => {
+      const res = this.fuzzySearchStrings(prepQuery, p1, p2);
+
+      if (res.match) {
+        matchType = matchTypes[1];
+        matchText = p2;
+        match = res.match;
+
+        if (res.isPrimary) {
+          matchType = matchTypes[0];
+          matchText = p1;
+        }
+      }
+
+      return !!res.match;
+    };
+
+    const isMatch = search([MatchType.Primary, MatchType.None], primaryString);
+    if (!isMatch && file) {
+      const {
+        basename,
+        parent: { path },
+      } = file;
+
+      search([MatchType.Basename, MatchType.ParentPath], basename, path);
+    }
+
+    return { matchType, matchText, match };
   }
 }
