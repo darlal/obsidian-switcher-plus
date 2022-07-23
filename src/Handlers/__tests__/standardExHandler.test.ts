@@ -3,7 +3,6 @@ import { Handler, StandardExHandler } from 'src/Handlers';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { App, TFile } from 'obsidian';
 import { makeFileSuggestion } from '@fixtures';
-import { MatchType } from 'src/types';
 
 describe('standardExHandler', () => {
   let settings: SwitcherPlusSettings;
@@ -33,68 +32,24 @@ describe('standardExHandler', () => {
 
     it('should render a suggestion with match offsets', () => {
       const mockFile = new TFile();
-      const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
-      const mockContentEl = mock<HTMLDivElement>();
-      const mockParentEl = mock<HTMLElement>();
-      mockParentEl.createDiv.mockReturnValue(mockContentEl);
-
-      const renderPathSpy = jest
-        .spyOn(Handler.prototype, 'renderPath')
-        .mockReturnValueOnce();
-
       const sugg = makeFileSuggestion(mockFile);
-
-      sut.renderSuggestion(sugg, mockParentEl);
-
-      expect(renderContentSpy).toBeCalledWith(
-        mockParentEl,
-        mockFile.basename,
-        sugg.match,
-      );
-      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
-        expect.arrayContaining(['mod-complex', 'qsp-suggestion-file']),
-      );
-      expect(renderPathSpy).toHaveBeenCalledWith(
-        mockContentEl,
-        sugg.file,
-        true,
-        null,
-        false,
-      );
-
-      renderContentSpy.mockRestore();
-      renderPathSpy.mockRestore();
-    });
-
-    it('should render a suggestion with parent path match', () => {
-      const mockFile = new TFile();
-      const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
-      const mockContentEl = mock<HTMLDivElement>();
       const mockParentEl = mock<HTMLElement>();
-      mockParentEl.createDiv.mockReturnValue(mockContentEl);
-
-      const renderPathSpy = jest
-        .spyOn(Handler.prototype, 'renderPath')
-        .mockReturnValueOnce();
-
-      const sugg = makeFileSuggestion(mockFile, null, null, MatchType.ParentPath);
+      const renderAsFileInfoPanelSpy = jest
+        .spyOn(Handler.prototype, 'renderAsFileInfoPanel')
+        .mockReturnValueOnce(null);
 
       sut.renderSuggestion(sugg, mockParentEl);
 
-      expect(renderContentSpy).toBeCalledWith(mockParentEl, mockFile.basename, null);
-      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
-        expect.arrayContaining(['mod-complex', 'qsp-suggestion-file']),
-      );
-      expect(renderPathSpy).toHaveBeenCalledWith(
-        mockContentEl,
+      expect(renderAsFileInfoPanelSpy).toHaveBeenCalledWith(
+        mockParentEl,
+        ['qsp-suggestion-file'],
+        mockFile.basename,
         sugg.file,
-        true,
+        sugg.matchType,
         sugg.match,
-        true,
       );
 
-      renderContentSpy.mockRestore();
-      renderPathSpy.mockRestore();
+      renderAsFileInfoPanelSpy.mockRestore();
     });
   });
 

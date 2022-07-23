@@ -4,7 +4,6 @@ import {
   TFile,
   TAbstractFile,
   TFolder,
-  SearchResult,
 } from 'obsidian';
 import {
   AnySuggestion,
@@ -88,19 +87,15 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
   renderSuggestion(sugg: RelatedItemsSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       const { file, matchType, match } = sugg;
-      const content = this.getTitleText(file);
-      let contentMatch: SearchResult = match;
-      let pathMatch: SearchResult = null;
 
-      if (matchType === MatchType.ParentPath) {
-        contentMatch = null;
-        pathMatch = match;
-      }
-
-      this.addClassesToSuggestionContainer(parentEl, ['qsp-suggestion-related']);
-
-      const contentEl = this.renderContent(parentEl, content, contentMatch);
-      this.renderPath(contentEl, file, true, pathMatch, !!pathMatch);
+      this.renderAsFileInfoPanel(
+        parentEl,
+        ['qsp-suggestion-related'],
+        this.getTitleText(file),
+        file,
+        matchType,
+        match,
+      );
     }
   }
 

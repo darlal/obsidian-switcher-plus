@@ -10,7 +10,6 @@ import {
 } from 'src/types';
 import {
   InstalledPlugin,
-  SearchResult,
   sortSearchResults,
   WorkspaceLeaf,
   StarredPluginItem,
@@ -81,19 +80,16 @@ export class StarredHandler extends Handler<StarredSuggestion> {
 
   renderSuggestion(sugg: StarredSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      const { file, matchType, match } = sugg;
-      let contentMatch: SearchResult = match;
-      let pathMatch: SearchResult = null;
+      const { file, matchType, match, item } = sugg;
 
-      if (matchType === MatchType.ParentPath) {
-        contentMatch = null;
-        pathMatch = match;
-      }
-
-      this.addClassesToSuggestionContainer(parentEl, ['qsp-suggestion-starred']);
-
-      const contentEl = this.renderContent(parentEl, sugg.item.title, contentMatch);
-      this.renderPath(contentEl, file, true, pathMatch, !!pathMatch);
+      this.renderAsFileInfoPanel(
+        parentEl,
+        ['qsp-suggestion-starred'],
+        item.title,
+        file,
+        matchType,
+        match,
+      );
     }
   }
 

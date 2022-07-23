@@ -1340,4 +1340,86 @@ describe('Handler', () => {
       );
     });
   });
+
+  describe('renderAsFileInfoPanel', () => {
+    const mockFile = new TFile();
+    const parentElStyles = [chance.word()];
+    const content = chance.sentence();
+    const match = makeFuzzyMatch();
+    const mockContentEl = mock<HTMLDivElement>();
+    const mockParentEl = mock<HTMLElement>();
+    let renderContentSpy: jest.SpyInstance;
+    let renderPathSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      renderContentSpy = jest.spyOn(sut, 'renderContent');
+      renderPathSpy = jest.spyOn(sut, 'renderPath');
+    });
+
+    afterAll(() => {
+      renderContentSpy.mockRestore();
+      renderPathSpy.mockRestore();
+    });
+
+    afterEach(() => {
+      renderContentSpy.mockReset();
+      renderPathSpy.mockReset();
+    });
+
+    it('should render a suggestion with match offsets', () => {
+      const matchType = MatchType.Basename;
+
+      renderContentSpy.mockReturnValueOnce(mockContentEl);
+      renderPathSpy.mockReturnValueOnce(null);
+
+      sut.renderAsFileInfoPanel(
+        mockParentEl,
+        parentElStyles,
+        content,
+        mockFile,
+        matchType,
+        match,
+      );
+
+      expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, content, match);
+      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
+        expect.arrayContaining(['mod-complex', ...parentElStyles]),
+      );
+      expect(renderPathSpy).toHaveBeenCalledWith(
+        mockContentEl,
+        mockFile,
+        true,
+        null,
+        false,
+      );
+    });
+
+    it('should render a suggestion with parent path match', () => {
+      const matchType = MatchType.ParentPath;
+
+      renderContentSpy.mockReturnValueOnce(mockContentEl);
+      renderPathSpy.mockReturnValueOnce(null);
+
+      sut.renderAsFileInfoPanel(
+        mockParentEl,
+        parentElStyles,
+        content,
+        mockFile,
+        matchType,
+        match,
+      );
+
+      expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, content, null);
+      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
+        expect.arrayContaining(['mod-complex', ...parentElStyles]),
+      );
+      expect(renderPathSpy).toHaveBeenCalledWith(
+        mockContentEl,
+        mockFile,
+        true,
+        match,
+        true,
+      );
+    });
+  });
 });

@@ -1,7 +1,7 @@
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler, RelatedItemsHandler } from 'src/Handlers';
-import { MatchType, Mode, SuggestionType } from 'src/types';
+import { Mode, SuggestionType } from 'src/types';
 import {
   WorkspaceLeaf,
   App,
@@ -387,63 +387,24 @@ describe('relatedItemsHandler', () => {
     });
 
     it('should render a suggestion with match offsets', () => {
-      const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
-      const mockContentEl = mock<HTMLDivElement>();
       const mockParentEl = mock<HTMLElement>();
-      mockParentEl.createDiv.mockReturnValue(mockContentEl);
-
-      const renderPathSpy = jest
-        .spyOn(Handler.prototype, 'renderPath')
-        .mockReturnValueOnce();
-
       const sugg = makeRelatedItemsSuggestion(file1);
+      const renderAsFileInfoPanelSpy = jest
+        .spyOn(Handler.prototype, 'renderAsFileInfoPanel')
+        .mockReturnValueOnce(null);
 
       sut.renderSuggestion(sugg, mockParentEl);
 
-      expect(renderContentSpy).toBeCalledWith(mockParentEl, file1.basename, sugg.match);
-      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
-        expect.arrayContaining(['mod-complex', 'qsp-suggestion-related']),
-      );
-      expect(renderPathSpy).toHaveBeenCalledWith(
-        mockContentEl,
+      expect(renderAsFileInfoPanelSpy).toHaveBeenCalledWith(
+        mockParentEl,
+        ['qsp-suggestion-related'],
+        file1.basename,
         sugg.file,
-        true,
-        null,
-        false,
-      );
-
-      renderContentSpy.mockRestore();
-      renderPathSpy.mockRestore();
-    });
-
-    it('should render a suggestion with parent path match', () => {
-      const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
-      const mockContentEl = mock<HTMLDivElement>();
-      const mockParentEl = mock<HTMLElement>();
-      mockParentEl.createDiv.mockReturnValue(mockContentEl);
-
-      const renderPathSpy = jest
-        .spyOn(Handler.prototype, 'renderPath')
-        .mockReturnValueOnce();
-
-      const sugg = makeRelatedItemsSuggestion(file1, null, null, MatchType.ParentPath);
-
-      sut.renderSuggestion(sugg, mockParentEl);
-
-      expect(renderContentSpy).toBeCalledWith(mockParentEl, file1.basename, null);
-      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
-        expect.arrayContaining(['mod-complex', 'qsp-suggestion-related']),
-      );
-      expect(renderPathSpy).toHaveBeenCalledWith(
-        mockContentEl,
-        sugg.file,
-        true,
+        sugg.matchType,
         sugg.match,
-        true,
       );
 
-      renderContentSpy.mockRestore();
-      renderPathSpy.mockRestore();
+      renderAsFileInfoPanelSpy.mockRestore();
     });
   });
 

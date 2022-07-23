@@ -7,7 +7,7 @@ import {
   SuggestionType,
 } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
-import { SearchResult, sortSearchResults, WorkspaceLeaf } from 'obsidian';
+import { sortSearchResults, WorkspaceLeaf } from 'obsidian';
 import { Handler } from './handler';
 
 export class EditorHandler extends Handler<EditorSuggestion> {
@@ -65,20 +65,16 @@ export class EditorHandler extends Handler<EditorSuggestion> {
 
   renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      const { file, matchType, match } = sugg;
-      const content = sugg.item.getDisplayText();
-      let contentMatch: SearchResult = match;
-      let pathMatch: SearchResult = null;
+      const { file, matchType, match, item } = sugg;
 
-      if (matchType === MatchType.ParentPath) {
-        contentMatch = null;
-        pathMatch = match;
-      }
-
-      this.addClassesToSuggestionContainer(parentEl, ['qsp-suggestion-editor']);
-
-      const contentEl = this.renderContent(parentEl, content, contentMatch);
-      this.renderPath(contentEl, file, true, pathMatch, !!pathMatch);
+      this.renderAsFileInfoPanel(
+        parentEl,
+        ['qsp-suggestion-editor'],
+        item.getDisplayText(),
+        file,
+        matchType,
+        match,
+      );
     }
   }
 

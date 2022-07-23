@@ -670,4 +670,37 @@ export abstract class Handler<T> {
 
     return { matchType, matchText, match };
   }
+
+  /**
+   * Display the provided information a suggestion with the content and path information on separate lines
+   * @param  {HTMLElement} parentEl
+   * @param  {string[]} parentElStyles
+   * @param  {string} content
+   * @param  {TFile} file
+   * @param  {MatchType} matchType
+   * @param  {SearchResult} match
+   * @returns void
+   */
+  renderAsFileInfoPanel(
+    parentEl: HTMLElement,
+    parentElStyles: string[],
+    content: string,
+    file: TFile,
+    matchType: MatchType,
+    match: SearchResult,
+    excludeOptionalFilename = true,
+  ): void {
+    let contentMatch: SearchResult = match;
+    let pathMatch: SearchResult = null;
+
+    if (matchType === MatchType.ParentPath) {
+      contentMatch = null;
+      pathMatch = match;
+    }
+
+    this.addClassesToSuggestionContainer(parentEl, parentElStyles);
+
+    const contentEl = this.renderContent(parentEl, content, contentMatch);
+    this.renderPath(contentEl, file, excludeOptionalFilename, pathMatch, !!pathMatch);
+  }
 }
