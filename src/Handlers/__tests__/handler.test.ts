@@ -580,7 +580,7 @@ describe('Handler', () => {
       sut.activateLeaf(mockLeaf, true);
 
       expect(mockLeaf.getRoot).toHaveBeenCalled();
-      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, true);
+      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, true, true);
       expect(mockView.setEphemeralState).toHaveBeenCalled();
     });
 
@@ -590,7 +590,7 @@ describe('Handler', () => {
       sut.activateLeaf(mockLeaf, true);
 
       expect(mockLeaf.getRoot).toHaveBeenCalled();
-      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, true);
+      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, true, true);
       expect(mockView.setEphemeralState).toHaveBeenCalled();
       expect(mockWorkspace.revealLeaf).toHaveBeenCalledWith(mockLeaf);
     });

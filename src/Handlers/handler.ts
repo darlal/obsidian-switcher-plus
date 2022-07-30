@@ -305,7 +305,7 @@ export abstract class Handler<T> {
       workspace.revealLeaf(leaf);
     }
 
-    workspace.setActiveLeaf(leaf, pushHistory);
+    workspace.setActiveLeaf(leaf, pushHistory, true);
     leaf.view.setEphemeralState(state);
   }
 
