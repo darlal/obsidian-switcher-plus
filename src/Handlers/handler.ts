@@ -221,8 +221,9 @@ export abstract class Handler<T> {
     };
 
     // Prioritize the active leaf matches first, otherwise find the first matching leaf
-    if (isMatch(workspace.activeLeaf)) {
-      matchingLeaf = workspace.activeLeaf;
+    const activeLeaf = workspace.getMostRecentLeaf();
+    if (isMatch(activeLeaf)) {
+      matchingLeaf = activeLeaf;
     } else {
       const leaves = this.getOpenLeaves(excludeViewTypes, includeSidePanelViewTypes);
 

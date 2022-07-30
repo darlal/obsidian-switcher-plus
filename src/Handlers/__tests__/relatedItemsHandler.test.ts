@@ -77,7 +77,7 @@ describe('relatedItemsHandler', () => {
     mockMetadataCache = mock<MetadataCache>();
     mockMetadataCache.getFileCache.mockImplementation((_f) => rootFixture.cachedMetadata);
 
-    mockWorkspace = mock<Workspace>({ activeLeaf: null });
+    mockWorkspace = mock<Workspace>();
     mockApp = mock<App>({
       workspace: mockWorkspace,
       metadataCache: mockMetadataCache,
@@ -146,7 +146,9 @@ describe('relatedItemsHandler', () => {
     it('should validate parsed input for editor suggestion', () => {
       const targetLeaf = makeLeaf();
       const inputInfo = new InputInfo('', Mode.EditorList);
-      mockWorkspace.activeLeaf = targetLeaf; // <-- set the target as a currently open leaf
+
+      // set the target as a currently open leaf
+      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(targetLeaf);
 
       const sugg = makeEditorSuggestion(targetLeaf, targetLeaf.view.file);
 
@@ -164,8 +166,6 @@ describe('relatedItemsHandler', () => {
           isValidSource: true,
         }),
       );
-
-      mockWorkspace.activeLeaf = null;
     });
 
     it('should validate parsed input for starred file suggestion', () => {
@@ -198,7 +198,9 @@ describe('relatedItemsHandler', () => {
       const targetLeaf = makeLeaf();
       const inputInfo = new InputInfo('', Mode.Standard);
       const sugg = makeAliasSuggestion(targetLeaf.view.file, 'foo');
-      mockWorkspace.activeLeaf = targetLeaf; // <-- set the target as a currently open leaf
+
+      // set the target as a currently open leaf
+      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(targetLeaf);
 
       sut.validateCommand(inputInfo, 0, '', sugg, null);
 
@@ -214,8 +216,6 @@ describe('relatedItemsHandler', () => {
           isValidSource: true,
         }),
       );
-
-      mockWorkspace.activeLeaf = null;
     });
 
     it('should validate and identify in-active editor as matching the file suggestion target file', () => {
@@ -223,7 +223,8 @@ describe('relatedItemsHandler', () => {
       const inputInfo = new InputInfo('', Mode.Standard);
       const sugg = makeAliasSuggestion(targetLeaf.view.file, 'foo');
 
-      mockWorkspace.activeLeaf = null; // <-- clear out active leaf
+      // clear out active leaf
+      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(makeLeaf());
       mockWorkspace.iterateAllLeaves.mockImplementation((callback) => {
         callback(targetLeaf); // <-- report targetLeaf and an in-active open leaf
       });
@@ -469,10 +470,9 @@ describe('relatedItemsHandler', () => {
       sourceFile.parent = makeFileTree(sourceFile);
 
       // set file1 as the active leaf
-      mockWorkspace.activeLeaf = makeLeaf();
-
-      // set file1 as the file for active leaf
-      mockWorkspace.activeLeaf.view.file = file1;
+      const leaf = makeLeaf();
+      leaf.view.file = file1;
+      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(leaf);
 
       const results = sut.getRelatedFiles(sourceFile);
 
@@ -490,10 +490,10 @@ describe('relatedItemsHandler', () => {
       // exclude files already open
       jest.spyOn(settings, 'excludeOpenRelatedFiles', 'get').mockReturnValueOnce(true);
 
-      mockWorkspace.activeLeaf = makeLeaf();
-
       // set file1 as the file for active leaf
-      mockWorkspace.activeLeaf.view.file = file1;
+      const leaf = makeLeaf();
+      leaf.view.file = file1;
+      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(leaf);
 
       const results = sut.getRelatedFiles(sourceFile);
 

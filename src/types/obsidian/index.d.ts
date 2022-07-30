@@ -89,11 +89,12 @@ declare module 'obsidian' {
   export interface KeymapEventHandler {
     func: KeymapEventListener;
   }
+
   export interface Scope {
     keys: KeymapEventHandler[];
   }
 
-  export interface Workspace {
-    openPopoutLeaf(options?: Record<string, unknown>): WorkspaceLeaf;
+  export interface WorkspaceLeaf {
+    activeTime: number;
   }
 }

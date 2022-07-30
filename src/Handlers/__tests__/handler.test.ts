@@ -171,22 +171,24 @@ describe('Handler', () => {
         file: mockFile,
       });
 
-      const getCursorPosSpy = jest.spyOn(sut, 'getCursorPosition');
-      getCursorPosSpy.mockReturnValueOnce(mockCursorPos);
+      const getCursorPosSpy = jest
+        .spyOn(sut, 'getCursorPosition')
+        .mockReturnValueOnce(mockCursorPos);
 
       const mockLeaf = mock<WorkspaceLeaf>({ view: mockView });
-
-      mockWorkspace.activeLeaf = mockLeaf; // <- set as active leaf
-
       const sugg = makeEditorSuggestion(mockLeaf, mockFile);
+
+      // set as active leaf
+      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(mockLeaf);
 
       const result = sut.getSuggestionInfo(sugg);
 
+      expect(mockWorkspace.getMostRecentLeaf).toHaveBeenCalled();
       expect(getCursorPosSpy).toHaveBeenCalledWith(mockView);
       expect(result).toEqual(
         expect.objectContaining({
           isValidSource: true,
-          leaf: mockWorkspace.activeLeaf,
+          leaf: mockLeaf,
           file: mockFile,
           suggestion: sugg,
           cursor: mockCursorPos,
@@ -194,7 +196,6 @@ describe('Handler', () => {
       );
 
       getCursorPosSpy.mockRestore();
-      mockWorkspace.activeLeaf = null;
     });
   });
 
@@ -943,10 +944,11 @@ describe('Handler', () => {
       mockLeaf = makeLeaf();
       mockView = jest.mocked<View>(mockLeaf.view);
 
-      mockWorkspace.activeLeaf = mockLeaf;
+      mockWorkspace.getMostRecentLeaf.mockReturnValue(mockLeaf);
     });
 
     afterAll(() => {
+      mockWorkspace.getMostRecentLeaf.mockRestore();
       mockSettings.referenceViews.splice(
         mockSettings.referenceViews.indexOf(refViewType),
         1,
@@ -959,7 +961,7 @@ describe('Handler', () => {
 
       const result = sut.findMatchingLeaf(mockFile);
 
-      // not expected to be called because workspace.activeLeaf is prioritized first
+      // not expected to be called because workspace.getMostRecentLeaf is prioritized first
       expect(getOpenLeavesSpy).not.toHaveBeenCalled();
       expect(mockView.getViewType).toHaveBeenCalled();
       expect(result.leaf).toEqual(mockLeaf);

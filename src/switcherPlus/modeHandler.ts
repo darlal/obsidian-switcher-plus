@@ -96,13 +96,10 @@ export class ModeHandler {
 
   updateSuggestions(query: string, chooser: Chooser<AnySuggestion>): boolean {
     let handled = false;
-    const {
-      exKeymap,
-      app: {
-        workspace: { activeLeaf },
-      },
-    } = this;
+    const { exKeymap } = this;
 
+    // get the currently active leaf across all rootSplits
+    const activeLeaf = this.getActiveLeaf();
     const activeSugg = ModeHandler.getActiveSuggestion(chooser);
     const inputInfo = this.determineRunMode(query, activeSugg, activeLeaf);
 
@@ -183,6 +180,22 @@ export class ModeHandler {
 
     chooser.setSuggestions(suggestions);
     ModeHandler.setActiveSuggestion(mode, chooser);
+  }
+
+  getActiveLeaf(): WorkspaceLeaf {
+    const { workspace } = this.app;
+
+    // get the most recently active leaf across all the root splits, then
+    // select the currently active one.
+    const activeLeaf = [
+      workspace.getMostRecentLeaf(), // includes rootSplit and floatingSplit
+      workspace.getMostRecentLeaf(workspace.leftSplit),
+      workspace.getMostRecentLeaf(workspace.rightSplit),
+    ].reduce((prev, curr) => {
+      return curr.activeTime < prev.activeTime ? prev : curr;
+    });
+
+    return activeLeaf;
   }
 
   private validatePrefixCommands(

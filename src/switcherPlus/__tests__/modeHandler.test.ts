@@ -17,7 +17,15 @@ import {
   RelatedItemsHandler,
   StandardExHandler,
 } from 'src/Handlers';
-import { App, Chooser, debounce, View, InternalPlugins, Workspace } from 'obsidian';
+import {
+  App,
+  Chooser,
+  debounce,
+  View,
+  InternalPlugins,
+  Workspace,
+  WorkspaceSidedock,
+} from 'obsidian';
 import {
   editorTrigger,
   symbolTrigger,
@@ -103,6 +111,7 @@ describe('modeHandler', () => {
   const excludedViewType = 'excludedViewType';
   let mockApp: MockProxy<App>;
   let mockSettings: MockProxy<SwitcherPlusSettings>;
+  let mockWorkspace: MockProxy<Workspace>;
 
   beforeAll(() => {
     const mockInternalPlugins = mock<InternalPlugins>();
@@ -113,7 +122,7 @@ describe('modeHandler', () => {
       };
     });
 
-    const mockWorkspace = mock<Workspace>({ activeLeaf: null });
+    mockWorkspace = mock<Workspace>();
     mockWorkspace.iterateAllLeaves.mockImplementation();
 
     mockApp = mock<App>({
@@ -372,8 +381,6 @@ describe('modeHandler', () => {
             const leaf = makeLeaf();
             const editorSuggestion = makeEditorSuggestion(leaf, leaf.view.file);
 
-            mockApp.workspace.activeLeaf = leaf;
-
             const inputInfo = sut.determineRunMode(input, editorSuggestion, null);
 
             expect(inputInfo.mode).toBe(mode);
@@ -388,8 +395,6 @@ describe('modeHandler', () => {
             expect(source.file).toBe(leaf.view.file);
             expect(source.leaf).toBe(leaf);
             expect(source.suggestion).toBe(editorSuggestion);
-
-            mockApp.workspace.activeLeaf = null;
           },
         );
       },
@@ -402,16 +407,19 @@ describe('modeHandler', () => {
     const mockChooser = mock<Chooser<AnySuggestion>>();
     const mockSetSuggestion = mockChooser.setSuggestions.mockImplementation();
     let sut: ModeHandler;
+    let getActiveLeafSpy: jest.SpyInstance;
 
     beforeAll(() => {
-      // needed for file sourced command modes i.e. Symbol, RelatedItems
-      mockApp.workspace.activeLeaf = makeLeaf();
-
       sut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
+
+      // needed for file sourced command modes i.e. Symbol, RelatedItems
+      getActiveLeafSpy = jest
+        .spyOn(ModeHandler.prototype, 'getActiveLeaf')
+        .mockReturnValue(makeLeaf());
     });
 
     afterAll(() => {
-      mockApp.workspace.activeLeaf = null;
+      getActiveLeafSpy.mockRestore();
     });
 
     test('updateSuggestions should return not handled (false) with falsy input', () => {
@@ -556,5 +564,67 @@ describe('modeHandler', () => {
         });
       },
     );
+  });
+
+  describe('getActiveLeaf', () => {
+    let sut: ModeHandler;
+    const mockMainActive = makeLeaf();
+    const mockLeftActive = makeLeaf();
+    const mockRightActive = makeLeaf();
+
+    beforeAll(() => {
+      mockWorkspace.leftSplit = mock<WorkspaceSidedock>();
+      mockWorkspace.rightSplit = mock<WorkspaceSidedock>();
+
+      mockWorkspace.getMostRecentLeaf
+        .calledWith(mockWorkspace.rightSplit)
+        .mockReturnValue(mockRightActive);
+
+      mockWorkspace.getMostRecentLeaf
+        .calledWith(mockWorkspace.leftSplit)
+        .mockReturnValue(mockLeftActive);
+
+      mockWorkspace.getMostRecentLeaf
+        .calledWith(undefined)
+        .mockReturnValue(mockMainActive);
+
+      sut = new ModeHandler(mockApp, mockSettings, null);
+    });
+
+    afterAll(() => {
+      mockWorkspace.leftSplit = undefined;
+      mockWorkspace.rightSplit = undefined;
+      mockWorkspace.getMostRecentLeaf.mockRestore();
+    });
+
+    it('should return the currently active leaf from the main rootSplit', () => {
+      mockRightActive.activeTime = new Date(2010, 0).getTime();
+      mockLeftActive.activeTime = new Date(2020, 0).getTime();
+      mockMainActive.activeTime = Date.now();
+
+      const activeLeaf = sut.getActiveLeaf();
+
+      expect(activeLeaf).toEqual(mockMainActive);
+    });
+
+    it('should return the currently active leaf from the leftSplit', () => {
+      mockRightActive.activeTime = new Date(2010, 0).getTime();
+      mockLeftActive.activeTime = Date.now();
+      mockMainActive.activeTime = new Date(2020, 0).getTime();
+
+      const activeLeaf = sut.getActiveLeaf();
+
+      expect(activeLeaf).toEqual(mockLeftActive);
+    });
+
+    it('should return the currently active leaf from the RightSplit', () => {
+      mockRightActive.activeTime = Date.now();
+      mockLeftActive.activeTime = new Date(2010, 0).getTime();
+      mockMainActive.activeTime = new Date(2020, 0).getTime();
+
+      const activeLeaf = sut.getActiveLeaf();
+
+      expect(activeLeaf).toEqual(mockRightActive);
+    });
   });
 });

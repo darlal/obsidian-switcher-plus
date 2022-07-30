@@ -68,7 +68,7 @@ describe('symbolHandler', () => {
     mockMetadataCache = mock<MetadataCache>();
     mockMetadataCache.getFileCache.mockImplementation((_f) => rootFixture.cachedMetadata);
 
-    mockWorkspace = mock<Workspace>({ activeLeaf: null });
+    mockWorkspace = mock<Workspace>();
     mockApp = mock<App>({
       workspace: mockWorkspace,
       metadataCache: mockMetadataCache,
@@ -137,7 +137,9 @@ describe('symbolHandler', () => {
 
     it('should validate parsed input for editor suggestion', () => {
       const targetLeaf = makeLeaf();
-      mockWorkspace.activeLeaf = targetLeaf; // <-- set the target as a currently open leaf
+
+      // set the target as a currently open leaf
+      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(targetLeaf);
 
       const sugg = makeEditorSuggestion(targetLeaf, targetLeaf.view.file);
 
@@ -156,8 +158,6 @@ describe('symbolHandler', () => {
           isValidSource: true,
         }),
       );
-
-      mockWorkspace.activeLeaf = null;
     });
 
     it('should validate parsed input for starred file suggestion', () => {
@@ -202,7 +202,9 @@ describe('symbolHandler', () => {
     it('should validate and identify active editor as matching the file suggestion target', () => {
       const targetLeaf = makeLeaf();
       const sugg = makeAliasSuggestion(targetLeaf.view.file, 'foo');
-      mockWorkspace.activeLeaf = targetLeaf; // <-- set the target as a currently open leaf
+
+      // set the target as a currently open leaf
+      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(targetLeaf);
 
       const inputInfo = new InputInfo('', Mode.Standard);
       sut.validateCommand(inputInfo, 0, '', sugg, null);
@@ -219,15 +221,13 @@ describe('symbolHandler', () => {
           isValidSource: true,
         }),
       );
-
-      mockWorkspace.activeLeaf = null;
     });
 
     it('should validate and identify in-active editor as matching the file suggestion target file', () => {
       const targetLeaf = makeLeaf();
       const sugg = makeAliasSuggestion(targetLeaf.view.file, 'foo');
 
-      mockWorkspace.activeLeaf = null; // <-- clear out active leaf
+      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(makeLeaf());
       mockWorkspace.iterateAllLeaves.mockImplementation((callback) => {
         callback(targetLeaf); // <-- report targetLeaf and an in-active open leaf
       });
@@ -247,8 +247,6 @@ describe('symbolHandler', () => {
           isValidSource: true,
         }),
       );
-
-      mockWorkspace.iterateAllLeaves.mockReset();
     });
   });
 
@@ -318,23 +316,23 @@ describe('symbolHandler', () => {
         ch: 0,
       });
 
-      mockWorkspace.activeLeaf = mockRootSplitLeaf;
+      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(mockRootSplitLeaf);
 
-      // here, use the same TFile as ActiveLeaf
+      // here, use the same TFile as mostRecentLeaf
       const activeSugg = makeHeadingSuggestion(
         makeHeading('foo heading', 1),
-        mockWorkspace.activeLeaf.view.file,
+        mockRootSplitLeaf.view.file,
       );
 
       // use headings prefix mode along with heading suggestion, note that the suggestion
-      // has to point to the same TFile as 'activeLeaf'
+      // has to point to the same TFile as mostRecentLeaf
       const inputInfo = new InputInfo('', Mode.HeadingsList);
       sut.validateCommand(
         inputInfo,
         headingsTrigger.length,
         '',
         activeSugg,
-        mockWorkspace.activeLeaf,
+        mockRootSplitLeaf,
       );
 
       const results = sut.getSuggestions(inputInfo);
@@ -348,13 +346,12 @@ describe('symbolHandler', () => {
       expect(selectedSuggestions[0].item.symbol).toBe(expectedSelectedHeading);
 
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
-        mockWorkspace.activeLeaf.view.file,
+        mockRootSplitLeaf.view.file,
       );
       expect(mockPrepareQuery).toHaveBeenCalled();
 
       selectNearestHeadingSpy.mockReset();
       mockEditor.getCursor.mockReset();
-      mockWorkspace.activeLeaf = null;
     });
 
     test('with selectNearestHeading set to true, it should set the isSelected property of the nearest preceding heading suggestion to true', () => {
