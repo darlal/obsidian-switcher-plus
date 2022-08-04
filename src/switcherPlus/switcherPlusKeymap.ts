@@ -73,7 +73,7 @@ export class SwitcherPlusKeymap {
     const customKeysInfo: CustomKeymapInfo[] = [
       {
         modes: customFileBasedModes,
-        modifiers: 'Mod',
+        modifiers: modKey,
         key: 'o',
         func: this.useSelectedItem.bind(this),
         command: `${modKeyText} o`,
@@ -85,7 +85,7 @@ export class SwitcherPlusKeymap {
         modifiers: null,
         key: null,
         func: null,
-        command: `${modKeyText} enter`,
+        command: `${modKeyText} ↵`,
         purpose: 'open in new pane',
       },
       {
@@ -130,24 +130,23 @@ export class SwitcherPlusKeymap {
     const { modal, scope, savedStandardKeysInfo, standardKeysInfo, customKeysInfo } =
       this;
 
+    const customKeymaps = customKeysInfo.filter((v) => !v.isInstructionOnly);
+    this.unregisterKeys(scope, customKeymaps);
+
     if (isStandardMode) {
       this.registerKeys(scope, savedStandardKeysInfo);
       savedStandardKeysInfo.length = 0;
 
-      this.unregisterKeys(scope, customKeysInfo);
       this.toggleStandardInstructions(modal.containerEl, true);
     } else {
-      const customKeymaps = customKeysInfo.filter(
-        (v) => v.modes?.includes(mode) && !v.isInstructionOnly,
-      );
-
-      const standardKeymaps = this.unregisterKeys(scope, standardKeysInfo);
-      if (standardKeymaps.length) {
-        savedStandardKeysInfo.concat(standardKeymaps);
+      const standardKeysRemoved = this.unregisterKeys(scope, standardKeysInfo);
+      if (standardKeysRemoved.length) {
+        savedStandardKeysInfo.push(...standardKeysRemoved);
       }
 
-      this.unregisterKeys(scope, customKeysInfo);
-      this.registerKeys(scope, customKeymaps);
+      const customKeysToAdd = customKeymaps.filter((v) => v.modes?.includes(mode));
+      this.registerKeys(scope, customKeysToAdd);
+
       this.showCustomInstructions(modal, customKeysInfo, mode);
     }
   }
@@ -160,19 +159,24 @@ export class SwitcherPlusKeymap {
   }
 
   unregisterKeys(scope: Scope, keyInfo: KeymapInfo[]): KeymapEventHandler[] {
-    const predicate = (keymap: KeymapEventHandler): keymap is KeymapEventHandler => {
-      return keyInfo.some((kInfo) => {
-        const isMatch = kInfo.modifiers === keymap.modifiers && kInfo.key === keymap.key;
+    const keysToRemove = [...keyInfo];
+    const removed: KeymapEventHandler[] = [];
 
-        if (isMatch) {
-          scope.unregister(keymap);
-        }
+    let i = scope.keys.length;
+    while (i--) {
+      const keymap = scope.keys[i];
+      const foundIndex = keysToRemove.findIndex(
+        (kInfo) => kInfo.modifiers === keymap.modifiers && kInfo.key === keymap.key,
+      );
 
-        return isMatch;
-      });
-    };
+      if (foundIndex >= 0) {
+        scope.unregister(keymap);
+        removed.push(keymap);
+        keysToRemove.splice(foundIndex, 1);
+      }
+    }
 
-    return scope.keys.filter(predicate);
+    return removed;
   }
 
   addDataAttrToInstructionsEl(

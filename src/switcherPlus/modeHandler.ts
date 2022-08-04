@@ -102,6 +102,7 @@ export class ModeHandler {
     const activeLeaf = this.getActiveLeaf();
     const activeSugg = ModeHandler.getActiveSuggestion(chooser);
     const inputInfo = this.determineRunMode(query, activeSugg, activeLeaf);
+    this.inputInfo = inputInfo;
 
     const { mode } = inputInfo;
     exKeymap.updateKeymapForMode(mode);
@@ -123,14 +124,16 @@ export class ModeHandler {
   renderSuggestion(sugg: AnySuggestion, parentEl: HTMLElement): boolean {
     let handled = false;
 
-    // in Headings mode, StandardExHandler should handle rendering for File
-    // suggestions
-    const useExHandler =
-      this.inputInfo.mode === Mode.HeadingsList && isFileSuggestion(sugg);
+    if (sugg) {
+      // in Headings mode, StandardExHandler should handle rendering for File
+      // suggestions
+      const useExHandler =
+        this.inputInfo.mode === Mode.HeadingsList && isFileSuggestion(sugg);
 
-    if (useExHandler || isExSuggestion(sugg)) {
-      this.getHandler(sugg).renderSuggestion(sugg, parentEl);
-      handled = true;
+      if (useExHandler || isExSuggestion(sugg)) {
+        this.getHandler(sugg).renderSuggestion(sugg, parentEl);
+        handled = true;
+      }
     }
 
     return handled;
@@ -139,14 +142,16 @@ export class ModeHandler {
   onChooseSuggestion(sugg: AnySuggestion, evt: MouseEvent | KeyboardEvent): boolean {
     let handled = false;
 
-    // in Headings mode, StandardExHandler should handle the onChoose action for File
-    // and Alias suggestion so that the preferOpenInNewPane setting can be handled properly
-    const useExHandler =
-      this.inputInfo.mode === Mode.HeadingsList && !isUnresolvedSuggestion(sugg);
+    if (sugg) {
+      // in Headings mode, StandardExHandler should handle the onChoose action for File
+      // and Alias suggestion so that the preferOpenInNewPane setting can be handled properly
+      const useExHandler =
+        this.inputInfo.mode === Mode.HeadingsList && !isUnresolvedSuggestion(sugg);
 
-    if (useExHandler || isExSuggestion(sugg)) {
-      this.getHandler(sugg).onChooseSuggestion(sugg, evt);
-      handled = true;
+      if (useExHandler || isExSuggestion(sugg)) {
+        this.getHandler(sugg).onChooseSuggestion(sugg, evt);
+        handled = true;
+      }
     }
 
     return handled;
@@ -171,7 +176,6 @@ export class ModeHandler {
   }
 
   getSuggestions(inputInfo: InputInfo, chooser: Chooser<AnySuggestion>): void {
-    this.inputInfo = inputInfo;
     const { mode } = inputInfo;
 
     chooser.setSuggestions([]);

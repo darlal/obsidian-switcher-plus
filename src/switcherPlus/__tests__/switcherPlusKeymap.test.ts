@@ -133,45 +133,59 @@ describe('SwitcherPlusKeymap', () => {
   describe('updateKeymapForMode', () => {
     let sut: SwitcherPlusKeymap;
     const mockInstructionsEl = mock<HTMLElement>();
+
     const mockMetaEnter = mock<KeymapEventHandler>({
       modifiers: 'Meta',
       key: 'Enter',
     });
+
     const mockShiftEnter = mock<KeymapEventHandler>({
       modifiers: 'Shift',
       key: 'Enter',
     });
 
+    const mockMetaShiftEnter = mock<KeymapEventHandler>({
+      modifiers: 'Meta,Shift',
+      key: 'Enter',
+    });
+
     beforeAll(() => {
-      sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal);
       mockModalContainer.querySelectorAll
         .calledWith(selectorCustomInstructions)
         .mockReturnValue(mock<NodeListOf<Element>>());
+
       mockModalContainer.querySelector
         .calledWith(selector)
         .mockReturnValue(mockInstructionsEl);
     });
 
     beforeEach(() => {
-      mockClear(mockScope);
-      mockClear(mockInstructionsEl);
+      // use a new one for each test since it's stateful
+      // Note: the new instance should be created before clearing the other objects
+      // because it's constructor makes calls to scope.register()
+      sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal);
+
+      mockReset(mockInstructionsEl);
+      mockReset(mockScope);
+      mockScope.keys = [];
+
       mockClear(mockModalContainer);
       mockClear(mockModal);
     });
 
-    it('should hide the default helper text (prompt instructions) in non-standard modes', () => {
+    it('should hide the default prompt instructions in custom modes', () => {
       sut.updateKeymapForMode(Mode.EditorList);
 
       expect(mockInstructionsEl.style.display).toBe('none');
     });
 
-    it('should show the helper text (prompt instructions) in standard modes', () => {
+    it('should show the default prompt instructions in standard modes', () => {
       sut.updateKeymapForMode(Mode.Standard);
 
       expect(mockInstructionsEl.style.display).toBe('');
     });
 
-    it('should show the helper text (prompt instructions) in custom modes', () => {
+    it('should show custom prompt instructions in custom modes', () => {
       const mode = Mode.EditorList;
       const keymaps = sut.customKeysInfo.filter((keymap) => keymap.modes?.includes(mode));
 
@@ -189,40 +203,52 @@ describe('SwitcherPlusKeymap', () => {
 
       sut.updateKeymapForMode(Mode.EditorList);
 
-      expect(mockScope.keys).toContain(mockEnter);
+      expect(mockScope.unregister).not.toHaveBeenCalled();
     });
 
-    it('should remove the shift-enter hotkey in non-standard modes', () => {
-      mockScope.keys = [mockMetaEnter, mockShiftEnter];
-
-      sut.updateKeymapForMode(Mode.EditorList);
-
-      expect(mockScope.unregister).toHaveBeenCalledWith(mockShiftEnter);
-    });
-
-    it('should keep the meta-enter hotkey registered in non-standard modes', () => {
+    it('should keep the meta-enter hotkey registered in custom modes', () => {
       mockScope.keys = [mockMetaEnter, mockShiftEnter];
 
       sut.updateKeymapForMode(Mode.StarredList);
 
-      expect(mockScope.keys).toHaveLength(2);
-      expect(mockScope.keys).toContain(mockMetaEnter);
+      expect(mockScope.unregister).toHaveBeenCalledWith(mockShiftEnter);
+      expect(mockScope.unregister).not.toHaveBeenCalledWith(mockMetaEnter);
     });
 
-    it('should restore the shift/meta hotkey in standard mode', () => {
-      mockScope.keys = [mockMetaEnter, mockShiftEnter];
+    it('should restore standard keymaps in standard mode', () => {
+      mockScope.keys = [mockMetaShiftEnter, mockShiftEnter];
 
-      // should first remove shift-enter in non-standard mode
-      sut.updateKeymapForMode(Mode.EditorList);
+      // should first update for a custom mode
+      sut.updateKeymapForMode(Mode.HeadingsList);
+      mockScope.register.mockReset();
 
-      // should restore all hotkeys in standard mode
+      // should restore all standard hotkeys
       sut.updateKeymapForMode(Mode.Standard);
 
-      expect(mockScope.keys).toContain(mockMetaEnter);
-      expect(mockScope.keys).toContain(mockShiftEnter);
+      // convert to [][] so each call can be checked separately
+      const expected = sut.standardKeysInfo.map((v) => {
+        const modifiers = v.modifiers.split(',') as Modifier[];
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return [modifiers, v.key, expect.any(Function)];
+      });
+
+      expect(mockScope.register.mock.calls).toEqual(expected);
     });
 
-    it('should registeer custom keymaps for non-standard modes', () => {
+    it('should remove standard keymaps in custom modes', () => {
+      mockScope.keys = [mockMetaShiftEnter, mockShiftEnter];
+
+      // should remove standard keymaps
+      sut.updateKeymapForMode(Mode.HeadingsList);
+
+      // convert to a reversed [][] so each call can be checked separately
+      const expected = mockScope.keys.map((v) => [v]).reverse();
+
+      expect(mockScope.unregister.mock.calls).toEqual(expected);
+    });
+
+    it('should register custom keymaps in custom modes', () => {
       const mode = Mode.StarredList;
       const customKeymaps = sut.customKeysInfo.filter(
         (v) => v.modes?.includes(mode) && !v.isInstructionOnly,
@@ -235,6 +261,7 @@ describe('SwitcherPlusKeymap', () => {
         const modifiers = v.modifiers.split(',') as Modifier[];
         return [modifiers, v.key, v.func];
       });
+
       expect(mockScope.register.mock.calls).toEqual(expected);
     });
   });
