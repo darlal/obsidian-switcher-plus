@@ -200,11 +200,14 @@ describe('relatedItemsHandler', () => {
       const sugg = makeAliasSuggestion(targetLeaf.view.file, 'foo');
 
       // set the target as a currently open leaf
-      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(targetLeaf);
+      const getActiveLeafSpy = jest
+        .spyOn(Handler.prototype, 'getActiveLeaf')
+        .mockReturnValueOnce(targetLeaf);
 
       sut.validateCommand(inputInfo, 0, '', sugg, null);
 
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
+      expect(getActiveLeafSpy).toHaveBeenCalled();
 
       const cmd = inputInfo.parsedCommand() as SourcedParsedCommand;
       expect(cmd.isValidated).toBe(true);
@@ -216,6 +219,8 @@ describe('relatedItemsHandler', () => {
           isValidSource: true,
         }),
       );
+
+      getActiveLeafSpy.mockRestore();
     });
 
     it('should validate and identify in-active editor as matching the file suggestion target file', () => {
@@ -469,11 +474,6 @@ describe('relatedItemsHandler', () => {
       const sourceFile = new TFile();
       sourceFile.parent = makeFileTree(sourceFile);
 
-      // set file1 as the active leaf
-      const leaf = makeLeaf();
-      leaf.view.file = file1;
-      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(leaf);
-
       const results = sut.getRelatedFiles(sourceFile);
 
       expect(results).toHaveLength(2);
@@ -493,12 +493,17 @@ describe('relatedItemsHandler', () => {
       // set file1 as the file for active leaf
       const leaf = makeLeaf();
       leaf.view.file = file1;
-      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(leaf);
+      const getActiveLeafSpy = jest
+        .spyOn(Handler.prototype, 'getActiveLeaf')
+        .mockReturnValue(leaf);
 
       const results = sut.getRelatedFiles(sourceFile);
 
       expect(results).toHaveLength(1);
       expect(results).toEqual(expect.arrayContaining([file2]));
+      expect(getActiveLeafSpy).toHaveBeenCalled();
+
+      getActiveLeafSpy.mockRestore();
     });
   });
 });

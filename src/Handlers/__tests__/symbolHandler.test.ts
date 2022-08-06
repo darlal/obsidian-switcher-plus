@@ -204,12 +204,15 @@ describe('symbolHandler', () => {
       const sugg = makeAliasSuggestion(targetLeaf.view.file, 'foo');
 
       // set the target as a currently open leaf
-      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(targetLeaf);
+      const getActiveLeafSpy = jest
+        .spyOn(Handler.prototype, 'getActiveLeaf')
+        .mockReturnValue(targetLeaf);
 
       const inputInfo = new InputInfo('', Mode.Standard);
       sut.validateCommand(inputInfo, 0, '', sugg, null);
 
       expect(inputInfo.mode).toBe(Mode.SymbolList);
+      expect(getActiveLeafSpy).toHaveBeenCalled();
 
       const symbolCmd = inputInfo.parsedCommand() as SourcedParsedCommand;
       expect(symbolCmd.isValidated).toBe(true);
@@ -221,6 +224,8 @@ describe('symbolHandler', () => {
           isValidSource: true,
         }),
       );
+
+      getActiveLeafSpy.mockRestore();
     });
 
     it('should validate and identify in-active editor as matching the file suggestion target file', () => {
@@ -316,16 +321,18 @@ describe('symbolHandler', () => {
         ch: 0,
       });
 
-      mockWorkspace.getMostRecentLeaf.mockReturnValueOnce(mockRootSplitLeaf);
+      const getActiveLeafSpy = jest
+        .spyOn(Handler.prototype, 'getActiveLeaf')
+        .mockReturnValue(mockRootSplitLeaf);
 
-      // here, use the same TFile as mostRecentLeaf
+      // here, use the same TFile as activeLeaf
       const activeSugg = makeHeadingSuggestion(
         makeHeading('foo heading', 1),
         mockRootSplitLeaf.view.file,
       );
 
       // use headings prefix mode along with heading suggestion, note that the suggestion
-      // has to point to the same TFile as mostRecentLeaf
+      // has to point to the same TFile as activeLeaf
       const inputInfo = new InputInfo('', Mode.HeadingsList);
       sut.validateCommand(
         inputInfo,
@@ -344,6 +351,7 @@ describe('symbolHandler', () => {
       const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
       expect(selectedSuggestions).toHaveLength(1);
       expect(selectedSuggestions[0].item.symbol).toBe(expectedSelectedHeading);
+      expect(getActiveLeafSpy).toHaveBeenCalled();
 
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
         mockRootSplitLeaf.view.file,
@@ -352,6 +360,7 @@ describe('symbolHandler', () => {
 
       selectNearestHeadingSpy.mockReset();
       mockEditor.getCursor.mockReset();
+      getActiveLeafSpy.mockRestore();
     });
 
     test('with selectNearestHeading set to true, it should set the isSelected property of the nearest preceding heading suggestion to true', () => {

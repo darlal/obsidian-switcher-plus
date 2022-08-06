@@ -14,6 +14,7 @@ import {
   setIcon,
   TFile,
   View,
+  Workspace,
   WorkspaceLeaf,
 } from 'obsidian';
 import {
@@ -194,7 +195,6 @@ export abstract class Handler<T> {
     const hasSourceLeaf = !!leaf;
     const {
       settings: { referenceViews, excludeViewTypes, includeSidePanelViewTypes },
-      app: { workspace },
     } = this;
 
     const isMatch = (candidateLeaf: WorkspaceLeaf) => {
@@ -221,7 +221,7 @@ export abstract class Handler<T> {
     };
 
     // Prioritize the active leaf matches first, otherwise find the first matching leaf
-    const activeLeaf = workspace.getMostRecentLeaf();
+    const activeLeaf = this.getActiveLeaf();
     if (isMatch(activeLeaf)) {
       matchingLeaf = activeLeaf;
     } else {
@@ -703,5 +703,23 @@ export abstract class Handler<T> {
 
     const contentEl = this.renderContent(parentEl, content, contentMatch);
     this.renderPath(contentEl, file, excludeOptionalFilename, pathMatch, !!pathMatch);
+  }
+
+  /**
+   * Returns the currently active leaf across all root workspace splits
+   * @returns WorkspaceLeaf | null
+   */
+  getActiveLeaf(): WorkspaceLeaf | null {
+    return Handler.getActiveLeaf(this.app.workspace);
+  }
+
+  /**
+   * Returns the currently active leaf across all root workspace splits
+   * @param  {Workspace} workspace
+   * @returns WorkspaceLeaf | null
+   */
+  static getActiveLeaf(workspace: Workspace): WorkspaceLeaf | null {
+    const leaf = workspace?.getActiveViewOfType(View)?.leaf;
+    return leaf ?? null;
   }
 }
