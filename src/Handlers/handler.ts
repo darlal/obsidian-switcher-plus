@@ -44,6 +44,10 @@ export abstract class Handler<T> {
 
   constructor(protected app: App, protected settings: SwitcherPlusSettings) {}
 
+  abstract renderSuggestion(sugg: T, parentEl: HTMLElement): void;
+  abstract onChooseSuggestion(sugg: T, evt: MouseEvent | KeyboardEvent): void;
+  abstract getSuggestions(inputInfo: InputInfo): T[] | Promise<T[]>;
+
   abstract validateCommand(
     inputInfo: InputInfo,
     index: number,
@@ -51,9 +55,6 @@ export abstract class Handler<T> {
     activeSuggestion: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
   ): void;
-  abstract renderSuggestion(sugg: T, parentEl: HTMLElement): void;
-  abstract onChooseSuggestion(sugg: T, evt: MouseEvent | KeyboardEvent): void;
-  abstract getSuggestions(inputInfo: InputInfo): T[];
 
   getEditorInfo(leaf: WorkspaceLeaf): SourceInfo {
     const { excludeViewTypes } = this.settings;

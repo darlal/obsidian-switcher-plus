@@ -7,6 +7,7 @@ import {
   Loc,
   Pos,
   ReferenceCache,
+  SectionCache,
 } from 'obsidian';
 
 export function makeLoc(line?: number, col?: number, offset?: number): Loc {
@@ -71,6 +72,21 @@ export function makeHeading(
   };
 }
 
+export function makeSectionCache(
+  type: 'yaml' | 'heading' | 'paragraph' | 'callout',
+  startLoc?: Loc,
+  endLoc?: Loc,
+  id?: string | undefined,
+): SectionCache {
+  const position = makePos(startLoc, endLoc);
+
+  return {
+    position,
+    type,
+    id,
+  };
+}
+
 export function getLinks(): LinkCache[] {
   const l1 = makeLink(
     'Format your notes#^e476cc',
@@ -122,11 +138,16 @@ export function getHeadings(): HeadingCache[] {
   ];
 }
 
+export function getCallouts(): SectionCache[] {
+  return [makeSectionCache('callout', makeLoc(1, 0, 1), makeLoc(2, 18, 43))];
+}
+
 export function getCachedMetadata(): CachedMetadata {
   return {
     links: getLinks(),
     embeds: getEmbeds(),
     tags: getTags(),
     headings: getHeadings(),
+    sections: [...getCallouts()],
   };
 }

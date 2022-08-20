@@ -82,7 +82,9 @@ const modeHandlingData = [
     handlerPrototype: SymbolHandler.prototype,
     trigger: symbolTrigger,
     isSourcedCmd: true, // requires source file
-    suggestions: [makeSymbolSuggestion(getHeadings()[0], SymbolType.Heading)],
+    suggestions: Promise.resolve([
+      makeSymbolSuggestion(getHeadings()[0], SymbolType.Heading),
+    ]),
   },
   {
     title: 'RELATEDITEMS MODE',
@@ -423,6 +425,32 @@ describe('modeHandler', () => {
       expect(result).toBe(false);
     });
 
+    it('should log errors from async handlers to the console', async () => {
+      const errorMsg = 'Unit test error';
+      const rejectedPromise = Promise.reject(errorMsg);
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      const getSuggestionSpy = jest
+        .spyOn(SymbolHandler.prototype, 'getSuggestions')
+        .mockReturnValueOnce(rejectedPromise);
+
+      sut.updateSuggestions(symbolTrigger, mockChooser);
+
+      try {
+        await rejectedPromise;
+      } catch (e) {
+        /* noop */
+      }
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Switcher++: error retrieving suggestions as Promise. ',
+        errorMsg,
+      );
+
+      getSuggestionSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+    });
+
     it('should debounce searches in Headings mode with filter text', () => {
       const validateCommandSpy = jest
         .spyOn(HeadingsHandler.prototype, 'validateCommand')
@@ -452,9 +480,11 @@ describe('modeHandler', () => {
       const sugg = makeSymbolSuggestion(getHeadings()[0], SymbolType.Heading, null, true);
       const expectedSuggestions = [sugg];
 
+      const getSuggestionsPromise = Promise.resolve(expectedSuggestions);
+
       const getSuggestionSpy = jest
         .spyOn(SymbolHandler.prototype, 'getSuggestions')
-        .mockReturnValue(expectedSuggestions);
+        .mockReturnValue(getSuggestionsPromise);
 
       const validateCommandSpy = jest
         .spyOn(SymbolHandler.prototype, 'validateCommand')
@@ -467,16 +497,18 @@ describe('modeHandler', () => {
 
       const results = sut.updateSuggestions(symbolTrigger, mockChooser);
 
-      expect(results).toBe(true);
-      expect(getSuggestionSpy).toHaveBeenCalled();
-      expect(validateCommandSpy).toHaveBeenCalled();
-      expect(mockSetSelectedItem).toHaveBeenCalledWith(0, true); // <-- here
-      expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
+      return getSuggestionsPromise.finally(() => {
+        expect(results).toBe(true);
+        expect(getSuggestionSpy).toHaveBeenCalled();
+        expect(validateCommandSpy).toHaveBeenCalled();
+        expect(mockSetSelectedItem).toHaveBeenCalledWith(0, true); // <-- here
+        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
 
-      getSuggestionSpy.mockRestore();
-      validateCommandSpy.mockRestore();
-      mockSetSelectedItem.mockRestore();
-      mockSetSuggestion.mockReset();
+        getSuggestionSpy.mockRestore();
+        validateCommandSpy.mockRestore();
+        mockSetSelectedItem.mockRestore();
+        mockSetSuggestion.mockReset();
+      });
     });
 
     test.each([makeFileSuggestion(), makeAliasSuggestion()])(
@@ -506,26 +538,40 @@ describe('modeHandler', () => {
     describe.each(modeHandlingData)(
       '$title',
       ({ handlerPrototype, trigger, suggestions }) => {
-        it('should get suggestions', () => {
+        it('should get suggestions', async () => {
           const getSuggestionSpy = jest
             .spyOn(handlerPrototype, 'getSuggestions')
             .mockReturnValue(suggestions);
 
-          // this value is checked in symbol mode
-          mockChooser.values = suggestions;
+          let sugg: AnySuggestion[];
+          let promise: Promise<void | AnySuggestion[]> = Promise.resolve();
 
+          if (Array.isArray(suggestions)) {
+            sugg = suggestions;
+          } else {
+            sugg = await suggestions;
+            promise = suggestions;
+          }
+
+          // this value is checked in symbol mode
+          mockChooser.values = sugg;
           const results = sut.updateSuggestions(trigger, mockChooser);
 
-          expect(results).toBe(true);
-          expect(getSuggestionSpy).toHaveBeenCalled();
-          expect(mockSetSuggestion).toHaveBeenLastCalledWith(suggestions);
+          return promise.finally(() => {
+            expect(results).toBe(true);
+            expect(getSuggestionSpy).toHaveBeenCalled();
+            expect(mockSetSuggestion).toHaveBeenLastCalledWith(sugg);
 
-          getSuggestionSpy.mockRestore();
-          mockSetSuggestion.mockReset();
+            getSuggestionSpy.mockRestore();
+            mockSetSuggestion.mockReset();
+          });
         });
 
-        it('should render suggestions', () => {
-          const expected = suggestions[0];
+        it('should render suggestions', async () => {
+          const expected = (
+            Array.isArray(suggestions) ? suggestions : await suggestions
+          )[0];
+
           const renderSuggestionSpy = jest
             .spyOn(handlerPrototype, 'renderSuggestion')
             .mockImplementation();
@@ -538,8 +584,11 @@ describe('modeHandler', () => {
           renderSuggestionSpy.mockRestore();
         });
 
-        it('should action the chosen suggestion', () => {
-          const expected = suggestions[0];
+        it('should action the chosen suggestion', async () => {
+          const expected = (
+            Array.isArray(suggestions) ? suggestions : await suggestions
+          )[0];
+
           const onChooseSuggestionSpy = jest
             .spyOn(handlerPrototype, 'onChooseSuggestion')
             .mockImplementation();

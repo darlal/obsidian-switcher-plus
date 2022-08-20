@@ -4,9 +4,11 @@ import {
   SymbolSuggestion,
   SymbolType,
   HeadingIndicators,
-  AnySymbolInfoPayload,
   LinkType,
   SuggestionType,
+  CalloutCache,
+  SymbolIndicators,
+  SymbolInfo,
 } from 'src/types';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler, SymbolHandler } from 'src/Handlers';
@@ -27,6 +29,7 @@ import {
   TFile,
   Vault,
   OpenViewState,
+  setIcon,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -46,15 +49,28 @@ import {
   makeStarredSuggestion,
   makeHeadingSuggestion,
   makeSearchStarredItem,
+  getCallouts,
 } from '@fixtures';
-import { mock, MockProxy } from 'jest-mock-extended';
+import { mock, MockProxy, mockClear } from 'jest-mock-extended';
+import { Chance } from 'chance';
+
+const chance = new Chance();
 
 describe('symbolHandler', () => {
   const rootFixture = rootSplitEditorFixtures[0];
   const leftFixture = leftSplitEditorFixtures[0];
+  const fileContentWithCallout = '\n> [!NOTE] callout title\n> callout Contents\n';
+  const calloutSectionCache = getCallouts();
+  const calloutCache: CalloutCache = {
+    calloutTitle: chance.sentence(),
+    calloutType: 'note',
+    ...calloutSectionCache[0],
+  };
+
   let settings: SwitcherPlusSettings;
   let mockApp: MockProxy<App>;
   let mockWorkspace: MockProxy<Workspace>;
+  let mockVault: MockProxy<Vault>;
   let sut: SymbolHandler;
   let mockMetadataCache: MockProxy<MetadataCache>;
   let mockRootSplitLeaf: MockProxy<WorkspaceLeaf>;
@@ -69,10 +85,11 @@ describe('symbolHandler', () => {
     mockMetadataCache.getFileCache.mockImplementation((_f) => rootFixture.cachedMetadata);
 
     mockWorkspace = mock<Workspace>();
+    mockVault = mock<Vault>();
     mockApp = mock<App>({
       workspace: mockWorkspace,
       metadataCache: mockMetadataCache,
-      vault: mock<Vault>(),
+      vault: mockVault,
     });
 
     settings = new SwitcherPlusSettings(null);
@@ -164,7 +181,7 @@ describe('symbolHandler', () => {
       const targetFile = new TFile();
       const sugg = makeStarredSuggestion(null, targetFile);
 
-      (mockApp.vault as MockProxy<Vault>).getAbstractFileByPath
+      mockVault.getAbstractFileByPath
         .calledWith(targetFile.path)
         .mockReturnValueOnce(targetFile);
 
@@ -259,49 +276,46 @@ describe('symbolHandler', () => {
     const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
     const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
 
-    test('with falsy input, it should return an empty array', () => {
-      const results = sut.getSuggestions(null);
+    test('with falsy input, it should return an empty array', async () => {
+      const results = await sut.getSuggestions(null);
 
       expect(results).not.toBeNull();
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(0);
     });
 
-    test('that SymbolSuggestion have a file property to enable interop with other plugins (like HoverEditor)', () => {
+    test('that SymbolSuggestion have a file property to enable interop with other plugins (like HoverEditor)', async () => {
       const inputInfo = new InputInfo(symbolTrigger);
-      const results = sut.getSuggestions(inputInfo);
+      const results = await sut.getSuggestions(inputInfo);
 
       expect(results.every((v) => v.file !== null)).toBe(true);
     });
 
-    test('with default settings, it should return symbol suggestions', () => {
+    test('with default settings, it should return symbol suggestions', async () => {
       const inputInfo = new InputInfo(symbolTrigger);
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
-      expect(inputInfo.mode).toBe(Mode.SymbolList);
+      const initialMode = inputInfo.mode;
 
-      const results = sut.getSuggestions(inputInfo);
+      // needed for callout symbols
+      mockVault.cachedRead.mockResolvedValueOnce(fileContentWithCallout);
 
-      expect(results).not.toBeNull();
+      const results = await sut.getSuggestions(inputInfo);
+
+      expect(initialMode).toBe(Mode.SymbolList);
       expect(results).toBeInstanceOf(Array);
       expect(results.every((sugg) => sugg.type === SuggestionType.SymbolList)).toBe(true);
 
-      const set = new Set(results.map((sugg) => sugg.item.symbol));
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const cached: AnySymbolInfoPayload[] = Object.values(
-        rootFixture.cachedMetadata,
-      ).flat();
+      const cached = Object.values(rootFixture.cachedMetadata).flat();
 
       expect(results).toHaveLength(cached.length);
-      expect(cached.every((item) => set.has(item))).toBe(true);
-
+      expect(mockPrepareQuery).toHaveBeenCalled();
+      expect(mockVault.cachedRead).toHaveBeenCalledWith(mockRootSplitLeaf.view.file);
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
         mockRootSplitLeaf.view.file,
       );
-      expect(mockPrepareQuery).toHaveBeenCalled();
     });
 
-    test('with selectNearestHeading set to true, it should set the isSelected property of the nearest preceding heading suggestion to true when the file is open in the active editor for any file based suggestion modes', () => {
+    test('with selectNearestHeading set to true, it should set the isSelected property of the nearest preceding heading suggestion to true when the file is open in the active editor for any file based suggestion modes', async () => {
       const selectNearestHeadingSpy = jest
         .spyOn(settings, 'selectNearestHeading', 'get')
         .mockReturnValue(true);
@@ -342,7 +356,7 @@ describe('symbolHandler', () => {
         mockRootSplitLeaf,
       );
 
-      const results = sut.getSuggestions(inputInfo);
+      const results = await sut.getSuggestions(inputInfo);
 
       expect(inputInfo.mode).toBe(Mode.SymbolList);
       expect(results).toBeInstanceOf(Array);
@@ -363,7 +377,7 @@ describe('symbolHandler', () => {
       getActiveLeafSpy.mockRestore();
     });
 
-    test('with selectNearestHeading set to true, it should set the isSelected property of the nearest preceding heading suggestion to true', () => {
+    test('with selectNearestHeading set to true, it should set the isSelected property of the nearest preceding heading suggestion to true', async () => {
       const selectNearestHeadingSpy = jest
         .spyOn(settings, 'selectNearestHeading', 'get')
         .mockReturnValue(true);
@@ -387,7 +401,7 @@ describe('symbolHandler', () => {
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
-      const results = sut.getSuggestions(inputInfo);
+      const results = await sut.getSuggestions(inputInfo);
 
       expect(results).not.toBeNull();
       expect(results).toBeInstanceOf(Array);
@@ -405,7 +419,7 @@ describe('symbolHandler', () => {
       selectNearestHeadingSpy.mockReset();
     });
 
-    test('with filter search term, it should return only matching symbol suggestions', () => {
+    test('with filter search term, it should return only matching symbol suggestions', async () => {
       mockMetadataCache.getFileCache.mockReturnValueOnce(leftFixture.cachedMetadata);
       mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
       mockFuzzySearch.mockImplementation(
@@ -422,7 +436,7 @@ describe('symbolHandler', () => {
       sut.validateCommand(inputInfo, startIndex, filterText, null, mockLeftSplitLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
-      const results = sut.getSuggestions(inputInfo);
+      const results = await sut.getSuggestions(inputInfo);
 
       expect(results).not.toBeNull();
       expect(results).toBeInstanceOf(Array);
@@ -442,7 +456,7 @@ describe('symbolHandler', () => {
       mockFuzzySearch.mockReset();
     });
 
-    test('with existing filter search term, it should continue refining suggestions for the previous target', () => {
+    test('with existing filter search term, it should continue refining suggestions for the previous target', async () => {
       mockMetadataCache.getFileCache.mockReturnValue(leftFixture.cachedMetadata);
 
       // 1) setup first initial run
@@ -462,7 +476,7 @@ describe('symbolHandler', () => {
       sut.validateCommand(inputInfo, startIndex, filterText, null, mockLeftSplitLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
-      let results = sut.getSuggestions(inputInfo);
+      let results = await sut.getSuggestions(inputInfo);
 
       expect(results).not.toBeNull();
       expect(results).toBeInstanceOf(Array);
@@ -492,7 +506,7 @@ describe('symbolHandler', () => {
       sut.validateCommand(inputInfo, startIndex, filterText, null, mockTempLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
-      results = sut.getSuggestions(inputInfo);
+      results = await sut.getSuggestions(inputInfo);
 
       expect(results).not.toBeNull();
       expect(results).toBeInstanceOf(Array);
@@ -513,7 +527,7 @@ describe('symbolHandler', () => {
       mockFuzzySearch.mockReset();
     });
 
-    it('should not return suggestions for a symbol type that is disabled', () => {
+    it('should not return suggestions for a symbol type that is disabled', async () => {
       const inputInfo = new InputInfo(symbolTrigger);
 
       const isSymbolTypeEnabledSpy = jest
@@ -524,7 +538,7 @@ describe('symbolHandler', () => {
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
-      const results = sut.getSuggestions(inputInfo);
+      const results = await sut.getSuggestions(inputInfo);
 
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(0);
@@ -537,7 +551,7 @@ describe('symbolHandler', () => {
       isSymbolTypeEnabledSpy.mockRestore();
     });
 
-    it('should not return suggestions for links if the Link symbol type is disabled', () => {
+    it('should not return suggestions for links if the Link symbol type is disabled', async () => {
       const inputInfo = new InputInfo(symbolTrigger);
 
       const isSymbolTypeEnabledSpy = jest
@@ -548,7 +562,7 @@ describe('symbolHandler', () => {
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
-      const results = sut.getSuggestions(inputInfo);
+      const results = await sut.getSuggestions(inputInfo);
 
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(0);
@@ -561,7 +575,7 @@ describe('symbolHandler', () => {
       isSymbolTypeEnabledSpy.mockRestore();
     });
 
-    it('should not return suggestions for a sub-link type that is disabled', () => {
+    it('should not return suggestions for a sub-link type that is disabled', async () => {
       const inputInfo = new InputInfo(symbolTrigger);
 
       const excludeLinkSubTypesSpy = jest
@@ -572,7 +586,7 @@ describe('symbolHandler', () => {
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
-      const results = sut.getSuggestions(inputInfo);
+      const results = await sut.getSuggestions(inputInfo);
 
       expect(results).toBeInstanceOf(Array);
 
@@ -649,29 +663,26 @@ describe('symbolHandler', () => {
       );
     });
 
-    it('should add a symbol indicator', () => {
-      const mockAuxEl = mock<HTMLDivElement>();
-      mockAuxEl.createSpan.mockReturnValue(mock<HTMLSpanElement>());
+    it('should render a callout suggestion', () => {
+      const calloutSugg = makeSymbolSuggestion(calloutCache, SymbolType.Callout);
 
-      const mockContainerEl = mock<HTMLElement>();
-      mockContainerEl.createDiv.mockReturnValue(mockAuxEl);
+      const addIndicatorSpy = jest
+        .spyOn(SymbolHandler, 'addSymbolIndicator')
+        .mockReturnValueOnce();
 
-      sut.renderSuggestion(symbolSugg, mockContainerEl);
+      sut.renderSuggestion(calloutSugg, mockParentEl);
 
-      expect(mockContainerEl.createDiv).toHaveBeenCalledWith(
-        expect.objectContaining({
-          cls: ['suggestion-aux', 'qsp-aux'],
-        }),
+      expect(addIndicatorSpy).toHaveBeenCalled();
+      expect(renderContentSpy).toHaveBeenCalledWith(
+        mockParentEl,
+        (calloutSugg.item.symbol as CalloutCache).calloutTitle,
+        calloutSugg.match,
       );
-      expect(mockAuxEl.createSpan).toHaveBeenCalledWith(
-        expect.objectContaining({
-          text: HeadingIndicators[(symbolSugg.item.symbol as HeadingCache).level],
-          cls: ['suggestion-flair', 'qsp-symbol-indicator'],
-        }),
-      );
+
+      addIndicatorSpy.mockRestore();
     });
 
-    test('with symbolsInLineOrder enabled and no search term, it should indent symbols', () => {
+    test('with symbolsInLineOrder enabled and no search term, it should indent symbols', async () => {
       const settings = new SwitcherPlusSettings(null);
       jest.spyOn(settings, 'symbolsInLineOrder', 'get').mockReturnValue(true);
 
@@ -679,7 +690,7 @@ describe('symbolHandler', () => {
       const handler = new SymbolHandler(mockApp, settings);
 
       handler.validateCommand(inputInfo, 0, 'foo', null, mockRootSplitLeaf);
-      handler.getSuggestions(inputInfo);
+      await handler.getSuggestions(inputInfo);
 
       handler.renderSuggestion(symbolSugg, mockParentEl);
 
@@ -724,7 +735,7 @@ describe('symbolHandler', () => {
       expect(() => sut.onChooseSuggestion(null, null)).not.toThrow();
     });
 
-    it('should activate the existing workspaceLeaf that contains the target symbol and scroll that view via eState', () => {
+    it('should activate the existing workspaceLeaf that contains the target symbol and scroll that view via eState', async () => {
       const mockEvt = mock<KeyboardEvent>();
       const expectedState = getExpectedEphemeralState(symbolSugg);
       const mockLeaf = makeLeaf(symbolSugg.file);
@@ -736,7 +747,7 @@ describe('symbolHandler', () => {
 
       const inputInfo = new InputInfo(symbolTrigger);
       sut.validateCommand(inputInfo, 0, '', null, mockLeaf);
-      sut.getSuggestions(inputInfo);
+      await sut.getSuggestions(inputInfo);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       sut.onChooseSuggestion(symbolSugg, mockEvt);
@@ -752,6 +763,95 @@ describe('symbolHandler', () => {
       );
 
       navigateToLeafOrOpenFileSpy.mockRestore();
+    });
+  });
+
+  describe('addSymbolIndicator', () => {
+    const mockFlairEl = mock<HTMLSpanElement>();
+    const mockAuxEl = mock<HTMLDivElement>();
+    mockAuxEl.createSpan.mockReturnValue(mockFlairEl);
+
+    const mockParentEl = mock<HTMLDivElement>();
+    mockParentEl.createDiv.mockReturnValue(mockAuxEl);
+
+    afterEach(() => {
+      mockClear(mockFlairEl);
+      mockClear(mockAuxEl);
+      mockClear(mockParentEl);
+    });
+
+    it('should add icon for Callout symbols', () => {
+      const mockSetIcon = jest.mocked(setIcon);
+      const iconName = chance.word();
+
+      const sugg = makeSymbolSuggestion(calloutCache, SymbolType.Callout);
+
+      mockFlairEl.getCssPropertyValue
+        .calledWith('--callout-icon')
+        .mockReturnValueOnce(iconName);
+
+      SymbolHandler.addSymbolIndicator(sugg.item, mockParentEl);
+
+      expect(mockSetIcon).toHaveBeenCalledWith(mockFlairEl, iconName);
+      expect(mockAuxEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: ['suggestion-flair', 'qsp-symbol-indicator', 'callout'],
+          attr: { 'data-callout': calloutCache.calloutType },
+        }),
+      );
+    });
+
+    it.each([
+      { title: 'headings', type: SymbolType.Heading, cache: getHeadings()[0] },
+      { title: 'tags', type: SymbolType.Tag, cache: getTags()[0] },
+    ])('should add icon for symbols: $title', ({ type, cache }) => {
+      const sugg = makeSymbolSuggestion(cache, type);
+
+      const expected = { cls: ['suggestion-flair', 'qsp-symbol-indicator'], text: '' };
+
+      expected.text =
+        type === SymbolType.Heading
+          ? HeadingIndicators[(cache as HeadingCache).level]
+          : SymbolIndicators[type];
+
+      SymbolHandler.addSymbolIndicator(sugg.item, mockParentEl);
+
+      expect(mockParentEl.createDiv).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: ['suggestion-aux', 'qsp-aux'],
+        }),
+      );
+      expect(mockAuxEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining(expected),
+      );
+    });
+  });
+
+  describe('addCalloutsFromSource', () => {
+    const mockFile = new TFile();
+    it('should add symbol information for callouts', async () => {
+      const results: SymbolInfo[] = [];
+      mockVault.cachedRead.mockResolvedValueOnce(fileContentWithCallout);
+
+      await sut.addCalloutsFromSource(mockFile, calloutSectionCache, results);
+
+      expect(mockVault.cachedRead).toHaveBeenCalledWith(mockFile);
+      expect(results).toHaveLength(calloutSectionCache.length);
+    });
+
+    it('should log any exceptions reading a file to the console', async () => {
+      const expectedMsg = `Switcher++: error reading file to extract callout information. ${mockFile.path} `;
+      const errorMsg = 'Unit test error';
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      mockVault.cachedRead.mockRejectedValueOnce(errorMsg);
+
+      await sut.addCalloutsFromSource(mockFile, calloutSectionCache, []);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(expectedMsg, errorMsg);
+      expect(mockVault.cachedRead).toHaveBeenCalledWith(mockFile);
+
+      consoleLogSpy.mockRestore();
     });
   });
 });

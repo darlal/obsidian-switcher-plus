@@ -12,6 +12,7 @@ export class SwitcherPlusSettings {
     enabledSymbolTypes[SymbolType.Embed] = true;
     enabledSymbolTypes[SymbolType.Tag] = true;
     enabledSymbolTypes[SymbolType.Heading] = true;
+    enabledSymbolTypes[SymbolType.Callout] = true;
 
     return {
       onOpenPreferNewPane: true,

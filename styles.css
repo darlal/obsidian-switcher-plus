@@ -10,10 +10,14 @@
 
 /* symbol suggestion, symbol type icon */
 .qsp-symbol-indicator {
-  width: 2.5em;
+  width: 2em;
   text-align: center;
   float: left;
   font-weight: 800;
+}
+
+.qsp-symbol-indicator.callout {
+  background-color:inherit;
 }
 
 /* warning/error text */

@@ -176,14 +176,28 @@ export class ModeHandler {
   }
 
   getSuggestions(inputInfo: InputInfo, chooser: Chooser<AnySuggestion>): void {
-    const { mode } = inputInfo;
-
     chooser.setSuggestions([]);
 
+    const { mode } = inputInfo;
     const suggestions = this.getHandler(mode).getSuggestions(inputInfo);
 
-    chooser.setSuggestions(suggestions);
-    ModeHandler.setActiveSuggestion(mode, chooser);
+    const setSuggestions = (suggs: AnySuggestion[]) => {
+      chooser.setSuggestions(suggs);
+      ModeHandler.setActiveSuggestion(mode, chooser);
+    };
+
+    if (Array.isArray(suggestions)) {
+      setSuggestions(suggestions);
+    } else {
+      suggestions.then(
+        (values) => {
+          setSuggestions(values);
+        },
+        (reason) => {
+          console.log('Switcher++: error retrieving suggestions as Promise. ', reason);
+        },
+      );
+    }
   }
 
   private validatePrefixCommands(

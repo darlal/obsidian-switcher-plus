@@ -22,6 +22,7 @@ import {
   LinkType,
   CommandSuggestion,
   SuggestionType,
+  CalloutCache,
 } from 'src/types';
 
 export function isOfType<T>(
@@ -87,6 +88,10 @@ export function isHeadingCache(obj: unknown): obj is HeadingCache {
 
 export function isTagCache(obj: unknown): obj is TagCache {
   return isOfType<TagCache>(obj, 'tag');
+}
+
+export function isCalloutCache(obj: unknown): obj is CalloutCache {
+  return isOfType<CalloutCache>(obj, 'type', 'callout');
 }
 
 export function isTFile(obj: unknown): obj is TFile {

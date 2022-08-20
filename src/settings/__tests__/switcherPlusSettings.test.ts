@@ -21,6 +21,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
   enabledSymbolTypes[SymbolType.Embed] = true;
   enabledSymbolTypes[SymbolType.Tag] = true;
   enabledSymbolTypes[SymbolType.Heading] = true;
+  enabledSymbolTypes[SymbolType.Callout] = true;
 
   const data: SettingsData = {
     enabledSymbolTypes,
@@ -94,6 +95,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     enabledSymbolTypes[SymbolType.Embed] = chance.bool();
     enabledSymbolTypes[SymbolType.Tag] = chance.bool();
     enabledSymbolTypes[SymbolType.Heading] = chance.bool();
+    enabledSymbolTypes[SymbolType.Callout] = chance.bool();
   }
 
   return data;
@@ -142,6 +144,9 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.isSymbolTypeEnabled(SymbolType.Tag)).toBe(
       enabledSymbolTypes[SymbolType.Tag],
     );
+    expect(sut.isSymbolTypeEnabled(SymbolType.Callout)).toBe(
+      enabledSymbolTypes[SymbolType.Callout],
+    );
   });
 
   it('should save modified settings', async () => {
@@ -189,6 +194,11 @@ describe('SwitcherPlusSettings', () => {
       settings.enabledSymbolTypes[SymbolType.Embed],
     );
 
+    sut.setSymbolTypeEnabled(
+      SymbolType.Callout,
+      settings.enabledSymbolTypes[SymbolType.Callout],
+    );
+
     let savedSettings: SettingsData;
     mockPlugin.saveData.mockImplementationOnce((data: SettingsData) => {
       savedSettings = data;
@@ -223,6 +233,9 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.isSymbolTypeEnabled(SymbolType.Embed)).toBe(
       enabledSymbolTypes[SymbolType.Embed],
     );
+    expect(sut.isSymbolTypeEnabled(SymbolType.Callout)).toBe(
+      enabledSymbolTypes[SymbolType.Callout],
+    );
 
     expect(mockPlugin.loadData).toHaveBeenCalled();
 
@@ -251,6 +264,9 @@ describe('SwitcherPlusSettings', () => {
     );
     expect(sut.isSymbolTypeEnabled(SymbolType.Embed)).toBe(
       defaults.enabledSymbolTypes[SymbolType.Embed],
+    );
+    expect(sut.isSymbolTypeEnabled(SymbolType.Callout)).toBe(
+      defaults.enabledSymbolTypes[SymbolType.Callout],
     );
 
     expect(mockPlugin.loadData).toHaveBeenCalled();
@@ -284,6 +300,9 @@ describe('SwitcherPlusSettings', () => {
     );
     expect(sut.isSymbolTypeEnabled(SymbolType.Tag)).toBe(
       enabledSymbolTypes[SymbolType.Tag],
+    );
+    expect(sut.isSymbolTypeEnabled(SymbolType.Callout)).toBe(
+      enabledSymbolTypes[SymbolType.Callout],
     );
 
     expect(mockPlugin.loadData).toHaveBeenCalled();

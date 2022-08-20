@@ -12,6 +12,7 @@ import {
   WorkspaceLeaf,
   Command,
   SearchResult,
+  SectionCache,
 } from 'obsidian';
 import type { SuggestModal, StarredPluginItem } from 'obsidian';
 import { PickKeys, WritableKeys } from 'ts-essentials';
@@ -49,6 +50,7 @@ export enum SymbolType {
   Embed = 2,
   Tag = 4,
   Heading = 8,
+  Callout = 16,
 }
 
 export enum LinkType {
@@ -96,7 +98,18 @@ export interface SwitcherPlus extends SystemSwitcher {
   openInMode(mode: Mode): void;
 }
 
-export type AnySymbolInfoPayload = LinkCache | EmbedCache | TagCache | HeadingCache;
+export type CalloutCache = SectionCache & {
+  calloutType: string;
+  calloutTitle: string;
+};
+
+export type AnySymbolInfoPayload =
+  | LinkCache
+  | EmbedCache
+  | TagCache
+  | HeadingCache
+  | CalloutCache;
+
 export interface SymbolInfo {
   type: 'symbolInfo';
   symbol: AnySymbolInfoPayload;

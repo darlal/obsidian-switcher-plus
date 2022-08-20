@@ -3,7 +3,10 @@ import {
   LinkCache,
   ReferenceCache,
   SearchResult,
+  SectionCache,
+  setIcon,
   sortSearchResults,
+  TFile,
   WorkspaceLeaf,
 } from 'obsidian';
 import {
@@ -17,8 +20,9 @@ import {
   HeadingIndicators,
   SymbolIndicators,
   SuggestionType,
+  CalloutCache,
 } from 'src/types';
-import { getLinkType, isHeadingCache, isTagCache } from 'src/utils';
+import { getLinkType, isCalloutCache, isHeadingCache, isTagCache } from 'src/utils';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler } from './handler';
 
@@ -54,7 +58,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     }
   }
 
-  getSuggestions(inputInfo: InputInfo): SymbolSuggestion[] {
+  override async getSuggestions(inputInfo: InputInfo): Promise<SymbolSuggestion[]> {
     const suggestions: SymbolSuggestion[] = [];
 
     if (inputInfo) {
@@ -63,7 +67,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       inputInfo.buildSearchQuery();
       const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
       const symbolCmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
-      const items = this.getItems(symbolCmd.source, hasSearchTerm);
+      const items = await this.getItems(symbolCmd.source, hasSearchTerm);
 
       items.forEach((item) => {
         let shouldPush = true;
@@ -181,7 +185,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     return sourceInfo;
   }
 
-  private getItems(sourceInfo: SourceInfo, hasSearchTerm: boolean): SymbolInfo[] {
+  async getItems(sourceInfo: SourceInfo, hasSearchTerm: boolean): Promise<SymbolInfo[]> {
     let items: SymbolInfo[] = [];
 
     let symbolsInLineOrder = false;
@@ -191,7 +195,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       ({ selectNearestHeading, symbolsInLineOrder } = this.settings);
     }
 
-    items = this.getSymbolsFromSource(sourceInfo, symbolsInLineOrder);
+    items = await this.getSymbolsFromSource(sourceInfo, symbolsInLineOrder);
 
     if (selectNearestHeading) {
       SymbolHandler.FindNearestHeadingSymbol(items, sourceInfo);
@@ -226,10 +230,10 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     }
   }
 
-  private getSymbolsFromSource(
+  async getSymbolsFromSource(
     sourceInfo: SourceInfo,
     orderByLineNumber: boolean,
-  ): SymbolInfo[] {
+  ): Promise<SymbolInfo[]> {
     const {
       app: { metadataCache },
       settings,
@@ -253,10 +257,66 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
         push(symbolData.tags, SymbolType.Tag);
         this.addLinksFromSource(symbolData.links, ret);
         push(symbolData.embeds, SymbolType.Embed);
+
+        await this.addCalloutsFromSource(
+          file,
+          symbolData.sections?.filter((v) => v.type === 'callout'),
+          ret,
+        );
       }
     }
 
     return orderByLineNumber ? SymbolHandler.orderSymbolsByLineNumber(ret) : ret;
+  }
+
+  async addCalloutsFromSource(
+    file: TFile,
+    sectionCache: SectionCache[],
+    symbolList: SymbolInfo[],
+  ): Promise<void> {
+    const {
+      app: { vault },
+      settings,
+    } = this;
+
+    const isCalloutEnabled = settings.isSymbolTypeEnabled(SymbolType.Callout);
+
+    if (isCalloutEnabled && sectionCache?.length && file) {
+      let fileContent: string = null;
+
+      try {
+        fileContent = await vault.cachedRead(file);
+      } catch (e) {
+        console.log(
+          `Switcher++: error reading file to extract callout information. ${file.path} `,
+          e,
+        );
+      }
+
+      if (fileContent) {
+        for (const cache of sectionCache) {
+          const { start, end } = cache.position;
+          const calloutStr = fileContent.slice(start.offset, end.offset);
+          const match = calloutStr.match(/^> \[!([^\]]+)\][+-]?(.*?)(?:\n>|$)/);
+
+          if (match) {
+            const calloutType = match[1];
+            const calloutTitle = match[match.length - 1];
+            const symbol: CalloutCache = {
+              calloutTitle: calloutTitle.trim(),
+              calloutType,
+              ...cache,
+            };
+
+            symbolList.push({
+              type: 'symbolInfo',
+              symbolType: SymbolType.Callout,
+              symbol,
+            });
+          }
+        }
+      }
+    }
   }
 
   private addLinksFromSource(linkData: LinkCache[], symbolList: SymbolInfo[]): void {
@@ -279,7 +339,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     }
   }
 
-  private static orderSymbolsByLineNumber(symbols: SymbolInfo[] = []): SymbolInfo[] {
+  private static orderSymbolsByLineNumber(symbols: SymbolInfo[]): SymbolInfo[] {
     const sorted = symbols.sort((a: SymbolInfo, b: SymbolInfo) => {
       const { start: aStart } = a.symbol.position;
       const { start: bStart } = b.symbol.position;
@@ -304,7 +364,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     return sorted;
   }
 
-  private static getSuggestionTextForSymbol(symbolInfo: SymbolInfo): string {
+  static getSuggestionTextForSymbol(symbolInfo: SymbolInfo): string {
     const { symbol } = symbolInfo;
     let text;
 
@@ -312,6 +372,8 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       text = symbol.heading;
     } else if (isTagCache(symbol)) {
       text = symbol.tag.slice(1);
+    } else if (isCalloutCache(symbol)) {
+      text = symbol.calloutTitle;
     } else {
       const refCache = symbol as ReferenceCache;
       ({ link: text } = refCache);
@@ -325,21 +387,35 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     return text;
   }
 
-  private static addSymbolIndicator(symbolInfo: SymbolInfo, parentEl: HTMLElement): void {
+  static addSymbolIndicator(symbolInfo: SymbolInfo, parentEl: HTMLElement): void {
     const { symbolType, symbol } = symbolInfo;
-    let indicator: string;
-
-    if (isHeadingCache(symbol)) {
-      indicator = HeadingIndicators[symbol.level];
-    } else {
-      indicator = SymbolIndicators[symbolType];
-    }
-
-    // render the flair icon
+    const flairElClasses = ['suggestion-flair', 'qsp-symbol-indicator'];
     const auxEl = parentEl.createDiv({ cls: ['suggestion-aux', 'qsp-aux'] });
-    auxEl.createSpan({
-      cls: ['suggestion-flair', 'qsp-symbol-indicator'],
-      text: indicator,
-    });
+
+    if (isCalloutCache(symbol)) {
+      flairElClasses.push('callout');
+      const flairEl = auxEl.createSpan({
+        cls: flairElClasses,
+        // Obsidian 0.15.9: the icon glyph is set in css based on the data-callout attr
+        attr: { 'data-callout': symbol.calloutType },
+      });
+
+      // Obsidian 0.15.9 the --callout-icon css prop holds the name of the icon glyph
+      const iconName = flairEl.getCssPropertyValue('--callout-icon');
+      setIcon(flairEl, iconName);
+    } else {
+      let indicator: string;
+
+      if (isHeadingCache(symbol)) {
+        indicator = HeadingIndicators[symbol.level];
+      } else {
+        indicator = SymbolIndicators[symbolType];
+      }
+
+      auxEl.createSpan({
+        cls: flairElClasses,
+        text: indicator,
+      });
+    }
   }
 }

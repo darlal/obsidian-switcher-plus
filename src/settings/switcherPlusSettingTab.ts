@@ -153,6 +153,15 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       }),
     );
 
+    new Setting(containerEl).setName('Show Callouts').addToggle((toggle) =>
+      toggle
+        .setValue(config.isSymbolTypeEnabled(SymbolType.Callout))
+        .onChange((value) => {
+          config.setSymbolTypeEnabled(SymbolType.Callout, value);
+          config.save();
+        }),
+    );
+
     this.setEnableLinks(containerEl, config);
   }
 
