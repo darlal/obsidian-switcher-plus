@@ -1,11 +1,30 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { mock } from 'jest-mock-extended';
 import {
+  App,
   DropdownComponent,
+  PluginSettingTab,
   TextAreaComponent,
   TextComponent,
   ToggleComponent,
 } from 'obsidian';
+
+export class MockPluginSettingTab implements PluginSettingTab {
+  app: App;
+  containerEl: HTMLElement;
+
+  constructor(app: App) {
+    this.containerEl = mock<HTMLElement>();
+    this.app = app;
+  }
+
+  hide() {
+    throw new Error('Method not implemented.');
+  }
+  display() {
+    throw new Error('Method not implemented.');
+  }
+}
 
 export class MockSetting {
   private containerEl;
@@ -23,6 +42,10 @@ export class MockSetting {
   }
 
   setHeading(): this {
+    return this;
+  }
+
+  setClass(_: string): this {
     return this;
   }
 

@@ -8,3 +8,4 @@ export * from './generalSettingsTabSection';
 export * from './workspaceSettingsTabSection';
 export * from './editorSettingsTabSection';
 export * from './headingsSettingsTabSection';
+export * from './symbolSettingsTabSection';

@@ -17,10 +17,10 @@ module.exports = {
   collectCoverage: true,
   coverageThreshold: {
     global: {
-      branches: 85,
-      functions: 85,
-      lines: 85,
-      statements: 85,
+      branches: 95,
+      functions: 95,
+      lines: 95,
+      statements: 95,
     },
   },
   coveragePathIgnorePatterns: ['/node_modules/', '/dist/'],

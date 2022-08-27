@@ -237,6 +237,34 @@ describe('settingsTabSection', () => {
 
       mockReset(mockConfig);
     });
+
+    it('should execute the onChange callback if supplied', () => {
+      const expectedValue = chance.bool();
+      const cb = jest.fn();
+
+      let onChangeFn: (v: boolean) => void;
+      mockToggleComp.onChange.mockImplementationOnce((cb) => {
+        onChangeFn = cb;
+        return mockToggleComp;
+      });
+
+      sut.addToggleSetting(
+        mockContainerEl,
+        chance.word(),
+        chance.sentence(),
+        mockConfig.alwaysNewPaneForSymbols,
+        null,
+        cb,
+      );
+
+      // trigger the value change here
+      onChangeFn(expectedValue);
+
+      expect(mockToggleComp.onChange).toHaveBeenCalled();
+      expect(cb).toHaveBeenCalledWith(expectedValue, mockConfig);
+
+      mockReset(mockConfig);
+    });
   });
 
   describe('addTextAreaSetting', () => {

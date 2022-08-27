@@ -7,8 +7,6 @@ import {
   Platform,
   Plugin,
   PluginManifest,
-  PluginSettingTab,
-  Plugin_2,
   prepareQuery,
   renderResults,
   sortSearchResults,
@@ -24,6 +22,7 @@ import {
   MockToggleComponent,
   MockTextAreaComponent,
   MockDropdownComponent,
+  MockPluginSettingTab,
 } from './mockSetting';
 import { makeFuzzyMatch, makePreparedQuery } from '@fixtures';
 
@@ -47,14 +46,6 @@ const mockModal = jest.fn<Modal, [app: App]>((app) => {
 const mockPlugin = jest.fn<Plugin, [app: App, manifest: PluginManifest]>(
   (app, _manifest) => {
     return mock<Plugin>({
-      app,
-    });
-  },
-);
-
-const mockPluginSettingTab = jest.fn<PluginSettingTab, [app: App, plugin: Plugin_2]>(
-  (app, _plugin) => {
-    return mock<PluginSettingTab>({
       app,
     });
   },
@@ -91,7 +82,7 @@ export {
   mockPlatform as Platform,
   mockModal as Modal,
   mockPlugin as Plugin,
-  mockPluginSettingTab as PluginSettingTab,
+  MockPluginSettingTab as PluginSettingTab,
   mockTFile as TFile,
   mockPrepareQuery as prepareQuery,
   mockFuzzySearch as fuzzySearch,

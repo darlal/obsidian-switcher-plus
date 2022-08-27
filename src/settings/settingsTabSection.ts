@@ -86,7 +86,8 @@ export abstract class SettingsTabSection {
    * @param  {string} name
    * @param  {string} desc
    * @param  {boolean} initialValue
-   * @param  {BooleanTypedConfigKey} configStorageKey The SwitcherPlusSettings key where the value for this setting should be stored.
+   * @param  {BooleanTypedConfigKey} configStorageKey The SwitcherPlusSettings key where the value for this setting should be stored. This can safely be set to null if the onChange handler is provided.
+   * @param  {(value:string,config:SwitcherPlusSettings)=>void} onChange? optional callback to invoke instead of using configStorageKey
    * @returns Setting
    */
   addToggleSetting(
@@ -95,12 +96,19 @@ export abstract class SettingsTabSection {
     desc: string,
     initialValue: boolean,
     configStorageKey: BooleanTypedConfigKey,
+    onChange?: (value: boolean, config: SwitcherPlusSettings) => void,
   ): Setting {
     const setting = this.createSetting(containerEl, name, desc);
 
     setting.addToggle((comp) => {
       comp.setValue(initialValue);
-      comp.onChange((value) => this.saveChangesToConfig(configStorageKey, value));
+      comp.onChange((value) => {
+        if (onChange) {
+          onChange(value, this.config);
+        } else {
+          this.saveChangesToConfig(configStorageKey, value);
+        }
+      });
     });
 
     return setting;
@@ -140,6 +148,17 @@ export abstract class SettingsTabSection {
     return setting;
   }
 
+  /**
+   * Add a dropdown list setting
+   * @param  {HTMLElement} containerEl
+   * @param  {string} name
+   * @param  {string} desc
+   * @param  {string} initialValue option value that is initially selected
+   * @param  {Record<string, string>} options
+   * @param  {StringTypedConfigKey} configStorageKey The SwitcherPlusSettings key where the value for this setting should be stored. This can safely be set to null if the onChange handler is provided.
+   * @param  {(rawValue:string,config:SwitcherPlusSettings)=>void} onChange? optional callback to invoke instead of using configStorageKey
+   * @returns Setting
+   */
   addDropdownSetting(
     containerEl: HTMLElement,
     name: string,
