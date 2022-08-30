@@ -36,6 +36,7 @@ import {
 } from 'src/types';
 import {
   isAliasSuggestion,
+  isEditorSuggestion,
   isFileSuggestion,
   isHeadingSuggestion,
   isUnresolvedSuggestion,
@@ -70,17 +71,52 @@ function makeFileTree(expectedFile: TFile, parentFolderName = 'l2Folder2'): TFol
 }
 
 describe('headingsHandler', () => {
+  let sut: HeadingsHandler;
+  let mockWorkspace: MockProxy<Workspace>;
+  let mockVault: MockProxy<Vault>;
+  let mockMetadataCache: MockProxy<MetadataCache>;
+  let mockViewRegistry: MockProxy<ViewRegistry>;
+  let builtInSystemOptionsSpy: jest.SpyInstance;
+  let modeTriggerSpy: jest.SpyInstance;
   let settings: SwitcherPlusSettings;
   let headingSugg: HeadingSuggestion;
   const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
   const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
 
   beforeAll(() => {
-    settings = new SwitcherPlusSettings(null);
+    mockWorkspace = mock<Workspace>();
+    mockVault = mock<Vault>();
+    mockMetadataCache = mock<MetadataCache>();
+    mockViewRegistry = mock<ViewRegistry>();
+    mockViewRegistry.isExtensionRegistered.mockReturnValue(true);
 
-    jest.spyOn(settings, 'headingsListCommand', 'get').mockReturnValue(headingsTrigger);
+    const mockApp = mock<App>({
+      workspace: mockWorkspace,
+      vault: mockVault,
+      metadataCache: mockMetadataCache,
+      viewRegistry: mockViewRegistry,
+    });
 
     headingSugg = makeHeadingSuggestion(makeHeading('foo heading', 1), new TFile());
+    settings = new SwitcherPlusSettings(null);
+    sut = new HeadingsHandler(mockApp, settings);
+
+    modeTriggerSpy = jest
+      .spyOn(settings, 'headingsListCommand', 'get')
+      .mockReturnValue(headingsTrigger);
+
+    builtInSystemOptionsSpy = jest
+      .spyOn(settings, 'builtInSystemOptions', 'get')
+      .mockReturnValue({
+        showAllFileTypes: true,
+        showAttachments: true,
+        showExistingOnly: false,
+      });
+  });
+
+  afterAll(() => {
+    builtInSystemOptionsSpy.mockRestore();
+    modeTriggerSpy.mockRestore();
   });
 
   describe('commandString', () => {
@@ -108,42 +144,6 @@ describe('headingsHandler', () => {
   });
 
   describe('getSuggestions', () => {
-    let sut: HeadingsHandler;
-    let mockWorkspace: MockProxy<Workspace>;
-    let mockVault: MockProxy<Vault>;
-    let mockMetadataCache: MockProxy<MetadataCache>;
-    let mockViewRegistry: MockProxy<ViewRegistry>;
-    let builtInSystemOptionsSpy: jest.SpyInstance;
-
-    beforeAll(() => {
-      mockWorkspace = mock<Workspace>();
-      mockVault = mock<Vault>();
-      mockMetadataCache = mock<MetadataCache>();
-      mockViewRegistry = mock<ViewRegistry>();
-      mockViewRegistry.isExtensionRegistered.mockReturnValue(true);
-
-      const mockApp = mock<App>({
-        workspace: mockWorkspace,
-        vault: mockVault,
-        metadataCache: mockMetadataCache,
-        viewRegistry: mockViewRegistry,
-      });
-
-      sut = new HeadingsHandler(mockApp, settings);
-
-      builtInSystemOptionsSpy = jest
-        .spyOn(settings, 'builtInSystemOptions', 'get')
-        .mockReturnValue({
-          showAllFileTypes: true,
-          showAttachments: true,
-          showExistingOnly: false,
-        });
-    });
-
-    afterAll(() => {
-      builtInSystemOptionsSpy.mockRestore();
-    });
-
     test('with falsy input, it should return an empty array', () => {
       const results = sut.getSuggestions(null);
 
@@ -152,55 +152,32 @@ describe('headingsHandler', () => {
       expect(results).toHaveLength(0);
     });
 
-    test('without any filter text, it should return most recent opened file suggestions for headings mode', () => {
-      const fileData: Record<string, TFile> = {};
-      let file = new TFile();
-      fileData[file.path] = file;
+    test('without any filter text, it should return open editors and the most recent opened file suggestions for headings mode', () => {
+      const file1 = new TFile();
+      const file2 = new TFile();
+      const leaf = makeLeaf();
+      leaf.view.file = file1;
 
-      file = new TFile();
-      fileData[file.path] = file;
+      const getOpenLeavesSpy = jest
+        .spyOn(sut, 'getOpenLeaves')
+        .mockReturnValueOnce([leaf]);
 
-      file = new TFile();
-      fileData[file.path] = file;
+      mockWorkspace.getLastOpenFiles.mockReturnValueOnce([file1.path, file2.path]);
+      mockVault.getAbstractFileByPath.calledWith(file1.path).mockReturnValue(file1);
+      mockVault.getAbstractFileByPath.calledWith(file2.path).mockReturnValue(file2);
+      mockMetadataCache.getFileCache.mockReturnValue({});
 
-      const fileDataKeys = Object.keys(fileData);
-      mockWorkspace.getLastOpenFiles.mockReturnValueOnce(fileDataKeys);
-      mockVault.getAbstractFileByPath.mockImplementation(
-        (path: string) => fileData[path],
-      );
-      mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
-        return f === file ? {} : getCachedMetadata();
-      });
+      const results = sut.getSuggestions(new InputInfo(headingsTrigger));
 
-      const inputInfo = new InputInfo(headingsTrigger);
-      const results = sut.getSuggestions(inputInfo);
+      expect(getOpenLeavesSpy).toHaveBeenCalled();
+      expect(results).toHaveLength(2);
+      expect(results.filter((v) => isFileSuggestion(v))).toHaveLength(1);
+      expect(results.filter((v) => isEditorSuggestion(v))).toHaveLength(1);
 
-      expect(results).toHaveLength(fileDataKeys.length);
-
-      const expectedFiles = new Set(Object.values(fileData));
-      const headingSuggestions = results.filter((sugg) =>
-        isHeadingSuggestion(sugg),
-      ) as HeadingSuggestion[];
-
-      expect(headingSuggestions).toHaveLength(2);
-      expect(headingSuggestions.every((sugg) => expectedFiles.has(sugg.file))).toBe(true);
-
-      const fileSuggestions = results.filter((sugg) =>
-        isFileSuggestion(sugg),
-      ) as FileSuggestion[];
-
-      expect(fileSuggestions).toHaveLength(1);
-      expect(fileSuggestions.every((sugg) => expectedFiles.has(sugg.file))).toBe(true);
-
-      expect(mockWorkspace.getLastOpenFiles).toHaveBeenCalled();
-      expect(mockVault.getAbstractFileByPath).toHaveBeenCalled();
-      expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
-      expect(builtInSystemOptionsSpy).toHaveBeenCalled();
-      expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalled();
-
-      mockWorkspace.getLastOpenFiles.mockReset();
-      mockVault.getAbstractFileByPath.mockReset();
       mockMetadataCache.getFileCache.mockReset();
+      mockVault.getAbstractFileByPath.mockReset();
+      mockWorkspace.getLastOpenFiles.mockReset();
+      getOpenLeavesSpy.mockRestore();
     });
 
     test('with filter search term, it should return matching suggestions for all headings', () => {
@@ -498,39 +475,6 @@ describe('headingsHandler', () => {
   });
 
   describe('addSuggestionsFromFile', () => {
-    let sut: HeadingsHandler;
-    let mockWorkspace: MockProxy<Workspace>;
-    let mockMetadataCache: MockProxy<MetadataCache>;
-    let mockViewRegistry: MockProxy<ViewRegistry>;
-    let builtInSystemOptionsSpy: jest.SpyInstance;
-
-    beforeAll(() => {
-      mockWorkspace = mock<Workspace>();
-      mockMetadataCache = mock<MetadataCache>();
-      mockViewRegistry = mock<ViewRegistry>();
-      mockViewRegistry.isExtensionRegistered.mockReturnValue(true);
-
-      const mockApp = mock<App>({
-        workspace: mockWorkspace,
-        metadataCache: mockMetadataCache,
-        viewRegistry: mockViewRegistry,
-      });
-
-      builtInSystemOptionsSpy = jest
-        .spyOn(settings, 'builtInSystemOptions', 'get')
-        .mockReturnValue({
-          showAllFileTypes: true,
-          showAttachments: true,
-          showExistingOnly: false,
-        });
-
-      sut = new HeadingsHandler(mockApp, settings);
-    });
-
-    afterAll(() => {
-      builtInSystemOptionsSpy.mockRestore();
-    });
-
     test('with filter search term, it should return matching suggestions using file name (leaf segment) when there is no H1 match', () => {
       const filterText = 'foo';
       const filename = `${filterText} filename`; // only filename matters for this test
@@ -630,12 +574,6 @@ describe('headingsHandler', () => {
   });
 
   describe('renderSuggestion', () => {
-    let sut: HeadingsHandler;
-
-    beforeAll(() => {
-      sut = new HeadingsHandler(mock<App>(), settings);
-    });
-
     it('should not throw an error with a null suggestion', () => {
       expect(() => sut.renderSuggestion(null, null)).not.toThrow();
     });
@@ -711,20 +649,10 @@ describe('headingsHandler', () => {
   });
 
   describe('onChooseSuggestion', () => {
-    let sut: HeadingsHandler;
-    let mockWorkspace: MockProxy<Workspace>;
-
     beforeAll(() => {
-      mockWorkspace = mock<Workspace>();
-      const mockApp = mock<App>({
-        workspace: mockWorkspace,
-      });
-
       const fileContainerLeaf = makeLeaf();
       fileContainerLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValueOnce(fileContainerLeaf);
-
-      sut = new HeadingsHandler(mockApp, settings);
     });
 
     it('should not throw an error with a null suggestion', () => {
@@ -752,18 +680,6 @@ describe('headingsHandler', () => {
   });
 
   describe('downrankScoreIfIgnored', () => {
-    let sut: HeadingsHandler;
-    let mockMetadataCache: MockProxy<MetadataCache>;
-
-    beforeAll(() => {
-      mockMetadataCache = mock<MetadataCache>();
-      const mockApp = mock<App>({
-        metadataCache: mockMetadataCache,
-      });
-
-      sut = new HeadingsHandler(mockApp, settings);
-    });
-
     it('should not throw on falsy input', () => {
       const sugg = makeFileSuggestion();
 
@@ -806,40 +722,17 @@ describe('headingsHandler', () => {
   });
 
   describe('shouldIncludeFile', () => {
-    let sut: HeadingsHandler;
-    let mockMetadataCache: MockProxy<MetadataCache>;
-    let mockViewRegistry: MockProxy<ViewRegistry>;
-    let builtInSystemOptionsSpy: jest.SpyInstance;
     let excludeObsidianIgnoredFilesSpy: jest.SpyInstance;
 
     beforeAll(() => {
-      mockMetadataCache = mock<MetadataCache>();
-      mockViewRegistry = mock<ViewRegistry>();
-
-      const mockApp = mock<App>({
-        metadataCache: mockMetadataCache,
-        viewRegistry: mockViewRegistry,
-      });
-
-      builtInSystemOptionsSpy = jest
-        .spyOn(settings, 'builtInSystemOptions', 'get')
-        .mockReturnValue({
-          showAllFileTypes: true,
-          showAttachments: true,
-          showExistingOnly: false,
-        });
-
       excludeObsidianIgnoredFilesSpy = jest.spyOn(
         settings,
         'excludeObsidianIgnoredFiles',
         'get',
       );
-
-      sut = new HeadingsHandler(mockApp, settings);
     });
 
     afterAll(() => {
-      builtInSystemOptionsSpy.mockRestore();
       excludeObsidianIgnoredFilesSpy.mockRestore();
     });
 
@@ -897,7 +790,108 @@ describe('headingsHandler', () => {
 
       mockViewRegistry.isExtensionRegistered.mockReset();
       mockMetadataCache.isUserIgnored.mockReset();
-      builtInSystemOptionsSpy.mockReset();
+    });
+  });
+
+  describe('getRecentFilesSuggestions', () => {
+    const fileData: Record<string, TFile> = {};
+    let file = new TFile();
+    fileData[file.path] = file;
+
+    file = new TFile();
+    fileData[file.path] = file;
+
+    file = new TFile();
+    fileData[file.path] = file;
+
+    const fileDataKeys = Object.keys(fileData);
+
+    beforeAll(() => {
+      mockWorkspace.getLastOpenFiles.mockReturnValue(fileDataKeys);
+      mockVault.getAbstractFileByPath.mockImplementation(
+        (path: string) => fileData[path],
+      );
+    });
+
+    afterAll(() => {
+      mockWorkspace.getLastOpenFiles.mockReset();
+      mockVault.getAbstractFileByPath.mockReset();
+    });
+
+    it('should not throw with falsy values', () => {
+      mockMetadataCache.getFileCache.mockReturnValue({});
+
+      expect(() => sut.getRecentFilesSuggestions()).not.toThrow();
+
+      mockMetadataCache.getFileCache.mockReset();
+    });
+
+    it('should not include ignored files', () => {
+      const ignoredFile = Object.values(fileData)[0];
+      mockMetadataCache.getFileCache.mockReturnValue({});
+
+      const results = sut.getRecentFilesSuggestions([ignoredFile]);
+
+      const found = results.find((v) => v.file === ignoredFile);
+      expect(found).toBe(undefined);
+      expect(results).toHaveLength(fileDataKeys.length - 1);
+    });
+
+    it('should return heading suggestions for recent files', () => {
+      const expectedFiles = new Set(Object.values(fileData));
+      mockMetadataCache.getFileCache.mockReturnValue(getCachedMetadata());
+
+      const results = sut.getRecentFilesSuggestions();
+
+      expect(results).toHaveLength(fileDataKeys.length);
+      expect(mockWorkspace.getLastOpenFiles).toHaveBeenCalled();
+      expect(mockVault.getAbstractFileByPath).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
+      expect(results.every((sugg) => expectedFiles.has(sugg.file))).toBe(true);
+      expect(results.every((sugg) => isHeadingSuggestion(sugg))).toBe(true);
+
+      expect(
+        results.every((sugg) => sugg.optionalIndicators.includes('qsp-recent-indicator')),
+      ).toBe(true);
+
+      mockMetadataCache.getFileCache.mockReset();
+    });
+
+    it('should return file suggestions for recent files without headings', () => {
+      const expectedFiles = new Set(Object.values(fileData));
+      mockMetadataCache.getFileCache.mockReturnValue({});
+
+      const results = sut.getRecentFilesSuggestions();
+
+      expect(results).toHaveLength(fileDataKeys.length);
+      expect(mockWorkspace.getLastOpenFiles).toHaveBeenCalled();
+      expect(mockVault.getAbstractFileByPath).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
+      expect(results.every((sugg) => expectedFiles.has(sugg.file))).toBe(true);
+      expect(results.every((sugg) => isFileSuggestion(sugg))).toBe(true);
+
+      expect(
+        results.every((sugg) => sugg.optionalIndicators.includes('qsp-recent-indicator')),
+      ).toBe(true);
+
+      mockMetadataCache.getFileCache.mockReset();
+    });
+  });
+
+  describe('getOpenEditorSuggestions', () => {
+    it('should return editor suggestions with optional indicator', () => {
+      const getOpenLeavesSpy = jest
+        .spyOn(sut, 'getOpenLeaves')
+        .mockReturnValueOnce([makeLeaf()]);
+
+      const results = sut.getOpenEditorSuggestions();
+
+      expect(results).toHaveLength(1);
+      expect(
+        results.every((sugg) => sugg.optionalIndicators.includes('qsp-editor-indicator')),
+      ).toBe(true);
+
+      getOpenLeavesSpy.mockRestore();
     });
   });
 });

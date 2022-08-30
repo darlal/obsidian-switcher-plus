@@ -20,6 +20,7 @@ import {
   SuggestionType,
   MatchType,
   SearchResultWithFallback,
+  EditorSuggestion,
 } from 'src/types';
 import { isTFile, FrontMatterParser, matcherFnForRegExList } from 'src/utils';
 import { Handler } from './handler';
@@ -28,7 +29,8 @@ type SupportedSuggestionTypes =
   | HeadingSuggestion
   | FileSuggestion
   | AliasSuggestion
-  | UnresolvedSuggestion;
+  | UnresolvedSuggestion
+  | EditorSuggestion;
 
 export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   override get commandString(): string {
@@ -92,11 +94,13 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       this.renderPath(contentEl, sugg.file);
 
       // render the flair icon
-      const auxEl = parentEl.createDiv({ cls: ['suggestion-aux', 'qsp-aux'] });
-      auxEl.createSpan({
+      const flairContainerEl = this.createFlairContainer(parentEl);
+      flairContainerEl.createSpan({
         cls: ['suggestion-flair', 'qsp-headings-indicator'],
         text: HeadingIndicators[item.level],
       });
+
+      this.renderOptionalIndicators(sugg.optionalIndicators, parentEl, flairContainerEl);
 
       if (sugg.downranked) {
         parentEl.addClass('mod-downranked');
@@ -120,7 +124,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
           suggestions = suggestions.slice(0, limit);
         }
       } else {
-        suggestions = this.getRecentFilesSuggestions();
+        suggestions = this.getInitialSuggestionList();
       }
     }
 
@@ -189,7 +193,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   }
 
   downrankScoreIfIgnored<
-    T extends Exclude<SupportedSuggestionTypes, UnresolvedSuggestion>,
+    T extends Exclude<SupportedSuggestionTypes, UnresolvedSuggestion | EditorSuggestion>,
   >(sugg: T): T {
     if (this.app.metadataCache.isUserIgnored(sugg?.file?.path)) {
       sugg.downranked = true;
@@ -413,6 +417,21 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     return this.downrankScoreIfIgnored(sugg);
   }
 
+  createEditorSuggestion(
+    item: WorkspaceLeaf,
+    file: TFile,
+    match: SearchResult,
+  ): EditorSuggestion {
+    const sugg: EditorSuggestion = {
+      item,
+      file,
+      ...this.createSearchMatch(match, MatchType.None, null),
+      type: SuggestionType.EditorList,
+    };
+
+    return sugg;
+  }
+
   private createSearchMatch(
     match: SearchResult,
     type: MatchType,
@@ -433,7 +452,9 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     };
   }
 
-  private getRecentFilesSuggestions(): (HeadingSuggestion | FileSuggestion)[] {
+  getRecentFilesSuggestions(
+    ignoreFiles: TAbstractFile[] = [],
+  ): (HeadingSuggestion | FileSuggestion)[] {
     const suggestions: (HeadingSuggestion | FileSuggestion)[] = [];
     const { workspace, vault, metadataCache } = this.app;
     const recentFilePaths = workspace.getLastOpenFiles();
@@ -441,7 +462,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     recentFilePaths.forEach((path) => {
       const file = vault.getAbstractFileByPath(path);
 
-      if (this.shouldIncludeFile(file)) {
+      if (!ignoreFiles.includes(file) && this.shouldIncludeFile(file)) {
         const f = file as TFile;
         let h1: HeadingCache = null;
 
@@ -458,10 +479,35 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
           ? this.createHeadingSuggestion(h1, f, null)
           : this.createFileSuggestion(f, null);
 
+        sugg.optionalIndicators = ['qsp-recent-indicator'];
         suggestions.push(sugg);
       }
     });
 
     return suggestions;
+  }
+
+  getOpenEditorSuggestions(): EditorSuggestion[] {
+    const suggestions: EditorSuggestion[] = [];
+    const { excludeViewTypes } = this.settings;
+    const leaves = this.getOpenLeaves(excludeViewTypes);
+
+    leaves.forEach((leaf) => {
+      const file = leaf.view?.file;
+      const sugg = this.createEditorSuggestion(leaf, file, null);
+
+      sugg.optionalIndicators = ['qsp-editor-indicator'];
+      suggestions.push(sugg);
+    });
+
+    return suggestions;
+  }
+
+  getInitialSuggestionList(): (HeadingSuggestion | FileSuggestion | EditorSuggestion)[] {
+    const openEditors = this.getOpenEditorSuggestions();
+    const ignoreFiles = openEditors.map((v) => v.file);
+    const recentFiles = this.getRecentFilesSuggestions(ignoreFiles);
+
+    return [...openEditors, ...recentFiles];
   }
 }

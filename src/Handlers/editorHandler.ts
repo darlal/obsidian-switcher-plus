@@ -75,6 +75,8 @@ export class EditorHandler extends Handler<EditorSuggestion> {
         matchType,
         match,
       );
+
+      this.renderOptionalIndicators(sugg.optionalIndicators, parentEl);
     }
   }
 

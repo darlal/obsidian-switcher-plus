@@ -275,13 +275,15 @@ export abstract class Handler<T> {
   }
 
   /**
-   * Determines if a leaf belongs to the main editor panel (workspace.rootSplit)
-   * as opposed to the side panels
+   * Determines if a leaf belongs to the main editor panel (workspace.rootSplit or
+   * workspace.floatingSplit) as opposed to the side panels
    * @param  {WorkspaceLeaf} leaf
    * @returns boolean
    */
   isMainPanelLeaf(leaf: WorkspaceLeaf): boolean {
-    return leaf?.getRoot() === this.app.workspace.rootSplit;
+    const { workspace } = this.app;
+    const root = leaf?.getRoot();
+    return root === workspace.rootSplit || root === workspace.floatingSplit;
   }
 
   /**
@@ -722,5 +724,55 @@ export abstract class Handler<T> {
   static getActiveLeaf(workspace: Workspace): WorkspaceLeaf | null {
     const leaf = workspace?.getActiveViewOfType(View)?.leaf;
     return leaf ?? null;
+  }
+
+  /**
+   * Displays extra flair icons for an item, and adds any associated css classes
+   * to parentEl
+   * @param  {string[]} optionalIndicators indicator icon styles to be added
+   * @param  {HTMLElement} parentEl
+   * @param  {HTMLDivElement=null} flairContainerEl optional, if null, it will be created
+   * @returns HTMLDivElement returns the flairContainerEl that was passed in or created
+   */
+  renderOptionalIndicators(
+    optionalIndicators: string[],
+    parentEl: HTMLElement,
+    flairContainerEl: HTMLDivElement = null,
+  ): HTMLDivElement {
+    const indicatorData = new Map<string, Record<string, string>>([
+      ['qsp-recent-indicator', { icon: 'history', parentElClass: 'qsp-recent-file' }],
+      ['qsp-editor-indicator', { icon: 'edit', parentElClass: 'qsp-open-editor' }],
+    ]);
+
+    if (!flairContainerEl) {
+      flairContainerEl = this.createFlairContainer(parentEl);
+    }
+
+    optionalIndicators?.forEach((indicator) => {
+      const info = indicatorData.get(indicator);
+      const iconName = info['icon'];
+      const parentElClass = info['parentElClass'];
+
+      if (parentElClass) {
+        parentEl?.addClass(parentElClass);
+      }
+
+      const flairEl = flairContainerEl.createSpan({
+        cls: ['suggestion-flair', indicator],
+      });
+
+      setIcon(flairEl, iconName);
+    });
+
+    return flairContainerEl;
+  }
+
+  /**
+   * Creates a child Div element with the appropriate css classes for flair icons
+   * @param  {HTMLElement} parentEl
+   * @returns HTMLDivElement
+   */
+  createFlairContainer(parentEl: HTMLElement): HTMLDivElement {
+    return parentEl?.createDiv({ cls: ['suggestion-aux', 'qsp-aux'] });
   }
 }

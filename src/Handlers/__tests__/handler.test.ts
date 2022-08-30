@@ -1428,4 +1428,64 @@ describe('Handler', () => {
       );
     });
   });
+
+  describe('renderOptionalIndicators', () => {
+    const mockSetIcon = jest.mocked(setIcon);
+
+    beforeEach(() => {
+      mockSetIcon.mockClear();
+    });
+
+    it('should add a flair icon to an existing flair container', () => {
+      const mockParentEl = mock<HTMLElement>();
+      const mockFlairContainer = mock<HTMLDivElement>();
+      const mockFlairEl = mock<HTMLSpanElement>();
+
+      mockFlairContainer.createSpan.mockReturnValueOnce(mockFlairEl);
+
+      const result = sut.renderOptionalIndicators(
+        ['qsp-recent-indicator'],
+        mockParentEl,
+        mockFlairContainer,
+      );
+
+      expect(result).toBe(mockFlairContainer);
+      expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-recent-file');
+      expect(mockSetIcon).toHaveBeenCalledWith(mockFlairEl, 'history');
+    });
+
+    it('should create flair container and add flair icon to it', () => {
+      const mockParentEl = mock<HTMLElement>();
+      const mockFlairContainer = mock<HTMLDivElement>();
+      const mockFlairEl = mock<HTMLSpanElement>();
+
+      mockParentEl.createDiv.mockReturnValueOnce(mockFlairContainer);
+      mockFlairContainer.createSpan.mockReturnValueOnce(mockFlairEl);
+
+      const result = sut.renderOptionalIndicators(
+        ['qsp-editor-indicator'],
+        mockParentEl,
+        mockFlairContainer,
+      );
+
+      expect(result).toBe(mockFlairContainer);
+      expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-open-editor');
+      expect(mockSetIcon).toHaveBeenCalledWith(mockFlairEl, 'edit');
+    });
+  });
+
+  describe('createFlairContainer', () => {
+    it('should create a container with the appropriate css classes', () => {
+      const mockDivEl = mock<HTMLDivElement>();
+      const mockParentEl = mock<HTMLElement>();
+      mockParentEl.createDiv.mockReturnValueOnce(mockDivEl);
+
+      const result = sut.createFlairContainer(mockParentEl);
+
+      expect(result).toBe(mockDivEl);
+      expect(mockParentEl.createDiv).toHaveBeenCalledWith(
+        expect.objectContaining({ cls: ['suggestion-aux', 'qsp-aux'] }),
+      );
+    });
+  });
 });

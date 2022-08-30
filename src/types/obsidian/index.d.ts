@@ -97,4 +97,8 @@ declare module 'obsidian' {
   export interface WorkspaceLeaf {
     activeTime: number;
   }
+
+  export interface Workspace {
+    floatingSplit: WorkspaceRoot;
+  }
 }

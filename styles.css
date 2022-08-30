@@ -36,6 +36,21 @@
   justify-content: left;
 }
 
+/* highlight recently used file suggestions */
+.suggestion-item.qsp-recent-file .qsp-title {
+  text-decoration: underline dotted var(--text-muted);
+}
+
+/* highlight currently open editor suggestions */
+.suggestion-item.qsp-open-editor .qsp-title {
+  text-decoration: underline var(--text-accent);
+}
+
+/* highlight the open editor flair icon */
+.suggestion-item.qsp-open-editor .qsp-editor-indicator {
+  color: var(--text-accent);
+}
+
 /* symbol suggestion display the icon first (on the left side) */
 .qsp-suggestion-symbol > .qsp-aux {
   order: -1;
@@ -111,6 +126,12 @@
 
 /* headings suggestion, heading level (H1, H2, etc..) icon */
 .qsp-headings-indicator {}
+
+/* flair icon for suggestions that represent a recent file */
+.qsp-recent-indicator {}
+
+/* flair icon for suggestion that represent a file currently opened in an editor */
+.qsp-editor-indicator {}
 
 /* headings level */
 .qsp-headings-l1 {}

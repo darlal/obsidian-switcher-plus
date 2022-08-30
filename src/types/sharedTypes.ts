@@ -149,6 +149,7 @@ export interface Suggestion<T> extends FuzzyMatch<T> {
   // Obsidian created suggestions won't have these props
   matchType?: MatchType;
   matchText?: string;
+  optionalIndicators?: string[];
 }
 
 export interface SymbolSuggestion extends Suggestion<SymbolInfo> {

@@ -666,9 +666,7 @@ describe('symbolHandler', () => {
     it('should render a callout suggestion', () => {
       const calloutSugg = makeSymbolSuggestion(calloutCache, SymbolType.Callout);
 
-      const addIndicatorSpy = jest
-        .spyOn(SymbolHandler, 'addSymbolIndicator')
-        .mockReturnValueOnce();
+      const addIndicatorSpy = jest.spyOn(sut, 'addSymbolIndicator').mockReturnValueOnce();
 
       sut.renderSuggestion(calloutSugg, mockParentEl);
 
@@ -790,7 +788,7 @@ describe('symbolHandler', () => {
         .calledWith('--callout-icon')
         .mockReturnValueOnce(iconName);
 
-      SymbolHandler.addSymbolIndicator(sugg.item, mockParentEl);
+      sut.addSymbolIndicator(sugg.item, mockParentEl);
 
       expect(mockSetIcon).toHaveBeenCalledWith(mockFlairEl, iconName);
       expect(mockAuxEl.createSpan).toHaveBeenCalledWith(
@@ -814,7 +812,7 @@ describe('symbolHandler', () => {
           ? HeadingIndicators[(cache as HeadingCache).level]
           : SymbolIndicators[type];
 
-      SymbolHandler.addSymbolIndicator(sugg.item, mockParentEl);
+      sut.addSymbolIndicator(sugg.item, mockParentEl);
 
       expect(mockParentEl.createDiv).toHaveBeenCalledWith(
         expect.objectContaining({

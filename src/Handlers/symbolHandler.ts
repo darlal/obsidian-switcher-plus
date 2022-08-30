@@ -108,7 +108,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
       const text = SymbolHandler.getSuggestionTextForSymbol(item);
       this.renderContent(parentEl, text, sugg.match);
-      SymbolHandler.addSymbolIndicator(item, parentEl);
+      this.addSymbolIndicator(item, parentEl);
     }
   }
 
@@ -387,22 +387,22 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     return text;
   }
 
-  static addSymbolIndicator(symbolInfo: SymbolInfo, parentEl: HTMLElement): void {
+  addSymbolIndicator(symbolInfo: SymbolInfo, parentEl: HTMLElement): void {
     const { symbolType, symbol } = symbolInfo;
     const flairElClasses = ['suggestion-flair', 'qsp-symbol-indicator'];
-    const auxEl = parentEl.createDiv({ cls: ['suggestion-aux', 'qsp-aux'] });
+    const flairContainerEl = this.createFlairContainer(parentEl);
 
     if (isCalloutCache(symbol)) {
       flairElClasses.push('callout');
-      const flairEl = auxEl.createSpan({
+      const calloutFlairEl = flairContainerEl.createSpan({
         cls: flairElClasses,
         // Obsidian 0.15.9: the icon glyph is set in css based on the data-callout attr
         attr: { 'data-callout': symbol.calloutType },
       });
 
       // Obsidian 0.15.9 the --callout-icon css prop holds the name of the icon glyph
-      const iconName = flairEl.getCssPropertyValue('--callout-icon');
-      setIcon(flairEl, iconName);
+      const iconName = calloutFlairEl.getCssPropertyValue('--callout-icon');
+      setIcon(calloutFlairEl, iconName);
     } else {
       let indicator: string;
 
@@ -412,7 +412,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
         indicator = SymbolIndicators[symbolType];
       }
 
-      auxEl.createSpan({
+      flairContainerEl.createSpan({
         cls: flairElClasses,
         text: indicator,
       });
