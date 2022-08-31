@@ -76,8 +76,9 @@ declare module 'obsidian' {
 
   export interface Chooser<T> {
     selectedItem: number;
+    suggestions: HTMLDivElement[];
     values: T[];
-    setSelectedItem(index: number, scrollIntoView: boolean): void;
+    setSelectedItem(index: number, evt: MouseEvent | KeyboardEvent): void;
     setSuggestions(suggestions: T[]): void;
     useSelectedItem(evt: KeyboardEvent): void;
   }

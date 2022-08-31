@@ -27,9 +27,9 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     enabledSymbolTypes,
     excludeViewTypes: ['empty'],
     referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'],
-    onOpenPreferNewPane: true,
-    alwaysNewPaneForSymbols: false,
-    useActivePaneForSymbolsOnMobile: false,
+    onOpenPreferNewTab: true,
+    alwaysNewTabForSymbols: false,
+    useActiveTabForSymbolsOnMobile: false,
     symbolsInLineOrder: true,
     editorListCommand: 'edt ',
     symbolListCommand: '@',
@@ -54,9 +54,9 @@ function transientSettingsData(useDefault: boolean): SettingsData {
   };
 
   if (!useDefault) {
-    data.onOpenPreferNewPane = chance.bool();
-    data.alwaysNewPaneForSymbols = chance.bool();
-    data.useActivePaneForSymbolsOnMobile = chance.bool();
+    data.onOpenPreferNewTab = chance.bool();
+    data.alwaysNewTabForSymbols = chance.bool();
+    data.useActiveTabForSymbolsOnMobile = chance.bool();
     data.symbolsInLineOrder = chance.bool();
     data.editorListCommand = chance.word();
     data.symbolListCommand = chance.word();
@@ -152,9 +152,9 @@ describe('SwitcherPlusSettings', () => {
   it('should save modified settings', async () => {
     const settings = transientSettingsData(false);
 
-    sut.onOpenPreferNewPane = settings.onOpenPreferNewPane;
-    sut.alwaysNewPaneForSymbols = settings.alwaysNewPaneForSymbols;
-    sut.useActivePaneForSymbolsOnMobile = settings.useActivePaneForSymbolsOnMobile;
+    sut.onOpenPreferNewTab = settings.onOpenPreferNewTab;
+    sut.alwaysNewTabForSymbols = settings.alwaysNewTabForSymbols;
+    sut.useActiveTabForSymbolsOnMobile = settings.useActiveTabForSymbolsOnMobile;
     sut.symbolsInLineOrder = settings.symbolsInLineOrder;
     sut.editorListCommand = settings.editorListCommand;
     sut.symbolListCommand = settings.symbolListCommand;

@@ -15,9 +15,9 @@ export class SwitcherPlusSettings {
     enabledSymbolTypes[SymbolType.Callout] = true;
 
     return {
-      onOpenPreferNewPane: true,
-      alwaysNewPaneForSymbols: false,
-      useActivePaneForSymbolsOnMobile: false,
+      onOpenPreferNewTab: true,
+      alwaysNewTabForSymbols: false,
+      useActiveTabForSymbolsOnMobile: false,
       symbolsInLineOrder: true,
       editorListCommand: 'edt ',
       symbolListCommand: '@',
@@ -69,28 +69,28 @@ export class SwitcherPlusSettings {
     return this.builtInSystemOptions?.showExistingOnly;
   }
 
-  get onOpenPreferNewPane(): boolean {
-    return this.data.onOpenPreferNewPane;
+  get onOpenPreferNewTab(): boolean {
+    return this.data.onOpenPreferNewTab;
   }
 
-  set onOpenPreferNewPane(value: boolean) {
-    this.data.onOpenPreferNewPane = value;
+  set onOpenPreferNewTab(value: boolean) {
+    this.data.onOpenPreferNewTab = value;
   }
 
-  get alwaysNewPaneForSymbols(): boolean {
-    return this.data.alwaysNewPaneForSymbols;
+  get alwaysNewTabForSymbols(): boolean {
+    return this.data.alwaysNewTabForSymbols;
   }
 
-  set alwaysNewPaneForSymbols(value: boolean) {
-    this.data.alwaysNewPaneForSymbols = value;
+  set alwaysNewTabForSymbols(value: boolean) {
+    this.data.alwaysNewTabForSymbols = value;
   }
 
-  get useActivePaneForSymbolsOnMobile(): boolean {
-    return this.data.useActivePaneForSymbolsOnMobile;
+  get useActiveTabForSymbolsOnMobile(): boolean {
+    return this.data.useActiveTabForSymbolsOnMobile;
   }
 
-  set useActivePaneForSymbolsOnMobile(value: boolean) {
-    this.data.useActivePaneForSymbolsOnMobile = value;
+  set useActiveTabForSymbolsOnMobile(value: boolean) {
+    this.data.useActiveTabForSymbolsOnMobile = value;
   }
 
   get symbolsInLineOrder(): boolean {
@@ -341,7 +341,14 @@ export class SwitcherPlusSettings {
   }
 
   isSymbolTypeEnabled(symbol: SymbolType): boolean {
-    return this.data.enabledSymbolTypes[symbol];
+    const { enabledSymbolTypes } = this.data;
+    let value = SwitcherPlusSettings.defaults.enabledSymbolTypes[symbol];
+
+    if (Object.prototype.hasOwnProperty.call(enabledSymbolTypes, symbol)) {
+      value = enabledSymbolTypes[symbol];
+    }
+
+    return value;
   }
 
   setSymbolTypeEnabled(symbol: SymbolType, isEnabled: boolean): void {

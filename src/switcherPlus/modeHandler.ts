@@ -27,7 +27,7 @@ export class ModeHandler {
   private inputInfo: InputInfo;
   private handlersByMode: Map<Omit<Mode, 'Standard'>, Handler<AnySuggestion>>;
   private handlersByType: Map<SuggestionType, Handler<AnySuggestion>>;
-  private debouncedGetSuggestions: Debouncer<[InputInfo, Chooser<AnySuggestion>]>;
+  private debouncedGetSuggestions: Debouncer<[InputInfo, Chooser<AnySuggestion>], void>;
   private sessionOpenModeString: string;
 
   constructor(
@@ -97,6 +97,9 @@ export class ModeHandler {
   updateSuggestions(query: string, chooser: Chooser<AnySuggestion>): boolean {
     let handled = false;
     const { exKeymap } = this;
+
+    // cancel any potentially previously running debounced getsuggestions call
+    this.debouncedGetSuggestions.cancel();
 
     // get the currently active leaf across all rootSplits
     const activeLeaf = Handler.getActiveLeaf(this.app.workspace);
@@ -287,7 +290,8 @@ export class ModeHandler {
         .findIndex((v) => v.item.isSelected);
 
       if (index !== -1) {
-        chooser.setSelectedItem(index, true);
+        chooser.setSelectedItem(index, null);
+        chooser.suggestions[chooser.selectedItem].scrollIntoView(false);
       }
     }
   }

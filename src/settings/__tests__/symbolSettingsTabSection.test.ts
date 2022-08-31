@@ -84,27 +84,27 @@ describe('symbolSettingsTabSection', () => {
       );
     });
 
-    it('should show the alwaysNewPaneForSymbols setting', () => {
+    it('should show the alwaysNewTabForSymbols setting', () => {
       sut.display(mockContainerEl);
 
       expect(addToggleSettingSpy).toBeCalledWith(
         mockContainerEl,
-        'Open Symbols in new pane',
+        'Open Symbols in new tab',
         expect.any(String),
-        config.alwaysNewPaneForSymbols,
-        'alwaysNewPaneForSymbols',
+        config.alwaysNewTabForSymbols,
+        'alwaysNewTabForSymbols',
       );
     });
 
-    it('should show the useActivePaneForSymbolsOnMobile setting', () => {
+    it('should show the useActiveTabForSymbolsOnMobile setting', () => {
       sut.display(mockContainerEl);
 
       expect(addToggleSettingSpy).toBeCalledWith(
         mockContainerEl,
-        'Open Symbols in active pane on mobile devices',
+        'Open Symbols in active tab on mobile devices',
         expect.any(String),
-        config.useActivePaneForSymbolsOnMobile,
-        'useActivePaneForSymbolsOnMobile',
+        config.useActiveTabForSymbolsOnMobile,
+        'useActiveTabForSymbolsOnMobile',
       );
     });
 

@@ -1,7 +1,12 @@
-import { mock, mockClear, MockProxy } from 'jest-mock-extended';
+import { mock, mockClear, mockFn, MockProxy, mockReset } from 'jest-mock-extended';
 import { SwitcherPlusSettings } from 'src/settings';
 import { AnySuggestion, Mode, SymbolType } from 'src/types';
-import { SwitcherPlusKeymap, ModeHandler, SourcedParsedCommand } from 'src/switcherPlus';
+import {
+  SwitcherPlusKeymap,
+  ModeHandler,
+  SourcedParsedCommand,
+  InputInfo,
+} from 'src/switcherPlus';
 import {
   EditorHandler,
   HeadingsHandler,
@@ -12,7 +17,15 @@ import {
   RelatedItemsHandler,
   StandardExHandler,
 } from 'src/Handlers';
-import { App, Chooser, debounce, View, InternalPlugins, Workspace } from 'obsidian';
+import {
+  App,
+  Chooser,
+  debounce,
+  View,
+  InternalPlugins,
+  Workspace,
+  Debouncer,
+} from 'obsidian';
 import {
   editorTrigger,
   symbolTrigger,
@@ -102,6 +115,13 @@ describe('modeHandler', () => {
   let mockSettings: MockProxy<SwitcherPlusSettings>;
   let mockWorkspace: MockProxy<Workspace>;
 
+  const mockDebouncedGetSuggestions =
+    mockFn<Debouncer<[InputInfo, Chooser<AnySuggestion>], void>>();
+  mockDebouncedGetSuggestions.cancel = mockFn();
+
+  const mockDebounce = jest.mocked(debounce);
+  mockDebounce.mockReturnValue(mockDebouncedGetSuggestions);
+
   beforeAll(() => {
     const mockInternalPlugins = mock<InternalPlugins>();
     mockInternalPlugins.getPluginById.mockImplementation((_id) => {
@@ -130,6 +150,10 @@ describe('modeHandler', () => {
       excludeViewTypes: [excludedViewType],
       referenceViews: [],
     });
+  });
+
+  afterAll(() => {
+    mockDebounce.mockReset();
   });
 
   describe('opening and closing the modal', () => {
@@ -452,6 +476,9 @@ describe('modeHandler', () => {
     });
 
     it('should debounce searches in Headings mode with filter text', () => {
+      mockDebounce.mockClear();
+      mockClear(mockDebouncedGetSuggestions);
+
       const validateCommandSpy = jest
         .spyOn(HeadingsHandler.prototype, 'validateCommand')
         .mockImplementation((inputInfo) => {
@@ -460,27 +487,25 @@ describe('modeHandler', () => {
           cmd.parsedInput = 'foo';
         });
 
-      const mockDebouncedFn = jest.fn();
-      const mockDebounce = debounce as jest.Mock;
-      mockDebounce.mockImplementation(() => mockDebouncedFn);
       sut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
 
       const results = sut.updateSuggestions(headingsTrigger, mockChooser);
 
       expect(results).toBe(true);
       expect(mockDebounce).toHaveBeenCalled();
-      expect(mockDebouncedFn).toHaveBeenCalled();
+      expect(mockDebouncedGetSuggestions).toHaveBeenCalled();
+      expect(mockDebouncedGetSuggestions.cancel).toHaveBeenCalled();
       expect(validateCommandSpy).toHaveBeenCalled();
 
       validateCommandSpy.mockRestore();
-      mockDebounce.mockReset();
     });
 
     it('should set the active suggestion in Symbol Mode', () => {
       const sugg = makeSymbolSuggestion(getHeadings()[0], SymbolType.Heading, null, true);
-      const expectedSuggestions = [sugg];
+      const expectedSuggs = [sugg];
+      const expectedSuggEls = expectedSuggs.map((_v) => mock<HTMLDivElement>());
 
-      const getSuggestionsPromise = Promise.resolve(expectedSuggestions);
+      const getSuggestionsPromise = Promise.resolve(expectedSuggs);
 
       const getSuggestionSpy = jest
         .spyOn(SymbolHandler.prototype, 'getSuggestions')
@@ -492,8 +517,11 @@ describe('modeHandler', () => {
           inputInfo.mode = Mode.SymbolList;
         });
 
-      const mockSetSelectedItem = mockChooser.setSelectedItem.mockImplementation();
-      mockChooser.values = expectedSuggestions;
+      mockSetSuggestion.calledWith(expectedSuggs).mockImplementationOnce(() => {
+        mockChooser.values = expectedSuggs;
+        mockChooser.suggestions = expectedSuggEls;
+        mockChooser.selectedItem = 0;
+      });
 
       const results = sut.updateSuggestions(symbolTrigger, mockChooser);
 
@@ -501,13 +529,13 @@ describe('modeHandler', () => {
         expect(results).toBe(true);
         expect(getSuggestionSpy).toHaveBeenCalled();
         expect(validateCommandSpy).toHaveBeenCalled();
-        expect(mockSetSelectedItem).toHaveBeenCalledWith(0, true); // <-- here
-        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggestions);
+        expect(mockChooser.setSelectedItem).toHaveBeenCalledWith(0, null); // <-- here
+        expect(expectedSuggEls[0].scrollIntoView).toHaveBeenCalled();
+        expect(mockSetSuggestion).toHaveBeenLastCalledWith(expectedSuggs);
 
         getSuggestionSpy.mockRestore();
         validateCommandSpy.mockRestore();
-        mockSetSelectedItem.mockRestore();
-        mockSetSuggestion.mockReset();
+        mockReset(mockChooser);
       });
     });
 

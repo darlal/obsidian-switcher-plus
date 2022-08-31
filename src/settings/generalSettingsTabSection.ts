@@ -8,10 +8,10 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
 
     this.addToggleSetting(
       containerEl,
-      'Default to open in new pane',
-      'When enabled, navigating to un-opened files will open a new editor pane whenever possible (as if cmd/ctrl were held). When the file is already open, the existing pane will be activated. This overrides all other pane settings.',
-      this.config.onOpenPreferNewPane,
-      'onOpenPreferNewPane',
+      'Default to open in new tab',
+      'When enabled, navigating to un-opened files will open a new editor tab whenever possible (as if cmd/ctrl were held). When the file is already open, the existing tab will be activated. This overrides all other tab settings.',
+      this.config.onOpenPreferNewTab,
+      'onOpenPreferNewTab',
     );
 
     this.setPathDisplayFormat(containerEl, this.config);

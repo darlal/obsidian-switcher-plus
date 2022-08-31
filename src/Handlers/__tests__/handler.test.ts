@@ -28,13 +28,7 @@ import {
   makeFuzzyMatch,
   makePreparedQuery,
 } from '@fixtures';
-import {
-  AnySuggestion,
-  EditorNavigationType,
-  MatchType,
-  Mode,
-  PathDisplayFormat,
-} from 'src/types';
+import { AnySuggestion, MatchType, Mode, PathDisplayFormat } from 'src/types';
 import { mock, mockClear, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
 import { SwitcherPlusSettings } from 'src/settings';
@@ -382,18 +376,18 @@ describe('Handler', () => {
     });
   });
 
-  describe('shouldCreateNewLeaf', () => {
+  describe('applyTabCreationPreferences', () => {
     let mockPlatform: MockProxy<typeof Platform>;
 
     beforeAll(() => {
       mockPlatform = jest.mocked<typeof Platform>(Platform);
     });
 
-    test('with onOpenPreferNewPane enabled it should return true', () => {
-      const isModDown = false;
-      mockSettings.onOpenPreferNewPane = true;
+    test('with onOpenPreferNewTab enabled it should return true', () => {
+      const navType = false;
+      mockSettings.onOpenPreferNewTab = true;
 
-      const result = sut.shouldCreateNewLeaf(isModDown);
+      const result = sut.applyTabCreationPreferences(navType);
 
       expect(result).toBe(true);
 
@@ -401,149 +395,177 @@ describe('Handler', () => {
     });
 
     test('with isAlreadyOpen enabled it should return false', () => {
-      const isModDown = false;
+      const navType = false;
       const isAlreadyOpen = true;
-      mockSettings.onOpenPreferNewPane = true;
+      mockSettings.onOpenPreferNewTab = true;
 
-      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen);
+      const result = sut.applyTabCreationPreferences(navType, isAlreadyOpen);
 
       expect(result).toBe(false);
 
       mockReset(mockSettings);
     });
 
-    test('with isModDown enabled it should return true', () => {
-      const isModDown = true;
-      mockSettings.onOpenPreferNewPane = false;
+    test('with navType enabled it should return true', () => {
+      const navType = true;
+      mockSettings.onOpenPreferNewTab = false;
 
-      const result = sut.shouldCreateNewLeaf(isModDown);
+      const result = sut.applyTabCreationPreferences(navType);
 
       expect(result).toBe(true);
 
       mockReset(mockSettings);
     });
 
-    test('with isModDown, and isAlreadyOpen enabled it should return true', () => {
-      const isModDown = true;
+    test('with navType, and isAlreadyOpen enabled it should return true', () => {
+      const navType = true;
       const isAlreadyOpen = true;
-      mockSettings.onOpenPreferNewPane = false;
+      mockSettings.onOpenPreferNewTab = false;
 
-      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen);
-
-      expect(result).toBe(true);
-
-      mockReset(mockSettings);
-    });
-
-    test('with onOpenPreferNewPane and isModDown enabled it should return true', () => {
-      const isModDown = true;
-      mockSettings.onOpenPreferNewPane = true;
-
-      const result = sut.shouldCreateNewLeaf(isModDown);
+      const result = sut.applyTabCreationPreferences(navType, isAlreadyOpen);
 
       expect(result).toBe(true);
 
       mockReset(mockSettings);
     });
 
-    test('with onOpenPreferNewPane, isModDown, isAlreadyOpen enabled it should return true', () => {
-      const isModDown = true;
+    test('with onOpenPreferNewTab and navType enabled it should return true', () => {
+      const navType = true;
+      mockSettings.onOpenPreferNewTab = true;
+
+      const result = sut.applyTabCreationPreferences(navType);
+
+      expect(result).toBe(true);
+
+      mockReset(mockSettings);
+    });
+
+    test('with onOpenPreferNewTab, navType, isAlreadyOpen enabled it should return true', () => {
+      const navType = true;
       const isAlreadyOpen = true;
-      mockSettings.onOpenPreferNewPane = true;
+      mockSettings.onOpenPreferNewTab = true;
 
-      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen);
+      const result = sut.applyTabCreationPreferences(navType, isAlreadyOpen);
 
       expect(result).toBe(true);
 
       mockReset(mockSettings);
     });
 
-    test('with onOpenPreferNewPane enabled, and in Symbol mode, it should return true. This overrides all symbol mode new pane settings', () => {
-      const isModDown = false;
+    test('with onOpenPreferNewTab enabled, and in Symbol mode, it should return true. This overrides all symbol mode new pane settings', () => {
+      const navType = false;
       const isAlreadyOpen = false;
-      mockSettings.onOpenPreferNewPane = true;
+      mockSettings.onOpenPreferNewTab = true;
 
-      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen, Mode.SymbolList);
+      const result = sut.applyTabCreationPreferences(
+        navType,
+        isAlreadyOpen,
+        Mode.SymbolList,
+      );
 
       expect(result).toBe(true);
 
       mockReset(mockSettings);
     });
 
-    test('with onOpenPreferNewPane and isModDown enabled, and in Symbol mode, it should return true. This overrides all symbol mode new pane settings', () => {
-      const isModDown = true;
+    test('with onOpenPreferNewTab enabled and navType true, and in Symbol mode, it should return true. This overrides all symbol mode new pane settings', () => {
+      const navType = true;
       const isAlreadyOpen = false;
-      mockSettings.onOpenPreferNewPane = true;
+      mockSettings.onOpenPreferNewTab = true;
 
-      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen, Mode.SymbolList);
+      const result = sut.applyTabCreationPreferences(
+        navType,
+        isAlreadyOpen,
+        Mode.SymbolList,
+      );
 
       expect(result).toBe(true);
 
       mockReset(mockSettings);
     });
 
-    test('with onOpenPreferNewPane, isModDown, isAlreadyOpen enabled, and in Symbol mode, it should return true. This overrides all symbol mode new pane settings', () => {
-      const isModDown = true;
+    test('with onOpenPreferNewTab, navType, isAlreadyOpen enabled, and in Symbol mode, it should return true. This overrides all symbol mode new pane settings', () => {
+      const navType = true;
       const isAlreadyOpen = true;
-      mockSettings.onOpenPreferNewPane = true;
+      mockSettings.onOpenPreferNewTab = true;
 
-      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen, Mode.SymbolList);
+      const result = sut.applyTabCreationPreferences(
+        navType,
+        isAlreadyOpen,
+        Mode.SymbolList,
+      );
 
       expect(result).toBe(true);
 
       mockReset(mockSettings);
     });
 
-    test('with alwaysNewPaneForSymbols enabled, and in Symbol mode, it should return true.', () => {
-      const isModDown = false;
+    test('with alwaysNewTabForSymbols enabled, and in Symbol mode, it should return true.', () => {
+      const navType = false;
       const isAlreadyOpen = false;
-      mockSettings.onOpenPreferNewPane = false;
-      mockSettings.alwaysNewPaneForSymbols = true;
+      mockSettings.onOpenPreferNewTab = false;
+      mockSettings.alwaysNewTabForSymbols = true;
 
-      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen, Mode.SymbolList);
-
-      expect(result).toBe(true);
-
-      mockReset(mockSettings);
-    });
-
-    test('with isModDown enabled, and in Symbol mode, it should return true.', () => {
-      const isModDown = true;
-      const isAlreadyOpen = true;
-      mockSettings.onOpenPreferNewPane = false;
-      mockSettings.alwaysNewPaneForSymbols = false;
-
-      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen, Mode.SymbolList);
+      const result = sut.applyTabCreationPreferences(
+        navType,
+        isAlreadyOpen,
+        Mode.SymbolList,
+      );
 
       expect(result).toBe(true);
 
       mockReset(mockSettings);
     });
 
-    test('with useActivePaneForSymbolsOnMobile enabled, and in Symbol mode, it should return false.', () => {
-      const isModDown = false;
+    test('with navType enabled, and in Symbol mode, it should return true.', () => {
+      const navType = true;
       const isAlreadyOpen = true;
-      mockSettings.onOpenPreferNewPane = false;
-      mockSettings.alwaysNewPaneForSymbols = true;
-      mockSettings.useActivePaneForSymbolsOnMobile = true;
+      mockSettings.onOpenPreferNewTab = false;
+      mockSettings.alwaysNewTabForSymbols = false;
+
+      const result = sut.applyTabCreationPreferences(
+        navType,
+        isAlreadyOpen,
+        Mode.SymbolList,
+      );
+
+      expect(result).toBe(true);
+
+      mockReset(mockSettings);
+    });
+
+    test('with useActiveTabForSymbolsOnMobile enabled, and in Symbol mode, it should return false.', () => {
+      const navType = false;
+      const isAlreadyOpen = true;
+      mockSettings.onOpenPreferNewTab = false;
+      mockSettings.alwaysNewTabForSymbols = true;
+      mockSettings.useActiveTabForSymbolsOnMobile = true;
       mockPlatform.isMobile = true;
 
-      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen, Mode.SymbolList);
+      const result = sut.applyTabCreationPreferences(
+        navType,
+        isAlreadyOpen,
+        Mode.SymbolList,
+      );
 
       expect(result).toBe(false);
 
       mockReset(mockSettings);
     });
 
-    test('with useActivePaneForSymbolsOnMobile disabled, and in Symbol mode, it should return true.', () => {
-      const isModDown = false;
+    test('with useActiveTabForSymbolsOnMobile disabled, and in Symbol mode, it should return true.', () => {
+      const navType = false;
       const isAlreadyOpen = false;
-      mockSettings.onOpenPreferNewPane = false;
-      mockSettings.alwaysNewPaneForSymbols = true;
-      mockSettings.useActivePaneForSymbolsOnMobile = false;
+      mockSettings.onOpenPreferNewTab = false;
+      mockSettings.alwaysNewTabForSymbols = true;
+      mockSettings.useActiveTabForSymbolsOnMobile = false;
       mockPlatform.isMobile = true;
 
-      const result = sut.shouldCreateNewLeaf(isModDown, isAlreadyOpen, Mode.SymbolList);
+      const result = sut.applyTabCreationPreferences(
+        navType,
+        isAlreadyOpen,
+        Mode.SymbolList,
+      );
 
       expect(result).toBe(true);
 
@@ -642,7 +664,7 @@ describe('Handler', () => {
           }
         });
 
-      sut.openFileInLeaf(null, EditorNavigationType.ReuseExistingLeaf);
+      sut.openFileInLeaf(null, false);
 
       expect(logWasCalled).toBe(true);
 
@@ -684,7 +706,7 @@ describe('Handler', () => {
       // wait for the other promises to resolve before this promise can resolve
       const allPromises = Promise.all([openFilePromise, consoleLogPromise]);
 
-      sut.openFileInLeaf(mockFile, EditorNavigationType.ReuseExistingLeaf, openState);
+      sut.openFileInLeaf(mockFile, false, openState);
 
       // when all the promises are resolved check expectations and clean up
       return allPromises.finally(() => {
@@ -696,6 +718,7 @@ describe('Handler', () => {
     });
 
     it('should load a file in an existing leaf', () => {
+      const navType = false;
       const mockLeaf = makeLeaf();
       const mockFile = new TFile();
       const openState = { active: true };
@@ -703,18 +726,14 @@ describe('Handler', () => {
       mockLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      sut.openFileInLeaf(
-        mockFile,
-        EditorNavigationType.ReuseExistingLeaf,
-        openState,
-        'panelUtils unit test.',
-      );
+      sut.openFileInLeaf(mockFile, navType, openState, 'unit test.');
 
-      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(false);
+      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType);
       expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
     });
 
-    it('should load a file in a new leaf', () => {
+    it('should load a file in a new leaf using navType "tab"', () => {
+      const navType = 'tab';
       const mockLeaf = makeLeaf();
       const mockFile = new TFile();
       const openState = { active: true };
@@ -722,33 +741,39 @@ describe('Handler', () => {
       mockLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      sut.openFileInLeaf(
-        mockFile,
-        EditorNavigationType.NewLeaf,
-        openState,
-        'panelUtils unit test.',
-      );
+      sut.openFileInLeaf(mockFile, navType, openState, 'unit test.');
 
-      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(true);
+      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType);
+      expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
+    });
+
+    it('should load a file in a new leaf using navType "true"', () => {
+      const navType = true;
+      const mockLeaf = makeLeaf();
+      const mockFile = new TFile();
+      const openState = { active: true };
+
+      mockLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
+
+      sut.openFileInLeaf(mockFile, navType, openState, 'unit test.');
+
+      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType);
       expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
     });
 
     it('should load a file in a popout window', () => {
+      const navType = 'window';
       const mockLeaf = makeLeaf();
       const mockFile = new TFile();
       const openState = { active: true };
 
       mockLeaf.openFile.mockResolvedValueOnce();
-      mockWorkspace.openPopoutLeaf.mockReturnValueOnce(mockLeaf);
+      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      sut.openFileInLeaf(
-        mockFile,
-        EditorNavigationType.PopoutLeaf,
-        openState,
-        'panelUtils unit test.',
-      );
+      sut.openFileInLeaf(mockFile, navType, openState, 'unit test.');
 
-      expect(mockWorkspace.openPopoutLeaf).toHaveBeenCalled();
+      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType);
       expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
     });
   });
@@ -774,7 +799,7 @@ describe('Handler', () => {
       activateLeafOrOpenFileSpy.mockRestore();
     });
 
-    it('should navigate to a new Popout window', () => {
+    it('should navigate to a new Popout window with isModEvent true', () => {
       const mockEvt = mock<KeyboardEvent>({
         key: 'o',
       });
@@ -790,7 +815,7 @@ describe('Handler', () => {
       );
 
       expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
-        EditorNavigationType.PopoutLeaf,
+        'window',
         mockFile,
         errContext,
         mockLeaf,
@@ -798,9 +823,12 @@ describe('Handler', () => {
       );
     });
 
-    it('should navigate to a new leaf', () => {
-      const mockEvt = mock<KeyboardEvent>();
-      mockKeymap.isModEvent.mockReturnValueOnce(true);
+    it('should navigate to a new Popout window with isModEvent "tab"', () => {
+      const mockEvt = mock<KeyboardEvent>({
+        key: 'o',
+      });
+
+      mockKeymap.isModEvent.mockReturnValueOnce('tab');
 
       sut.navigateToLeafOrOpenFile(
         mockEvt,
@@ -811,7 +839,29 @@ describe('Handler', () => {
       );
 
       expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
-        EditorNavigationType.NewLeaf,
+        'window',
+        mockFile,
+        errContext,
+        mockLeaf,
+        defaultOpenViewState,
+      );
+    });
+
+    it('should navigate to a new leaf', () => {
+      const navType = 'tab';
+      const mockEvt = mock<KeyboardEvent>();
+      mockKeymap.isModEvent.mockReturnValueOnce(navType);
+
+      sut.navigateToLeafOrOpenFile(
+        mockEvt,
+        mockFile,
+        errContext,
+        defaultOpenViewState,
+        mockLeaf,
+      );
+
+      expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
+        navType,
         mockFile,
         errContext,
         mockLeaf,
@@ -832,7 +882,7 @@ describe('Handler', () => {
       );
 
       expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
-        EditorNavigationType.ReuseExistingLeaf,
+        false,
         mockFile,
         errContext,
         mockLeaf,
@@ -862,7 +912,7 @@ describe('Handler', () => {
 
     it('should open the file', () => {
       const file = new TFile();
-      const navType = EditorNavigationType.ReuseExistingLeaf;
+      const navType = false;
       const errorContext = chance.sentence();
 
       sut.activateLeafOrOpenFile(navType, file, errorContext);
@@ -875,9 +925,9 @@ describe('Handler', () => {
       );
     });
 
-    it('should open the file in a new leaf with EditorNavigationType.NewLeaf', () => {
+    it('should open the file in a new leaf', () => {
       const file = new TFile();
-      const navType = EditorNavigationType.NewLeaf;
+      const navType = true;
       const errorContext = chance.sentence();
 
       sut.activateLeafOrOpenFile(navType, file, errorContext);
@@ -890,9 +940,9 @@ describe('Handler', () => {
       );
     });
 
-    test('with existing leaf and EditorNavigationType.ReuseExistingLeaf, it should activate the existing leaf', () => {
+    test('with existing leaf and navType false, it should activate the existing leaf', () => {
       const file = new TFile();
-      const navType = EditorNavigationType.ReuseExistingLeaf;
+      const navType = false;
       const leaf = makeLeaf();
 
       sut.activateLeafOrOpenFile(navType, file, null, leaf);
@@ -905,9 +955,9 @@ describe('Handler', () => {
       );
     });
 
-    test('with existing leaf and EditorNavigationType.NewLeaf, it should create a new leaf', () => {
+    test('with existing leaf and navType true (new tab), it should create a new leaf', () => {
       const file = new TFile();
-      const navType = EditorNavigationType.NewLeaf;
+      const navType = true;
       const leaf = makeLeaf();
       const errorContext = chance.sentence();
 
@@ -924,7 +974,7 @@ describe('Handler', () => {
 
     it('should use the default OpenViewState when a falsy value is passed in for opening files', () => {
       const file = new TFile();
-      const navType = EditorNavigationType.ReuseExistingLeaf;
+      const navType = false;
 
       sut.activateLeafOrOpenFile(navType, file, null);
 

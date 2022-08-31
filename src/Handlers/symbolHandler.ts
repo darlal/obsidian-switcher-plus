@@ -393,7 +393,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     const flairContainerEl = this.createFlairContainer(parentEl);
 
     if (isCalloutCache(symbol)) {
-      flairElClasses.push('callout');
+      flairElClasses.push(...['callout', 'callout-icon', 'svg-icon']);
       const calloutFlairEl = flairContainerEl.createSpan({
         cls: flairElClasses,
         // Obsidian 0.15.9: the icon glyph is set in css based on the data-callout attr

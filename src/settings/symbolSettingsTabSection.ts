@@ -27,18 +27,18 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
 
     this.addToggleSetting(
       containerEl,
-      'Open Symbols in new pane',
-      'Enabled, always open a new pane when navigating to Symbols. Disabled, navigate in an already open pane (if one exists)',
-      config.alwaysNewPaneForSymbols,
-      'alwaysNewPaneForSymbols',
+      'Open Symbols in new tab',
+      'Enabled, always open a new tab when navigating to Symbols. Disabled, navigate in an already open tab (if one exists)',
+      config.alwaysNewTabForSymbols,
+      'alwaysNewTabForSymbols',
     );
 
     this.addToggleSetting(
       containerEl,
-      'Open Symbols in active pane on mobile devices',
-      'Enabled, navigate to the target file and symbol in the active editor pane. Disabled, open a new pane when navigating to Symbols, even on mobile devices.',
-      config.useActivePaneForSymbolsOnMobile,
-      'useActivePaneForSymbolsOnMobile',
+      'Open Symbols in active tab on mobile devices',
+      'Enabled, navigate to the target file and symbol in the active editor tab. Disabled, open a new tab when navigating to Symbols, even on mobile devices.',
+      config.useActiveTabForSymbolsOnMobile,
+      'useActiveTabForSymbolsOnMobile',
     );
 
     this.addToggleSetting(

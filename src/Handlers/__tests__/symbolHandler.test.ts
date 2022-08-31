@@ -793,7 +793,13 @@ describe('symbolHandler', () => {
       expect(mockSetIcon).toHaveBeenCalledWith(mockFlairEl, iconName);
       expect(mockAuxEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
-          cls: ['suggestion-flair', 'qsp-symbol-indicator', 'callout'],
+          cls: [
+            'suggestion-flair',
+            'qsp-symbol-indicator',
+            'callout',
+            'callout-icon',
+            'svg-icon',
+          ],
           attr: { 'data-callout': calloutCache.calloutType },
         }),
       );

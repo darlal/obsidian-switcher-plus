@@ -7,6 +7,7 @@ import {
   MarkdownView,
   normalizePath,
   OpenViewState,
+  PaneType,
   Platform,
   PreparedQuery,
   renderResults,
@@ -19,7 +20,6 @@ import {
 } from 'obsidian';
 import {
   AnySuggestion,
-  EditorNavigationType,
   MatchType,
   Mode,
   PathDisplayFormat,
@@ -243,35 +243,31 @@ export abstract class Handler<T> {
   /**
    * Determines whether or not a new leaf should be created taking user
    * settings into account
-   * @param  {boolean} isNewPaneRequested Set to true if the user holding cmd/ctrl
+   * @param  {PaneType | boolean} navType
    * @param  {} isAlreadyOpen=false Set to true if there is a pane showing the file already
    * @param  {Mode} mode? Only Symbol mode has special handling.
    * @returns boolean
    */
-  shouldCreateNewLeaf(
-    isNewPaneRequested: boolean,
+  applyTabCreationPreferences(
+    navType: PaneType | boolean,
     isAlreadyOpen = false,
     mode?: Mode,
-  ): boolean {
-    const {
-      onOpenPreferNewPane,
-      alwaysNewPaneForSymbols,
-      useActivePaneForSymbolsOnMobile,
-    } = this.settings;
+  ): PaneType | boolean {
+    let preferredNavType = navType;
+    const { onOpenPreferNewTab, alwaysNewTabForSymbols, useActiveTabForSymbolsOnMobile } =
+      this.settings;
 
-    const isNewPanePreferred = !isAlreadyOpen && onOpenPreferNewPane;
-    let shouldCreateNew = isNewPaneRequested || isNewPanePreferred;
-
-    if (mode === Mode.SymbolList && !onOpenPreferNewPane) {
-      const { isMobile } = Platform;
-      shouldCreateNew = alwaysNewPaneForSymbols || isNewPaneRequested;
-
-      if (isMobile) {
-        shouldCreateNew = isNewPaneRequested || !useActivePaneForSymbolsOnMobile;
+    if (navType === false) {
+      if (onOpenPreferNewTab) {
+        preferredNavType = !isAlreadyOpen;
+      } else if (mode === Mode.SymbolList) {
+        preferredNavType = Platform.isMobile
+          ? !useActiveTabForSymbolsOnMobile
+          : alwaysNewTabForSymbols;
       }
     }
 
-    return shouldCreateNew;
+    return preferredNavType;
   }
 
   /**
@@ -344,14 +340,14 @@ export abstract class Handler<T> {
   /**
    * Loads a file into a WorkspaceLeaf based on {@link EditorNavigationType}
    * @param  {TFile} file
-   * @param  {EditorNavigationType} navType
+   * @param  {PaneType|boolean} navType
    * @param  {OpenViewState} openState?
    * @param  {} errorContext=''
    * @returns void
    */
   openFileInLeaf(
     file: TFile,
-    navType: EditorNavigationType,
+    navType: PaneType | boolean,
     openState?: OpenViewState,
     errorContext?: string,
   ): void {
@@ -359,29 +355,15 @@ export abstract class Handler<T> {
     errorContext = errorContext ?? '';
     const message = `Switcher++: error opening file. ${errorContext}`;
 
-    const getLeaf = () => {
-      let leaf: WorkspaceLeaf = null;
-
-      if (navType === EditorNavigationType.PopoutLeaf) {
-        leaf = workspace.openPopoutLeaf();
-      } else {
-        const shouldCreateNew = navType === EditorNavigationType.NewLeaf;
-        leaf = workspace.getLeaf(shouldCreateNew);
-      }
-
-      return leaf;
-    };
-
     try {
-      getLeaf()
+      workspace
+        .getLeaf(navType)
         .openFile(file, openState)
         .catch((reason) => {
-          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-          console.log(`${message} ${reason}`);
+          console.log(message, reason);
         });
     } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      console.log(`${message} ${error}`);
+      console.log(message, error);
     }
   }
 
@@ -414,23 +396,21 @@ export abstract class Handler<T> {
     const { leaf: targetLeaf } = this.findMatchingLeaf(file, leaf, shouldIncludeRefViews);
     const isAlreadyOpen = !!targetLeaf;
 
-    const isModDown = Keymap.isModEvent(evt);
     const key = (evt as KeyboardEvent).key;
-    const isPopoutRequested = isModDown && key === 'o';
-    let navType = EditorNavigationType.ReuseExistingLeaf;
+    let navType = Keymap.isModEvent(evt);
 
-    if (isPopoutRequested) {
-      navType = EditorNavigationType.PopoutLeaf;
-    } else if (this.shouldCreateNewLeaf(isModDown, isAlreadyOpen, mode)) {
-      navType = EditorNavigationType.NewLeaf;
+    if ((navType === true || navType === 'tab') && key === 'o') {
+      // cmd-o to create new window
+      navType = 'window';
     }
 
+    navType = this.applyTabCreationPreferences(navType, isAlreadyOpen, mode);
     this.activateLeafOrOpenFile(navType, file, errorContext, targetLeaf, openState);
   }
 
   /**
    * Activates leaf (if provided), or load file into another leaf based on navType
-   * @param  {EditorNavigationType} navType
+   * @param  {PaneType|boolean} navType
    * @param  {TFile} file
    * @param  {string} errorContext
    * @param  {WorkspaceLeaf} leaf? optional if supplied and navType is
@@ -439,7 +419,7 @@ export abstract class Handler<T> {
    * @returns void
    */
   activateLeafOrOpenFile(
-    navType: EditorNavigationType,
+    navType: PaneType | boolean,
     file: TFile,
     errorContext: string,
     leaf?: WorkspaceLeaf,
@@ -448,7 +428,7 @@ export abstract class Handler<T> {
     // default to having the pane active and focused
     openState = openState ?? { active: true, eState: { active: true, focus: true } };
 
-    if (leaf && navType === EditorNavigationType.ReuseExistingLeaf) {
+    if (leaf && navType === false) {
       const eState = openState?.eState as Record<string, unknown>;
       this.activateLeaf(leaf, true, eState);
     } else {

@@ -20,12 +20,6 @@ import { PickKeys, WritableKeys } from 'ts-essentials';
 // Pick from T the keys that are writable and whose value is of type K
 export type WritableKeysWithValueOfType<T, K> = PickKeys<Pick<T, WritableKeys<T>>, K>;
 
-export enum EditorNavigationType {
-  ReuseExistingLeaf = 1,
-  NewLeaf,
-  PopoutLeaf,
-}
-
 export enum PathDisplayFormat {
   None,
   Full,
@@ -222,9 +216,9 @@ export interface SourceInfo {
 }
 
 export interface SettingsData {
-  onOpenPreferNewPane: boolean;
-  alwaysNewPaneForSymbols: boolean;
-  useActivePaneForSymbolsOnMobile: boolean;
+  onOpenPreferNewTab: boolean;
+  alwaysNewTabForSymbols: boolean;
+  useActiveTabForSymbolsOnMobile: boolean;
   symbolsInLineOrder: boolean;
   editorListCommand: string;
   symbolListCommand: string;

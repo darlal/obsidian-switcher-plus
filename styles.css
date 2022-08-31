@@ -18,6 +18,7 @@
 
 .qsp-symbol-indicator.callout {
   background-color:inherit;
+  padding: inherit;
 }
 
 /* warning/error text */

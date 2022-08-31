@@ -36,7 +36,7 @@ describe('generalSettingsTabSection', () => {
     addSectionTitleSpy.mockRestore();
   });
 
-  it('should show the onOpenPreferNewPane setting', () => {
+  it('should show the onOpenPreferNewTab setting', () => {
     const addToggleSettingSpy = jest.spyOn(
       SettingsTabSection.prototype,
       'addToggleSetting',
@@ -46,10 +46,10 @@ describe('generalSettingsTabSection', () => {
 
     expect(addToggleSettingSpy).toBeCalledWith(
       mockContainerEl,
-      'Default to open in new pane',
+      'Default to open in new tab',
       expect.any(String),
-      config.onOpenPreferNewPane,
-      'onOpenPreferNewPane',
+      config.onOpenPreferNewTab,
+      'onOpenPreferNewTab',
     );
 
     addToggleSettingSpy.mockRestore();

@@ -202,7 +202,7 @@ describe('settingsTabSection', () => {
         name,
         desc,
         initValue,
-        'alwaysNewPaneForSymbols',
+        'alwaysNewTabForSymbols',
       );
 
       expect(result).not.toBeNull();
@@ -211,7 +211,7 @@ describe('settingsTabSection', () => {
     });
 
     it('should save the modified setting', () => {
-      mockConfig.alwaysNewPaneForSymbols = false;
+      mockConfig.alwaysNewTabForSymbols = false;
       const finalValue = true;
 
       let onChangeFn: (v: boolean) => void;
@@ -224,8 +224,8 @@ describe('settingsTabSection', () => {
         mockContainerEl,
         chance.word(),
         chance.sentence(),
-        mockConfig.alwaysNewPaneForSymbols,
-        'alwaysNewPaneForSymbols',
+        mockConfig.alwaysNewTabForSymbols,
+        'alwaysNewTabForSymbols',
       );
 
       // trigger the value change here
@@ -233,7 +233,7 @@ describe('settingsTabSection', () => {
 
       expect(mockToggleComp.onChange).toHaveBeenCalled();
       expect(mockConfig.save).toHaveBeenCalled();
-      expect(mockConfig.alwaysNewPaneForSymbols).toBe(finalValue);
+      expect(mockConfig.alwaysNewTabForSymbols).toBe(finalValue);
 
       mockReset(mockConfig);
     });
@@ -252,7 +252,7 @@ describe('settingsTabSection', () => {
         mockContainerEl,
         chance.word(),
         chance.sentence(),
-        mockConfig.alwaysNewPaneForSymbols,
+        mockConfig.alwaysNewTabForSymbols,
         null,
         cb,
       );

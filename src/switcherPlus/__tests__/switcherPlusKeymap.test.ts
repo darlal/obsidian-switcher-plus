@@ -75,6 +75,7 @@ describe('SwitcherPlusKeymap', () => {
       (nextKey, previousKey) => {
         const selectedIndex = 1;
         const evtHandlers: Record<string, KeymapEventListener> = {};
+        const mockKeyboardEvent = mock<KeyboardEvent>();
 
         mockScope.register.mockImplementation((_m, key, func) => {
           evtHandlers[key] = func;
@@ -86,17 +87,21 @@ describe('SwitcherPlusKeymap', () => {
         const sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal);
         sut.isOpen = true; // here
 
-        evtHandlers[nextKey](
-          mock<KeyboardEvent>(),
-          mock<KeymapContext>({ key: nextKey }),
-        );
+        evtHandlers[nextKey](mockKeyboardEvent, mock<KeymapContext>({ key: nextKey }));
+
         evtHandlers[previousKey](
-          mock<KeyboardEvent>(),
+          mockKeyboardEvent,
           mock<KeymapContext>({ key: previousKey }),
         );
 
-        expect(mockChooser.setSelectedItem).toHaveBeenCalledWith(selectedIndex + 1, true);
-        expect(mockChooser.setSelectedItem).toHaveBeenCalledWith(selectedIndex - 1, true);
+        expect(mockChooser.setSelectedItem).toHaveBeenCalledWith(
+          selectedIndex + 1,
+          mockKeyboardEvent,
+        );
+        expect(mockChooser.setSelectedItem).toHaveBeenCalledWith(
+          selectedIndex - 1,
+          mockKeyboardEvent,
+        );
       },
     );
 

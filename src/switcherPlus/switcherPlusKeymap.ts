@@ -86,7 +86,7 @@ export class SwitcherPlusKeymap {
         key: null,
         func: null,
         command: `${modKeyText} ↵`,
-        purpose: 'open in new pane',
+        purpose: 'open in new tab',
       },
       {
         isInstructionOnly: true,
@@ -230,7 +230,7 @@ export class SwitcherPlusKeymap {
     this.chooser.useSelectedItem(evt);
   }
 
-  private navigateItems(_evt: KeyboardEvent, ctx: KeymapContext): boolean | void {
+  private navigateItems(evt: KeyboardEvent, ctx: KeymapContext): boolean | void {
     const { isOpen, chooser } = this;
 
     if (isOpen) {
@@ -238,7 +238,7 @@ export class SwitcherPlusKeymap {
 
       let index = chooser.selectedItem;
       index = nextKeys.includes(ctx.key) ? ++index : --index;
-      chooser.setSelectedItem(index, true);
+      chooser.setSelectedItem(index, evt);
     }
 
     return false;
