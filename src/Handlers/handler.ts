@@ -56,6 +56,10 @@ export abstract class Handler<T> {
     activeLeaf: WorkspaceLeaf,
   ): void;
 
+  reset(): void {
+    /* noop */
+  }
+
   getEditorInfo(leaf: WorkspaceLeaf): SourceInfo {
     const { excludeViewTypes } = this.settings;
     let file: TFile = null;

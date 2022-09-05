@@ -246,6 +246,7 @@ export class ModeHandler {
     activeLeaf: WorkspaceLeaf,
   ): void {
     const { mode, inputText } = inputInfo;
+    const unmatchedHandlers: Handler<AnySuggestion>[] = [];
 
     // Standard, Headings, Starred, and EditorList mode can have an embedded command
     const supportedModes = [
@@ -278,8 +279,15 @@ export class ModeHandler {
             activeLeaf,
           );
         }
+
+        // find all sourced handlers that did not match
+        unmatchedHandlers.push(...this.getSourcedHandlers().filter((v) => v != handler));
       }
     }
+
+    // if unmatchedHandlers has items then there was a match, so reset all others
+    // otherwise reset all sourced handlers
+    this.resetSourcedHandlers(unmatchedHandlers.length ? unmatchedHandlers : null);
   }
 
   private static setActiveSuggestion(mode: Mode, chooser: Chooser<AnySuggestion>): void {
@@ -306,11 +314,20 @@ export class ModeHandler {
     return activeSuggestion;
   }
 
-  private reset(): void {
+  reset(): void {
     this.inputInfo = new InputInfo();
     this.sessionOpenModeString = null;
-    (this.getHandler(Mode.SymbolList) as SymbolHandler).reset();
-    (this.getHandler(Mode.RelatedItemsList) as RelatedItemsHandler).reset();
+    this.resetSourcedHandlers();
+  }
+
+  resetSourcedHandlers(handlers?: Handler<AnySuggestion>[]): void {
+    handlers = handlers ?? this.getSourcedHandlers();
+    handlers.forEach((handler) => handler?.reset());
+  }
+
+  getSourcedHandlers(): Handler<AnySuggestion>[] {
+    const sourcedModes = [Mode.RelatedItemsList, Mode.SymbolList];
+    return sourcedModes.map((v) => this.getHandler(v));
   }
 
   private getHandler(

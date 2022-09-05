@@ -25,6 +25,7 @@ import {
   InternalPlugins,
   Workspace,
   Debouncer,
+  TFile,
 } from 'obsidian';
 import {
   editorTrigger,
@@ -253,6 +254,36 @@ describe('modeHandler', () => {
       expect(inputInfo.mode).toBe(Mode.Standard);
       expect(inputInfo.searchQuery).toBeFalsy();
       expect(inputInfo.inputText).toBe('');
+    });
+
+    it('should reset state for sourced handlers when there is not a trigger match', () => {
+      const headingSugg = makeHeadingSuggestion(getHeadings()[0], new TFile());
+      const symbolResetSpy = jest.spyOn(SymbolHandler.prototype, 'reset');
+
+      const relatedResetSpy = jest.spyOn(RelatedItemsHandler.prototype, 'reset');
+
+      // first call should trigger symbol mode, and clear the other sourced handlers
+      const inputInfo1 = sut.determineRunMode(
+        `${headingsTrigger}${symbolTrigger}`,
+        headingSugg,
+        null,
+      );
+
+      // second call should trigger headings mode and clear all sourced handlers
+      const inputInfo2 = sut.determineRunMode(headingsTrigger, null, null);
+
+      expect(inputInfo1.mode).toBe(Mode.SymbolList);
+      expect(inputInfo2.mode).toBe(Mode.HeadingsList);
+
+      // should have been reset in the second call where headings mode matched
+      expect(symbolResetSpy).toHaveBeenCalled();
+
+      // should have been reset the first time when symbol mode matched, and a second
+      // time, when headings mode matched
+      expect(relatedResetSpy).toHaveBeenCalledTimes(2);
+
+      symbolResetSpy.mockRestore();
+      relatedResetSpy.mockRestore();
     });
 
     describe('should identify unicode triggers', () => {

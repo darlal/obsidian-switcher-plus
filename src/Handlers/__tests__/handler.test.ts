@@ -97,6 +97,12 @@ describe('Handler', () => {
     });
   });
 
+  describe('reset', () => {
+    it('should not throw', () => {
+      expect(() => sut.reset()).not.toThrow();
+    });
+  });
+
   describe('getEditorInfo', () => {
     it('should return an object with falsy values for falsy input', () => {
       const result = sut.getEditorInfo(null);

@@ -147,7 +147,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     }
   }
 
-  reset(): void {
+  override reset(): void {
     this.inputInfo = null;
   }
 

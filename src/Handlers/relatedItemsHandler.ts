@@ -144,7 +144,7 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
     return relatedFiles;
   }
 
-  reset(): void {
+  override reset(): void {
     this.inputInfo = null;
   }
 
