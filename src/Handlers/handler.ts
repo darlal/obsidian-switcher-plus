@@ -13,6 +13,7 @@ import {
   renderResults,
   SearchResult,
   setIcon,
+  SplitDirection,
   TFile,
   View,
   Workspace,
@@ -342,11 +343,13 @@ export abstract class Handler<T> {
   }
 
   /**
-   * Loads a file into a WorkspaceLeaf based on {@link EditorNavigationType}
+   * Loads a file into a WorkspaceLeaf based on navType
    * @param  {TFile} file
    * @param  {PaneType|boolean} navType
    * @param  {OpenViewState} openState?
-   * @param  {} errorContext=''
+   * @param  {string} errorContext?
+   * @param  {SplitDirection} splitDirection if navType is 'split', the direction to
+   * open the split. Defaults to 'vertical'
    * @returns void
    */
   openFileInLeaf(
@@ -354,14 +357,20 @@ export abstract class Handler<T> {
     navType: PaneType | boolean,
     openState?: OpenViewState,
     errorContext?: string,
+    splitDirection: SplitDirection = 'vertical',
   ): void {
     const { workspace } = this.app;
     errorContext = errorContext ?? '';
     const message = `Switcher++: error opening file. ${errorContext}`;
 
+    const getLeaf = () => {
+      return navType === 'split'
+        ? workspace.getLeaf(navType, splitDirection)
+        : workspace.getLeaf(navType);
+    };
+
     try {
-      workspace
-        .getLeaf(navType)
+      getLeaf()
         .openFile(file, openState)
         .catch((reason) => {
           console.log(message, reason);
@@ -384,7 +393,7 @@ export abstract class Handler<T> {
    * @param  {WorkspaceLeaf} leaf? WorkspaceLeaf, or reference WorkspaceLeaf
    * (backlink, outline, etc..) to activate if it's already known
    * @param  {Mode} mode? Only Symbol mode has custom handling
-   * @param  {} shouldIncludeRefViews=false whether reference WorkspaceLeaves are valid
+   * @param  {boolean} shouldIncludeRefViews whether reference WorkspaceLeaves are valid
    * targets for activation
    * @returns void
    */
@@ -399,17 +408,30 @@ export abstract class Handler<T> {
   ): void {
     const { leaf: targetLeaf } = this.findMatchingLeaf(file, leaf, shouldIncludeRefViews);
     const isAlreadyOpen = !!targetLeaf;
+    const splitDirection: SplitDirection = evt.shiftKey ? 'horizontal' : 'vertical';
 
     const key = (evt as KeyboardEvent).key;
     let navType = Keymap.isModEvent(evt);
 
-    if ((navType === true || navType === 'tab') && key === 'o') {
-      // cmd-o to create new window
-      navType = 'window';
+    if (navType === true || navType === 'tab') {
+      if (key === 'o') {
+        // cmd-o to create new window
+        navType = 'window';
+      } else if (key === '\\') {
+        // cmd-\ to create split
+        navType = 'split';
+      }
     }
 
     navType = this.applyTabCreationPreferences(navType, isAlreadyOpen, mode);
-    this.activateLeafOrOpenFile(navType, file, errorContext, targetLeaf, openState);
+    this.activateLeafOrOpenFile(
+      navType,
+      file,
+      errorContext,
+      targetLeaf,
+      openState,
+      splitDirection,
+    );
   }
 
   /**
@@ -418,8 +440,10 @@ export abstract class Handler<T> {
    * @param  {TFile} file
    * @param  {string} errorContext
    * @param  {WorkspaceLeaf} leaf? optional if supplied and navType is
-   * {@link EditorNavigationType.ReuseExistingLeaf} then leaf will be activated
+   * false then leaf will be activated
    * @param  {OpenViewState} openState?
+   * @param  {SplitDirection} splitDirection? if navType is 'split', the direction to
+   * open the split
    * @returns void
    */
   activateLeafOrOpenFile(
@@ -428,6 +452,7 @@ export abstract class Handler<T> {
     errorContext: string,
     leaf?: WorkspaceLeaf,
     openState?: OpenViewState,
+    splitDirection?: SplitDirection,
   ): void {
     // default to having the pane active and focused
     openState = openState ?? { active: true, eState: { active: true, focus: true } };
@@ -436,7 +461,7 @@ export abstract class Handler<T> {
       const eState = openState?.eState as Record<string, unknown>;
       this.activateLeaf(leaf, true, eState);
     } else {
-      this.openFileInLeaf(file, navType, openState, errorContext);
+      this.openFileInLeaf(file, navType, openState, errorContext, splitDirection);
     }
   }
 

@@ -11,7 +11,6 @@ import {
 } from 'obsidian';
 
 type CustomKeymapInfo = Omit<KeymapEventHandler, 'scope'> &
-  KeymapInfo &
   Instruction & { isInstructionOnly?: boolean; modes?: Mode[] };
 
 export class SwitcherPlusKeymap {
@@ -55,10 +54,12 @@ export class SwitcherPlusKeymap {
 
     let modKey = 'Ctrl';
     let modKeyText = 'ctrl';
+    let shiftText = 'shift';
 
     if (Platform.isMacOS) {
       modKey = 'Meta';
-      modKeyText = 'cmd';
+      modKeyText = '⌘';
+      shiftText = '⇧';
     }
 
     // standard mode keys that are registered by default, and
@@ -70,15 +71,8 @@ export class SwitcherPlusKeymap {
 
     // custom mode keys that should be registered, then unregistered in standard mode
     // Note: modifiers should be a comma separated string of Modifiers
+    // without any padding space characters
     const customKeysInfo: CustomKeymapInfo[] = [
-      {
-        modes: customFileBasedModes,
-        modifiers: modKey,
-        key: 'o',
-        func: this.useSelectedItem.bind(this),
-        command: `${modKeyText} o`,
-        purpose: 'open in new window',
-      },
       {
         isInstructionOnly: true,
         modes: customFileBasedModes,
@@ -87,6 +81,30 @@ export class SwitcherPlusKeymap {
         func: null,
         command: `${modKeyText} ↵`,
         purpose: 'open in new tab',
+      },
+      {
+        modes: customFileBasedModes,
+        modifiers: modKey,
+        key: '\\',
+        func: this.useSelectedItem.bind(this),
+        command: `${modKeyText} \\`,
+        purpose: 'open to the right',
+      },
+      {
+        modes: customFileBasedModes,
+        modifiers: `${modKey},Shift`,
+        key: '\\',
+        func: this.useSelectedItem.bind(this),
+        command: `${modKeyText} ${shiftText} \\`,
+        purpose: 'open below',
+      },
+      {
+        modes: customFileBasedModes,
+        modifiers: modKey,
+        key: 'o',
+        func: this.useSelectedItem.bind(this),
+        command: `${modKeyText} o`,
+        purpose: 'open in new window',
       },
       {
         isInstructionOnly: true,

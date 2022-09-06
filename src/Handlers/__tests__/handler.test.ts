@@ -768,6 +768,21 @@ describe('Handler', () => {
       expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
     });
 
+    it('should load a file in a new split using navType "split"', () => {
+      const navType = 'split';
+      const mockLeaf = makeLeaf();
+      const mockFile = new TFile();
+      const openState = { active: true };
+
+      mockLeaf.openFile.mockResolvedValueOnce();
+      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
+
+      sut.openFileInLeaf(mockFile, navType, openState, 'unit test.', 'horizontal');
+
+      expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType, 'horizontal');
+      expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
+    });
+
     it('should load a file in a popout window', () => {
       const navType = 'window';
       const mockLeaf = makeLeaf();
@@ -805,6 +820,58 @@ describe('Handler', () => {
       activateLeafOrOpenFileSpy.mockRestore();
     });
 
+    it('should navigate to a new vertical split "tab"', () => {
+      const mockEvt = mock<KeyboardEvent>({
+        key: '\\',
+        shiftKey: false,
+      });
+
+      mockKeymap.isModEvent.mockReturnValueOnce('tab');
+
+      sut.navigateToLeafOrOpenFile(
+        mockEvt,
+        mockFile,
+        errContext,
+        defaultOpenViewState,
+        mockLeaf,
+      );
+
+      expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
+        'split',
+        mockFile,
+        errContext,
+        mockLeaf,
+        defaultOpenViewState,
+        'vertical',
+      );
+    });
+
+    it('should navigate to a new horizontal split "tab"', () => {
+      const mockEvt = mock<KeyboardEvent>({
+        key: '\\',
+        shiftKey: true,
+      });
+
+      mockKeymap.isModEvent.mockReturnValueOnce('tab');
+
+      sut.navigateToLeafOrOpenFile(
+        mockEvt,
+        mockFile,
+        errContext,
+        defaultOpenViewState,
+        mockLeaf,
+      );
+
+      expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
+        'split',
+        mockFile,
+        errContext,
+        mockLeaf,
+        defaultOpenViewState,
+        'horizontal',
+      );
+    });
+
     it('should navigate to a new Popout window with isModEvent true', () => {
       const mockEvt = mock<KeyboardEvent>({
         key: 'o',
@@ -826,6 +893,7 @@ describe('Handler', () => {
         errContext,
         mockLeaf,
         defaultOpenViewState,
+        expect.anything(),
       );
     });
 
@@ -850,10 +918,11 @@ describe('Handler', () => {
         errContext,
         mockLeaf,
         defaultOpenViewState,
+        expect.anything(),
       );
     });
 
-    it('should navigate to a new leaf', () => {
+    it('should navigate to a new leaf "tab"', () => {
       const navType = 'tab';
       const mockEvt = mock<KeyboardEvent>();
       mockKeymap.isModEvent.mockReturnValueOnce(navType);
@@ -872,10 +941,11 @@ describe('Handler', () => {
         errContext,
         mockLeaf,
         defaultOpenViewState,
+        expect.anything(),
       );
     });
 
-    it('should navigate to an existing leaf', () => {
+    it('should navigate to an existing leaf "tab"', () => {
       const mockEvt = mock<KeyboardEvent>();
       mockKeymap.isModEvent.mockReturnValueOnce(false);
 
@@ -893,6 +963,7 @@ describe('Handler', () => {
         errContext,
         mockLeaf,
         defaultOpenViewState,
+        expect.anything(),
       );
     });
   });
@@ -928,10 +999,11 @@ describe('Handler', () => {
         navType,
         defaultOpenViewState,
         errorContext,
+        undefined,
       );
     });
 
-    it('should open the file in a new leaf', () => {
+    it('should open the file in a new leaf "tab"', () => {
       const file = new TFile();
       const navType = true;
       const errorContext = chance.sentence();
@@ -943,6 +1015,7 @@ describe('Handler', () => {
         navType,
         defaultOpenViewState,
         errorContext,
+        undefined,
       );
     });
 
@@ -961,7 +1034,7 @@ describe('Handler', () => {
       );
     });
 
-    test('with existing leaf and navType true (new tab), it should create a new leaf', () => {
+    test('with existing leaf and navType true (new tab), it should create a new leaf "tab"', () => {
       const file = new TFile();
       const navType = true;
       const leaf = makeLeaf();
@@ -975,6 +1048,7 @@ describe('Handler', () => {
         navType,
         defaultOpenViewState,
         errorContext,
+        undefined,
       );
     });
 
@@ -989,6 +1063,7 @@ describe('Handler', () => {
         navType,
         defaultOpenViewState,
         null,
+        undefined,
       );
     });
   });
