@@ -23,6 +23,8 @@ import {
   SymbolType,
   MatchType,
   SearchResultWithFallback,
+  RelationType,
+  RelatedItemsInfo,
 } from 'src/types';
 
 export function makeFileSuggestion(
@@ -36,15 +38,15 @@ export function makeFileSuggestion(
 
   return {
     type: SuggestionType.File,
-    ...makeSearchResultWithFallback(matches, matchType, matchText),
+    ...makeSearchResultWithFallback(matches, matchType, matchText, score),
     file,
   };
 }
 
-export function makeUnresolvedSuggestion(): UnresolvedSuggestion {
+export function makeUnresolvedSuggestion(linktext?: string): UnresolvedSuggestion {
   return {
     type: SuggestionType.Unresolved,
-    linktext: null,
+    linktext,
     match: null,
   };
 }
@@ -70,7 +72,7 @@ export function makeEditorSuggestion(
 ): EditorSuggestion {
   return {
     type: SuggestionType.EditorList,
-    ...makeSearchResultWithFallback(matches, matchType, matchText),
+    ...makeSearchResultWithFallback(matches, matchType, matchText, score),
     file,
     item,
   };
@@ -88,7 +90,7 @@ export function makeStarredSuggestion(
 
   return {
     type: SuggestionType.StarredList,
-    ...makeSearchResultWithFallback(matches, matchType, matchText),
+    ...makeSearchResultWithFallback(matches, matchType, matchText, score),
     file,
     item,
   };
@@ -124,19 +126,24 @@ export function makeCommandSuggestion(
 }
 
 export function makeRelatedItemsSuggestion(
-  file?: TFile,
+  item?: RelatedItemsInfo,
   matches?: SearchMatches,
   score?: number,
   matchType?: MatchType,
   matchText?: string,
 ): RelatedItemsSuggestion {
-  file = file ?? new TFile();
+  if (!item) {
+    item = {
+      relationType: RelationType.DiskLocation,
+      file: new TFile(),
+    };
+  }
 
   return {
+    item,
     type: SuggestionType.RelatedItemsList,
-    ...makeSearchResultWithFallback(matches, matchType, matchText),
-    relationType: 'diskLocation',
-    file,
+    ...makeSearchResultWithFallback(matches, matchType, matchText, score),
+    file: item.file,
   };
 }
 
@@ -179,9 +186,10 @@ export function makeSearchResultWithFallback(
   matches?: SearchMatches,
   type?: MatchType,
   text?: string,
+  score?: number,
 ): SearchResultWithFallback {
   return {
-    match: makeFuzzyMatch(matches),
+    match: makeFuzzyMatch(matches, score),
     matchType: type ?? MatchType.None,
     matchText: text,
   };

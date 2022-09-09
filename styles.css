@@ -134,6 +134,9 @@
 /* flair icon for suggestion that represent a file currently opened in an editor */
 .qsp-editor-indicator {}
 
+/* flair icon for suggestions that represent a related file */
+.qsp-related-indicator {}
+
 /* headings level */
 .qsp-headings-l1 {}
 .qsp-headings-l2 {}

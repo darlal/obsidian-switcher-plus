@@ -167,9 +167,19 @@ export interface StarredSuggestion extends Suggestion<StarredPluginItem> {
   type: SuggestionType.StarredList;
 }
 
-export interface RelatedItemsSuggestion extends Omit<Suggestion<TFile>, 'item'> {
+export enum RelationType {
+  DiskLocation = 'disk-location',
+  Backlink = 'backlink',
+}
+
+export interface RelatedItemsInfo {
+  relationType: RelationType;
+  file: TFile;
+  count?: number;
+}
+
+export interface RelatedItemsSuggestion extends Suggestion<RelatedItemsInfo> {
   type: SuggestionType.RelatedItemsList;
-  relationType: 'diskLocation';
 }
 
 export interface FileSuggestion extends Omit<Suggestion<TFile>, 'item'> {
@@ -243,6 +253,7 @@ export interface SettingsData {
   shouldSearchFilenames: boolean;
   pathDisplayFormat: PathDisplayFormat;
   hidePathIfRoot: boolean;
+  enabledRelatedItems: RelationType[];
 }
 
 export interface SearchQuery {

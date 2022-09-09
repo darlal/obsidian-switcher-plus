@@ -1,4 +1,4 @@
-import { PathDisplayFormat, SettingsData, SymbolType } from 'src/types';
+import { PathDisplayFormat, RelationType, SettingsData, SymbolType } from 'src/types';
 import { getSystemSwitcherInstance } from 'src/utils';
 import type SwitcherPlusPlugin from 'src/main';
 import { QuickSwitcherOptions } from 'obsidian';
@@ -42,6 +42,7 @@ export class SwitcherPlusSettings {
       shouldSearchFilenames: false,
       pathDisplayFormat: PathDisplayFormat.FolderWithFilename,
       hidePathIfRoot: true,
+      enabledRelatedItems: Object.values(RelationType),
     };
   }
 
@@ -301,6 +302,14 @@ export class SwitcherPlusSettings {
 
   set hidePathIfRoot(value: boolean) {
     this.data.hidePathIfRoot = value;
+  }
+
+  get enabledRelatedItems(): RelationType[] {
+    return this.data.enabledRelatedItems;
+  }
+
+  set enabledRelatedItems(value: RelationType[]) {
+    this.data.enabledRelatedItems = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

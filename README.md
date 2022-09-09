@@ -69,7 +69,7 @@ View, filter, and navigate to any symbol (Headings, Hashtags, Links, Embedding) 
 
 ### For the currently open and focused pane:
 
-Symbols can be viewed directly by using the `Open in Symbol Mode` global hotkey (see below).
+Symbols can be viewed directly by using the `Quick Switcher++: Open in Symbol Mode` global hotkey (see below).
 
 ### Embedded Symbol search (for any other file, open or not):
 
@@ -144,11 +144,23 @@ View, search, and run Obsidian commands quickly using the default `>` command.
 
 ## Related Items
 
-View, filter, and navigate to files that are "related" to the selected file. Currently, related items are files located in the same folder as the selected file.
+View, filter, and navigate to files that are "related" to the selected input file. Currently, there are two types of relations supported, Backlinks, and File system location.
+
+### Backlinks relation (`backlink`)
+
+When the Related Items command is triggered for a selected input suggestion/file, the entire vault is searched for all backlinks. Backlinks are files that contain an outgoing link pointing to the input file. These will be displayed in the result list along with a count of the number of links to the input file they contain.
+
+#### Backlinks for Unresolved Links
+
+Unresolved Links are outgoing links that point to files that do not exist in the vault. The Related Items commands can also be triggered for Unresolved Link suggestions, and will behave the same as a regular file.
+
+### File system location relation (`disk-location`)
+
+When the Related Items command is triggered for a selected input suggestion/file, all files that are located in the same directory in the File System (or otherwise specified in the settings) as the input file will be displayed in the result list.
 
 ### For the currently open and focused pane:
 
-Related items can be viewed directly by using the `Open in Related Items Mode` global hotkey (see below).
+Related items can be viewed directly by using the `Quick Switcher++: Open in Related Items Mode` global hotkey (see below).
 
 ### Embedded related items search (for any other file, open or not):
 
@@ -159,7 +171,8 @@ Related Items can be viewed by opening Quick Switcher++, typing some characters 
 | Setting                         | Description | Default |
 |---------------------------------|-------------|---------|
 | Related items list mode trigger | Character that will trigger related items list mode in the switcher. | `~` |
-| Exclude open files | **Enabled**: related files which are already open in an editor will not be displayed in the list. **Disabled**: All related files will be displayed in the list. | disabled |
+| Show related item types         | Specify which relation types are enabled to be displayed in the result list. | `backlink`<br />`disk-location` |
+| Exclude open files              | **Enabled**: related files which are already open in an editor will not be displayed in the list. **Disabled**: All related files will be displayed in the list. | disabled |
 
 ## General Settings
 

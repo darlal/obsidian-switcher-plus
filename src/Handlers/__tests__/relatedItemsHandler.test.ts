@@ -1,7 +1,7 @@
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler, RelatedItemsHandler } from 'src/Handlers';
-import { Mode, SuggestionType } from 'src/types';
+import { Mode, RelatedItemsInfo, RelationType, SuggestionType } from 'src/types';
 import {
   WorkspaceLeaf,
   App,
@@ -27,6 +27,7 @@ import {
   makeEditorSuggestion,
   makeRelatedItemsSuggestion,
   makeStarredSuggestion,
+  makeUnresolvedSuggestion,
 } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
 
@@ -63,6 +64,21 @@ function makeFileTree(sourceFile: TFile): TFolder {
   return root;
 }
 
+function makeBacklink(
+  origin: TFile,
+  dest: TFile,
+  count?: number,
+): Record<string, Record<string, number>> {
+  const payload: Record<string, number> = {};
+  count = count ?? 1;
+  payload[dest.path] = count;
+
+  const backlink: Record<string, Record<string, number>> = {};
+  backlink[origin.path] = payload;
+
+  return backlink;
+}
+
 describe('relatedItemsHandler', () => {
   const rootFixture = rootSplitEditorFixtures[0];
   let settings: SwitcherPlusSettings;
@@ -74,7 +90,7 @@ describe('relatedItemsHandler', () => {
   let filterText: string;
 
   beforeAll(() => {
-    mockMetadataCache = mock<MetadataCache>();
+    mockMetadataCache = mock<MetadataCache>({});
     mockMetadataCache.getFileCache.mockImplementation((_f) => rootFixture.cachedMetadata);
 
     mockWorkspace = mock<Workspace>();
@@ -256,6 +272,28 @@ describe('relatedItemsHandler', () => {
   describe('getSuggestions', () => {
     const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
     const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
+    let getTFileByPathSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      getTFileByPathSpy = jest
+        .spyOn(RelatedItemsHandler.prototype, 'getTFileByPath')
+        .mockImplementation((path) => {
+          return [file1, file2, file3, file4, mockRootSplitLeaf.view.file].find(
+            (v) => v.path === path,
+          );
+        });
+    });
+
+    beforeEach(() => {
+      mockMetadataCache.resolvedLinks = {};
+      mockMetadataCache.unresolvedLinks = {};
+      mockPrepareQuery.mockClear();
+      mockFuzzySearch.mockClear();
+    });
+
+    afterAll(() => {
+      getTFileByPathSpy.mockRestore();
+    });
 
     test('with falsy input, it should return an empty array', () => {
       const results = sut.getSuggestions(null);
@@ -277,24 +315,51 @@ describe('relatedItemsHandler', () => {
     test('with default settings, it should return suggestions', () => {
       const inputInfo = new InputInfo(relatedItemsTrigger);
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      mockMetadataCache.resolvedLinks = makeBacklink(file1, mockRootSplitLeaf.view.file);
 
       const results = sut.getSuggestions(inputInfo);
 
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
       expect(results).toBeInstanceOf(Array);
-      expect(results).toHaveLength(2);
+      expect(results).toHaveLength(3);
       expect(results.every((sugg) => sugg.type === SuggestionType.RelatedItemsList)).toBe(
         true,
       );
-      expect(results.every((sugg) => sugg.relationType === 'diskLocation')).toBe(true);
 
-      const files = results.map((v) => v.file);
-      expect(files).toEqual(expect.arrayContaining([file1, file2]));
+      const diskFiles = results
+        .filter((v) => v.item.relationType === RelationType.DiskLocation)
+        .map((v) => v.file);
+      expect(diskFiles).toHaveLength(2);
+
+      const backlinkFiles = results
+        .filter((v) => v.item.relationType === RelationType.Backlink)
+        .map((v) => v.file);
+      expect(backlinkFiles).toHaveLength(1);
 
       expect(mockPrepareQuery).toHaveBeenCalled();
+
+      mockMetadataCache.resolvedLinks = {};
     });
 
-    test('with filter search term, it should return only matching symbol suggestions', () => {
+    it('should return backlinks for Unresolved input suggestions', () => {
+      const inputInfo = new InputInfo(relatedItemsTrigger);
+      const unresolvedSugg = makeUnresolvedSuggestion(file1.path);
+      sut.validateCommand(inputInfo, 0, '', unresolvedSugg, null);
+      mockMetadataCache.unresolvedLinks = makeBacklink(file2, file1);
+
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(1);
+      expect(results.every((sugg) => sugg.type === SuggestionType.RelatedItemsList)).toBe(
+        true,
+      );
+
+      expect(results[0].item.relationType).toBe(RelationType.Backlink);
+    });
+
+    test('with filter search term, it should return only matching related items suggestions', () => {
       filterText = file1.basename;
       mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
       mockFuzzySearch.mockImplementation(
@@ -315,7 +380,9 @@ describe('relatedItemsHandler', () => {
       expect(results.every((sugg) => sugg.type === SuggestionType.RelatedItemsList)).toBe(
         true,
       );
-      expect(results.every((sugg) => sugg.relationType === 'diskLocation')).toBe(true);
+      expect(
+        results.every((sugg) => sugg.item.relationType === RelationType.DiskLocation),
+      ).toBe(true);
 
       expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockFuzzySearch).toHaveBeenCalled();
@@ -344,7 +411,9 @@ describe('relatedItemsHandler', () => {
       expect(results.every((sugg) => sugg.type === SuggestionType.RelatedItemsList)).toBe(
         true,
       );
-      expect(results.every((sugg) => sugg.relationType === 'diskLocation')).toBe(true);
+      expect(
+        results.every((sugg) => sugg.item.relationType === RelationType.DiskLocation),
+      ).toBe(true);
 
       let cmd = inputInfo.parsedCommand() as SourcedParsedCommand;
       expect(cmd.source.file).toBe(mockRootSplitLeaf.view.file);
@@ -372,11 +441,13 @@ describe('relatedItemsHandler', () => {
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(1);
       expect(results[0].file).toEqual(file1);
+      expect(mockPrepareQuery).toHaveBeenCalled();
       expect(results.every((sugg) => sugg.type === SuggestionType.RelatedItemsList)).toBe(
         true,
       );
-      expect(results.every((sugg) => sugg.relationType === 'diskLocation')).toBe(true);
-      expect(mockPrepareQuery).toHaveBeenCalled();
+      expect(
+        results.every((sugg) => sugg.item.relationType === RelationType.DiskLocation),
+      ).toBe(true);
 
       cmd = inputInfo.parsedCommand() as SourcedParsedCommand;
       expect(cmd.source.file).not.toBe(mockTempLeaf.view.file);
@@ -388,30 +459,55 @@ describe('relatedItemsHandler', () => {
   });
 
   describe('renderSuggestion', () => {
+    const fileSugg = makeRelatedItemsSuggestion({
+      relationType: RelationType.DiskLocation,
+      file: file1,
+    });
+    const backlingSugg = makeRelatedItemsSuggestion({
+      relationType: RelationType.Backlink,
+      file: file1,
+      count: 2,
+    });
+
     it('should not throw an error with a null suggestion', () => {
       expect(() => sut.renderSuggestion(null, null)).not.toThrow();
     });
 
-    it('should render a suggestion with match offsets', () => {
-      const mockParentEl = mock<HTMLElement>();
-      const sugg = makeRelatedItemsSuggestion(file1);
-      const renderAsFileInfoPanelSpy = jest
-        .spyOn(Handler.prototype, 'renderAsFileInfoPanel')
-        .mockReturnValueOnce(null);
+    it.each([fileSugg, backlingSugg])(
+      'should render a suggestion with match offsets (array data index: $#)',
+      (sugg) => {
+        const mockParentEl = mock<HTMLElement>();
+        const mockFlairContainerEl = mock<HTMLDivElement>();
 
-      sut.renderSuggestion(sugg, mockParentEl);
+        const renderAsFileInfoPanelSpy = jest
+          .spyOn(Handler.prototype, 'renderAsFileInfoPanel')
+          .mockReturnValueOnce(null);
 
-      expect(renderAsFileInfoPanelSpy).toHaveBeenCalledWith(
-        mockParentEl,
-        ['qsp-suggestion-related'],
-        file1.basename,
-        sugg.file,
-        sugg.matchType,
-        sugg.match,
-      );
+        const createFlairContainerSpy = jest
+          .spyOn(Handler.prototype, 'createFlairContainer')
+          .mockReturnValueOnce(mockFlairContainerEl);
 
-      renderAsFileInfoPanelSpy.mockRestore();
-    });
+        sut.renderSuggestion(sugg, mockParentEl);
+
+        expect(renderAsFileInfoPanelSpy).toHaveBeenCalledWith(
+          mockParentEl,
+          ['qsp-suggestion-related'],
+          file1.basename,
+          sugg.file,
+          sugg.matchType,
+          sugg.match,
+        );
+
+        expect(mockFlairContainerEl.createSpan).toHaveBeenCalledWith(
+          expect.objectContaining({
+            cls: ['suggestion-flair', 'svg-icon', 'qsp-related-indicator'],
+          }),
+        );
+
+        renderAsFileInfoPanelSpy.mockRestore();
+        createFlairContainerSpy.mockRestore();
+      },
+    );
   });
 
   describe('onChooseSuggestion', () => {
@@ -427,7 +523,11 @@ describe('relatedItemsHandler', () => {
 
     test('with Mod down, it should create a new workspaceLeaf for the target file', () => {
       const mockEvt = mock<KeyboardEvent>();
-      const sugg = makeRelatedItemsSuggestion(file1);
+      const sugg = makeRelatedItemsSuggestion({
+        relationType: RelationType.DiskLocation,
+        file: file1,
+      });
+
       const navigateToLeafOrOpenFileSpy = jest.spyOn(
         Handler.prototype,
         'navigateToLeafOrOpenFile',
@@ -445,28 +545,36 @@ describe('relatedItemsHandler', () => {
     });
   });
 
-  describe('getRelatedFiles', () => {
+  describe('addRelatedDiskFiles', () => {
     test('with excludeRelatedFolders unset, it should include files from subfolders', () => {
       const sourceFile = new TFile();
       sourceFile.parent = makeFileTree(sourceFile);
 
       // don't set any folder filter
-      jest.spyOn(settings, 'excludeRelatedFolders', 'get').mockReturnValueOnce([]);
+      const excludeRelatedFoldersSpy = jest
+        .spyOn(settings, 'excludeRelatedFolders', 'get')
+        .mockReturnValueOnce([]);
 
-      const results = sut.getRelatedFiles(sourceFile);
+      const results: RelatedItemsInfo[] = [];
+      sut.addRelatedDiskFiles(sourceFile, results);
 
       expect(results).toHaveLength(4);
-      expect(results).toEqual(expect.arrayContaining([file1, file2, file3, file4]));
+      expect(results.map((v) => v.file)).toEqual(
+        expect.arrayContaining([file1, file2, file3, file4]),
+      );
+
+      excludeRelatedFoldersSpy.mockRestore();
     });
 
     it('should exclude files from subfolders', () => {
       const sourceFile = new TFile();
       sourceFile.parent = makeFileTree(sourceFile);
 
-      const results = sut.getRelatedFiles(sourceFile);
+      const results: RelatedItemsInfo[] = [];
+      sut.addRelatedDiskFiles(sourceFile, results);
 
       expect(results).toHaveLength(2);
-      expect(results).toEqual(expect.arrayContaining([file1, file2]));
+      expect(results.map((v) => v.file)).toEqual(expect.arrayContaining([file1, file2]));
     });
 
     it('should include files that are already open in an editor', () => {
@@ -474,10 +582,11 @@ describe('relatedItemsHandler', () => {
       const sourceFile = new TFile();
       sourceFile.parent = makeFileTree(sourceFile);
 
-      const results = sut.getRelatedFiles(sourceFile);
+      const results: RelatedItemsInfo[] = [];
+      sut.addRelatedDiskFiles(sourceFile, results);
 
       expect(results).toHaveLength(2);
-      expect(results).toEqual(expect.arrayContaining([file1, file2]));
+      expect(results.map((v) => v.file)).toEqual(expect.arrayContaining([file1, file2]));
       expect(findMatchingLeafSpy).not.toHaveBeenCalled();
 
       findMatchingLeafSpy.mockRestore();
@@ -497,10 +606,11 @@ describe('relatedItemsHandler', () => {
         .spyOn(Handler.prototype, 'getActiveLeaf')
         .mockReturnValue(leaf);
 
-      const results = sut.getRelatedFiles(sourceFile);
+      const results: RelatedItemsInfo[] = [];
+      sut.addRelatedDiskFiles(sourceFile, results);
 
       expect(results).toHaveLength(1);
-      expect(results).toEqual(expect.arrayContaining([file2]));
+      expect(results.map((v) => v.file)).toEqual(expect.arrayContaining([file2]));
       expect(getActiveLeafSpy).toHaveBeenCalled();
 
       getActiveLeafSpy.mockRestore();

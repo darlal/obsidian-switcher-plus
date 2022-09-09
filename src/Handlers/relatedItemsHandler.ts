@@ -4,19 +4,22 @@ import {
   TFile,
   TAbstractFile,
   TFolder,
+  setIcon,
 } from 'obsidian';
 import {
   AnySuggestion,
   MatchType,
   Mode,
+  RelatedItemsInfo,
   RelatedItemsSuggestion,
+  RelationType,
   SearchResultWithFallback,
   SourceInfo,
   SuggestionType,
 } from 'src/types';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler } from './handler';
-import { isTFile, matcherFnForRegExList } from 'src/utils';
+import { isTFile, isUnresolvedSuggestion, matcherFnForRegExList } from 'src/utils';
 
 export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
   private inputInfo: InputInfo;
@@ -55,22 +58,22 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
 
       const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
       const cmd = inputInfo.parsedCommand(Mode.RelatedItemsList) as SourcedParsedCommand;
-      const items = this.getRelatedFiles(cmd.source.file);
+      const items = this.getItems(cmd.source);
 
       items.forEach((item) => {
         let shouldPush = true;
         let result: SearchResultWithFallback = { matchType: MatchType.None, match: null };
 
         if (hasSearchTerm) {
-          result = this.fuzzySearchWithFallback(prepQuery, null, item);
+          result = this.fuzzySearchWithFallback(prepQuery, null, item.file);
           shouldPush = result.matchType !== MatchType.None;
         }
 
         if (shouldPush) {
           suggestions.push({
+            item,
             type: SuggestionType.RelatedItemsList,
-            relationType: 'diskLocation',
-            file: item,
+            file: item.file,
             ...result,
           });
         }
@@ -86,8 +89,13 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
 
   renderSuggestion(sugg: RelatedItemsSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      const { file, matchType, match } = sugg;
+      const { file, matchType, match, item } = sugg;
+      const iconMap = new Map<string, string>([
+        [RelationType.Backlink, 'links-coming-in'],
+        [RelationType.DiskLocation, 'folder-tree'],
+      ]);
 
+      parentEl.setAttribute('data-relation-type', item.relationType);
       this.renderAsFileInfoPanel(
         parentEl,
         ['qsp-suggestion-related'],
@@ -96,6 +104,24 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
         matchType,
         match,
       );
+
+      const flairContainerEl = this.createFlairContainer(parentEl);
+
+      // show the count of backlinks
+      if (sugg.item.count) {
+        const text = `${sugg.item.count}`;
+        flairContainerEl.createSpan({
+          cls: ['suggestion-flair'],
+          text,
+        });
+      }
+
+      // render the flair icon
+      const iconEl = flairContainerEl.createSpan({
+        cls: ['suggestion-flair', 'svg-icon', 'qsp-related-indicator'],
+      });
+
+      setIcon(iconEl, iconMap.get(item.relationType));
     }
   }
 
@@ -118,30 +144,79 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
     return sourceFile?.basename;
   }
 
-  getRelatedFiles(sourceFile: TFile): TFile[] {
-    const relatedFiles: TFile[] = [];
+  getItems(sourceInfo: SourceInfo): RelatedItemsInfo[] {
+    const relatedItems: RelatedItemsInfo[] = [];
+    const { metadataCache } = this.app;
+    const { enabledRelatedItems } = this.settings;
+    const { file, suggestion } = sourceInfo;
+
+    enabledRelatedItems.forEach((relationType) => {
+      if (relationType === RelationType.Backlink) {
+        let targetPath = file?.path;
+        let linkMap = metadataCache.resolvedLinks;
+
+        if (isUnresolvedSuggestion(suggestion)) {
+          targetPath = suggestion.linktext;
+          linkMap = metadataCache.unresolvedLinks;
+        }
+
+        this.addBacklinks(targetPath, linkMap, relatedItems);
+      } else if (relationType === RelationType.DiskLocation) {
+        this.addRelatedDiskFiles(file, relatedItems);
+      }
+    });
+
+    return relatedItems;
+  }
+
+  addRelatedDiskFiles(sourceFile: TFile, collection: RelatedItemsInfo[]): void {
     const { excludeRelatedFolders, excludeOpenRelatedFiles } = this.settings;
 
-    const isExcludedFolder = matcherFnForRegExList(excludeRelatedFolders);
-    let nodes: TAbstractFile[] = [...sourceFile.parent.children];
+    if (sourceFile) {
+      const isExcludedFolder = matcherFnForRegExList(excludeRelatedFolders);
+      let nodes: TAbstractFile[] = [...sourceFile.parent.children];
 
-    while (nodes.length > 0) {
-      const node = nodes.pop();
+      while (nodes.length > 0) {
+        const node = nodes.pop();
 
-      if (isTFile(node)) {
-        const isSourceFile = node === sourceFile;
-        const isExcluded =
-          isSourceFile || (excludeOpenRelatedFiles && !!this.findMatchingLeaf(node).leaf);
+        if (isTFile(node)) {
+          const isSourceFile = node === sourceFile;
+          const isExcluded =
+            isSourceFile ||
+            (excludeOpenRelatedFiles && !!this.findMatchingLeaf(node).leaf);
 
-        if (!isExcluded) {
-          relatedFiles.push(node);
+          if (!isExcluded) {
+            collection.push({ file: node, relationType: RelationType.DiskLocation });
+          }
+        } else if (!isExcludedFolder(node.path)) {
+          nodes = nodes.concat((node as TFolder).children);
         }
-      } else if (!isExcludedFolder(node.path)) {
-        nodes = nodes.concat((node as TFolder).children);
       }
     }
+  }
 
-    return relatedFiles;
+  addBacklinks(
+    targetPath: string,
+    linkMap: Record<string, Record<string, number>>,
+    collection: RelatedItemsInfo[],
+  ): void {
+    for (const [originFilePath, destPathMap] of Object.entries(linkMap)) {
+      if (
+        originFilePath !== targetPath &&
+        Object.prototype.hasOwnProperty.call(destPathMap, targetPath)
+      ) {
+        const count = destPathMap[targetPath];
+        const originFile = this.getTFileByPath(originFilePath);
+
+        if (originFile) {
+          collection.push({
+            count,
+            file: originFile,
+            relationType: RelationType.Backlink,
+          });
+        }
+      }
+    }
   }
 
   override reset(): void {
@@ -167,6 +242,12 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
 
     const activeEditorInfo = this.getEditorInfo(activeLeaf);
     const activeSuggInfo = this.getSuggestionInfo(activeSuggestion);
+
+    if (!activeSuggInfo.isValidSource && isUnresolvedSuggestion(activeSuggestion)) {
+      // related items supports retrieving backlinks for unresolved suggestion, so
+      // force UnresolvedSuggestion to be valid, even though it would otherwise not be
+      activeSuggInfo.isValidSource = true;
+    }
 
     // Pick the source file for the operation, prioritizing
     // any pre-existing operation that was in progress

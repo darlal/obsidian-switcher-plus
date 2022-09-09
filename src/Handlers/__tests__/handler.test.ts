@@ -20,6 +20,7 @@ import {
   Keymap,
   renderResults,
   fuzzySearch,
+  TAbstractFile,
 } from 'obsidian';
 import {
   defaultOpenViewState,
@@ -1655,6 +1656,40 @@ describe('Handler', () => {
       expect(mockParentEl.createDiv).toHaveBeenCalledWith(
         expect.objectContaining({ cls: ['suggestion-aux', 'qsp-aux'] }),
       );
+    });
+  });
+
+  describe('getTFileByPath', () => {
+    it('returns a TFile by path', () => {
+      const mockFile = new TFile();
+      mockVault.getAbstractFileByPath
+        .calledWith(mockFile.path)
+        .mockReturnValueOnce(mockFile);
+
+      const result = sut.getTFileByPath(mockFile.path);
+
+      expect(result).toBe(mockFile);
+
+      mockReset(mockVault);
+    });
+
+    it('returns returns null if a TFile is not found', () => {
+      const abstractFile: TAbstractFile = {
+        vault: mockVault,
+        path: 'path/to/itemname',
+        name: 'itemname',
+        parent: mock<TFolder>(),
+      };
+
+      mockVault.getAbstractFileByPath
+        .calledWith(abstractFile.path)
+        .mockReturnValueOnce(abstractFile);
+
+      const result = sut.getTFileByPath(abstractFile.path);
+
+      expect(result).toBe(null);
+
+      mockReset(mockVault);
     });
   });
 });

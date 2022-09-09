@@ -1,4 +1,4 @@
-import { getInternalPluginById, isFileStarredItem, isTFile } from 'src/utils';
+import { getInternalPluginById, isFileStarredItem } from 'src/utils';
 import { InputInfo } from 'src/switcherPlus';
 import {
   AnySuggestion,
@@ -107,17 +107,6 @@ export class StarredHandler extends Handler<StarredSuggestion> {
         );
       }
     }
-  }
-
-  getTFileByPath(path: string): TFile | null {
-    let file: TFile = null;
-    const abstractItem = this.app.vault.getAbstractFileByPath(path);
-
-    if (isTFile(abstractItem)) {
-      file = abstractItem;
-    }
-
-    return file;
   }
 
   getItems(): StarredItemInfo[] {

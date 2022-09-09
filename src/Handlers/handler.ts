@@ -33,6 +33,7 @@ import {
   isCommandSuggestion,
   isEditorSuggestion,
   isSymbolSuggestion,
+  isTFile,
   isUnresolvedSuggestion,
   isWorkspaceSuggestion,
   stripMDExtensionFromPath,
@@ -810,5 +811,22 @@ export abstract class Handler<T> {
    */
   createFlairContainer(parentEl: HTMLElement): HTMLDivElement {
     return parentEl?.createDiv({ cls: ['suggestion-aux', 'qsp-aux'] });
+  }
+
+  /**
+   * Retrieves a TFile object using path. Return null if path does not represent
+   * a TFile object.
+   * @param  {string} path
+   * @returns TFile|null
+   */
+  getTFileByPath(path: string): TFile | null {
+    let file: TFile = null;
+    const abstractItem = this.app.vault.getAbstractFileByPath(path);
+
+    if (isTFile(abstractItem)) {
+      file = abstractItem;
+    }
+
+    return file;
   }
 }
