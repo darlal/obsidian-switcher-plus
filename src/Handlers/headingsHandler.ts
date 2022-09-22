@@ -95,12 +95,14 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
       // render the flair icon
       const flairContainerEl = this.createFlairContainer(parentEl);
-      flairContainerEl.createSpan({
-        cls: ['suggestion-flair', 'qsp-headings-indicator'],
-        text: HeadingIndicators[item.level],
-      });
+      this.renderIndicator(
+        flairContainerEl,
+        ['qsp-headings-indicator'],
+        null,
+        HeadingIndicators[item.level],
+      );
 
-      this.renderOptionalIndicators(sugg.optionalIndicators, parentEl, flairContainerEl);
+      this.renderOptionalIndicators(parentEl, sugg.optionalIndicators, flairContainerEl);
 
       if (sugg.downranked) {
         parentEl.addClass('mod-downranked');
@@ -425,6 +427,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     const sugg: EditorSuggestion = {
       item,
       file,
+      optionalIndicators: ['qsp-editor-indicator'],
       ...this.createSearchMatch(match, MatchType.None, null),
       type: SuggestionType.EditorList,
     };
@@ -495,8 +498,6 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     leaves.forEach((leaf) => {
       const file = leaf.view?.file;
       const sugg = this.createEditorSuggestion(leaf, file, null);
-
-      sugg.optionalIndicators = ['qsp-editor-indicator'];
       suggestions.push(sugg);
     });
 

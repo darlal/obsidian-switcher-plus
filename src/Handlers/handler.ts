@@ -741,16 +741,19 @@ export abstract class Handler<T> {
    * @param  {string[]} optionalIndicators indicator icon styles to be added
    * @param  {HTMLElement} parentEl
    * @param  {HTMLDivElement=null} flairContainerEl optional, if null, it will be created
-   * @returns HTMLDivElement returns the flairContainerEl that was passed in or created
+   * @returns HTMLDivElement the flairContainerEl that was passed in or created
    */
   renderOptionalIndicators(
-    optionalIndicators: string[],
     parentEl: HTMLElement,
+    optionalIndicators: string[],
     flairContainerEl: HTMLDivElement = null,
   ): HTMLDivElement {
     const indicatorData = new Map<string, Record<string, string>>([
-      ['qsp-recent-indicator', { icon: 'history', parentElClass: 'qsp-recent-file' }],
-      ['qsp-editor-indicator', { icon: 'edit', parentElClass: 'qsp-open-editor' }],
+      ['qsp-recent-indicator', { iconName: 'history', parentElClass: 'qsp-recent-file' }],
+      [
+        'qsp-editor-indicator',
+        { iconName: 'lucide-file-edit', parentElClass: 'qsp-open-editor' },
+      ],
     ]);
 
     if (!flairContainerEl) {
@@ -758,22 +761,46 @@ export abstract class Handler<T> {
     }
 
     optionalIndicators?.forEach((indicator) => {
-      const info = indicatorData.get(indicator);
-      const iconName = info['icon'];
-      const parentElClass = info['parentElClass'];
+      const { iconName, parentElClass } = indicatorData.get(indicator);
 
       if (parentElClass) {
         parentEl?.addClass(parentElClass);
       }
 
-      const flairEl = flairContainerEl.createSpan({
-        cls: ['suggestion-flair', indicator],
-      });
-
-      setIcon(flairEl, iconName);
+      this.renderIndicator(flairContainerEl, [indicator], iconName);
     });
 
     return flairContainerEl;
+  }
+
+  /**
+   * @param  {HTMLDivElement} flairContainerEl
+   * @param  {string[]} indicatorClasses additional css classes to add to flair element
+   * @param  {string} svgIconName? the name of the svg icon to use
+   * @param  {string} indicatorText? the text content of the flair element
+   * @returns HTMLElement the flair icon wrapper element
+   */
+  renderIndicator(
+    flairContainerEl: HTMLDivElement,
+    indicatorClasses: string[],
+    svgIconName?: string,
+    indicatorText?: string,
+  ): HTMLElement {
+    const cls = ['suggestion-flair', ...indicatorClasses];
+    const flairEl = flairContainerEl?.createSpan({ cls });
+
+    if (flairEl) {
+      if (svgIconName) {
+        flairEl.addClass('svg-icon');
+        setIcon(flairEl, svgIconName);
+      }
+
+      if (indicatorText) {
+        flairEl.setText(indicatorText);
+      }
+    }
+
+    return flairEl;
   }
 
   /**

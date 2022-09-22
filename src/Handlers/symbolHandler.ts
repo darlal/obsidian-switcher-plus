@@ -389,11 +389,11 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
   addSymbolIndicator(symbolInfo: SymbolInfo, parentEl: HTMLElement): void {
     const { symbolType, symbol } = symbolInfo;
-    const flairElClasses = ['suggestion-flair', 'qsp-symbol-indicator'];
+    const flairElClasses = ['qsp-symbol-indicator'];
     const flairContainerEl = this.createFlairContainer(parentEl);
 
     if (isCalloutCache(symbol)) {
-      flairElClasses.push(...['callout', 'callout-icon', 'svg-icon']);
+      flairElClasses.push(...['suggestion-flair', 'callout', 'callout-icon', 'svg-icon']);
       const calloutFlairEl = flairContainerEl.createSpan({
         cls: flairElClasses,
         // Obsidian 0.15.9: the icon glyph is set in css based on the data-callout attr
@@ -412,10 +412,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
         indicator = SymbolIndicators[symbolType];
       }
 
-      flairContainerEl.createSpan({
-        cls: flairElClasses,
-        text: indicator,
-      });
+      this.renderIndicator(flairContainerEl, flairElClasses, null, indicator);
     }
   }
 }

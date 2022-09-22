@@ -578,32 +578,30 @@ describe('headingsHandler', () => {
       expect(() => sut.renderSuggestion(null, null)).not.toThrow();
     });
 
-    it('should render a span with the heading level indicator', () => {
-      const mockAuxEl = mock<HTMLDivElement>();
-      mockAuxEl.createSpan.mockReturnValue(mock<HTMLSpanElement>());
+    it('should render the heading level indicator', () => {
+      const renderIndicatorSpy = jest.spyOn(sut, 'renderIndicator');
+
+      const mockFlairContainerEl = mock<HTMLDivElement>();
+      const createFlairContainerSpy = jest
+        .spyOn(sut, 'createFlairContainer')
+        .mockReturnValueOnce(mockFlairContainerEl);
 
       const mockParentEl = mock<HTMLElement>();
-      mockParentEl.createDiv.mockReturnValue(mockAuxEl);
+      mockParentEl.createDiv.mockReturnValue(mock<HTMLDivElement>());
 
-      const renderPathSpy = jest
-        .spyOn(Handler.prototype, 'renderPath')
-        .mockReturnValueOnce();
+      const sugg = makeHeadingSuggestion(makeHeading('foo heading', 1));
 
-      sut.renderSuggestion(headingSugg, mockParentEl);
+      sut.renderSuggestion(sugg, mockParentEl);
 
-      expect(mockParentEl.createDiv).toHaveBeenCalledWith(
-        expect.objectContaining({
-          cls: ['suggestion-aux', 'qsp-aux'],
-        }),
-      );
-      expect(mockAuxEl.createSpan).toHaveBeenCalledWith(
-        expect.objectContaining({
-          cls: ['suggestion-flair', 'qsp-headings-indicator'],
-          text: HeadingIndicators[headingSugg.item.level],
-        }),
+      expect(renderIndicatorSpy).toHaveBeenCalledWith(
+        mockFlairContainerEl,
+        ['qsp-headings-indicator'],
+        null,
+        HeadingIndicators[sugg.item.level],
       );
 
-      renderPathSpy.mockRestore();
+      renderIndicatorSpy.mockRestore();
+      createFlairContainerSpy.mockRestore();
     });
 
     test('with HeadingCache, it should render a suggestion with match offsets', () => {

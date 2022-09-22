@@ -34,7 +34,7 @@ export class StandardExHandler extends Handler<SupportedSystemSuggestions> {
         match,
       );
 
-      this.renderOptionalIndicators(sugg.optionalIndicators, parentEl);
+      this.renderOptionalIndicators(parentEl, sugg.optionalIndicators);
     }
   }
 

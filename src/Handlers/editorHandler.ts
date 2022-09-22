@@ -51,7 +51,13 @@ export class EditorHandler extends Handler<EditorSuggestion> {
         }
 
         if (shouldPush) {
-          suggestions.push({ type: SuggestionType.EditorList, file, item, ...result });
+          suggestions.push({
+            type: SuggestionType.EditorList,
+            optionalIndicators: ['qsp-editor-indicator'],
+            file,
+            item,
+            ...result,
+          });
         }
       });
 
@@ -76,7 +82,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
         match,
       );
 
-      this.renderOptionalIndicators(sugg.optionalIndicators, parentEl);
+      this.renderOptionalIndicators(parentEl, sugg.optionalIndicators);
     }
   }
 

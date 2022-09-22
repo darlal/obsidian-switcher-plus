@@ -765,16 +765,22 @@ describe('symbolHandler', () => {
   });
 
   describe('addSymbolIndicator', () => {
-    const mockFlairEl = mock<HTMLSpanElement>();
-    const mockAuxEl = mock<HTMLDivElement>();
-    mockAuxEl.createSpan.mockReturnValue(mockFlairEl);
-
+    const mockFlairContainerEl = mock<HTMLDivElement>();
     const mockParentEl = mock<HTMLDivElement>();
-    mockParentEl.createDiv.mockReturnValue(mockAuxEl);
+    let createFlairContainerSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      createFlairContainerSpy = jest
+        .spyOn(SymbolHandler.prototype, 'createFlairContainer')
+        .mockReturnValue(mockFlairContainerEl);
+    });
+
+    afterAll(() => {
+      createFlairContainerSpy.mockRestore();
+    });
 
     afterEach(() => {
-      mockClear(mockFlairEl);
-      mockClear(mockAuxEl);
+      mockClear(mockFlairContainerEl);
       mockClear(mockParentEl);
     });
 
@@ -784,6 +790,8 @@ describe('symbolHandler', () => {
 
       const sugg = makeSymbolSuggestion(calloutCache, SymbolType.Callout);
 
+      const mockFlairEl = mock<HTMLSpanElement>();
+      mockFlairContainerEl.createSpan.mockReturnValueOnce(mockFlairEl);
       mockFlairEl.getCssPropertyValue
         .calledWith('--callout-icon')
         .mockReturnValueOnce(iconName);
@@ -791,11 +799,11 @@ describe('symbolHandler', () => {
       sut.addSymbolIndicator(sugg.item, mockParentEl);
 
       expect(mockSetIcon).toHaveBeenCalledWith(mockFlairEl, iconName);
-      expect(mockAuxEl.createSpan).toHaveBeenCalledWith(
+      expect(mockFlairContainerEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
           cls: [
-            'suggestion-flair',
             'qsp-symbol-indicator',
+            'suggestion-flair',
             'callout',
             'callout-icon',
             'svg-icon',
@@ -810,24 +818,23 @@ describe('symbolHandler', () => {
       { title: 'tags', type: SymbolType.Tag, cache: getTags()[0] },
     ])('should add icon for symbols: $title', ({ type, cache }) => {
       const sugg = makeSymbolSuggestion(cache, type);
+      const renderIndicatorSpy = jest.spyOn(sut, 'renderIndicator');
 
-      const expected = { cls: ['suggestion-flair', 'qsp-symbol-indicator'], text: '' };
-
-      expected.text =
+      const expectedText =
         type === SymbolType.Heading
           ? HeadingIndicators[(cache as HeadingCache).level]
           : SymbolIndicators[type];
 
       sut.addSymbolIndicator(sugg.item, mockParentEl);
 
-      expect(mockParentEl.createDiv).toHaveBeenCalledWith(
-        expect.objectContaining({
-          cls: ['suggestion-aux', 'qsp-aux'],
-        }),
+      expect(renderIndicatorSpy).toHaveBeenCalledWith(
+        mockFlairContainerEl,
+        ['qsp-symbol-indicator'],
+        null,
+        expectedText,
       );
-      expect(mockAuxEl.createSpan).toHaveBeenCalledWith(
-        expect.objectContaining(expected),
-      );
+
+      renderIndicatorSpy.mockRestore();
     });
   });
 

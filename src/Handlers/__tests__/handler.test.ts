@@ -1575,8 +1575,8 @@ describe('Handler', () => {
       mockFlairContainer.createSpan.mockReturnValueOnce(mockFlairEl);
 
       const result = sut.renderOptionalIndicators(
-        ['qsp-recent-indicator'],
         mockParentEl,
+        ['qsp-recent-indicator'],
         mockFlairContainer,
       );
 
@@ -1594,14 +1594,52 @@ describe('Handler', () => {
       mockFlairContainer.createSpan.mockReturnValueOnce(mockFlairEl);
 
       const result = sut.renderOptionalIndicators(
-        ['qsp-editor-indicator'],
         mockParentEl,
+        ['qsp-editor-indicator'],
         mockFlairContainer,
       );
 
       expect(result).toBe(mockFlairContainer);
       expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-open-editor');
-      expect(mockSetIcon).toHaveBeenCalledWith(mockFlairEl, 'edit');
+      expect(mockSetIcon).toHaveBeenCalledWith(mockFlairEl, 'lucide-file-edit');
+    });
+  });
+
+  describe('renderIndicator', () => {
+    it('should render an SVG icon', () => {
+      const mockFlairEl = mock<HTMLDivElement>();
+      const mockFlairContainerEl = mock<HTMLDivElement>();
+      mockFlairContainerEl.createSpan.mockReturnValueOnce(mockFlairEl);
+      const mockSetIcon = jest.mocked(setIcon);
+
+      const classes = [chance.word()];
+      const iconName = chance.word();
+
+      const result = sut.renderIndicator(mockFlairContainerEl, classes, iconName);
+
+      expect(result).toBe(mockFlairEl);
+      expect(mockFlairEl.addClass).toHaveBeenCalledWith('svg-icon');
+      expect(mockSetIcon).toHaveBeenCalledWith(mockFlairEl, iconName);
+      expect(mockFlairContainerEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({ cls: ['suggestion-flair', ...classes] }),
+      );
+    });
+
+    it('should render a text icon', () => {
+      const mockFlairEl = mock<HTMLDivElement>();
+      const mockFlairContainerEl = mock<HTMLDivElement>();
+      mockFlairContainerEl.createSpan.mockReturnValueOnce(mockFlairEl);
+
+      const classes = [chance.word()];
+      const text = chance.word();
+
+      const result = sut.renderIndicator(mockFlairContainerEl, classes, null, text);
+
+      expect(result).toBe(mockFlairEl);
+      expect(mockFlairEl.setText).toHaveBeenCalledWith(text);
+      expect(mockFlairContainerEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({ cls: ['suggestion-flair', ...classes] }),
+      );
     });
   });
 
