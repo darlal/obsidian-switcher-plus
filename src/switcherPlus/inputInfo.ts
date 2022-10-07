@@ -1,5 +1,12 @@
-import { prepareQuery } from 'obsidian';
+import { prepareQuery, TFile, WorkspaceLeaf } from 'obsidian';
 import { Mode, SourceInfo, SearchQuery } from 'src/types';
+
+export interface WorkspaceEnvList {
+  openWorkspaceLeaves: Set<WorkspaceLeaf>;
+  openWorkspaceFiles: Set<TFile>;
+  starredFiles: Set<TFile>;
+  mostRecentFiles: Set<TFile>;
+}
 
 export interface ParsedCommand {
   isValidated: boolean;
@@ -22,6 +29,13 @@ export class InputInfo {
       parsedInput: null,
     };
   }
+
+  readonly currentWorkspaceEnvList: WorkspaceEnvList = {
+    openWorkspaceLeaves: new Set<WorkspaceLeaf>(),
+    openWorkspaceFiles: new Set<TFile>(),
+    starredFiles: new Set<TFile>(),
+    mostRecentFiles: new Set<TFile>(),
+  };
 
   get searchQuery(): SearchQuery {
     return this._searchQuery;

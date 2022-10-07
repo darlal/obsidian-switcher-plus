@@ -1,3 +1,4 @@
+import { EditorHandler } from './editorHandler';
 import {
   HeadingCache,
   PreparedQuery,
@@ -93,16 +94,15 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       const contentEl = this.renderContent(parentEl, item.heading, sugg.match);
       this.renderPath(contentEl, sugg.file);
 
-      // render the flair icon
+      // render the flair icons
       const flairContainerEl = this.createFlairContainer(parentEl);
+      this.renderOptionalIndicators(parentEl, sugg, flairContainerEl);
       this.renderIndicator(
         flairContainerEl,
         ['qsp-headings-indicator'],
         null,
         HeadingIndicators[item.level],
       );
-
-      this.renderOptionalIndicators(parentEl, sugg.optionalIndicators, flairContainerEl);
 
       if (sugg.downranked) {
         parentEl.addClass('mod-downranked');
@@ -115,26 +115,27 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
     if (inputInfo) {
       inputInfo.buildSearchQuery();
-      const { prepQuery, hasSearchTerm } = inputInfo.searchQuery;
+      const { hasSearchTerm } = inputInfo.searchQuery;
 
       if (hasSearchTerm) {
         const { limit } = this.settings;
-        suggestions = this.getAllFilesSuggestions(prepQuery);
+        suggestions = this.getAllFilesSuggestions(inputInfo);
         sortSearchResults(suggestions);
 
         if (suggestions.length > 0 && limit > 0) {
           suggestions = suggestions.slice(0, limit);
         }
       } else {
-        suggestions = this.getInitialSuggestionList();
+        suggestions = this.getInitialSuggestionList(inputInfo);
       }
     }
 
     return suggestions;
   }
 
-  getAllFilesSuggestions(prepQuery: PreparedQuery): SupportedSuggestionTypes[] {
+  getAllFilesSuggestions(inputInfo: InputInfo): SupportedSuggestionTypes[] {
     const suggestions: SupportedSuggestionTypes[] = [];
+    const { prepQuery } = inputInfo.searchQuery;
     const {
       app: { vault },
       settings: { strictHeadingsOnly, showExistingOnly, excludeFolders },
@@ -147,7 +148,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       const node = nodes.pop();
 
       if (isTFile(node)) {
-        this.addSuggestionsFromFile(suggestions, node, prepQuery);
+        this.addSuggestionsFromFile(inputInfo, suggestions, node, prepQuery);
       } else if (!isExcludedFolder(node.path)) {
         nodes = nodes.concat((node as TFolder).children);
       }
@@ -161,6 +162,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   }
 
   addSuggestionsFromFile(
+    inputInfo: InputInfo,
     suggestions: SupportedSuggestionTypes[],
     file: TFile,
     prepQuery: PreparedQuery,
@@ -174,6 +176,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
     if (this.shouldIncludeFile(file)) {
       const isH1Matched = this.addHeadingSuggestions(
+        inputInfo,
         suggestions as HeadingSuggestion[],
         prepQuery,
         file,
@@ -184,11 +187,21 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
         if (shouldSearchFilenames || !isH1Matched) {
           // if strict is disabled and filename search is enabled or there
           // isn't an H1 match, then do a fallback search against the filename, then path
-          this.addFileSuggestions(suggestions as FileSuggestion[], prepQuery, file);
+          this.addFileSuggestions(
+            inputInfo,
+            suggestions as FileSuggestion[],
+            prepQuery,
+            file,
+          );
         }
 
         if (shouldShowAlias) {
-          this.addAliasSuggestions(suggestions as AliasSuggestion[], prepQuery, file);
+          this.addAliasSuggestions(
+            inputInfo,
+            suggestions as AliasSuggestion[],
+            prepQuery,
+            file,
+          );
         }
       }
     }
@@ -232,6 +245,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   }
 
   private addAliasSuggestions(
+    inputInfo: InputInfo,
     suggestions: AliasSuggestion[],
     prepQuery: PreparedQuery,
     file: TFile,
@@ -249,13 +263,14 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
         const { match } = this.fuzzySearchWithFallback(prepQuery, alias);
 
         if (match) {
-          suggestions.push(this.createAliasSuggestion(alias, file, match));
+          suggestions.push(this.createAliasSuggestion(inputInfo, alias, file, match));
         }
       }
     }
   }
 
   private addFileSuggestions(
+    inputInfo: InputInfo,
     suggestions: FileSuggestion[],
     prepQuery: PreparedQuery,
     file: TFile,
@@ -267,11 +282,14 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     );
 
     if (match) {
-      suggestions.push(this.createFileSuggestion(file, match, matchType, matchText));
+      suggestions.push(
+        this.createFileSuggestion(inputInfo, file, match, matchType, matchText),
+      );
     }
   }
 
   private addHeadingSuggestions(
+    inputInfo: InputInfo,
     suggestions: HeadingSuggestion[],
     prepQuery: PreparedQuery,
     file: TFile,
@@ -288,7 +306,13 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       let isMatched = false;
 
       if (allHeadings) {
-        isMatched = this.matchAndPushHeading(suggestions, prepQuery, file, heading);
+        isMatched = this.matchAndPushHeading(
+          inputInfo,
+          suggestions,
+          prepQuery,
+          file,
+          heading,
+        );
       }
 
       if (heading.level === 1) {
@@ -302,13 +326,14 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     }
 
     if (!allHeadings && h1) {
-      isH1Matched = this.matchAndPushHeading(suggestions, prepQuery, file, h1);
+      isH1Matched = this.matchAndPushHeading(inputInfo, suggestions, prepQuery, file, h1);
     }
 
     return isH1Matched;
   }
 
   private matchAndPushHeading(
+    inputInfo: InputInfo,
     suggestions: HeadingSuggestion[],
     prepQuery: PreparedQuery,
     file: TFile,
@@ -317,7 +342,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     const { match } = this.fuzzySearchWithFallback(prepQuery, heading.heading);
 
     if (match) {
-      suggestions.push(this.createHeadingSuggestion(heading, file, match));
+      suggestions.push(this.createHeadingSuggestion(inputInfo, heading, file, match));
     }
 
     return !!match;
@@ -362,6 +387,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   }
 
   private createAliasSuggestion(
+    inputInfo: InputInfo,
     alias: string,
     file: TFile,
     match: SearchResult,
@@ -373,6 +399,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       type: SuggestionType.Alias,
     };
 
+    Handler.updateWorkspaceEnvListStatus(inputInfo.currentWorkspaceEnvList, sugg);
     return this.downrankScoreIfIgnored(sugg);
   }
 
@@ -388,6 +415,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   }
 
   private createFileSuggestion(
+    inputInfo: InputInfo,
     file: TFile,
     match: SearchResult,
     matchType = MatchType.None,
@@ -401,10 +429,12 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       type: SuggestionType.File,
     };
 
+    Handler.updateWorkspaceEnvListStatus(inputInfo.currentWorkspaceEnvList, sugg);
     return this.downrankScoreIfIgnored(sugg);
   }
 
   private createHeadingSuggestion(
+    inputInfo: InputInfo,
     item: HeadingCache,
     file: TFile,
     match: SearchResult,
@@ -416,23 +446,8 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       type: SuggestionType.HeadingsList,
     };
 
+    Handler.updateWorkspaceEnvListStatus(inputInfo.currentWorkspaceEnvList, sugg);
     return this.downrankScoreIfIgnored(sugg);
-  }
-
-  createEditorSuggestion(
-    item: WorkspaceLeaf,
-    file: TFile,
-    match: SearchResult,
-  ): EditorSuggestion {
-    const sugg: EditorSuggestion = {
-      item,
-      file,
-      optionalIndicators: ['qsp-editor-indicator'],
-      ...this.createSearchMatch(match, MatchType.None, null),
-      type: SuggestionType.EditorList,
-    };
-
-    return sugg;
   }
 
   private createSearchMatch(
@@ -456,33 +471,19 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   }
 
   getRecentFilesSuggestions(
-    ignoreFiles: TAbstractFile[] = [],
+    inputInfo: InputInfo,
   ): (HeadingSuggestion | FileSuggestion)[] {
     const suggestions: (HeadingSuggestion | FileSuggestion)[] = [];
-    const { workspace, vault, metadataCache } = this.app;
-    const recentFilePaths = workspace.getLastOpenFiles();
+    const files = inputInfo?.currentWorkspaceEnvList?.mostRecentFiles;
 
-    recentFilePaths.forEach((path) => {
-      const file = vault.getAbstractFileByPath(path);
-
-      if (!ignoreFiles.includes(file) && this.shouldIncludeFile(file)) {
-        const f = file as TFile;
-        let h1: HeadingCache = null;
-
-        const h1s = metadataCache
-          .getFileCache(f)
-          ?.headings?.filter((h) => h.level === 1)
-          .sort((a, b) => a.position.start.line - b.position.start.line);
-
-        if (h1s?.length) {
-          h1 = h1s[0];
-        }
-
+    files?.forEach((file) => {
+      if (this.shouldIncludeFile(file)) {
+        const h1 = this.getFirstH1(file);
         const sugg = h1
-          ? this.createHeadingSuggestion(h1, f, null)
-          : this.createFileSuggestion(f, null);
+          ? this.createHeadingSuggestion(inputInfo, h1, file, null)
+          : this.createFileSuggestion(inputInfo, file, null);
 
-        sugg.optionalIndicators = ['qsp-recent-indicator'];
+        sugg.isRecentOpen = true;
         suggestions.push(sugg);
       }
     });
@@ -490,24 +491,30 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     return suggestions;
   }
 
-  getOpenEditorSuggestions(): EditorSuggestion[] {
+  getOpenEditorSuggestions(inputInfo: InputInfo): EditorSuggestion[] {
     const suggestions: EditorSuggestion[] = [];
-    const { excludeViewTypes } = this.settings;
-    const leaves = this.getOpenLeaves(excludeViewTypes);
+    const leaves = inputInfo?.currentWorkspaceEnvList?.openWorkspaceLeaves;
 
-    leaves.forEach((leaf) => {
+    leaves?.forEach((leaf) => {
       const file = leaf.view?.file;
-      const sugg = this.createEditorSuggestion(leaf, file, null);
+      const sugg = EditorHandler.createSuggestion(
+        inputInfo.currentWorkspaceEnvList,
+        leaf,
+        file,
+        null,
+      );
+
       suggestions.push(sugg);
     });
 
     return suggestions;
   }
 
-  getInitialSuggestionList(): (HeadingSuggestion | FileSuggestion | EditorSuggestion)[] {
-    const openEditors = this.getOpenEditorSuggestions();
-    const ignoreFiles = openEditors.map((v) => v.file);
-    const recentFiles = this.getRecentFilesSuggestions(ignoreFiles);
+  getInitialSuggestionList(
+    inputInfo: InputInfo,
+  ): (HeadingSuggestion | FileSuggestion | EditorSuggestion)[] {
+    const openEditors = this.getOpenEditorSuggestions(inputInfo);
+    const recentFiles = this.getRecentFilesSuggestions(inputInfo);
 
     return [...openEditors, ...recentFiles];
   }

@@ -28,14 +28,21 @@ import {
   makeEditorSuggestion,
   makeFuzzyMatch,
   makePreparedQuery,
+  makeFileSuggestion,
 } from '@fixtures';
-import { AnySuggestion, MatchType, Mode, PathDisplayFormat } from 'src/types';
+import {
+  AnySuggestion,
+  MatchType,
+  Mode,
+  PathDisplayFormat,
+  EditorSuggestion,
+} from 'src/types';
 import { mock, mockClear, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
 import { SwitcherPlusSettings } from 'src/settings';
 import { stripMDExtensionFromPath } from 'src/utils';
 import { Chance } from 'chance';
-import { InputInfo } from 'src/switcherPlus';
+import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
 
 const chance = new Chance();
 
@@ -1572,14 +1579,12 @@ describe('Handler', () => {
       const mockParentEl = mock<HTMLElement>();
       const mockFlairContainer = mock<HTMLDivElement>();
       const mockFlairEl = mock<HTMLSpanElement>();
+      const sugg = makeFileSuggestion();
+      sugg.isRecentOpen = true;
 
       mockFlairContainer.createSpan.mockReturnValueOnce(mockFlairEl);
 
-      const result = sut.renderOptionalIndicators(
-        mockParentEl,
-        ['qsp-recent-indicator'],
-        mockFlairContainer,
-      );
+      const result = sut.renderOptionalIndicators(mockParentEl, sugg, mockFlairContainer);
 
       expect(result).toBe(mockFlairContainer);
       expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-recent-file');
@@ -1590,15 +1595,13 @@ describe('Handler', () => {
       const mockParentEl = mock<HTMLElement>();
       const mockFlairContainer = mock<HTMLDivElement>();
       const mockFlairEl = mock<HTMLSpanElement>();
+      const sugg = makeFileSuggestion();
+      sugg.isOpenInEditor = true;
 
       mockParentEl.createDiv.mockReturnValueOnce(mockFlairContainer);
       mockFlairContainer.createSpan.mockReturnValueOnce(mockFlairEl);
 
-      const result = sut.renderOptionalIndicators(
-        mockParentEl,
-        ['qsp-editor-indicator'],
-        mockFlairContainer,
-      );
+      const result = sut.renderOptionalIndicators(mockParentEl, sugg, mockFlairContainer);
 
       expect(result).toBe(mockFlairContainer);
       expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-open-editor');
@@ -1690,6 +1693,33 @@ describe('Handler', () => {
       expect(result).toBe(null);
 
       mockReset(mockVault);
+    });
+  });
+
+  describe('updateWorkspaceEnvListStatus', () => {
+    it('should not throw on falsy input', () => {
+      const sugg: EditorSuggestion = null;
+      const list: WorkspaceEnvList = null;
+      expect(() => Handler.updateWorkspaceEnvListStatus(list, sugg)).not.toThrow();
+    });
+
+    it('should update WorkspaceListstatus', () => {
+      const file = new TFile();
+      const sugg = makeEditorSuggestion(null, file);
+      const mockEnvList = mock<WorkspaceEnvList>();
+      mockEnvList.openWorkspaceFiles = new Set<TFile>([file]);
+      mockEnvList.mostRecentFiles = new Set<TFile>([file]);
+      mockEnvList.starredFiles = new Set<TFile>([file]);
+
+      Handler.updateWorkspaceEnvListStatus(mockEnvList, sugg);
+
+      expect(sugg).toEqual(
+        expect.objectContaining({
+          isOpenInEditor: true,
+          isRecentOpen: true,
+          isStarred: true,
+        }),
+      );
     });
   });
 });

@@ -16,10 +16,12 @@ import {
   isOfType,
   isUnresolvedSuggestion,
   isFileSuggestion,
+  isFileStarredItem,
+  isTFile,
 } from 'src/utils';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
-import { WorkspaceLeaf, App, Chooser, Debouncer, debounce } from 'obsidian';
+import { WorkspaceLeaf, App, Chooser, Debouncer, debounce, TFile } from 'obsidian';
 import { Mode, AnySuggestion, SymbolSuggestion, SuggestionType } from 'src/types';
 import { SwitcherPlusKeymap } from './switcherPlusKeymap';
 
@@ -166,7 +168,7 @@ export class ModeHandler {
     activeLeaf: WorkspaceLeaf,
   ): InputInfo {
     const input = query ?? '';
-    const info = new InputInfo(input);
+    const info = this.addWorkspaceEnvLists(new InputInfo(input));
 
     if (input.length === 0) {
       this.reset();
@@ -328,6 +330,42 @@ export class ModeHandler {
   getSourcedHandlers(): Handler<AnySuggestion>[] {
     const sourcedModes = [Mode.RelatedItemsList, Mode.SymbolList];
     return sourcedModes.map((v) => this.getHandler(v));
+  }
+
+  addWorkspaceEnvLists(inputInfo: InputInfo): InputInfo {
+    if (inputInfo) {
+      const openEditors = (this.getHandler(Mode.EditorList) as EditorHandler).getItems();
+      const openEditorFiles = openEditors.map((v) => v?.view?.file);
+      const starredFiles = (this.getHandler(Mode.StarredList) as StarredHandler)
+        .getItems()
+        .filter((v) => isFileStarredItem(v.item) && v.file)
+        .map((v) => v.file);
+
+      const lists = inputInfo.currentWorkspaceEnvList;
+      lists.openWorkspaceLeaves = new Set(openEditors);
+      lists.openWorkspaceFiles = new Set(openEditorFiles);
+      lists.starredFiles = new Set(starredFiles);
+      lists.mostRecentFiles = this.getRecentFiles(new Set(openEditorFiles));
+    }
+
+    return inputInfo;
+  }
+
+  getRecentFiles(ignoreFiles: Set<TFile>): Set<TFile> {
+    const recentFiles = new Set<TFile>();
+    const { workspace, vault } = this.app;
+    const recentFilePaths = workspace.getLastOpenFiles();
+    ignoreFiles = ignoreFiles ?? new Set<TFile>();
+
+    recentFilePaths?.forEach((path) => {
+      const file = vault.getAbstractFileByPath(path);
+
+      if (isTFile(file) && !ignoreFiles.has(file)) {
+        recentFiles.add(file);
+      }
+    });
+
+    return recentFiles;
   }
 
   private getHandler(

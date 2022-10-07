@@ -6,8 +6,8 @@ import {
   SearchResultWithFallback,
   SuggestionType,
 } from 'src/types';
-import { InputInfo } from 'src/switcherPlus';
-import { sortSearchResults, WorkspaceLeaf } from 'obsidian';
+import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
+import { sortSearchResults, TFile, WorkspaceLeaf } from 'obsidian';
 import { Handler } from './handler';
 
 export class EditorHandler extends Handler<EditorSuggestion> {
@@ -36,9 +36,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     if (inputInfo) {
       inputInfo.buildSearchQuery();
       const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
-      const { excludeViewTypes, includeSidePanelViewTypes } = this.settings;
-
-      const items = this.getOpenLeaves(excludeViewTypes, includeSidePanelViewTypes);
+      const items = this.getItems();
 
       items.forEach((item) => {
         const file = item.view?.file;
@@ -51,13 +49,14 @@ export class EditorHandler extends Handler<EditorSuggestion> {
         }
 
         if (shouldPush) {
-          suggestions.push({
-            type: SuggestionType.EditorList,
-            optionalIndicators: ['qsp-editor-indicator'],
-            file,
-            item,
-            ...result,
-          });
+          suggestions.push(
+            EditorHandler.createSuggestion(
+              inputInfo.currentWorkspaceEnvList,
+              item,
+              file,
+              result,
+            ),
+          );
         }
       });
 
@@ -67,6 +66,11 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     }
 
     return suggestions;
+  }
+
+  getItems(): WorkspaceLeaf[] {
+    const { excludeViewTypes, includeSidePanelViewTypes } = this.settings;
+    return this.getOpenLeaves(excludeViewTypes, includeSidePanelViewTypes);
   }
 
   renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): void {
@@ -82,7 +86,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
         match,
       );
 
-      this.renderOptionalIndicators(parentEl, sugg.optionalIndicators);
+      this.renderOptionalIndicators(parentEl, sugg);
     }
   }
 
@@ -98,5 +102,23 @@ export class EditorHandler extends Handler<EditorSuggestion> {
         true,
       );
     }
+  }
+
+  static createSuggestion(
+    currentWorkspaceEnvList: WorkspaceEnvList,
+    leaf: WorkspaceLeaf,
+    file: TFile,
+    result?: SearchResultWithFallback,
+  ): EditorSuggestion {
+    result = result ?? { matchType: MatchType.None, match: null, matchText: null };
+
+    const sugg: EditorSuggestion = {
+      item: leaf,
+      file,
+      type: SuggestionType.EditorList,
+      ...result,
+    };
+
+    return Handler.updateWorkspaceEnvListStatus(currentWorkspaceEnvList, sugg);
   }
 }

@@ -500,7 +500,7 @@ describe('relatedItemsHandler', () => {
 
         expect(mockFlairContainerEl.createSpan).toHaveBeenCalledWith(
           expect.objectContaining({
-            cls: ['suggestion-flair', 'svg-icon', 'qsp-related-indicator'],
+            cls: ['suggestion-flair', 'qsp-related-indicator'],
           }),
         );
 

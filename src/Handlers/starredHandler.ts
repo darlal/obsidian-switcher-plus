@@ -1,5 +1,5 @@
 import { getInternalPluginById, isFileStarredItem } from 'src/utils';
-import { InputInfo } from 'src/switcherPlus';
+import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
 import {
   AnySuggestion,
   MatchType,
@@ -21,7 +21,7 @@ import { Handler } from './handler';
 
 export const STARRED_PLUGIN_ID = 'starred';
 
-interface StarredItemInfo {
+export interface StarredItemInfo {
   file: TFile;
   item: StarredPluginItem;
 }
@@ -66,7 +66,14 @@ export class StarredHandler extends Handler<StarredSuggestion> {
         }
 
         if (shouldPush) {
-          suggestions.push({ type: SuggestionType.StarredList, file, item, ...result });
+          suggestions.push(
+            StarredHandler.createSuggestion(
+              inputInfo.currentWorkspaceEnvList,
+              item,
+              file,
+              result,
+            ),
+          );
         }
       });
 
@@ -90,6 +97,8 @@ export class StarredHandler extends Handler<StarredSuggestion> {
         matchType,
         match,
       );
+
+      this.renderOptionalIndicators(parentEl, sugg);
     }
   }
 
@@ -157,5 +166,21 @@ export class StarredHandler extends Handler<StarredSuggestion> {
   private getSystemStarredPluginInstance(): StarredPluginInstance {
     const starredPlugin = this.getSystemStarredPlugin();
     return starredPlugin?.instance as StarredPluginInstance;
+  }
+
+  static createSuggestion(
+    currentWorkspaceEnvList: WorkspaceEnvList,
+    item: StarredPluginItem,
+    file: TFile,
+    result: SearchResultWithFallback,
+  ): StarredSuggestion {
+    const sugg: StarredSuggestion = {
+      item,
+      file,
+      type: SuggestionType.StarredList,
+      ...result,
+    };
+
+    return Handler.updateWorkspaceEnvListStatus(currentWorkspaceEnvList, sugg);
   }
 }

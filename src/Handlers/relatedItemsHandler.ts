@@ -4,7 +4,6 @@ import {
   TFile,
   TAbstractFile,
   TFolder,
-  setIcon,
 } from 'obsidian';
 import {
   AnySuggestion,
@@ -17,7 +16,7 @@ import {
   SourceInfo,
   SuggestionType,
 } from 'src/types';
-import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
+import { InputInfo, SourcedParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 import { Handler } from './handler';
 import { isTFile, isUnresolvedSuggestion, matcherFnForRegExList } from 'src/utils';
 
@@ -70,12 +69,14 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
         }
 
         if (shouldPush) {
-          suggestions.push({
-            item,
-            type: SuggestionType.RelatedItemsList,
-            file: item.file,
-            ...result,
-          });
+          suggestions.push(
+            RelatedItemsHandler.createSuggestion(
+              inputInfo.currentWorkspaceEnvList,
+              item,
+              item.file,
+              result,
+            ),
+          );
         }
       });
 
@@ -90,7 +91,7 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
   renderSuggestion(sugg: RelatedItemsSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       const { file, matchType, match, item } = sugg;
-      const iconMap = new Map<string, string>([
+      const iconMap = new Map<RelationType, string>([
         [RelationType.Backlink, 'links-coming-in'],
         [RelationType.DiskLocation, 'folder-tree'],
       ]);
@@ -106,22 +107,19 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
       );
 
       const flairContainerEl = this.createFlairContainer(parentEl);
+      this.renderOptionalIndicators(parentEl, sugg, flairContainerEl);
 
-      // show the count of backlinks
       if (sugg.item.count) {
-        const text = `${sugg.item.count}`;
-        flairContainerEl.createSpan({
-          cls: ['suggestion-flair'],
-          text,
-        });
+        // show the count of backlinks
+        this.renderIndicator(flairContainerEl, [], null, `${sugg.item.count}`);
       }
 
       // render the flair icon
-      const iconEl = flairContainerEl.createSpan({
-        cls: ['suggestion-flair', 'svg-icon', 'qsp-related-indicator'],
-      });
-
-      setIcon(iconEl, iconMap.get(item.relationType));
+      this.renderIndicator(
+        flairContainerEl,
+        ['qsp-related-indicator'],
+        iconMap.get(item.relationType),
+      );
     }
   }
 
@@ -261,5 +259,21 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
     }
 
     return sourceInfo;
+  }
+
+  static createSuggestion(
+    currentWorkspaceEnvList: WorkspaceEnvList,
+    item: RelatedItemsInfo,
+    file: TFile,
+    result: SearchResultWithFallback,
+  ): RelatedItemsSuggestion {
+    const sugg: RelatedItemsSuggestion = {
+      item,
+      file: file,
+      type: SuggestionType.RelatedItemsList,
+      ...result,
+    };
+
+    return Handler.updateWorkspaceEnvListStatus(currentWorkspaceEnvList, sugg);
   }
 }

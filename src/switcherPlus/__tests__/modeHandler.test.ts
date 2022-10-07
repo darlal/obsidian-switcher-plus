@@ -16,6 +16,7 @@ import {
   CommandHandler,
   RelatedItemsHandler,
   StandardExHandler,
+  StarredItemInfo,
 } from 'src/Handlers';
 import {
   App,
@@ -26,6 +27,8 @@ import {
   Workspace,
   Debouncer,
   TFile,
+  Vault,
+  StarredPluginItem,
 } from 'obsidian';
 import {
   editorTrigger,
@@ -115,6 +118,7 @@ describe('modeHandler', () => {
   let mockApp: MockProxy<App>;
   let mockSettings: MockProxy<SwitcherPlusSettings>;
   let mockWorkspace: MockProxy<Workspace>;
+  let mockVault: MockProxy<Vault>;
 
   const mockDebouncedGetSuggestions =
     mockFn<Debouncer<[InputInfo, Chooser<AnySuggestion>], void>>();
@@ -132,12 +136,14 @@ describe('modeHandler', () => {
       };
     });
 
+    mockVault = mock<Vault>();
     mockWorkspace = mock<Workspace>();
     mockWorkspace.iterateAllLeaves.mockImplementation();
 
     mockApp = mock<App>({
       internalPlugins: mockInternalPlugins,
       workspace: mockWorkspace,
+      vault: mockVault,
     });
 
     mockSettings = mock<SwitcherPlusSettings>({
@@ -661,5 +667,100 @@ describe('modeHandler', () => {
         });
       },
     );
+  });
+
+  describe('getRecentFiles', () => {
+    let sut: ModeHandler;
+    const fileData: Record<string, TFile> = {};
+    let file = new TFile();
+    fileData[file.path] = file;
+
+    file = new TFile();
+    fileData[file.path] = file;
+
+    file = new TFile();
+    fileData[file.path] = file;
+
+    const fileDataKeys = Object.keys(fileData);
+
+    beforeAll(() => {
+      sut = new ModeHandler(mockApp, mockSettings, null);
+
+      mockWorkspace.getLastOpenFiles.mockReturnValue(fileDataKeys);
+      mockVault.getAbstractFileByPath.mockImplementation(
+        (path: string) => fileData[path],
+      );
+    });
+
+    afterAll(() => {
+      mockWorkspace.getLastOpenFiles.mockReset();
+      mockVault.getAbstractFileByPath.mockReset();
+    });
+
+    it('should not throw with falsy values', () => {
+      expect(() => sut.getRecentFiles(null)).not.toThrow();
+    });
+
+    it('should not include ignored files', () => {
+      const ignoredFile = Object.values(fileData)[0];
+
+      const results = sut.getRecentFiles(new Set([ignoredFile]));
+
+      const found = results.has(ignoredFile);
+
+      expect(found).toBe(false);
+      expect(results.size).toBe(fileDataKeys.length - 1);
+    });
+  });
+
+  describe('addWorkspaceEnvLists', () => {
+    let sut: ModeHandler;
+
+    beforeAll(() => {
+      sut = new ModeHandler(mockApp, mockSettings, null);
+    });
+
+    it('should add file list', () => {
+      const inputInfo = new InputInfo();
+      const editors = [makeLeaf()];
+      const editorFiles = editors.map((v) => v.view.file);
+      const recentFiles = new Set([new TFile(), new TFile(), ...editorFiles]);
+
+      const starred = [
+        mock<StarredItemInfo>({
+          file: new TFile(),
+          item: mock<StarredPluginItem>({ type: 'file' }),
+        }),
+      ];
+
+      const starredFiles = starred.map((v) => v.file);
+
+      const editorSpy = jest
+        .spyOn(EditorHandler.prototype, 'getItems')
+        .mockReturnValueOnce(editors);
+
+      const starredSpy = jest
+        .spyOn(StarredHandler.prototype, 'getItems')
+        .mockReturnValueOnce(starred);
+
+      const recentSpy = jest
+        .spyOn(sut, 'getRecentFiles')
+        .mockReturnValueOnce(recentFiles);
+
+      sut.addWorkspaceEnvLists(inputInfo);
+
+      expect(inputInfo.currentWorkspaceEnvList).toEqual(
+        expect.objectContaining({
+          openWorkspaceLeaves: new Set(editors),
+          openWorkspaceFiles: new Set(editorFiles),
+          starredFiles: new Set(starredFiles),
+          mostRecentFiles: new Set(recentFiles),
+        }),
+      );
+
+      editorSpy.mockRestore();
+      starredSpy.mockRestore();
+      recentSpy.mockRestore();
+    });
   });
 });

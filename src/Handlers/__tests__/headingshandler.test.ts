@@ -11,6 +11,7 @@ import {
   Vault,
   ViewRegistry,
   Workspace,
+  WorkspaceLeaf,
 } from 'obsidian';
 import { Handler, HeadingsHandler } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings';
@@ -158,26 +159,19 @@ describe('headingsHandler', () => {
       const leaf = makeLeaf();
       leaf.view.file = file1;
 
-      const getOpenLeavesSpy = jest
-        .spyOn(sut, 'getOpenLeaves')
-        .mockReturnValueOnce([leaf]);
+      const inputInfo = new InputInfo(headingsTrigger);
+      inputInfo.currentWorkspaceEnvList.openWorkspaceLeaves = new Set([leaf]);
+      inputInfo.currentWorkspaceEnvList.mostRecentFiles = new Set([file2]);
 
-      mockWorkspace.getLastOpenFiles.mockReturnValueOnce([file1.path, file2.path]);
-      mockVault.getAbstractFileByPath.calledWith(file1.path).mockReturnValue(file1);
-      mockVault.getAbstractFileByPath.calledWith(file2.path).mockReturnValue(file2);
       mockMetadataCache.getFileCache.mockReturnValue({});
 
-      const results = sut.getSuggestions(new InputInfo(headingsTrigger));
+      const results = sut.getSuggestions(inputInfo);
 
-      expect(getOpenLeavesSpy).toHaveBeenCalled();
       expect(results).toHaveLength(2);
       expect(results.filter((v) => isFileSuggestion(v))).toHaveLength(1);
       expect(results.filter((v) => isEditorSuggestion(v))).toHaveLength(1);
 
       mockMetadataCache.getFileCache.mockReset();
-      mockVault.getAbstractFileByPath.mockReset();
-      mockWorkspace.getLastOpenFiles.mockReset();
-      getOpenLeavesSpy.mockRestore();
     });
 
     test('with filter search term, it should return matching suggestions for all headings', () => {
@@ -475,6 +469,8 @@ describe('headingsHandler', () => {
   });
 
   describe('addSuggestionsFromFile', () => {
+    const iInfo = mock<InputInfo>();
+
     test('with filter search term, it should return matching suggestions using file name (leaf segment) when there is no H1 match', () => {
       const filterText = 'foo';
       const filename = `${filterText} filename`; // only filename matters for this test
@@ -492,7 +488,12 @@ describe('headingsHandler', () => {
         return text === filename ? expectedMatch : null;
       });
 
-      sut.addSuggestionsFromFile(results, expectedFile, makePreparedQuery(filterText));
+      sut.addSuggestionsFromFile(
+        iInfo,
+        results,
+        expectedFile,
+        makePreparedQuery(filterText),
+      );
 
       const result = results[0];
       expect(results).toHaveLength(1);
@@ -525,7 +526,12 @@ describe('headingsHandler', () => {
         return text === filterText || text === filename ? makeFuzzyMatch() : null;
       });
 
-      sut.addSuggestionsFromFile(results, expectedFile, makePreparedQuery(filterText));
+      sut.addSuggestionsFromFile(
+        iInfo,
+        results,
+        expectedFile,
+        makePreparedQuery(filterText),
+      );
 
       const H1Sugg = results.find(isHeadingSuggestion);
       const fileSugg = results.find(isFileSuggestion);
@@ -558,7 +564,12 @@ describe('headingsHandler', () => {
         return text === path ? expectedMatch : null;
       });
 
-      sut.addSuggestionsFromFile(results, expectedFile, makePreparedQuery(filterText));
+      sut.addSuggestionsFromFile(
+        iInfo,
+        results,
+        expectedFile,
+        makePreparedQuery(filterText),
+      );
 
       const result = results[0];
       expect(results).toHaveLength(1);
@@ -792,85 +803,42 @@ describe('headingsHandler', () => {
   });
 
   describe('getRecentFilesSuggestions', () => {
-    const fileData: Record<string, TFile> = {};
-    let file = new TFile();
-    fileData[file.path] = file;
-
-    file = new TFile();
-    fileData[file.path] = file;
-
-    file = new TFile();
-    fileData[file.path] = file;
-
-    const fileDataKeys = Object.keys(fileData);
-
-    beforeAll(() => {
-      mockWorkspace.getLastOpenFiles.mockReturnValue(fileDataKeys);
-      mockVault.getAbstractFileByPath.mockImplementation(
-        (path: string) => fileData[path],
-      );
-    });
-
-    afterAll(() => {
-      mockWorkspace.getLastOpenFiles.mockReset();
-      mockVault.getAbstractFileByPath.mockReset();
-    });
-
-    it('should not throw with falsy values', () => {
-      mockMetadataCache.getFileCache.mockReturnValue({});
-
-      expect(() => sut.getRecentFilesSuggestions()).not.toThrow();
-
-      mockMetadataCache.getFileCache.mockReset();
-    });
-
-    it('should not include ignored files', () => {
-      const ignoredFile = Object.values(fileData)[0];
-      mockMetadataCache.getFileCache.mockReturnValue({});
-
-      const results = sut.getRecentFilesSuggestions([ignoredFile]);
-
-      const found = results.find((v) => v.file === ignoredFile);
-      expect(found).toBe(undefined);
-      expect(results).toHaveLength(fileDataKeys.length - 1);
-    });
+    const fileData = [new TFile(), new TFile(), new TFile()];
 
     it('should return heading suggestions for recent files', () => {
-      const expectedFiles = new Set(Object.values(fileData));
+      const expectedFiles = new Set(fileData);
+      const mockInputInfo = mock<InputInfo>();
+      mockInputInfo.currentWorkspaceEnvList.mostRecentFiles = expectedFiles;
+
       mockMetadataCache.getFileCache.mockReturnValue(getCachedMetadata());
 
-      const results = sut.getRecentFilesSuggestions();
+      const results = sut.getRecentFilesSuggestions(mockInputInfo);
 
-      expect(results).toHaveLength(fileDataKeys.length);
-      expect(mockWorkspace.getLastOpenFiles).toHaveBeenCalled();
-      expect(mockVault.getAbstractFileByPath).toHaveBeenCalled();
+      expect(results).toHaveLength(fileData.length);
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(results.every((sugg) => expectedFiles.has(sugg.file))).toBe(true);
       expect(results.every((sugg) => isHeadingSuggestion(sugg))).toBe(true);
 
-      expect(
-        results.every((sugg) => sugg.optionalIndicators.includes('qsp-recent-indicator')),
-      ).toBe(true);
+      expect(results.every((sugg) => sugg.isRecentOpen)).toBe(true);
 
       mockMetadataCache.getFileCache.mockReset();
     });
 
     it('should return file suggestions for recent files without headings', () => {
-      const expectedFiles = new Set(Object.values(fileData));
+      const expectedFiles = new Set(fileData);
+      const mockInputInfo = mock<InputInfo>();
+      mockInputInfo.currentWorkspaceEnvList.mostRecentFiles = expectedFiles;
+
       mockMetadataCache.getFileCache.mockReturnValue({});
 
-      const results = sut.getRecentFilesSuggestions();
+      const results = sut.getRecentFilesSuggestions(mockInputInfo);
 
-      expect(results).toHaveLength(fileDataKeys.length);
-      expect(mockWorkspace.getLastOpenFiles).toHaveBeenCalled();
-      expect(mockVault.getAbstractFileByPath).toHaveBeenCalled();
+      expect(results).toHaveLength(fileData.length);
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(results.every((sugg) => expectedFiles.has(sugg.file))).toBe(true);
       expect(results.every((sugg) => isFileSuggestion(sugg))).toBe(true);
 
-      expect(
-        results.every((sugg) => sugg.optionalIndicators.includes('qsp-recent-indicator')),
-      ).toBe(true);
+      expect(results.every((sugg) => sugg.isRecentOpen)).toBe(true);
 
       mockMetadataCache.getFileCache.mockReset();
     });
@@ -878,18 +846,19 @@ describe('headingsHandler', () => {
 
   describe('getOpenEditorSuggestions', () => {
     it('should return editor suggestions with optional indicator', () => {
-      const getOpenLeavesSpy = jest
-        .spyOn(sut, 'getOpenLeaves')
-        .mockReturnValueOnce([makeLeaf()]);
+      const leaf = makeLeaf();
+      const mockInputInfo = mock<InputInfo>();
+      mockInputInfo.currentWorkspaceEnvList.openWorkspaceLeaves = new Set<WorkspaceLeaf>([
+        leaf,
+      ]);
+      mockInputInfo.currentWorkspaceEnvList.openWorkspaceFiles = new Set<TFile>([
+        leaf.view.file,
+      ]);
 
-      const results = sut.getOpenEditorSuggestions();
+      const results = sut.getOpenEditorSuggestions(mockInputInfo);
 
       expect(results).toHaveLength(1);
-      expect(
-        results.every((sugg) => sugg.optionalIndicators.includes('qsp-editor-indicator')),
-      ).toBe(true);
-
-      getOpenLeavesSpy.mockRestore();
+      expect(results.every((sugg) => sugg.isOpenInEditor)).toBe(true);
     });
   });
 });

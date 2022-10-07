@@ -26,8 +26,9 @@ import {
   PathDisplayFormat,
   SearchResultWithFallback,
   SourceInfo,
+  Suggestion,
 } from 'src/types';
-import { InputInfo } from 'src/switcherPlus';
+import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
   isCommandSuggestion,
@@ -739,37 +740,48 @@ export abstract class Handler<T> {
   /**
    * Displays extra flair icons for an item, and adds any associated css classes
    * to parentEl
-   * @param  {string[]} optionalIndicators indicator icon styles to be added
-   * @param  {HTMLElement} parentEl
+   * @param  {HTMLElement} parentEl the suggestion container element
+   * @param  {AnySuggestion} sugg the suggestion item
    * @param  {HTMLDivElement=null} flairContainerEl optional, if null, it will be created
    * @returns HTMLDivElement the flairContainerEl that was passed in or created
    */
   renderOptionalIndicators(
     parentEl: HTMLElement,
-    optionalIndicators: string[],
+    sugg: AnySuggestion,
     flairContainerEl: HTMLDivElement = null,
   ): HTMLDivElement {
-    const indicatorData = new Map<string, Record<string, string>>([
-      ['qsp-recent-indicator', { iconName: 'history', parentElClass: 'qsp-recent-file' }],
-      [
-        'qsp-editor-indicator',
-        { iconName: 'lucide-file-edit', parentElClass: 'qsp-open-editor' },
-      ],
-    ]);
+    const indicatorData = new Map<keyof AnySuggestion, Record<string, string>>();
+    indicatorData.set('isRecentOpen', {
+      iconName: 'history',
+      parentElClass: 'qsp-recent-file',
+      indicatorElClass: 'qsp-recent-indicator',
+    });
+
+    indicatorData.set('isOpenInEditor', {
+      iconName: 'lucide-file-edit',
+      parentElClass: 'qsp-open-editor',
+      indicatorElClass: 'qsp-editor-indicator',
+    });
+
+    indicatorData.set('isStarred', {
+      iconName: 'lucide-star',
+      parentElClass: 'qsp-starred-file',
+      indicatorElClass: 'qsp-starred-indicator',
+    });
 
     if (!flairContainerEl) {
       flairContainerEl = this.createFlairContainer(parentEl);
     }
 
-    optionalIndicators?.forEach((indicator) => {
-      const { iconName, parentElClass } = indicatorData.get(indicator);
+    for (const [state, data] of indicatorData.entries()) {
+      if (sugg[state] === true) {
+        if (data.parentElClass) {
+          parentEl?.addClass(data.parentElClass);
+        }
 
-      if (parentElClass) {
-        parentEl?.addClass(parentElClass);
+        this.renderIndicator(flairContainerEl, [data.indicatorElClass], data.iconName);
       }
-
-      this.renderIndicator(flairContainerEl, [indicator], iconName);
-    });
+    }
 
     return flairContainerEl;
   }
@@ -828,5 +840,25 @@ export abstract class Handler<T> {
     }
 
     return file;
+  }
+
+  /**
+   * @param  {WorkspaceEnvList} currentWorkspaceEnvList
+   * @param  {V} sugg
+   * @returns V
+   */
+  static updateWorkspaceEnvListStatus<
+    U,
+    V extends Suggestion<U> | Omit<Suggestion<U>, 'item'>,
+  >(currentWorkspaceEnvList: WorkspaceEnvList, sugg: V): V {
+    if (currentWorkspaceEnvList && sugg?.file) {
+      const { file } = sugg;
+
+      sugg.isOpenInEditor = currentWorkspaceEnvList.openWorkspaceFiles?.has(file);
+      sugg.isRecentOpen = currentWorkspaceEnvList.mostRecentFiles?.has(file);
+      sugg.isStarred = currentWorkspaceEnvList.starredFiles?.has(file);
+    }
+
+    return sugg;
   }
 }

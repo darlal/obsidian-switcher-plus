@@ -140,10 +140,14 @@ export enum MatchType {
 export interface Suggestion<T> extends FuzzyMatch<T> {
   type: SuggestionType;
   file: TFile;
+  downranked?: boolean;
+
   // Obsidian created suggestions won't have these props
   matchType?: MatchType;
   matchText?: string;
-  optionalIndicators?: string[];
+  isOpenInEditor?: boolean;
+  isStarred?: boolean;
+  isRecentOpen?: boolean;
 }
 
 export interface SymbolSuggestion extends Suggestion<SymbolInfo> {
@@ -159,7 +163,6 @@ export interface WorkspaceSuggestion extends Omit<Suggestion<WorkspaceInfo>, 'fi
 }
 
 export interface HeadingSuggestion extends Suggestion<HeadingCache> {
-  downranked?: boolean;
   type: SuggestionType.HeadingsList;
 }
 
