@@ -1,8 +1,8 @@
 {
   "id": "darlal-switcher-plus",
   "name": "Quick Switcher++",
-  "version": "2.1.0",
-  "minAppVersion": "0.16.2",
+  "version": "2.1.1",
+  "minAppVersion": "1.0.0",
   "description": "Enhanced Quick Switcher, search open panels, and symbols.",
   "author": "darlal",
   "authorUrl": "https://github.com/darlal/obsidian-switcher-plus",
