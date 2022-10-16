@@ -65,6 +65,15 @@ function transientSettingsData(useDefault: boolean): SettingsData {
       Mode[Mode.HeadingsList] as keyof typeof Mode,
       Mode[Mode.SymbolList] as keyof typeof Mode,
     ],
+    enableMatchPriorityAdjustments: false,
+    matchPriorityAdjustments: {
+      isOpenInEditor: 0,
+      isStarred: 0,
+      isRecent: 0,
+      file: 0,
+      alias: 0,
+      h1: 0,
+    },
   };
 
   if (!useDefault) {
@@ -93,6 +102,8 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     data.enabledRelatedItems = chance.pickset(Object.values(RelationType), 2);
     data.showOptionalIndicatorIcons = chance.bool();
     data.overrideStandardModeBehaviors = chance.bool();
+    data.enableMatchPriorityAdjustments = chance.bool();
+    data.matchPriorityAdjustments = { h2: 0.5, isOpenInEditor: 0.5 };
 
     const ribbonCommands = Object.values(Mode).filter((v) => isNaN(Number(v))) as Array<
       keyof typeof Mode
@@ -202,6 +213,8 @@ describe('SwitcherPlusSettings', () => {
     sut.showOptionalIndicatorIcons = settings.showOptionalIndicatorIcons;
     sut.overrideStandardModeBehaviors = settings.overrideStandardModeBehaviors;
     sut.enabledRibbonCommands = settings.enabledRibbonCommands;
+    sut.enableMatchPriorityAdjustments = settings.enableMatchPriorityAdjustments;
+    sut.matchPriorityAdjustments = settings.matchPriorityAdjustments;
 
     sut.setSymbolTypeEnabled(
       SymbolType.Heading,

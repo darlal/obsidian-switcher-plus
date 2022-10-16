@@ -31,6 +31,7 @@ import {
   makeFuzzyMatch,
   makePreparedQuery,
   makeFileSuggestion,
+  makeHeadingSuggestion,
 } from '@fixtures';
 import {
   AnySuggestion,
@@ -1720,7 +1721,7 @@ describe('Handler', () => {
       const mockFlairContainer = mock<HTMLDivElement>();
       const mockFlairEl = mock<HTMLSpanElement>();
       const sugg = makeFileSuggestion();
-      sugg.isRecentOpen = true;
+      sugg.isRecent = true;
 
       mockFlairContainer.createSpan.mockReturnValueOnce(mockFlairEl);
 
@@ -1850,6 +1851,168 @@ describe('Handler', () => {
     });
   });
 
+  describe('applyMatchPriorityPreferences', () => {
+    it('should not throw on falsy input', () => {
+      const sugg = makeFileSuggestion();
+
+      mockMetadataCache.isUserIgnored.mockReturnValue(false);
+
+      expect(() => {
+        sugg.file = null;
+        sut.applyMatchPriorityPreferences(sugg);
+      }).not.toThrow();
+
+      expect(() => {
+        sugg.match = null;
+        sut.applyMatchPriorityPreferences(sugg);
+      }).not.toThrow();
+
+      expect(() => {
+        sut.applyMatchPriorityPreferences(null);
+      }).not.toThrow();
+
+      mockMetadataCache.isUserIgnored.mockReset();
+    });
+
+    it('should downrank suggestions for file that are excluded by Obsidian exclude files setting', () => {
+      const sugg = makeFileSuggestion(null, null, 0);
+
+      mockMetadataCache.isUserIgnored
+        .calledWith(sugg.file.path)
+        .mockReturnValueOnce(true);
+
+      const result = sut.applyMatchPriorityPreferences(sugg);
+
+      // by default scores are downranked by -10
+      expect(result.match.score).toBe(-10);
+      expect(result.downranked).toBe(true);
+      expect(mockMetadataCache.isUserIgnored).toHaveBeenCalledWith(sugg.file.path);
+
+      mockMetadataCache.isUserIgnored.mockReset();
+    });
+
+    it('should not change score if setting is not a valid number', () => {
+      const sugg = makeFileSuggestion(null, null, 0);
+      sugg.isStarred = true;
+
+      // eslint-disable-next-line
+      // @ts-ignore
+      mockSettings.matchPriorityAdjustments = { isStarred: '0NAN' };
+
+      const result = sut.applyMatchPriorityPreferences(sugg);
+
+      expect(result.match.score).toBe(0);
+
+      mockReset(mockSettings);
+    });
+
+    it('should not change score if setting is not set', () => {
+      const sugg = makeFileSuggestion(null, null, 0);
+
+      mockSettings.matchPriorityAdjustments = null;
+
+      const result = sut.applyMatchPriorityPreferences(sugg);
+
+      expect(result.match.score).toBe(0);
+
+      mockReset(mockSettings);
+    });
+
+    test.each([
+      {
+        score: 1000,
+        factor: 0.5,
+        expected: 1500,
+        title: 'a positive factor should increase a positive score',
+      },
+      {
+        score: -1000,
+        factor: 0.5,
+        expected: -500,
+        title: 'a positive factor should increase a negative score',
+      },
+      {
+        score: 1000,
+        factor: -0.5,
+        expected: 500,
+        title: 'a negative factor should decrease a positive score',
+      },
+      {
+        score: -1000,
+        factor: -0.5,
+        expected: -1500,
+        title: 'a negative factor should decrease a negative score',
+      },
+    ])('$title', ({ score, factor, expected }) => {
+      const sugg = makeFileSuggestion(null, null, score);
+      sugg.isOpenInEditor = true;
+
+      mockSettings.matchPriorityAdjustments = { isOpenInEditor: factor };
+
+      const result = sut.applyMatchPriorityPreferences(sugg);
+
+      expect(result.match.score).toBe(expected);
+
+      mockReset(mockSettings);
+    });
+
+    it('should update score for suggestions that is open in an editor', () => {
+      const sugg = makeFileSuggestion(null, null, -0.15);
+      sugg.isOpenInEditor = true;
+
+      mockSettings.matchPriorityAdjustments = { isOpenInEditor: 0.5 };
+
+      const result = sut.applyMatchPriorityPreferences(sugg);
+
+      expect(result.match.score).toBe(-0.075);
+
+      mockReset(mockSettings);
+    });
+
+    it('should update score for starred suggestions', () => {
+      const sugg = makeFileSuggestion(null, null, -0.15);
+      sugg.isStarred = true;
+
+      mockSettings.matchPriorityAdjustments = { isStarred: 0.5 };
+
+      const result = sut.applyMatchPriorityPreferences(sugg);
+
+      expect(result.match.score).toBe(-0.075);
+
+      mockReset(mockSettings);
+    });
+
+    it('should update score for recently open suggestions', () => {
+      const sugg = makeFileSuggestion(null, null, -0.15);
+      sugg.isRecent = true;
+
+      mockSettings.matchPriorityAdjustments = { isRecent: 0.5 };
+
+      const result = sut.applyMatchPriorityPreferences(sugg);
+
+      expect(result.match.score).toBe(-0.075);
+
+      mockReset(mockSettings);
+    });
+
+    it('should update score for heading suggestions', () => {
+      const sugg = makeHeadingSuggestion(
+        mock<HeadingCache>({ level: 2 }),
+        null,
+        null,
+        -0.15,
+      );
+
+      mockSettings.matchPriorityAdjustments = { h2: 0.5 };
+
+      const result = sut.applyMatchPriorityPreferences(sugg);
+
+      expect(result.match.score).toBe(-0.075);
+
+      mockReset(mockSettings);
+    });
+  });
+
   describe('updateWorkspaceEnvListStatus', () => {
     it('should not throw on falsy input', () => {
       const sugg: EditorSuggestion = null;
@@ -1870,7 +2033,7 @@ describe('Handler', () => {
       expect(sugg).toEqual(
         expect.objectContaining({
           isOpenInEditor: true,
-          isRecentOpen: true,
+          isRecent: true,
           isStarred: true,
         }),
       );

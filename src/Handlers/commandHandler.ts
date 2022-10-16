@@ -14,9 +14,9 @@ import {
 } from 'obsidian';
 
 export const COMMAND_PALETTE_PLUGIN_ID = 'command-palette';
-export type CommandInfo = { cmd: Command; isPinned: boolean; isRecentOpen: boolean };
+export type CommandInfo = { cmd: Command; isPinned: boolean; isRecent: boolean };
 
-const recentlyUsedCommandIds: string[] = [];
+const RECENTLY_USED_COMMAND_IDS: string[] = [];
 
 export class CommandHandler extends Handler<CommandSuggestion> {
   get commandString(): string {
@@ -44,25 +44,19 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     if (inputInfo) {
       inputInfo.buildSearchQuery();
       const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
-      const itemsInfo = this.getItems(hasSearchTerm, recentlyUsedCommandIds);
+      const itemsInfo = this.getItems(hasSearchTerm, RECENTLY_USED_COMMAND_IDS);
 
-      itemsInfo.forEach(({ isPinned, isRecentOpen, cmd }) => {
+      itemsInfo.forEach((info) => {
         let shouldPush = true;
         let match: SearchResult = null;
 
         if (hasSearchTerm) {
-          match = fuzzySearch(prepQuery, cmd.name);
+          match = fuzzySearch(prepQuery, info.cmd.name);
           shouldPush = !!match;
         }
 
         if (shouldPush) {
-          suggestions.push({
-            type: SuggestionType.CommandList,
-            item: cmd,
-            isPinned,
-            isRecentOpen,
-            match,
-          });
+          suggestions.push(this.createSuggestion(info, match));
         }
       });
 
@@ -76,7 +70,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
 
   renderSuggestion(sugg: CommandSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      const { item, match, isPinned, isRecentOpen } = sugg;
+      const { item, match, isPinned, isRecent } = sugg;
       this.addClassesToSuggestionContainer(parentEl, ['qsp-suggestion-command']);
       this.renderContent(parentEl, item.name, match);
 
@@ -89,7 +83,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
 
       if (isPinned) {
         this.renderIndicator(flairContainerEl, [], 'filled-pin');
-      } else if (isRecentOpen) {
+      } else if (isRecent) {
         this.renderOptionalIndicators(parentEl, sugg, flairContainerEl);
       }
     }
@@ -113,7 +107,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     if (sugg) {
       const { item } = sugg;
       this.app.commands.executeCommandById(item.id);
-      this.saveUsageToList(item.id, recentlyUsedCommandIds);
+      this.saveUsageToList(item.id, RECENTLY_USED_COMMAND_IDS);
     }
   }
 
@@ -148,7 +142,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
       .map((cmd) => {
         return {
           isPinned: pinnedIdsSet.has(cmd.id),
-          isRecentOpen: recentIdsSet.has(cmd.id),
+          isRecent: recentIdsSet.has(cmd.id),
           cmd,
         };
       });
@@ -157,10 +151,10 @@ export class CommandHandler extends Handler<CommandSuggestion> {
   getInitialCommandList(app: App, recentCommandIds: string[]): CommandInfo[] {
     const commands: CommandInfo[] = [];
 
-    const findAndAdd = (id: string, isPinned: boolean, isRecentOpen: boolean) => {
+    const findAndAdd = (id: string, isPinned: boolean, isRecent: boolean) => {
       const cmd = app.commands.findCommand(id);
       if (cmd) {
-        commands.push({ isPinned, isRecentOpen, cmd });
+        commands.push({ isPinned, isRecent, cmd });
       }
     };
 
@@ -189,6 +183,19 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     }
 
     return pinnedCommandIds ?? new Set<string>();
+  }
+
+  createSuggestion(commandInfo: CommandInfo, match: SearchResult): CommandSuggestion {
+    const { cmd, isPinned, isRecent } = commandInfo;
+    const sugg: CommandSuggestion = {
+      type: SuggestionType.CommandList,
+      item: cmd,
+      isPinned,
+      isRecent,
+      match,
+    };
+
+    return this.applyMatchPriorityPreferences(sugg);
   }
 
   private isCommandPalettePluginEnabled(): boolean {

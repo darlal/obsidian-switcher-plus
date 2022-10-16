@@ -8,7 +8,9 @@ import { mock, MockProxy, mockReset } from 'jest-mock-extended';
 import {
   App,
   DropdownComponent,
+  ExtraButtonComponent,
   Setting,
+  SliderComponent,
   TextAreaComponent,
   TextComponent,
   ToggleComponent,
@@ -500,6 +502,144 @@ describe('settingsTabSection', () => {
       onChangeFn(expectedValue);
 
       expect(mockDropdownComp.onChange).toHaveBeenCalled();
+      expect(cb).toHaveBeenCalledWith(expectedValue, mockConfig);
+
+      mockReset(mockConfig);
+    });
+  });
+
+  describe('addSliderSetting', () => {
+    let mockSetting: MockProxy<Setting>;
+    let mockExtraButtonComp: MockProxy<ExtraButtonComponent>;
+    let mockSliderComp: MockProxy<SliderComponent>;
+    let createSettingSpy: jest.SpyInstance;
+    const initValue = 0.5;
+    const limits: [min: number, max: number, step: number] = [-1, 1, 0.1];
+
+    beforeAll(() => {
+      mockExtraButtonComp = mock<ExtraButtonComponent>();
+      mockSliderComp = mock<SliderComponent>();
+
+      mockSetting = mock<Setting>();
+      mockSetting.components = [mockExtraButtonComp, mockSliderComp];
+
+      mockSetting.addExtraButton.mockImplementation((cb) => {
+        cb(mockExtraButtonComp);
+        return mockSetting;
+      });
+
+      mockSetting.addSlider.mockImplementation((cb) => {
+        cb(mockSliderComp);
+        return mockSetting;
+      });
+
+      createSettingSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'createSetting')
+        .mockReturnValue(mockSetting);
+    });
+
+    afterAll(() => {
+      createSettingSpy.mockRestore();
+    });
+
+    test('reset button should set value back to 0', () => {
+      let onClickFn: () => void;
+      mockExtraButtonComp.onClick.mockImplementationOnce((cb) => {
+        onClickFn = cb;
+        return mockExtraButtonComp;
+      });
+
+      sut.addSliderSetting(
+        mockContainerEl,
+        chance.word(),
+        '',
+        initValue,
+        limits,
+        'limit',
+      );
+
+      // simulate reset button click
+      onClickFn();
+
+      expect(mockSliderComp.setValue).toHaveBeenCalledWith(0);
+    });
+
+    it('should show the setting with the initial value', () => {
+      const name = chance.sentence();
+      const desc = chance.sentence();
+
+      const result = sut.addSliderSetting(
+        mockContainerEl,
+        name,
+        desc,
+        initValue,
+        limits,
+        'limit',
+      );
+
+      expect(result).not.toBeNull();
+      expect(createSettingSpy).toHaveBeenCalledWith(mockContainerEl, name, desc);
+      expect(mockSliderComp.setValue).toHaveBeenCalledWith(initValue);
+      expect(mockSliderComp.setLimits).toHaveBeenCalledWith(
+        limits[0],
+        limits[1],
+        limits[2],
+      );
+    });
+
+    it('should save the modified setting', () => {
+      mockConfig.limit = 0;
+      const finalValue = 0.7;
+
+      let onChangeFn: (v: number) => void;
+      mockSliderComp.onChange.mockImplementationOnce((cb) => {
+        onChangeFn = cb;
+        return mockSliderComp;
+      });
+
+      sut.addSliderSetting(
+        mockContainerEl,
+        chance.word(),
+        chance.sentence(),
+        initValue,
+        limits,
+        'limit',
+      );
+
+      // trigger the value change here
+      onChangeFn(finalValue);
+
+      expect(mockSliderComp.onChange).toHaveBeenCalled();
+      expect(mockConfig.save).toHaveBeenCalled();
+      expect(mockConfig.limit).toBe(finalValue);
+
+      mockReset(mockConfig);
+    });
+
+    it('should execute the onChange callback if supplied', () => {
+      const expectedValue = 0.7;
+      const cb = jest.fn();
+
+      let onChangeFn: (v: number) => void;
+      mockSliderComp.onChange.mockImplementationOnce((cb) => {
+        onChangeFn = cb;
+        return mockSliderComp;
+      });
+
+      sut.addSliderSetting(
+        mockContainerEl,
+        chance.word(),
+        chance.sentence(),
+        initValue,
+        limits,
+        null,
+        cb,
+      );
+
+      // trigger the value change here
+      onChangeFn(expectedValue);
+
+      expect(mockSliderComp.onChange).toHaveBeenCalled();
       expect(cb).toHaveBeenCalledWith(expectedValue, mockConfig);
 
       mockReset(mockConfig);

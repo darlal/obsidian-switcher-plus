@@ -3,6 +3,21 @@ import { SwitcherPlusSettings } from 'src/settings';
 import { Mode, PathDisplayFormat } from 'src/types';
 import { SettingsTabSection } from './settingsTabSection';
 
+const PRIORITY_ADJUSTMENTS = [
+  { key: 'isOpenInEditor', name: 'Open items', desc: '' },
+  { key: 'isStarred', name: 'Starred items', desc: '' },
+  { key: 'isRecent', name: 'Recent items', desc: '' },
+  { key: 'file', name: 'Filenames', desc: '' },
+  { key: 'alias', name: 'Aliases', desc: '' },
+  { key: 'unresolved', name: 'Unresolved filenames', desc: '' },
+  { key: 'h1', name: 'H₁ headings', desc: '' },
+  { key: 'h2', name: 'H₂ headings', desc: '' },
+  { key: 'h3', name: 'H₃ headings', desc: '' },
+  { key: 'h4', name: 'H₄ headings', desc: '' },
+  { key: 'h5', name: 'H₅ headings', desc: '' },
+  { key: 'h6', name: 'H₆ headings', desc: '' },
+];
+
 export class GeneralSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
     const { config } = this;
@@ -23,7 +38,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       containerEl,
       'Default to open in new tab',
       'When enabled, navigating to un-opened files will open a new editor tab whenever possible (as if cmd/ctrl were held). When the file is already open, the existing tab will be activated. This overrides all other tab settings.',
-      this.config.onOpenPreferNewTab,
+      config.onOpenPreferNewTab,
       'onOpenPreferNewTab',
     );
 
@@ -31,7 +46,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       containerEl,
       'Override Standard mode behavior',
       'When enabled, Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to inject custom behavior.',
-      this.config.overrideStandardModeBehaviors,
+      config.overrideStandardModeBehaviors,
       'overrideStandardModeBehaviors',
     );
 
@@ -42,6 +57,8 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       this.config.showOptionalIndicatorIcons,
       'showOptionalIndicatorIcons',
     );
+
+    this.showMatchPriorityAdjustments(containerEl, config);
   }
 
   setPathDisplayFormat(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
@@ -108,5 +125,58 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     popup.titleEl.setText('Invalid mode');
     popup.contentEl.innerHTML = `Changes not saved. Available modes are: ${validModes}. The following are invalid:<br/><br/>${invalidValues}`;
     popup.open();
+  }
+
+  showMatchPriorityAdjustments(
+    containerEl: HTMLElement,
+    config: SwitcherPlusSettings,
+  ): void {
+    const { enableMatchPriorityAdjustments, matchPriorityAdjustments } = config;
+    this.addToggleSetting(
+      containerEl,
+      'Result priority adjustments',
+      'Artificially increase the match score of the specified item types by a fixed percentage so they appear higher in the results list',
+      enableMatchPriorityAdjustments,
+      null,
+      (isEnabled, config) => {
+        config.enableMatchPriorityAdjustments = isEnabled;
+
+        // have to wait for the save here because the call to display() will
+        // trigger a read of the updated data
+        config.saveSettings().then(
+          () => {
+            // reload the settings panel. This will cause the matchPriorityAdjustments
+            // controls to be shown/hidden based on enableMatchPriorityAdjustments status
+            this.mainSettingsTab.display();
+          },
+          (reason) =>
+            console.log(
+              'Switcher++: error saving "Result Priority Adjustments" setting. ',
+              reason,
+            ),
+        );
+      },
+    );
+
+    if (enableMatchPriorityAdjustments) {
+      PRIORITY_ADJUSTMENTS.forEach(({ key, name, desc }) => {
+        if (Object.prototype.hasOwnProperty.call(matchPriorityAdjustments, key)) {
+          const setting = this.addSliderSetting(
+            containerEl,
+            name,
+            desc,
+            matchPriorityAdjustments[key],
+            [-1, 1, 0.05],
+            null,
+            (value, config) => {
+              matchPriorityAdjustments[key] = value;
+              config.save();
+            },
+          );
+
+          setting.setClass('qsp-setting-item-indent');
+        }
+      });
+    }
   }
 }

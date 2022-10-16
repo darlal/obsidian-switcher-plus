@@ -6,6 +6,7 @@ import {
   HeadingCache,
   Keymap,
   MarkdownView,
+  MetadataCache,
   normalizePath,
   OpenViewState,
   PaneType,
@@ -29,12 +30,14 @@ import {
   SearchResultWithFallback,
   SourceInfo,
   Suggestion,
+  SuggestionType,
 } from 'src/types';
 import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
   isCommandSuggestion,
   isEditorSuggestion,
+  isHeadingSuggestion,
   isSymbolSuggestion,
   isTFile,
   isUnresolvedSuggestion,
@@ -874,7 +877,7 @@ export abstract class Handler<T> {
   ): HTMLDivElement {
     const { showOptionalIndicatorIcons } = this.settings;
     const indicatorData = new Map<keyof AnySuggestion, Record<string, string>>();
-    indicatorData.set('isRecentOpen', {
+    indicatorData.set('isRecent', {
       iconName: 'history',
       parentElClass: 'qsp-recent-file',
       indicatorElClass: 'qsp-recent-indicator',
@@ -968,6 +971,93 @@ export abstract class Handler<T> {
   }
 
   /**
+   * Downranks suggestions for files that live in Obsidian ignored paths, or,
+   * increases the suggestion score by a factor specified in settings. This instance
+   * version just forwards to the static version
+   * @param  {V} sugg the suggestion objects
+   * @returns V
+   */
+  applyMatchPriorityPreferences<
+    U,
+    V extends Omit<Suggestion<U>, 'file' | 'item'> & { file?: TFile },
+  >(sugg: V): V {
+    return Handler.applyMatchPriorityPreferences(
+      sugg,
+      this.settings,
+      this.app.metadataCache,
+    );
+  }
+
+  /**
+   * Downranks suggestions for files that live in Obsidian ignored paths, or,
+   * increases the suggestion score by a factor specified in settings.
+   * @param  {V} sugg the suggestion objects
+   * @param  {SwitcherPlusSettings} settings
+   * @param  {MetadataCache} metadataCache
+   * @returns V
+   */
+  static applyMatchPriorityPreferences<
+    U,
+    V extends Omit<Suggestion<U>, 'file' | 'item'> & { file?: TFile },
+  >(sugg: V, settings: SwitcherPlusSettings, metadataCache: MetadataCache): V {
+    if (sugg?.match) {
+      const { match, type, file } = sugg;
+
+      if (file && metadataCache?.isUserIgnored(file.path)) {
+        // downrank suggestions that are in an obsidian ignored paths
+        sugg.downranked = true;
+        sugg.match.score -= 10;
+      } else if (settings?.enableMatchPriorityAdjustments) {
+        const adjustments = settings?.matchPriorityAdjustments ?? {};
+        let factor = 0;
+
+        const getFactor = (key: string) => {
+          let val = 0;
+
+          if (Object.prototype.hasOwnProperty.call(adjustments, key)) {
+            val = Number(adjustments[key]);
+          }
+
+          return isNaN(val) ? 0 : val;
+        };
+
+        const getFactorConstrained = (searchType: SuggestionType, searchKey: keyof V) => {
+          let val = 0;
+
+          if ((searchType !== null && searchType === type) || sugg[searchKey]) {
+            val = getFactor(searchKey as string);
+          }
+
+          return val;
+        };
+
+        factor += getFactorConstrained(SuggestionType.StarredList, 'isStarred');
+        factor += getFactorConstrained(SuggestionType.EditorList, 'isOpenInEditor');
+        factor += getFactorConstrained(null, 'isRecent');
+
+        if (isHeadingSuggestion(sugg)) {
+          factor += getFactor(`h${sugg.item?.level}`);
+        }
+
+        // check for adjustments defined for other suggestion types, the types that are
+        // explicitly checked above should not be in the adjustment list so
+        // they don't get counted twice (above and then again here)
+        const typeStr = type.toString();
+        factor += getFactor(typeStr);
+
+        // update score by the percentage define by factor
+        // find one percent of score by dividing the absolute value of score by 100,
+        // multiply factor by 100 to convert into percentage
+        // multiply the two to get the change amount, and add it to score
+        match.score += (Math.abs(match.score) / 100) * (factor * 100);
+      }
+    }
+
+    return sugg;
+  }
+
+  /**
+   * Sets isOpenInEditor, isRecent, isStarred status of sugg based on currentWorkspaceEnvList
    * @param  {WorkspaceEnvList} currentWorkspaceEnvList
    * @param  {V} sugg
    * @returns V
@@ -980,7 +1070,7 @@ export abstract class Handler<T> {
       const { file } = sugg;
 
       sugg.isOpenInEditor = currentWorkspaceEnvList.openWorkspaceFiles?.has(file);
-      sugg.isRecentOpen = currentWorkspaceEnvList.mostRecentFiles?.has(file);
+      sugg.isRecent = currentWorkspaceEnvList.mostRecentFiles?.has(file);
       sugg.isStarred = currentWorkspaceEnvList.starredFiles?.has(file);
     }
 

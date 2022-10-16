@@ -208,20 +208,6 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     }
   }
 
-  downrankScoreIfIgnored<
-    T extends Exclude<SupportedSuggestionTypes, UnresolvedSuggestion | EditorSuggestion>,
-  >(sugg: T): T {
-    if (this.app.metadataCache.isUserIgnored(sugg?.file?.path)) {
-      sugg.downranked = true;
-
-      if (sugg.match) {
-        sugg.match.score -= 10;
-      }
-    }
-
-    return sugg;
-  }
-
   shouldIncludeFile(file: TAbstractFile): boolean {
     let retVal = false;
     const {
@@ -353,7 +339,8 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     suggestions: UnresolvedSuggestion[],
     prepQuery: PreparedQuery,
   ): void {
-    const { unresolvedLinks } = this.app.metadataCache;
+    const { metadataCache } = this.app;
+    const { unresolvedLinks } = metadataCache;
 
     const unresolvedSet = new Set<string>();
     const sources = Object.keys(unresolvedLinks);
@@ -383,7 +370,12 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
       if (result.matchType !== MatchType.None) {
         suggestions.push(
-          StandardExHandler.createUnresolvedSuggestion(unresolved, result),
+          StandardExHandler.createUnresolvedSuggestion(
+            unresolved,
+            result,
+            this.settings,
+            metadataCache,
+          ),
         );
       }
     }
@@ -395,15 +387,15 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     file: TFile,
     match: SearchResult,
   ): AliasSuggestion {
-    const sugg: AliasSuggestion = {
+    let sugg: AliasSuggestion = {
       alias,
       file,
       ...this.createSearchMatch(match, MatchType.Primary, alias),
       type: SuggestionType.Alias,
     };
 
-    Handler.updateWorkspaceEnvListStatus(inputInfo.currentWorkspaceEnvList, sugg);
-    return this.downrankScoreIfIgnored(sugg);
+    sugg = Handler.updateWorkspaceEnvListStatus(inputInfo.currentWorkspaceEnvList, sugg);
+    return this.applyMatchPriorityPreferences(sugg);
   }
 
   private createFileSuggestion(
@@ -413,7 +405,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     matchType = MatchType.None,
     matchText: string = null,
   ): FileSuggestion {
-    const sugg: FileSuggestion = {
+    let sugg: FileSuggestion = {
       file,
       match,
       matchType,
@@ -421,8 +413,8 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       type: SuggestionType.File,
     };
 
-    Handler.updateWorkspaceEnvListStatus(inputInfo.currentWorkspaceEnvList, sugg);
-    return this.downrankScoreIfIgnored(sugg);
+    sugg = Handler.updateWorkspaceEnvListStatus(inputInfo.currentWorkspaceEnvList, sugg);
+    return this.applyMatchPriorityPreferences(sugg);
   }
 
   private createHeadingSuggestion(
@@ -431,15 +423,15 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     file: TFile,
     match: SearchResult,
   ): HeadingSuggestion {
-    const sugg: HeadingSuggestion = {
+    let sugg: HeadingSuggestion = {
       item,
       file,
       ...this.createSearchMatch(match, MatchType.Primary, item.heading),
       type: SuggestionType.HeadingsList,
     };
 
-    Handler.updateWorkspaceEnvListStatus(inputInfo.currentWorkspaceEnvList, sugg);
-    return this.downrankScoreIfIgnored(sugg);
+    sugg = Handler.updateWorkspaceEnvListStatus(inputInfo.currentWorkspaceEnvList, sugg);
+    return this.applyMatchPriorityPreferences(sugg);
   }
 
   private createSearchMatch(
@@ -475,7 +467,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
           ? this.createHeadingSuggestion(inputInfo, h1, file, null)
           : this.createFileSuggestion(inputInfo, file, null);
 
-        sugg.isRecentOpen = true;
+        sugg.isRecent = true;
         suggestions.push(sugg);
       }
     });
@@ -493,7 +485,8 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
         inputInfo.currentWorkspaceEnvList,
         leaf,
         file,
-        null,
+        this.settings,
+        this.app.metadataCache,
       );
 
       suggestions.push(sugg);

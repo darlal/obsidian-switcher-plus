@@ -1,3 +1,4 @@
+import { SwitcherPlusSettings } from 'src/settings';
 import {
   AnySuggestion,
   EditorSuggestion,
@@ -7,7 +8,7 @@ import {
   SuggestionType,
 } from 'src/types';
 import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
-import { sortSearchResults, TFile, WorkspaceLeaf } from 'obsidian';
+import { MetadataCache, sortSearchResults, TFile, WorkspaceLeaf } from 'obsidian';
 import { Handler } from './handler';
 
 export class EditorHandler extends Handler<EditorSuggestion> {
@@ -50,12 +51,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
 
         if (shouldPush) {
           suggestions.push(
-            EditorHandler.createSuggestion(
-              inputInfo.currentWorkspaceEnvList,
-              item,
-              file,
-              result,
-            ),
+            this.createSuggestion(inputInfo.currentWorkspaceEnvList, item, file, result),
           );
         }
       });
@@ -106,21 +102,40 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     }
   }
 
+  createSuggestion(
+    currentWorkspaceEnvList: WorkspaceEnvList,
+    leaf: WorkspaceLeaf,
+    file: TFile,
+    result: SearchResultWithFallback,
+  ): EditorSuggestion {
+    return EditorHandler.createSuggestion(
+      currentWorkspaceEnvList,
+      leaf,
+      file,
+      this.settings,
+      this.app.metadataCache,
+      result,
+    );
+  }
+
   static createSuggestion(
     currentWorkspaceEnvList: WorkspaceEnvList,
     leaf: WorkspaceLeaf,
     file: TFile,
+    settings: SwitcherPlusSettings,
+    metadataCache: MetadataCache,
     result?: SearchResultWithFallback,
   ): EditorSuggestion {
     result = result ?? { matchType: MatchType.None, match: null, matchText: null };
 
-    const sugg: EditorSuggestion = {
+    let sugg: EditorSuggestion = {
       item: leaf,
       file,
       type: SuggestionType.EditorList,
       ...result,
     };
 
-    return Handler.updateWorkspaceEnvListStatus(currentWorkspaceEnvList, sugg);
+    sugg = Handler.updateWorkspaceEnvListStatus(currentWorkspaceEnvList, sugg);
+    return Handler.applyMatchPriorityPreferences(sugg, settings, metadataCache);
   }
 }

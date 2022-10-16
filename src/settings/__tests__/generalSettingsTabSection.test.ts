@@ -125,6 +125,18 @@ describe('generalSettingsTabSection', () => {
 
       setEnabledRibbonCommandsSpy.mockRestore();
     });
+
+    it('should show setting to change match priority adjustments', () => {
+      const showMatchPriorityAdjustmentsSpy = jest
+        .spyOn(sut, 'showMatchPriorityAdjustments')
+        .mockReturnValueOnce();
+
+      sut.display(mockContainerEl);
+
+      expect(showMatchPriorityAdjustmentsSpy).toHaveBeenCalled();
+
+      showMatchPriorityAdjustmentsSpy.mockRestore();
+    });
   });
 
   describe('setPathDisplayFormat', () => {
@@ -257,6 +269,127 @@ describe('generalSettingsTabSection', () => {
       expect(config.enabledRibbonCommands).toEqual(initialCommands);
       expect(saveSpy).not.toHaveBeenCalled();
 
+      saveSpy.mockRestore();
+    });
+  });
+
+  describe('showMatchPriorityAdjustments', () => {
+    type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
+    let toggleSettingOnChangeFn: addToggleSettingArgs[5];
+    let saveSettingsSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      saveSettingsSpy = jest.spyOn(config, 'saveSettings');
+    });
+
+    afterAll(() => {
+      saveSettingsSpy.mockRestore();
+    });
+
+    afterEach(() => {
+      toggleSettingOnChangeFn = null;
+    });
+
+    it('should refresh the mainSettingsTab panel when the enable result priority setting changes', async () => {
+      const initialEnabledValue = false;
+      const finalEnabledValue = true;
+      const savePromise = Promise.resolve();
+
+      config.enableMatchPriorityAdjustments = initialEnabledValue;
+      saveSettingsSpy.mockReturnValueOnce(savePromise);
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+        if (args[1] === 'Result priority adjustments') {
+          toggleSettingOnChangeFn = args[5];
+        }
+
+        return mock<Setting>();
+      });
+
+      sut.showMatchPriorityAdjustments(mockContainerEl, config);
+
+      // trigger the change/save
+      toggleSettingOnChangeFn(finalEnabledValue, config);
+
+      await savePromise;
+
+      expect(saveSettingsSpy).toHaveBeenCalled();
+      expect(mockPluginSettingTab.display).toHaveBeenCalled();
+      expect(config.enableMatchPriorityAdjustments).toBe(finalEnabledValue);
+
+      config.enableMatchPriorityAdjustments = false;
+      addToggleSettingSpy.mockReset();
+      mockPluginSettingTab.display.mockClear();
+    });
+
+    it('should log error to the console when setting cannot be saved', async () => {
+      const errorMsg = 'Unit test error';
+      const rejectedPromise = Promise.reject(errorMsg);
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+        if (args[1] === 'Result priority adjustments') {
+          toggleSettingOnChangeFn = args[5];
+        }
+
+        return mock<Setting>();
+      });
+
+      saveSettingsSpy.mockReturnValueOnce(rejectedPromise);
+
+      sut.showMatchPriorityAdjustments(mockContainerEl, config);
+
+      // trigger the change/save
+      toggleSettingOnChangeFn(true, config);
+
+      try {
+        await rejectedPromise;
+      } catch (e) {
+        /* noop */
+      }
+
+      expect(saveSettingsSpy).toHaveBeenCalled();
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Switcher++: error saving "Result Priority Adjustments" setting. ',
+        errorMsg,
+      );
+
+      addToggleSettingSpy.mockReset();
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should save Result Priority Adjustments settings changes', () => {
+      type addSliderSettingArgs = Parameters<SettingsTabSection['addSliderSetting']>;
+      let sliderSettingOnChangeFn: addSliderSettingArgs[6];
+      const fieldToAdjustKey = 'alias';
+      const fieldToAdjustName = 'Aliases';
+      const initialValue = 0;
+      const finalValue = 0.5;
+      const saveSpy = jest.spyOn(config, 'save').mockReturnValueOnce();
+
+      const addSliderSettingSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'addSliderSetting')
+        .mockImplementation((...args: addSliderSettingArgs) => {
+          if (args[1] === fieldToAdjustName) {
+            sliderSettingOnChangeFn = args[6];
+          }
+
+          return mock<Setting>();
+        });
+
+      config.enableMatchPriorityAdjustments = true;
+      config.matchPriorityAdjustments[fieldToAdjustKey] = initialValue;
+
+      sut.showMatchPriorityAdjustments(mockContainerEl, config);
+
+      // trigger the change/save
+      sliderSettingOnChangeFn(finalValue, config);
+
+      expect(saveSpy).toHaveBeenCalled();
+      expect(config.matchPriorityAdjustments[fieldToAdjustKey]).toBe(finalValue);
+
+      config.enableMatchPriorityAdjustments = false;
+      config.matchPriorityAdjustments[fieldToAdjustKey] = 0;
+      addSliderSettingSpy.mockRestore();
       saveSpy.mockRestore();
     });
   });

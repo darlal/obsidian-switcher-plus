@@ -180,15 +180,19 @@ When the Related Items command is triggered for a selected input suggestion/file
 |---------------------------------|-------------|---------|
 | Related items list mode trigger | Character that will trigger related items list mode in the switcher. | `~` |
 | Show related item types         | Specify which relation types are enabled to be displayed in the result list. | `backlink`<br />`disk-location`<br />`outgoing-link` |
-| Exclude open files              | **Enabled**: related files which are already open in an editor will not be displayed in the list. **Disabled**: All related files will be displayed in the list. | disabled |
+| Exclude open files              | **Enabled**: related files which are already open in an editor will not be displayed in the list.<br />**Disabled**: All related files will be displayed in the list. | disabled |
 
 ## General Settings
 
 | Setting                         | Description | Default |
 |---------------------------------|-------------|---------|
-| Default to open in new pane | **Enabled**: navigating to un-opened files will open a new editor pane whenever possible (as if cmd/ctrl were held). When the file is already open, the existing pane will be activated. This overrides all other pane settings. | enabled |
+| Show ribbon icons | List of modes that should be accessible from the ribbon menu. | `HeadingsList`<br />`SymbolList` |
 | Preferred file path display format | The preferred way to display file paths in suggestions. Note: by default, path information will not be displayed for files at the root of the vault. | `Parent folder & filename` |
-| Override Standard mode behavior | **Enabled**: Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to inject custom behavior. Custom behavior includes features like enhance rendering of suggestion items to display additional information, special path display handling, and tab navigation features. **Disabled**: No changes are made to the default Obsidian builtin functionality (Standard Mode). | enabled |
+| Hide path for root items | **Enabled**: path information will be hidden for items at the root of the vault. | enabled |
+| Default to open in new pane | **Enabled**: navigating to un-opened files will open a new editor pane whenever possible (as if cmd/ctrl were held). When the file is already open, the existing pane will be activated. This overrides all other pane settings. | enabled |
+| Override Standard mode behavior | **Enabled**: Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to inject custom behavior. Custom behavior includes features like enhance rendering of suggestion items to display additional information, special path display handling, and tab navigation features.<br />**Disabled**: No changes are made to the default Obsidian builtin functionality (Standard Mode). | enabled |
+| Show indicator icons | **Enabled**: Display icons to indicate that an item is recent, starred, etc... | enabled |
+| Result priority adjustments | **Enabled**: Artificially increase the match score of the specified item types by a fixed percentage so they appear higher in the results list. See the list of [result types](/src/settings/generalSettingsTabSection.ts#L6) that can be prioritized. Note that the adjustments are independent of each other, e.g. if adjustments are specified for both `Starred items` and `Open items` a result for a file that is open and starred will receive both adjustments.<br />**Disabled** result match scores are not adjusted. | disabled |
 
 ## Global Commands for Hotkeys
 

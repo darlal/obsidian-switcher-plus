@@ -1,7 +1,8 @@
 import { Handler } from './handler';
-import { WorkspaceLeaf } from 'obsidian';
+import { MetadataCache, WorkspaceLeaf } from 'obsidian';
 import { InputInfo } from 'src/switcherPlus';
 import { isAliasSuggestion, isFileSuggestion } from 'src/utils';
+import { SwitcherPlusSettings } from 'src/settings';
 import {
   FileSuggestion,
   AliasSuggestion,
@@ -121,11 +122,15 @@ export class StandardExHandler extends Handler<SupportedSystemSuggestions> {
   static createUnresolvedSuggestion(
     linktext: string,
     result: SearchResultWithFallback,
+    settings: SwitcherPlusSettings,
+    metadataCache: MetadataCache,
   ): UnresolvedSuggestion {
-    return {
+    const sugg: UnresolvedSuggestion = {
       linktext,
       type: SuggestionType.Unresolved,
       ...result,
     };
+
+    return Handler.applyMatchPriorityPreferences(sugg, settings, metadataCache);
   }
 }

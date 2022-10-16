@@ -147,7 +147,7 @@ export interface Suggestion<T> extends FuzzyMatch<T> {
   matchText?: string;
   isOpenInEditor?: boolean;
   isStarred?: boolean;
-  isRecentOpen?: boolean;
+  isRecent?: boolean;
 }
 
 export interface SymbolSuggestion extends Suggestion<SymbolInfo> {
@@ -263,6 +263,8 @@ export interface SettingsData {
   showOptionalIndicatorIcons: boolean;
   overrideStandardModeBehaviors: boolean;
   enabledRibbonCommands: Array<keyof typeof Mode>;
+  enableMatchPriorityAdjustments: boolean;
+  matchPriorityAdjustments: Record<string, number>;
 }
 
 export interface SearchQuery {

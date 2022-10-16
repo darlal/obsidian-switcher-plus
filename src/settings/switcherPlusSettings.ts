@@ -55,6 +55,15 @@ export class SwitcherPlusSettings {
         Mode[Mode.HeadingsList] as keyof typeof Mode,
         Mode[Mode.SymbolList] as keyof typeof Mode,
       ],
+      enableMatchPriorityAdjustments: false,
+      matchPriorityAdjustments: {
+        isOpenInEditor: 0,
+        isStarred: 0,
+        isRecent: 0,
+        file: 0,
+        alias: 0,
+        h1: 0,
+      },
     };
   }
 
@@ -347,6 +356,22 @@ export class SwitcherPlusSettings {
   set enabledRibbonCommands(value: Array<keyof typeof Mode>) {
     // remove any duplicates before storing
     this.data.enabledRibbonCommands = [...new Set(value)];
+  }
+
+  get enableMatchPriorityAdjustments(): boolean {
+    return this.data.enableMatchPriorityAdjustments;
+  }
+
+  set enableMatchPriorityAdjustments(value: boolean) {
+    this.data.enableMatchPriorityAdjustments = value;
+  }
+
+  get matchPriorityAdjustments(): Record<string, number> {
+    return this.data.matchPriorityAdjustments;
+  }
+
+  set matchPriorityAdjustments(value: Record<string, number>) {
+    this.data.matchPriorityAdjustments = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

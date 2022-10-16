@@ -240,7 +240,7 @@ describe('commandHandler', () => {
       const mockFlairContainer = mock<HTMLDivElement>();
       const item = makeCommandItem();
       const sugg = makeCommandSuggestion(item);
-      sugg.isRecentOpen = true;
+      sugg.isRecent = true;
 
       const mockParentEl = mock<HTMLElement>();
       mockParentEl.createDiv.mockReturnValue(mock<HTMLDivElement>());
@@ -328,7 +328,7 @@ describe('commandHandler', () => {
       expect(results).toHaveLength(5);
       expect(mockCommands.every((command) => resultNames.has(command.name))).toBe(true);
       expect(results.find((v) => v.cmd.id === 'pinned:commandC').isPinned).toBe(true);
-      expect(results.find((v) => v.cmd.id === 'recent:commandB').isRecentOpen).toBe(true);
+      expect(results.find((v) => v.cmd.id === 'recent:commandB').isRecent).toBe(true);
     });
 
     it('should order pinned commands first, then recently used', () => {

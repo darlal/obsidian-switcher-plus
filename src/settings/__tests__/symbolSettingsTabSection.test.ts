@@ -253,6 +253,8 @@ describe('symbolSettingsTabSection', () => {
 
   describe('showEnableLinksToggle', () => {
     const mockConfig = mock<SwitcherPlusSettings>();
+    type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
+    let toggleSettingOnChangeFn: addToggleSettingArgs[5];
 
     beforeAll(() => {
       sut = new SymbolSettingsTabSection(mockApp, mockPluginSettingTab, mockConfig);
@@ -260,18 +262,17 @@ describe('symbolSettingsTabSection', () => {
 
     afterEach(() => {
       mockClear(mockConfig);
+      toggleSettingOnChangeFn = null;
     });
 
     it('should refresh the mainSettingsTab panel when the Links setting changes', async () => {
-      let toggleSettingOnChangeFn: (v: boolean) => void;
       const initialEnabledValue = false;
       const finalEnabledValue = true;
       const savePromise = Promise.resolve();
 
-      addToggleSettingSpy.mockImplementation((...args: unknown[]) => {
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
         if (args[1] === 'Show Links') {
-          const onChangeFn = args[5] as (v: boolean) => void;
-          toggleSettingOnChangeFn = onChangeFn;
+          toggleSettingOnChangeFn = args[5];
         }
 
         return mock<Setting>();
@@ -282,10 +283,8 @@ describe('symbolSettingsTabSection', () => {
 
       sut.showEnableLinksToggle(mockContainerEl, mockConfig);
 
-      if (toggleSettingOnChangeFn) {
-        // trigger the change/save
-        toggleSettingOnChangeFn(finalEnabledValue);
-      }
+      // trigger the change/save
+      toggleSettingOnChangeFn(finalEnabledValue, mockConfig);
 
       await savePromise;
 
@@ -301,17 +300,15 @@ describe('symbolSettingsTabSection', () => {
     });
 
     it('should log error to the console when setting cannot be saved', async () => {
-      let toggleSettingOnChangeFn: (v: boolean) => void;
       const initialEnabledValue = false;
       const finalEnabledValue = true;
       const errorMsg = 'Unit test error';
       const rejectedPromise = Promise.reject(errorMsg);
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
-      addToggleSettingSpy.mockImplementation((...args: unknown[]) => {
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
         if (args[1] === 'Show Links') {
-          const onChangeFn = args[5] as (v: boolean) => void;
-          toggleSettingOnChangeFn = onChangeFn;
+          toggleSettingOnChangeFn = args[5];
         }
 
         return mock<Setting>();
@@ -322,10 +319,8 @@ describe('symbolSettingsTabSection', () => {
 
       sut.showEnableLinksToggle(mockContainerEl, mockConfig);
 
-      if (toggleSettingOnChangeFn) {
-        // trigger the change/save
-        toggleSettingOnChangeFn(finalEnabledValue);
-      }
+      // trigger the change/save
+      toggleSettingOnChangeFn(finalEnabledValue, mockConfig);
 
       try {
         await rejectedPromise;
@@ -344,17 +339,15 @@ describe('symbolSettingsTabSection', () => {
     });
 
     it('should save sublink type settings changes', () => {
-      let toggleSettingOnChangeFn: (v: boolean) => void;
       const initialEnabledValue = true;
       const finalEnabledValue = false;
       const saveEnableSubLinkChangeSpy = jest
         .spyOn(sut, 'saveEnableSubLinkChange')
         .mockReturnValue();
 
-      addToggleSettingSpy.mockImplementation((...args: unknown[]) => {
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
         if (args[1] === 'Links to blocks') {
-          const onChangeFn = args[5] as (v: boolean) => void;
-          toggleSettingOnChangeFn = onChangeFn;
+          toggleSettingOnChangeFn = args[5];
         }
 
         return mock<Setting>();
@@ -364,10 +357,8 @@ describe('symbolSettingsTabSection', () => {
 
       sut.showEnableLinksToggle(mockContainerEl, mockConfig);
 
-      if (toggleSettingOnChangeFn) {
-        // trigger the change/save
-        toggleSettingOnChangeFn(finalEnabledValue);
-      }
+      // trigger the change/save
+      toggleSettingOnChangeFn(finalEnabledValue, mockConfig);
 
       expect(saveEnableSubLinkChangeSpy).toHaveBeenLastCalledWith(
         LinkType.Block,

@@ -1,10 +1,11 @@
 import { SwitcherPlusSettings } from './switcherPlusSettings';
 import { SwitcherPlusSettingTab } from './switcherPlusSettingTab';
-import { App, Setting } from 'obsidian';
+import { App, Setting, SliderComponent } from 'obsidian';
 import { WritableKeysWithValueOfType } from 'src/types';
 import { WritableKeys } from 'ts-essentials';
 
 type StringTypedConfigKey = WritableKeysWithValueOfType<SwitcherPlusSettings, string>;
+type NumberTypedConfigKey = WritableKeysWithValueOfType<SwitcherPlusSettings, number>;
 type BooleanTypedConfigKey = WritableKeysWithValueOfType<SwitcherPlusSettings, boolean>;
 type ListTypedConfigKey = WritableKeysWithValueOfType<
   SwitcherPlusSettings,
@@ -180,6 +181,42 @@ export abstract class SettingsTabSection {
           onChange(rawValue, this.config);
         } else {
           this.saveChangesToConfig(configStorageKey, rawValue);
+        }
+      });
+    });
+
+    return setting;
+  }
+
+  addSliderSetting(
+    containerEl: HTMLElement,
+    name: string,
+    desc: string,
+    initialValue: number,
+    limits: [min: number, max: number, step: number],
+    configStorageKey: NumberTypedConfigKey,
+    onChange?: (value: number, config: SwitcherPlusSettings) => void,
+  ): Setting {
+    const setting = this.createSetting(containerEl, name, desc);
+
+    // display a button to reset the slider value
+    setting.addExtraButton((comp) => {
+      comp.setIcon('lucide-rotate-ccw');
+      comp.setTooltip('Restore default');
+      comp.onClick(() => (setting.components[1] as SliderComponent).setValue(0));
+      return comp;
+    });
+
+    setting.addSlider((comp) => {
+      comp.setLimits(limits[0], limits[1], limits[2]);
+      comp.setValue(initialValue);
+      comp.setDynamicTooltip();
+
+      comp.onChange((value) => {
+        if (onChange) {
+          onChange(value, this.config);
+        } else {
+          this.saveChangesToConfig(configStorageKey, value);
         }
       });
     });

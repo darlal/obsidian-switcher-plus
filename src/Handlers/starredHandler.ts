@@ -67,12 +67,7 @@ export class StarredHandler extends Handler<StarredSuggestion> {
 
         if (shouldPush) {
           suggestions.push(
-            StarredHandler.createSuggestion(
-              inputInfo.currentWorkspaceEnvList,
-              item,
-              file,
-              result,
-            ),
+            this.createSuggestion(inputInfo.currentWorkspaceEnvList, item, file, result),
           );
         }
       });
@@ -168,19 +163,20 @@ export class StarredHandler extends Handler<StarredSuggestion> {
     return starredPlugin?.instance as StarredPluginInstance;
   }
 
-  static createSuggestion(
+  createSuggestion(
     currentWorkspaceEnvList: WorkspaceEnvList,
     item: StarredPluginItem,
     file: TFile,
     result: SearchResultWithFallback,
   ): StarredSuggestion {
-    const sugg: StarredSuggestion = {
+    let sugg: StarredSuggestion = {
       item,
       file,
       type: SuggestionType.StarredList,
       ...result,
     };
 
-    return Handler.updateWorkspaceEnvListStatus(currentWorkspaceEnvList, sugg);
+    sugg = Handler.updateWorkspaceEnvListStatus(currentWorkspaceEnvList, sugg);
+    return this.applyMatchPriorityPreferences(sugg);
   }
 }

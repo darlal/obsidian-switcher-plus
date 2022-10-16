@@ -1,9 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { mock } from 'jest-mock-extended';
 import {
   App,
   DropdownComponent,
+  ExtraButtonComponent,
   PluginSettingTab,
+  SliderComponent,
   TextAreaComponent,
   TextComponent,
   ToggleComponent,
@@ -33,11 +36,11 @@ export class MockSetting {
     this.containerEl = containerEl;
   }
 
-  setName(_: string): this {
+  setName(name: string): this {
     return this;
   }
 
-  setDesc(_: string): this {
+  setDesc(desc: string): this {
     return this;
   }
 
@@ -45,7 +48,7 @@ export class MockSetting {
     return this;
   }
 
-  setClass(_: string): this {
+  setClass(name: string): this {
     return this;
   }
 
@@ -66,6 +69,16 @@ export class MockSetting {
 
   addDropdown(cb: (component: DropdownComponent) => any): this {
     cb(new MockDropdownComponent(this.containerEl));
+    return this;
+  }
+
+  addExtraButton(cb: (component: ExtraButtonComponent) => any): this {
+    cb(new MockExtraButtonComponent(this.containerEl));
+    return this;
+  }
+
+  addSlider(cb: (component: SliderComponent) => any): this {
+    cb(new MockSliderComponent(this.containerEl));
     return this;
   }
 }
@@ -93,7 +106,7 @@ export class MockTextComponent implements TextComponent {
     return this;
   }
 
-  setPlaceholder(_placeholder: string): this {
+  setPlaceholder(placeholder: string): this {
     return this;
   }
 
@@ -102,19 +115,19 @@ export class MockTextComponent implements TextComponent {
     return this;
   }
 
-  setDisabled(_disabled: boolean): this {
+  setDisabled(disabled: boolean): this {
     throw new Error('Method not implemented.');
   }
   onChanged(): void {
     throw new Error('Method not implemented.');
   }
   registerOptionListener(
-    _listeners: Record<string, (value?: string) => string>,
-    _key: string,
+    listeners: Record<string, (value?: string) => string>,
+    key: string,
   ): this {
     throw new Error('Method not implemented.');
   }
-  then(_cb: (component: this) => any): this {
+  then(cb: (component: this) => any): this {
     throw new Error('Method not implemented.');
   }
 }
@@ -147,23 +160,23 @@ export class MockToggleComponent implements ToggleComponent {
     return this;
   }
 
-  setDisabled(_disabled: boolean): this {
+  setDisabled(disabled: boolean): this {
     throw new Error('Method not implemented.');
   }
-  setTooltip(_tooltip: string): this {
+  setTooltip(tooltip: string): this {
     throw new Error('Method not implemented.');
   }
   onClick(): void {
     throw new Error('Method not implemented.');
   }
   registerOptionListener(
-    _listeners: Record<string, (value?: boolean) => boolean>,
-    _key: string,
+    listeners: Record<string, (value?: boolean) => boolean>,
+    key: string,
   ): this {
     throw new Error('Method not implemented.');
   }
   disabled: boolean;
-  then(_cb: (component: this) => any): this {
+  then(cb: (component: this) => any): this {
     throw new Error('Method not implemented.');
   }
 }
@@ -190,7 +203,7 @@ export class MockTextAreaComponent implements TextAreaComponent {
     return this;
   }
 
-  setPlaceholder(_placeholder: string): this {
+  setPlaceholder(placeholder: string): this {
     return this;
   }
 
@@ -199,20 +212,20 @@ export class MockTextAreaComponent implements TextAreaComponent {
     return this;
   }
 
-  setDisabled(_disabled: boolean): this {
+  setDisabled(disabled: boolean): this {
     throw new Error('Method not implemented.');
   }
   onChanged(): void {
     throw new Error('Method not implemented.');
   }
   registerOptionListener(
-    _listeners: Record<string, (value?: string) => string>,
-    _key: string,
+    listeners: Record<string, (value?: string) => string>,
+    key: string,
   ): this {
     throw new Error('Method not implemented.');
   }
   disabled: boolean;
-  then(_cb: (component: this) => any): this {
+  then(cb: (component: this) => any): this {
     throw new Error('Method not implemented.');
   }
 }
@@ -250,20 +263,99 @@ export class MockDropdownComponent implements DropdownComponent {
     return this;
   }
 
-  setDisabled(_disabled: boolean): this {
+  setDisabled(disabled: boolean): this {
     throw new Error('Method not implemented.');
   }
-  addOption(_value: string, _display: string): this {
+  addOption(value: string, display: string): this {
     throw new Error('Method not implemented.');
   }
   registerOptionListener(
-    _listeners: Record<string, (value?: string) => string>,
-    _key: string,
+    listeners: Record<string, (value?: string) => string>,
+    key: string,
   ): this {
     throw new Error('Method not implemented.');
   }
   disabled: boolean;
-  then(_cb: (component: this) => any): this {
+  then(cb: (component: this) => any): this {
+    throw new Error('Method not implemented.');
+  }
+}
+
+export class MockExtraButtonComponent implements ExtraButtonComponent {
+  extraSettingsEl: HTMLElement;
+
+  constructor(public containerEl: HTMLElement) {
+    this.extraSettingsEl = mock<HTMLElement>();
+  }
+
+  setDisabled(disabled: boolean): this {
+    throw new Error('Method not implemented.');
+  }
+  setTooltip(tooltip: string): this {
+    throw new Error('Method not implemented.');
+  }
+  setIcon(icon: string): this {
+    throw new Error('Method not implemented.');
+  }
+  onClick(callback: () => any): this {
+    throw new Error('Method not implemented.');
+  }
+  disabled: boolean;
+  then(cb: (component: this) => any): this {
+    throw new Error('Method not implemented.');
+  }
+}
+
+export class MockSliderComponent implements SliderComponent {
+  sliderEl: HTMLInputElement;
+  onChangeCB: (value: number) => any;
+
+  constructor(public containerEl: HTMLElement) {
+    this.sliderEl = mock<HTMLInputElement>();
+  }
+
+  getValue(): number {
+    return Number(this.sliderEl.value);
+  }
+
+  setValue(value: number): this {
+    this.sliderEl.value = value.toString();
+
+    if (this.onChangeCB) {
+      this.onChangeCB(value);
+    }
+
+    return this;
+  }
+
+  onChange(callback: (value: number) => any): this {
+    this.onChangeCB = callback;
+    return this;
+  }
+
+  setDisabled(disabled: boolean): this {
+    throw new Error('Method not implemented.');
+  }
+  setLimits(min: number, max: number, step: number | 'any'): this {
+    throw new Error('Method not implemented.');
+  }
+  getValuePretty(): string {
+    throw new Error('Method not implemented.');
+  }
+  setDynamicTooltip(): this {
+    throw new Error('Method not implemented.');
+  }
+  showTooltip(): void {
+    throw new Error('Method not implemented.');
+  }
+  registerOptionListener(
+    listeners: Record<string, (value?: number) => number>,
+    key: string,
+  ): this {
+    throw new Error('Method not implemented.');
+  }
+  disabled: boolean;
+  then(cb: (component: this) => any): this {
     throw new Error('Method not implemented.');
   }
 }

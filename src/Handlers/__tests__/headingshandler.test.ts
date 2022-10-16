@@ -24,7 +24,6 @@ import {
   makePreparedQuery,
   makeLeaf,
   makeHeadingSuggestion,
-  makeFileSuggestion,
 } from '@fixtures';
 import { InputInfo } from 'src/switcherPlus';
 import {
@@ -688,48 +687,6 @@ describe('headingsHandler', () => {
     });
   });
 
-  describe('downrankScoreIfIgnored', () => {
-    it('should not throw on falsy input', () => {
-      const sugg = makeFileSuggestion();
-
-      mockMetadataCache.isUserIgnored.mockReturnValue(false);
-
-      expect((): void => {
-        sugg.file = null;
-        sut.downrankScoreIfIgnored(sugg);
-      }).not.toThrow();
-
-      expect((): void => {
-        sugg.match = null;
-        sut.downrankScoreIfIgnored(sugg);
-      }).not.toThrow();
-
-      expect((): void => {
-        sut.downrankScoreIfIgnored(null);
-      }).not.toThrow();
-
-      mockMetadataCache.isUserIgnored.mockReset();
-    });
-
-    it('should downrank suggestions for file that are excluded by Obsidian exclude files setting', () => {
-      const sugg = makeFileSuggestion();
-      sugg.match.score = 0;
-
-      mockMetadataCache.isUserIgnored
-        .calledWith(sugg.file.path)
-        .mockReturnValueOnce(true);
-
-      const result = sut.downrankScoreIfIgnored(sugg);
-
-      // by default scores are downranked by -10
-      expect(result.match.score).toBe(-10);
-      expect(result.downranked).toBe(true);
-      expect(mockMetadataCache.isUserIgnored).toHaveBeenCalledWith(sugg.file.path);
-
-      mockMetadataCache.isUserIgnored.mockReset();
-    });
-  });
-
   describe('shouldIncludeFile', () => {
     let excludeObsidianIgnoredFilesSpy: jest.SpyInstance;
 
@@ -819,7 +776,7 @@ describe('headingsHandler', () => {
       expect(results.every((sugg) => expectedFiles.has(sugg.file))).toBe(true);
       expect(results.every((sugg) => isHeadingSuggestion(sugg))).toBe(true);
 
-      expect(results.every((sugg) => sugg.isRecentOpen)).toBe(true);
+      expect(results.every((sugg) => sugg.isRecent)).toBe(true);
 
       mockMetadataCache.getFileCache.mockReset();
     });
@@ -838,7 +795,7 @@ describe('headingsHandler', () => {
       expect(results.every((sugg) => expectedFiles.has(sugg.file))).toBe(true);
       expect(results.every((sugg) => isFileSuggestion(sugg))).toBe(true);
 
-      expect(results.every((sugg) => sugg.isRecentOpen)).toBe(true);
+      expect(results.every((sugg) => sugg.isRecent)).toBe(true);
 
       mockMetadataCache.getFileCache.mockReset();
     });

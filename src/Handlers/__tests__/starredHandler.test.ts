@@ -24,6 +24,7 @@ import {
   TFile,
   FileStarredItem,
   StarredPluginItem,
+  MetadataCache,
 } from 'obsidian';
 import { filenameFromPath, isFileStarredItem, stripMDExtensionFromPath } from 'src/utils';
 
@@ -81,6 +82,7 @@ describe('starredHandler', () => {
       workspace: mockWorkspace,
       vault: mockVault,
       internalPlugins: mockInternalPlugins,
+      metadataCache: mock<MetadataCache>(),
     });
 
     settings = new SwitcherPlusSettings(null);

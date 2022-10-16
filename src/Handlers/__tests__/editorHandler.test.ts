@@ -11,6 +11,7 @@ import {
   View,
   WorkspaceItem,
   WorkspaceSplit,
+  MetadataCache,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -45,8 +46,11 @@ describe('editorHandler', () => {
       rightSplit: mock<WorkspaceSplit>(),
     });
 
-    mockApp = mock<App>({ workspace: mockWorkspace });
     settings = new SwitcherPlusSettings(null);
+    mockApp = mock<App>({
+      workspace: mockWorkspace,
+      metadataCache: mock<MetadataCache>(),
+    });
 
     jest.spyOn(settings, 'editorListCommand', 'get').mockReturnValue(editorTrigger);
 

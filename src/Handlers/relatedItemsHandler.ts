@@ -142,6 +142,10 @@ export class RelatedItemsHandler extends Handler<
       currentWorkspaceEnvList,
       searchQuery: { hasSearchTerm, prepQuery },
     } = inputInfo;
+    const {
+      settings,
+      app: { metadataCache },
+    } = this;
 
     if (isUnresolved) {
       primaryString = item.unresolvedText;
@@ -156,8 +160,13 @@ export class RelatedItemsHandler extends Handler<
     }
 
     return isUnresolved
-      ? StandardExHandler.createUnresolvedSuggestion(primaryString, result)
-      : RelatedItemsHandler.createSuggestion(currentWorkspaceEnvList, item, result);
+      ? StandardExHandler.createUnresolvedSuggestion(
+          primaryString,
+          result,
+          settings,
+          metadataCache,
+        )
+      : this.createSuggestion(currentWorkspaceEnvList, item, result);
   }
 
   getItems(sourceInfo: SourceInfo): RelatedItemsInfo[] {
@@ -318,18 +327,19 @@ export class RelatedItemsHandler extends Handler<
     return sourceInfo;
   }
 
-  static createSuggestion(
+  createSuggestion(
     currentWorkspaceEnvList: WorkspaceEnvList,
     item: RelatedItemsInfo,
     result: SearchResultWithFallback,
   ): RelatedItemsSuggestion {
-    const sugg: RelatedItemsSuggestion = {
+    let sugg: RelatedItemsSuggestion = {
       item,
       file: item?.file,
       type: SuggestionType.RelatedItemsList,
       ...result,
     };
 
-    return Handler.updateWorkspaceEnvListStatus(currentWorkspaceEnvList, sugg);
+    sugg = Handler.updateWorkspaceEnvListStatus(currentWorkspaceEnvList, sugg);
+    return this.applyMatchPriorityPreferences(sugg);
   }
 }

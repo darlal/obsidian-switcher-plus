@@ -23,6 +23,8 @@ import {
   MockTextAreaComponent,
   MockDropdownComponent,
   MockPluginSettingTab,
+  MockExtraButtonComponent,
+  MockSliderComponent,
 } from './mockSetting';
 import { makeFuzzyMatch, makePreparedQuery } from '@fixtures';
 
@@ -97,4 +99,6 @@ export {
   MockToggleComponent as ToggleComponent,
   MockTextAreaComponent as TextAreaComponent,
   MockDropdownComponent as DropdownComponent,
+  MockExtraButtonComponent as ExtraButtonComponent,
+  MockSliderComponent as SliderComponent,
 };

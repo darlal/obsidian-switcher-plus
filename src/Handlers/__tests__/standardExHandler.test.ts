@@ -127,7 +127,7 @@ describe('standardExHandler', () => {
         matchType: MatchType.Primary,
         matchText: sugg.alias,
         isOpenInEditor: true,
-        isRecentOpen: true,
+        isRecent: true,
         isStarred: true,
       });
     });
@@ -142,7 +142,7 @@ describe('standardExHandler', () => {
         matchType: MatchType.Path,
         matchText: mockFile.path,
         isOpenInEditor: true,
-        isRecentOpen: true,
+        isRecent: true,
         isStarred: true,
       });
     });
