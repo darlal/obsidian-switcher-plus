@@ -50,7 +50,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       const { exMode, inputEl, chooser } = this;
       exMode.insertSessionOpenModeCommandString(inputEl);
 
-      if (!exMode.updateSuggestions(inputEl.value, chooser)) {
+      if (!exMode.updateSuggestions(inputEl.value, chooser, this)) {
         super.updateSuggestions();
       }
     }

@@ -139,11 +139,6 @@ describe('SwitcherPlusKeymap', () => {
     let sut: SwitcherPlusKeymap;
     const mockInstructionsEl = mock<HTMLElement>();
 
-    const mockMetaEnter = mock<KeymapEventHandler>({
-      modifiers: 'Meta',
-      key: 'Enter',
-    });
-
     const mockShiftEnter = mock<KeymapEventHandler>({
       modifiers: 'Shift',
       key: 'Enter',
@@ -211,15 +206,6 @@ describe('SwitcherPlusKeymap', () => {
       expect(mockScope.unregister).not.toHaveBeenCalled();
     });
 
-    it('should keep the meta-enter hotkey registered in custom modes', () => {
-      mockScope.keys = [mockMetaEnter, mockShiftEnter];
-
-      sut.updateKeymapForMode(Mode.StarredList);
-
-      expect(mockScope.unregister).toHaveBeenCalledWith(mockShiftEnter);
-      expect(mockScope.unregister).not.toHaveBeenCalledWith(mockMetaEnter);
-    });
-
     it('should restore standard keymaps in standard mode', () => {
       mockScope.keys = [mockMetaShiftEnter, mockShiftEnter];
 
@@ -241,23 +227,15 @@ describe('SwitcherPlusKeymap', () => {
       expect(mockScope.register.mock.calls).toEqual(expected);
     });
 
-    it('should remove standard keymaps in custom modes', () => {
-      mockScope.keys = [mockMetaShiftEnter, mockShiftEnter];
-
-      // should remove standard keymaps
-      sut.updateKeymapForMode(Mode.HeadingsList);
-
-      // convert to a reversed [][] so each call can be checked separately
-      const expected = mockScope.keys.map((v) => [v]).reverse();
-
-      expect(mockScope.unregister.mock.calls).toEqual(expected);
-    });
-
     it('should register custom keymaps in custom modes', () => {
       const mode = Mode.StarredList;
       const customKeymaps = sut.customKeysInfo.filter(
         (v) => v.modes?.includes(mode) && !v.isInstructionOnly,
       );
+
+      const unregisterKeysSpy = jest
+        .spyOn(sut, 'unregisterKeys')
+        .mockReturnValue([mock<KeymapEventHandler>()]);
 
       sut.updateKeymapForMode(mode);
 
@@ -268,6 +246,18 @@ describe('SwitcherPlusKeymap', () => {
       });
 
       expect(mockScope.register.mock.calls).toEqual(expected);
+      expect(unregisterKeysSpy).toHaveBeenCalled();
+
+      unregisterKeysSpy.mockRestore();
+    });
+
+    it('should unregister keys that are found to be registered', () => {
+      mockScope.keys = [mockShiftEnter];
+
+      const removed = sut.unregisterKeys(mockScope, [mockShiftEnter]);
+
+      expect(mockScope.unregister).toHaveBeenCalledWith(mockShiftEnter);
+      expect(removed[0]).toEqual(mockShiftEnter);
     });
   });
 

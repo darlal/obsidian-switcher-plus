@@ -64,10 +64,8 @@ export class SwitcherPlusKeymap {
 
     // standard mode keys that are registered by default, and
     // should be unregistered in custom modes, then re-registered in standard mode
-    const standardKeysInfo: KeymapInfo[] = [
-      { modifiers: 'Shift', key: 'Enter' },
-      { modifiers: `${modKey},Shift`, key: 'Enter' },
-    ];
+    // example: { modifiers: 'Shift', key: 'Enter' }
+    const standardKeysInfo: KeymapInfo[] = [];
 
     // custom mode keys that should be registered, then unregistered in standard mode
     // Note: modifiers should be a comma separated string of Modifiers

@@ -1,6 +1,7 @@
 import {
   App,
   EditorPosition,
+  FileView,
   fuzzySearch,
   HeadingCache,
   Keymap,
@@ -247,6 +248,36 @@ export abstract class Handler<T> {
     };
   }
 
+  /** Determines if an existing tab should be reused, or create new tab, or create new window based on evt and taking into account user preferences
+   * @param  {MouseEvent|KeyboardEvent} evt
+   * @param  {boolean} isAlreadyOpen?
+   * @param  {Mode} mode? Only Symbol mode has special handling.
+   * @returns {navType: boolean | PaneType; splitDirection: SplitDirection}
+   */
+  extractTabNavigationType(
+    evt: MouseEvent | KeyboardEvent,
+    isAlreadyOpen?: boolean,
+    mode?: Mode,
+  ): { navType: boolean | PaneType; splitDirection: SplitDirection } {
+    const splitDirection: SplitDirection = evt?.shiftKey ? 'horizontal' : 'vertical';
+
+    const key = (evt as KeyboardEvent)?.key;
+    let navType = Keymap.isModEvent(evt) ?? false;
+
+    if (navType === true || navType === 'tab') {
+      if (key === 'o') {
+        // cmd-o to create new window
+        navType = 'window';
+      } else if (key === '\\') {
+        // cmd-\ to create split
+        navType = 'split';
+      }
+    }
+
+    navType = this.applyTabCreationPreferences(navType, isAlreadyOpen, mode);
+    return { navType, splitDirection };
+  }
+
   /**
    * Determines whether or not a new leaf should be created taking user
    * settings into account
@@ -410,22 +441,13 @@ export abstract class Handler<T> {
   ): void {
     const { leaf: targetLeaf } = this.findMatchingLeaf(file, leaf, shouldIncludeRefViews);
     const isAlreadyOpen = !!targetLeaf;
-    const splitDirection: SplitDirection = evt.shiftKey ? 'horizontal' : 'vertical';
 
-    const key = (evt as KeyboardEvent).key;
-    let navType = Keymap.isModEvent(evt);
+    const { navType, splitDirection } = this.extractTabNavigationType(
+      evt,
+      isAlreadyOpen,
+      mode,
+    );
 
-    if (navType === true || navType === 'tab') {
-      if (key === 'o') {
-        // cmd-o to create new window
-        navType = 'window';
-      } else if (key === '\\') {
-        // cmd-\ to create split
-        navType = 'split';
-      }
-    }
-
-    navType = this.applyTabCreationPreferences(navType, isAlreadyOpen, mode);
     this.activateLeafOrOpenFile(
       navType,
       file,
@@ -860,5 +882,49 @@ export abstract class Handler<T> {
     }
 
     return sugg;
+  }
+
+  /**
+   * Renders a suggestion hint for creating a new note
+   * @param  {HTMLElement} parentEl
+   * @param  {string} filename
+   * @returns HTMLDivElement
+   */
+  renderFileCreationSuggestion(parentEl: HTMLElement, filename: string): HTMLDivElement {
+    this.addClassesToSuggestionContainer(parentEl);
+    const contentEl = this.renderContent(parentEl, filename, null);
+
+    const flairEl = this.createFlairContainer(parentEl);
+    flairEl?.createSpan({
+      cls: 'suggestion-hotkey',
+      text: 'Enter to create',
+    });
+
+    return contentEl;
+  }
+
+  /**
+   * Creates a new note in the vault with filename. Uses evt to determine the
+   * navigation type (reuse tab, new tab, new window) to use for opening the newly
+   * created note.
+   * @param  {string} filename
+   * @param  {MouseEvent|KeyboardEvent} evt
+   * @returns void
+   */
+  createFile(filename: string, evt: MouseEvent | KeyboardEvent): void {
+    const { workspace } = this.app;
+    const { navType } = this.extractTabNavigationType(evt);
+    const activeView = workspace.getActiveViewOfType(FileView);
+    let sourcePath = '';
+
+    if (activeView?.file) {
+      sourcePath = activeView.file.path;
+    }
+
+    workspace
+      .openLinkText(filename, sourcePath, navType, { active: true })
+      .catch((err) => {
+        console.log('Switcher++: error creating new file. ', err);
+      });
   }
 }

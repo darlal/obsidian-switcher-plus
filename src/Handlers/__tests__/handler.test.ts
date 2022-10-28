@@ -21,6 +21,7 @@ import {
   renderResults,
   fuzzySearch,
   TAbstractFile,
+  FileView,
 } from 'obsidian';
 import {
   defaultOpenViewState,
@@ -807,28 +808,9 @@ describe('Handler', () => {
     });
   });
 
-  describe('navigateToLeafOrOpenFile', () => {
+  describe('extractTabNavigationType', () => {
     const mockKeymap = jest.mocked<typeof Keymap>(Keymap);
-    const errContext = chance.sentence();
-    let mockLeaf: MockProxy<WorkspaceLeaf>;
-    let activateLeafOrOpenFileSpy: jest.SpyInstance;
-    let mockFile: TFile;
-
-    beforeAll(() => {
-      activateLeafOrOpenFileSpy = jest.spyOn(Handler.prototype, 'activateLeafOrOpenFile');
-      mockFile = new TFile();
-      mockLeaf = makeLeaf();
-    });
-
-    beforeEach(() => {
-      activateLeafOrOpenFileSpy.mockReset();
-    });
-
-    afterAll(() => {
-      activateLeafOrOpenFileSpy.mockRestore();
-    });
-
-    it('should navigate to a new vertical split "tab"', () => {
+    it('should navigate to a new vertical split', () => {
       const mockEvt = mock<KeyboardEvent>({
         key: '\\',
         shiftKey: false,
@@ -836,25 +818,13 @@ describe('Handler', () => {
 
       mockKeymap.isModEvent.mockReturnValueOnce('tab');
 
-      sut.navigateToLeafOrOpenFile(
-        mockEvt,
-        mockFile,
-        errContext,
-        defaultOpenViewState,
-        mockLeaf,
-      );
+      const { navType, splitDirection } = sut.extractTabNavigationType(mockEvt);
 
-      expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
-        'split',
-        mockFile,
-        errContext,
-        mockLeaf,
-        defaultOpenViewState,
-        'vertical',
-      );
+      expect(navType).toBe('split');
+      expect(splitDirection).toBe('vertical');
     });
 
-    it('should navigate to a new horizontal split "tab"', () => {
+    it('should navigate to a new horizontal split', () => {
       const mockEvt = mock<KeyboardEvent>({
         key: '\\',
         shiftKey: true,
@@ -862,117 +832,59 @@ describe('Handler', () => {
 
       mockKeymap.isModEvent.mockReturnValueOnce('tab');
 
-      sut.navigateToLeafOrOpenFile(
-        mockEvt,
-        mockFile,
-        errContext,
-        defaultOpenViewState,
-        mockLeaf,
-      );
+      const { navType, splitDirection } = sut.extractTabNavigationType(mockEvt, true);
 
-      expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
-        'split',
-        mockFile,
-        errContext,
-        mockLeaf,
-        defaultOpenViewState,
-        'horizontal',
-      );
+      expect(navType).toBe('split');
+      expect(splitDirection).toBe('horizontal');
     });
 
     it('should navigate to a new Popout window with isModEvent true', () => {
       const mockEvt = mock<KeyboardEvent>({
         key: 'o',
+        shiftKey: false,
       });
 
       mockKeymap.isModEvent.mockReturnValueOnce(true);
 
-      sut.navigateToLeafOrOpenFile(
-        mockEvt,
-        mockFile,
-        errContext,
-        defaultOpenViewState,
-        mockLeaf,
-      );
+      const { navType, splitDirection } = sut.extractTabNavigationType(mockEvt, false);
 
-      expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
-        'window',
-        mockFile,
-        errContext,
-        mockLeaf,
-        defaultOpenViewState,
-        expect.anything(),
-      );
+      expect(navType).toBe('window');
+      expect(splitDirection).toBe('vertical');
     });
 
     it('should navigate to a new Popout window with isModEvent "tab"', () => {
       const mockEvt = mock<KeyboardEvent>({
         key: 'o',
+        shiftKey: false,
       });
 
       mockKeymap.isModEvent.mockReturnValueOnce('tab');
 
-      sut.navigateToLeafOrOpenFile(
-        mockEvt,
-        mockFile,
-        errContext,
-        defaultOpenViewState,
-        mockLeaf,
-      );
+      const { navType, splitDirection } = sut.extractTabNavigationType(mockEvt, true);
 
-      expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
-        'window',
-        mockFile,
-        errContext,
-        mockLeaf,
-        defaultOpenViewState,
-        expect.anything(),
-      );
+      expect(navType).toBe('window');
+      expect(splitDirection).toBe('vertical');
     });
 
     it('should navigate to a new leaf "tab"', () => {
-      const navType = 'tab';
-      const mockEvt = mock<KeyboardEvent>();
-      mockKeymap.isModEvent.mockReturnValueOnce(navType);
+      const navTypeTab = 'tab';
+      const mockEvt = mock<KeyboardEvent>({ shiftKey: false });
+      mockKeymap.isModEvent.mockReturnValueOnce(navTypeTab);
 
-      sut.navigateToLeafOrOpenFile(
-        mockEvt,
-        mockFile,
-        errContext,
-        defaultOpenViewState,
-        mockLeaf,
-      );
+      const { navType, splitDirection } = sut.extractTabNavigationType(mockEvt, false);
 
-      expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
-        navType,
-        mockFile,
-        errContext,
-        mockLeaf,
-        defaultOpenViewState,
-        expect.anything(),
-      );
+      expect(navType).toBe(navTypeTab);
+      expect(splitDirection).toBe('vertical');
     });
 
     it('should navigate to an existing leaf "tab"', () => {
-      const mockEvt = mock<KeyboardEvent>();
+      const mockEvt = mock<KeyboardEvent>({ shiftKey: false });
       mockKeymap.isModEvent.mockReturnValueOnce(false);
 
-      sut.navigateToLeafOrOpenFile(
-        mockEvt,
-        mockFile,
-        errContext,
-        defaultOpenViewState,
-        mockLeaf,
-      );
+      const { navType, splitDirection } = sut.extractTabNavigationType(mockEvt, false);
 
-      expect(activateLeafOrOpenFileSpy).toHaveBeenCalledWith(
-        false,
-        mockFile,
-        errContext,
-        mockLeaf,
-        defaultOpenViewState,
-        expect.anything(),
-      );
+      expect(navType).toBe(false);
+      expect(splitDirection).toBe('vertical');
     });
   });
 
@@ -1720,6 +1632,112 @@ describe('Handler', () => {
           isStarred: true,
         }),
       );
+    });
+  });
+
+  describe('renderFileCreationSuggestion', () => {
+    it('should render a hint suggestion for creating new file', () => {
+      const filename = chance.word();
+      const mockParentEl = mock<HTMLElement>();
+      const mockContentEl = mock<HTMLDivElement>();
+      const mockFlairEl = mock<HTMLDivElement>();
+
+      const renderContentSpy = jest
+        .spyOn(sut, 'renderContent')
+        .mockReturnValueOnce(mockContentEl);
+
+      const createFlairContainerSpy = jest
+        .spyOn(sut, 'createFlairContainer')
+        .mockReturnValueOnce(mockFlairEl);
+
+      sut.renderFileCreationSuggestion(mockParentEl, filename);
+
+      expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, filename, null);
+
+      expect(mockFlairEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: 'suggestion-hotkey',
+          text: 'Enter to create',
+        }),
+      );
+
+      renderContentSpy.mockRestore();
+      createFlairContainerSpy.mockRestore();
+    });
+  });
+
+  describe('createFile', () => {
+    const viewState = { active: true };
+
+    it('should call .openLinkText to create a new file', () => {
+      const filename = chance.word();
+      const mockEvt = mock<MouseEvent>();
+
+      mockWorkspace.openLinkText.mockReturnValueOnce(Promise.resolve());
+
+      sut.createFile(filename, mockEvt);
+
+      expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
+        filename,
+        '',
+        false,
+        viewState,
+      );
+
+      mockWorkspace.openLinkText.mockReset();
+    });
+
+    it('should use the active view file path when available to create a new file', () => {
+      const filename = chance.word();
+      const mockEvt = mock<MouseEvent>();
+      const file = new TFile();
+      mockWorkspace.getActiveViewOfType.mockReturnValueOnce(mock<FileView>({ file }));
+
+      mockWorkspace.openLinkText.mockReturnValueOnce(Promise.resolve());
+
+      sut.createFile(filename, mockEvt);
+
+      expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
+        filename,
+        file.path,
+        false,
+        viewState,
+      );
+
+      mockWorkspace.getActiveViewOfType.mockReset();
+      mockWorkspace.openLinkText.mockReset();
+    });
+
+    it('should log any errors to the console while trying to create a new file', async () => {
+      const filename = chance.word();
+      const errorMsg = 'Unit test error';
+      const rejectedPromise = Promise.reject(errorMsg);
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      mockWorkspace.openLinkText.mockReturnValueOnce(rejectedPromise);
+
+      sut.createFile(filename, null);
+
+      try {
+        await rejectedPromise;
+      } catch (e) {
+        /* noop */
+      }
+
+      expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
+        filename,
+        '',
+        false,
+        viewState,
+      );
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Switcher++: error creating new file. ',
+        errorMsg,
+      );
+
+      mockWorkspace.openLinkText.mockReset();
+      consoleLogSpy.mockRestore();
     });
   });
 });

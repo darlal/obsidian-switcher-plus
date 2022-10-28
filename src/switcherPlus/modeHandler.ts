@@ -19,18 +19,27 @@ import {
   isFileStarredItem,
   isTFile,
 } from 'src/utils';
+import {
+  Mode,
+  AnySuggestion,
+  SymbolSuggestion,
+  SuggestionType,
+  SwitcherPlus,
+} from 'src/types';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import { WorkspaceLeaf, App, Chooser, Debouncer, debounce, TFile } from 'obsidian';
-import { Mode, AnySuggestion, SymbolSuggestion, SuggestionType } from 'src/types';
 import { SwitcherPlusKeymap } from './switcherPlusKeymap';
 
 export class ModeHandler {
   private inputInfo: InputInfo;
   private handlersByMode: Map<Omit<Mode, 'Standard'>, Handler<AnySuggestion>>;
   private handlersByType: Map<SuggestionType, Handler<AnySuggestion>>;
-  private debouncedGetSuggestions: Debouncer<[InputInfo, Chooser<AnySuggestion>], void>;
   private sessionOpenModeString: string;
+  private debouncedGetSuggestions: Debouncer<
+    [InputInfo, Chooser<AnySuggestion>, SwitcherPlus],
+    void
+  >;
 
   constructor(
     private app: App,
@@ -96,7 +105,11 @@ export class ModeHandler {
     }
   }
 
-  updateSuggestions(query: string, chooser: Chooser<AnySuggestion>): boolean {
+  updateSuggestions(
+    query: string,
+    chooser: Chooser<AnySuggestion>,
+    modal: SwitcherPlus,
+  ): boolean {
     let handled = false;
     const { exKeymap } = this;
 
@@ -115,9 +128,9 @@ export class ModeHandler {
     if (mode !== Mode.Standard) {
       if (mode === Mode.HeadingsList && inputInfo.parsedCommand().parsedInput?.length) {
         // if headings mode and user is typing a query, delay getting suggestions
-        this.debouncedGetSuggestions(inputInfo, chooser);
+        this.debouncedGetSuggestions(inputInfo, chooser, modal);
       } else {
-        this.getSuggestions(inputInfo, chooser);
+        this.getSuggestions(inputInfo, chooser, modal);
       }
 
       handled = true;
@@ -127,36 +140,61 @@ export class ModeHandler {
   }
 
   renderSuggestion(sugg: AnySuggestion, parentEl: HTMLElement): boolean {
+    const { inputInfo } = this;
+    const { mode } = inputInfo;
     let handled = false;
+    let handler: Handler<AnySuggestion> = null;
 
-    if (sugg) {
-      // in Headings mode, StandardExHandler should handle rendering for File
-      // suggestions
-      const useExHandler =
-        this.inputInfo.mode === Mode.HeadingsList && isFileSuggestion(sugg);
+    if (isExSuggestion(sugg)) {
+      handler = this.getHandler(sugg);
+    } else if (mode === Mode.HeadingsList) {
+      if (!sugg) {
+        // in Headings mode, a null suggestion should be rendered to allow for note creation
+        const headingHandler = this.getHandler(mode);
+        const searchText = inputInfo.parsedCommand(mode)?.parsedInput;
 
-      if (useExHandler || isExSuggestion(sugg)) {
-        this.getHandler(sugg).renderSuggestion(sugg, parentEl);
+        headingHandler.renderFileCreationSuggestion(parentEl, searchText);
         handled = true;
+      } else if (isFileSuggestion(sugg)) {
+        // in Headings mode, StandardExHandler should handle rendering for FileSuggestion
+        handler = this.getHandler(sugg);
       }
+    }
+
+    if (handler) {
+      handler.renderSuggestion(sugg, parentEl);
+      handled = true;
     }
 
     return handled;
   }
 
   onChooseSuggestion(sugg: AnySuggestion, evt: MouseEvent | KeyboardEvent): boolean {
+    const { inputInfo } = this;
+    const { mode } = inputInfo;
     let handled = false;
+    let handler: Handler<AnySuggestion> = null;
 
-    if (sugg) {
-      // in Headings mode, StandardExHandler should handle the onChoose action for File
-      // and Alias suggestion so that the preferOpenInNewPane setting can be handled properly
-      const useExHandler =
-        this.inputInfo.mode === Mode.HeadingsList && !isUnresolvedSuggestion(sugg);
+    if (isExSuggestion(sugg)) {
+      handler = this.getHandler(sugg);
+    } else if (mode === Mode.HeadingsList) {
+      if (!sugg) {
+        // in Headings mode, a null suggestion should create a new note
+        const headingHandler = this.getHandler(mode);
+        const filename = inputInfo.parsedCommand(mode)?.parsedInput;
 
-      if (useExHandler || isExSuggestion(sugg)) {
-        this.getHandler(sugg).onChooseSuggestion(sugg, evt);
+        headingHandler.createFile(filename, evt);
         handled = true;
+      } else if (!isUnresolvedSuggestion(sugg)) {
+        // in Headings mode, StandardExHandler should handle the onChoose action for File
+        // and Alias suggestion so that the preferOpenInNewPane setting can be handled properly
+        handler = this.getHandler(sugg);
       }
+    }
+
+    if (handler) {
+      handler.onChooseSuggestion(sugg, evt);
+      handled = true;
     }
 
     return handled;
@@ -180,15 +218,27 @@ export class ModeHandler {
     return info;
   }
 
-  getSuggestions(inputInfo: InputInfo, chooser: Chooser<AnySuggestion>): void {
+  getSuggestions(
+    inputInfo: InputInfo,
+    chooser: Chooser<AnySuggestion>,
+    modal: SwitcherPlus,
+  ): void {
     chooser.setSuggestions([]);
 
     const { mode } = inputInfo;
     const suggestions = this.getHandler(mode).getSuggestions(inputInfo);
 
     const setSuggestions = (suggs: AnySuggestion[]) => {
-      chooser.setSuggestions(suggs);
-      ModeHandler.setActiveSuggestion(mode, chooser);
+      if (suggs?.length) {
+        chooser.setSuggestions(suggs);
+        ModeHandler.setActiveSuggestion(mode, chooser);
+      } else {
+        if (mode === Mode.HeadingsList && inputInfo.parsedCommand(mode).parsedInput) {
+          modal.onNoSuggestion();
+        } else {
+          chooser.setSuggestions(null);
+        }
+      }
     };
 
     if (Array.isArray(suggestions)) {

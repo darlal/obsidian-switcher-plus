@@ -149,7 +149,7 @@ describe('switcherPlus', () => {
       superOnCloseSpy.mockRestore();
     });
 
-    it('should should forward to ModeHandler to get suggestions', () => {
+    it('should forward to ModeHandler to get suggestions', () => {
       const insertCmdStringSpy = jest.spyOn(
         ModeHandler.prototype,
         'insertSessionOpenModeCommandString',
@@ -172,7 +172,7 @@ describe('switcherPlus', () => {
       sut.open();
 
       expect(insertCmdStringSpy).toHaveBeenCalledWith(mockInputEl);
-      expect(mhUpdateSuggestionsSpy).toHaveBeenCalledWith(inputText, mockChooser);
+      expect(mhUpdateSuggestionsSpy).toHaveBeenCalledWith(inputText, mockChooser, sut);
 
       // expect to not get called because ModeHandler should have handled it
       expect(superUpdateSuggestionsSpy).not.toHaveBeenCalled();
@@ -206,7 +206,7 @@ describe('switcherPlus', () => {
       sut.open();
 
       expect(insertCmdStringSpy).toHaveBeenCalledWith(mockInputEl);
-      expect(mhUpdateSuggestionsSpy).toHaveBeenCalledWith(inputText, mockChooser);
+      expect(mhUpdateSuggestionsSpy).toHaveBeenCalledWith(inputText, mockChooser, sut);
 
       // expect to get called because ModeHandler did not handle it
       expect(superUpdateSuggestionsSpy).toHaveBeenCalled();

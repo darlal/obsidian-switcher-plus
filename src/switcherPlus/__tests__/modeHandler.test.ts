@@ -1,6 +1,7 @@
 import { mock, mockClear, mockFn, MockProxy, mockReset } from 'jest-mock-extended';
 import { SwitcherPlusSettings } from 'src/settings';
-import { AnySuggestion, Mode, SymbolType } from 'src/types';
+import { AnySuggestion, Mode, SwitcherPlus, SymbolType } from 'src/types';
+import { Chance } from 'chance';
 import {
   SwitcherPlusKeymap,
   ModeHandler,
@@ -17,6 +18,7 @@ import {
   RelatedItemsHandler,
   StandardExHandler,
   StarredItemInfo,
+  Handler,
 } from 'src/Handlers';
 import {
   App,
@@ -55,6 +57,8 @@ import {
   makeSourcedCmdEmbeddedInputFixture,
   makeAliasSuggestion,
 } from '@fixtures';
+
+const chance = new Chance();
 
 // dataset used for various test scenarios
 const modeHandlingData = [
@@ -472,7 +476,7 @@ describe('modeHandler', () => {
     });
 
     test('updateSuggestions should return not handled (false) with falsy input', () => {
-      const results = sut.updateSuggestions(null, null);
+      const results = sut.updateSuggestions(null, null, null);
       expect(results).toBe(false);
     });
 
@@ -495,7 +499,7 @@ describe('modeHandler', () => {
         .spyOn(SymbolHandler.prototype, 'getSuggestions')
         .mockReturnValueOnce(rejectedPromise);
 
-      sut.updateSuggestions(symbolTrigger, mockChooser);
+      sut.updateSuggestions(symbolTrigger, mockChooser, null);
 
       try {
         await rejectedPromise;
@@ -526,7 +530,7 @@ describe('modeHandler', () => {
 
       sut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
 
-      const results = sut.updateSuggestions(headingsTrigger, mockChooser);
+      const results = sut.updateSuggestions(headingsTrigger, mockChooser, null);
 
       expect(results).toBe(true);
       expect(mockDebounce).toHaveBeenCalled();
@@ -560,7 +564,7 @@ describe('modeHandler', () => {
         mockChooser.selectedItem = 0;
       });
 
-      const results = sut.updateSuggestions(symbolTrigger, mockChooser);
+      const results = sut.updateSuggestions(symbolTrigger, mockChooser, null);
 
       return getSuggestionsPromise.finally(() => {
         expect(results).toBe(true);
@@ -576,18 +580,122 @@ describe('modeHandler', () => {
       });
     });
 
+    test('with a null sugg param, .renderSuggestion should show a hint suggestion to create a new file', () => {
+      const searchText = 'filename';
+      const mockParentEl = mock<HTMLElement>();
+      const getSuggestionSpy = jest
+        .spyOn(HeadingsHandler.prototype, 'getSuggestions')
+        .mockReturnValue([]);
+
+      const renderNoteCreationSuggestionSpy = jest
+        .spyOn(Handler.prototype, 'renderFileCreationSuggestion')
+        .mockReturnValueOnce(null);
+
+      sut.updateSuggestions(`${headingsTrigger}${searchText}`, mockChooser, null);
+
+      const handled = sut.renderSuggestion(null, mockParentEl);
+
+      expect(handled).toBe(true);
+      expect(renderNoteCreationSuggestionSpy).toHaveBeenCalledWith(
+        mockParentEl,
+        searchText,
+      );
+
+      getSuggestionSpy.mockRestore();
+      renderNoteCreationSuggestionSpy.mockRestore();
+    });
+
+    test('when there are no results for a search term, it should call .onNoSuggestion() on the modal', () => {
+      const mockModal = mock<SwitcherPlus>();
+      const getSuggestionSpy = jest
+        .spyOn(HeadingsHandler.prototype, 'getSuggestions')
+        .mockReturnValue([]);
+
+      const inputInfo = new InputInfo('', Mode.HeadingsList);
+      inputInfo.parsedCommand(Mode.HeadingsList).parsedInput = chance.word();
+
+      sut.getSuggestions(inputInfo, mockChooser, mockModal);
+
+      expect(mockModal.onNoSuggestion).toHaveBeenCalled();
+
+      getSuggestionSpy.mockRestore();
+    });
+
+    test('with no results and no search term, it should set suggestions to null', () => {
+      mockReset(mockChooser);
+      const getSuggestionSpy = jest
+        .spyOn(HeadingsHandler.prototype, 'getSuggestions')
+        .mockReturnValue([]);
+
+      const inputInfo = new InputInfo('', Mode.HeadingsList);
+
+      sut.getSuggestions(inputInfo, mockChooser, null);
+
+      expect(mockChooser.setSuggestions).toHaveBeenCalledWith(null);
+
+      getSuggestionSpy.mockRestore();
+      mockReset(mockChooser);
+    });
+
+    test('with a null sugg param, .onChooseSuggestion should create a new file in Headings mode', () => {
+      const searchText = 'filename';
+      const mockEvt = mock<MouseEvent>();
+      const getSuggestionSpy = jest
+        .spyOn(HeadingsHandler.prototype, 'getSuggestions')
+        .mockReturnValue([]);
+
+      const createNoteSpy = jest
+        .spyOn(Handler.prototype, 'createFile')
+        .mockReturnValueOnce();
+
+      sut.updateSuggestions(`${headingsTrigger}${searchText}`, mockChooser, null);
+
+      const handled = sut.onChooseSuggestion(null, mockEvt);
+
+      expect(handled).toBe(true);
+      expect(createNoteSpy).toHaveBeenCalledWith(searchText, mockEvt);
+
+      getSuggestionSpy.mockRestore();
+      createNoteSpy.mockRestore();
+    });
+
+    test.each([makeFileSuggestion()])(
+      'renderSuggestion should use the StandardExHandler when in Headings mode for File Suggestions',
+      (sugg) => {
+        const mockParentEl = mock<HTMLElement>();
+        const getSuggestionSpy = jest
+          .spyOn(HeadingsHandler.prototype, 'getSuggestions')
+          .mockReturnValue([sugg]);
+
+        const renderSuggestionSpy = jest
+          .spyOn(StandardExHandler.prototype, 'renderSuggestion')
+          .mockImplementation();
+
+        sut.updateSuggestions(`${headingsTrigger}`, mockChooser, null);
+
+        const handled = sut.renderSuggestion(sugg, mockParentEl);
+
+        expect(renderSuggestionSpy).toHaveBeenCalledWith(sugg, mockParentEl);
+        expect(handled).toBe(true);
+
+        getSuggestionSpy.mockRestore();
+        renderSuggestionSpy.mockRestore();
+        mockClear(mockChooser);
+      },
+    );
+
     test.each([makeFileSuggestion(), makeAliasSuggestion()])(
       'onChooseSuggestion should use the StandardExHandler when in Headings mode for File & Alias Suggestions',
       (sugg) => {
         const getSuggestionSpy = jest
           .spyOn(HeadingsHandler.prototype, 'getSuggestions')
-          .mockReturnValue([]);
+          .mockReturnValue([sugg]);
 
         const onChooseSuggestionSpy = jest
           .spyOn(StandardExHandler.prototype, 'onChooseSuggestion')
           .mockImplementation();
 
-        const handled = sut.updateSuggestions(`${headingsTrigger}`, mockChooser);
+        const handled = sut.updateSuggestions(`${headingsTrigger}`, mockChooser, null);
 
         sut.onChooseSuggestion(sugg, mockEvt);
 
@@ -620,7 +728,7 @@ describe('modeHandler', () => {
 
           // this value is checked in symbol mode
           mockChooser.values = sugg;
-          const results = sut.updateSuggestions(trigger, mockChooser);
+          const results = sut.updateSuggestions(trigger, mockChooser, null);
 
           return promise.finally(() => {
             expect(results).toBe(true);
