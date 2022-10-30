@@ -1,10 +1,10 @@
 import { Handler } from './handler';
-import { FileSuggestion, AliasSuggestion, AnySuggestion } from 'src/types';
+import { FileSuggestion, AliasSuggestion, AnySuggestion, MatchType } from 'src/types';
 import { WorkspaceLeaf } from 'obsidian';
 import { InputInfo } from 'src/switcherPlus';
-import { isFileSuggestion } from 'src/utils';
+import { isAliasSuggestion, isFileSuggestion } from 'src/utils';
 
-type SupportedSystemSuggestions = FileSuggestion | AliasSuggestion;
+export type SupportedSystemSuggestions = FileSuggestion | AliasSuggestion;
 
 export class StandardExHandler extends Handler<SupportedSystemSuggestions> {
   validateCommand(
@@ -23,18 +23,13 @@ export class StandardExHandler extends Handler<SupportedSystemSuggestions> {
 
   renderSuggestion(sugg: SupportedSystemSuggestions, parentEl: HTMLElement): void {
     if (isFileSuggestion(sugg)) {
-      const { file, matchType, match } = sugg;
+      this.renderFileSuggestion(sugg, parentEl);
+    } else {
+      this.renderAliasSuggestion(sugg, parentEl);
+    }
 
-      this.renderAsFileInfoPanel(
-        parentEl,
-        ['qsp-suggestion-file'],
-        file.basename,
-        file,
-        matchType,
-        match,
-      );
-
-      this.renderOptionalIndicators(parentEl, sugg);
+    if (sugg?.downranked) {
+      parentEl.addClass('mod-downranked');
     }
   }
 
@@ -51,5 +46,67 @@ export class StandardExHandler extends Handler<SupportedSystemSuggestions> {
         `Unable to open file from SystemSuggestion ${file.path}`,
       );
     }
+  }
+
+  renderFileSuggestion(sugg: FileSuggestion, parentEl: HTMLElement): void {
+    if (sugg) {
+      const { file, matchType, match } = sugg;
+
+      this.renderAsFileInfoPanel(
+        parentEl,
+        ['qsp-suggestion-file'],
+        null,
+        file,
+        matchType,
+        match,
+      );
+
+      this.renderOptionalIndicators(parentEl, sugg);
+    }
+  }
+
+  renderAliasSuggestion(sugg: AliasSuggestion, parentEl: HTMLElement): void {
+    if (sugg) {
+      const { file, matchType, match } = sugg;
+
+      this.renderAsFileInfoPanel(
+        parentEl,
+        ['qsp-suggestion-alias'],
+        sugg.alias,
+        file,
+        matchType,
+        match,
+        false,
+      );
+
+      const flairContainerEl = this.renderOptionalIndicators(parentEl, sugg);
+      this.renderIndicator(flairContainerEl, ['qsp-alias-indicator'], 'lucide-forward');
+    }
+  }
+
+  addPropertiesToStandardSuggestions(
+    inputInfo: InputInfo,
+    sugg: SupportedSystemSuggestions,
+  ): void {
+    const { match, file } = sugg;
+    const matches = match?.matches;
+    let matchType = MatchType.None;
+    let matchText = null;
+
+    if (matches) {
+      if (isAliasSuggestion(sugg)) {
+        matchType = MatchType.Primary;
+        matchText = sugg.alias;
+      } else {
+        matchType = MatchType.Path;
+        matchText = file?.path;
+      }
+    }
+
+    sugg.matchType = matchType;
+    sugg.matchText = matchText;
+
+    // patch with missing properties required for enhanced custom rendering
+    Handler.updateWorkspaceEnvListStatus(inputInfo.currentWorkspaceEnvList, sugg);
   }
 }

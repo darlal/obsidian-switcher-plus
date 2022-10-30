@@ -58,6 +58,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     pathDisplayFormat: PathDisplayFormat.FolderWithFilename,
     hidePathIfRoot: true,
     enabledRelatedItems: Object.values(RelationType),
+    overrideStandardModeBehaviors: true,
   };
 
   if (!useDefault) {
@@ -84,6 +85,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     data.pathDisplayFormat = PathDisplayFormat.Full;
     data.hidePathIfRoot = chance.bool();
     data.enabledRelatedItems = chance.pickset(Object.values(RelationType), 2);
+    data.overrideStandardModeBehaviors = chance.bool();
 
     data.includeSidePanelViewTypes = [
       chance.word(),
@@ -185,6 +187,7 @@ describe('SwitcherPlusSettings', () => {
     sut.pathDisplayFormat = settings.pathDisplayFormat;
     sut.hidePathIfRoot = settings.hidePathIfRoot;
     sut.enabledRelatedItems = settings.enabledRelatedItems;
+    sut.overrideStandardModeBehaviors = settings.overrideStandardModeBehaviors;
 
     sut.setSymbolTypeEnabled(
       SymbolType.Heading,

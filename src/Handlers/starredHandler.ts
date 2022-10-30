@@ -61,7 +61,7 @@ export class StarredHandler extends Handler<StarredSuggestion> {
         let result: SearchResultWithFallback = { matchType: MatchType.None, match: null };
 
         if (hasSearchTerm) {
-          result = this.fuzzySearchWithFallback(prepQuery, item.title, file);
+          result = this.fuzzySearchWithFallback(prepQuery, null, file);
           shouldPush = result.matchType !== MatchType.None;
         }
 
@@ -87,12 +87,12 @@ export class StarredHandler extends Handler<StarredSuggestion> {
 
   renderSuggestion(sugg: StarredSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
-      const { file, matchType, match, item } = sugg;
+      const { file, matchType, match } = sugg;
 
       this.renderAsFileInfoPanel(
         parentEl,
         ['qsp-suggestion-starred'],
-        item.title,
+        null,
         file,
         matchType,
         match,

@@ -492,7 +492,7 @@ describe('relatedItemsHandler', () => {
         expect(renderAsFileInfoPanelSpy).toHaveBeenCalledWith(
           mockParentEl,
           ['qsp-suggestion-related'],
-          file1.basename,
+          null,
           sugg.file,
           sugg.matchType,
           sugg.match,

@@ -51,14 +51,21 @@ export function makeUnresolvedSuggestion(linktext?: string): UnresolvedSuggestio
   };
 }
 
-export function makeAliasSuggestion(file?: TFile, alias: string = null): AliasSuggestion {
+export function makeAliasSuggestion(
+  file?: TFile,
+  alias: string = null,
+  matches?: SearchMatches,
+  score?: number,
+  matchType?: MatchType,
+  matchText?: string,
+): AliasSuggestion {
   file = file ?? new TFile();
 
   return {
     type: SuggestionType.Alias,
     alias,
     file,
-    match: null,
+    ...makeSearchResultWithFallback(matches, matchType, matchText, score),
   };
 }
 

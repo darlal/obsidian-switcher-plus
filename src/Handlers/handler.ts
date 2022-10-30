@@ -12,6 +12,7 @@ import {
   Platform,
   PreparedQuery,
   renderResults,
+  SearchMatches,
   SearchResult,
   setIcon,
   SplitDirection,
@@ -663,10 +664,10 @@ export abstract class Handler<T> {
 
   /**
    * Searches through primaryText, if no match is found and file is not null, it will
-   * fallback to searching 1) file.basename, 2) file parent path
+   * fallback to searching 1) file.basename, 2) file.path
    * @param  {PreparedQuery} prepQuery
-   * @param  {TFile} file
    * @param  {string} primaryString?
+   * @param  {TFile} file
    * @returns SearchResultWithFallback
    */
   fuzzySearchWithFallback(
@@ -697,47 +698,142 @@ export abstract class Handler<T> {
 
     const isMatch = search([MatchType.Primary, MatchType.None], primaryString);
     if (!isMatch && file) {
-      const {
-        basename,
-        parent: { path },
-      } = file;
+      const { basename, path } = file;
 
-      search([MatchType.Basename, MatchType.ParentPath], basename, path);
+      // Note: the fallback to path has to search through the entire path
+      // because search needs to match over the filename/basename boundaries
+      // e.g. search string "to my" should match "path/to/myfile.md"
+      // that means MatchType.Basename will always be in the basename, while
+      // MatchType.ParentPath can span both filename and basename
+      search([MatchType.Basename, MatchType.Path], basename, path);
     }
 
     return { matchType, matchText, match };
   }
 
   /**
-   * Display the provided information a suggestion with the content and path information on separate lines
+   * Separate match into two groups, one that only matches the path segment of file, and
+   * a second that only matches the filename segment
+   * @param  {TFile} file
+   * @param  {SearchResult} match
+   * @returns {SearchResult; SearchResult}
+   */
+  splitSearchMatchesAtBasename(
+    file: TFile,
+    match: SearchResult,
+  ): { pathMatch: SearchResult; basenameMatch: SearchResult } {
+    let basenameMatch: SearchResult = null;
+    let pathMatch: SearchResult = null;
+
+    // function to re-anchor offsets by a certain amount
+    const decrementOffsets = (offsets: SearchMatches, amount: number) => {
+      offsets.forEach((offset) => {
+        offset[0] -= amount;
+        offset[1] -= amount;
+      });
+    };
+
+    if (file && match?.matches) {
+      const { name, path } = file;
+      const nameIndex = path.lastIndexOf(name);
+
+      if (nameIndex >= 0) {
+        const { matches, score } = match;
+        const matchStartIndex = matches[0][0];
+        const matchEndIndex = matches[matches.length - 1][1];
+
+        if (matchStartIndex >= nameIndex) {
+          // the entire match offset is in the basename segment, so match can be used
+          // for basename
+          basenameMatch = match;
+          decrementOffsets(basenameMatch.matches, nameIndex);
+        } else if (matchEndIndex <= nameIndex) {
+          // the entire match offset is in the path segment
+          pathMatch = match;
+        } else {
+          // the match offset spans both path and basename, so they will have to
+          // to be split up. Note that the entire SearchResult can span both, and
+          // a single SearchMatchPart inside the SearchResult can also span both
+          let i = matches.length;
+          while (i--) {
+            const matchPartStartIndex = matches[i][0];
+            const matchPartEndIndex = matches[i][1];
+            const nextMatchPartIndex = i + 1;
+
+            if (matchPartEndIndex <= nameIndex) {
+              // the last path segment MatchPart ends cleanly in the path segment
+              pathMatch = { score, matches: matches.slice(0, nextMatchPartIndex) };
+
+              basenameMatch = { score, matches: matches.slice(nextMatchPartIndex) };
+              decrementOffsets(basenameMatch.matches, nameIndex);
+              break;
+            } else if (matchPartStartIndex < nameIndex) {
+              // the last MatchPart starts in path segment and ends in basename segment
+              // adjust the end of the path segment MatchPart to finish at the end
+              // of the path segment
+              let offsets = matches.slice(0, nextMatchPartIndex);
+              offsets[offsets.length - 1] = [matchPartStartIndex, nameIndex];
+              pathMatch = { score, matches: offsets };
+
+              // adjust the beginning of the first basename segment MatchPart to start
+              // at the beginning of the basename segment
+              offsets = matches.slice(i);
+              decrementOffsets(offsets, nameIndex);
+              offsets[0][0] = 0;
+              basenameMatch = { score, matches: offsets };
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    return { pathMatch, basenameMatch };
+  }
+
+  /**
+   * Display the provided information as a suggestion with the content and path information on separate lines
    * @param  {HTMLElement} parentEl
    * @param  {string[]} parentElStyles
-   * @param  {string} content
+   * @param  {string} primaryString
    * @param  {TFile} file
    * @param  {MatchType} matchType
    * @param  {SearchResult} match
+   * @param  {} excludeOptionalFilename=true
    * @returns void
    */
   renderAsFileInfoPanel(
     parentEl: HTMLElement,
     parentElStyles: string[],
-    content: string,
+    primaryString: string,
     file: TFile,
     matchType: MatchType,
     match: SearchResult,
     excludeOptionalFilename = true,
   ): void {
-    let contentMatch: SearchResult = match;
+    let primaryMatch: SearchResult = null;
     let pathMatch: SearchResult = null;
 
-    if (matchType === MatchType.ParentPath) {
-      contentMatch = null;
-      pathMatch = match;
+    if (primaryString?.length && matchType === MatchType.Primary) {
+      primaryMatch = match;
+    } else if (file) {
+      primaryString = file.basename;
+
+      if (matchType === MatchType.Basename) {
+        primaryMatch = match;
+      } else if (matchType === MatchType.Path) {
+        // MatchType.ParentPath can span both filename and basename
+        // (partial match in each) so try to split the match offsets
+        ({ pathMatch, basenameMatch: primaryMatch } = this.splitSearchMatchesAtBasename(
+          file,
+          match,
+        ));
+      }
     }
 
     this.addClassesToSuggestionContainer(parentEl, parentElStyles);
 
-    const contentEl = this.renderContent(parentEl, content, contentMatch);
+    const contentEl = this.renderContent(parentEl, primaryString, primaryMatch);
     this.renderPath(contentEl, file, excludeOptionalFilename, pathMatch, !!pathMatch);
   }
 
@@ -869,10 +965,10 @@ export abstract class Handler<T> {
    * @param  {V} sugg
    * @returns V
    */
-  static updateWorkspaceEnvListStatus<
-    U,
-    V extends Suggestion<U> | Omit<Suggestion<U>, 'item'>,
-  >(currentWorkspaceEnvList: WorkspaceEnvList, sugg: V): V {
+  static updateWorkspaceEnvListStatus<U, V extends Omit<Suggestion<U>, 'item'>>(
+    currentWorkspaceEnvList: WorkspaceEnvList,
+    sugg: V,
+  ): V {
     if (currentWorkspaceEnvList && sugg?.file) {
       const { file } = sugg;
 

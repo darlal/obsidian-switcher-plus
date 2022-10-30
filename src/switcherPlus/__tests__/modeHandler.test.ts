@@ -160,6 +160,7 @@ describe('modeHandler', () => {
       relatedItemsListCommand: relatedItemsTrigger,
       excludeViewTypes: [excludedViewType],
       referenceViews: [],
+      overrideStandardModeBehaviors: false,
     });
   });
 
@@ -659,6 +660,33 @@ describe('modeHandler', () => {
       createNoteSpy.mockRestore();
     });
 
+    test('with overrideStandardModeBehaviors enabled, renderSuggestion should use the StandardExHandler', () => {
+      mockSettings.overrideStandardModeBehaviors = true;
+      const sugg = makeFileSuggestion();
+      const mockParentEl = mock<HTMLElement>();
+
+      const addPropsSpy = jest
+        .spyOn(StandardExHandler.prototype, 'addPropertiesToStandardSuggestions')
+        .mockImplementation();
+
+      const renderSuggestionSpy = jest
+        .spyOn(StandardExHandler.prototype, 'renderSuggestion')
+        .mockImplementation();
+
+      sut.updateSuggestions(chance.word(), mockChooser, null);
+
+      const handled = sut.renderSuggestion(sugg, mockParentEl);
+
+      expect(renderSuggestionSpy).toHaveBeenCalledWith(sugg, mockParentEl);
+      expect(addPropsSpy).toHaveBeenCalled();
+      expect(handled).toBe(true);
+
+      renderSuggestionSpy.mockRestore();
+      addPropsSpy.mockRestore();
+      mockClear(mockChooser);
+      mockSettings.overrideStandardModeBehaviors = false;
+    });
+
     test.each([makeFileSuggestion()])(
       'renderSuggestion should use the StandardExHandler when in Headings mode for File Suggestions',
       (sugg) => {
@@ -683,6 +711,25 @@ describe('modeHandler', () => {
         mockClear(mockChooser);
       },
     );
+
+    test('with overrideStandardModeBehaviors enabled, onChooseSuggestion should use the StandardExHandler', () => {
+      mockSettings.overrideStandardModeBehaviors = true;
+      const sugg = makeFileSuggestion();
+
+      const onChooseSuggestionSpy = jest
+        .spyOn(StandardExHandler.prototype, 'onChooseSuggestion')
+        .mockImplementation();
+
+      sut.updateSuggestions(chance.word(), mockChooser, null);
+
+      sut.onChooseSuggestion(sugg, mockEvt);
+
+      expect(onChooseSuggestionSpy).toHaveBeenCalledWith(sugg, mockEvt);
+
+      onChooseSuggestionSpy.mockRestore();
+
+      mockSettings.overrideStandardModeBehaviors = false;
+    });
 
     test.each([makeFileSuggestion(), makeAliasSuggestion()])(
       'onChooseSuggestion should use the StandardExHandler when in Headings mode for File & Alias Suggestions',

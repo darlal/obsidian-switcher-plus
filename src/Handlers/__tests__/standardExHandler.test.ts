@@ -1,8 +1,13 @@
+import { MatchType } from 'src/types';
+import { InputInfo } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings';
 import { Handler, StandardExHandler } from 'src/Handlers';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { App, TFile } from 'obsidian';
-import { makeFileSuggestion } from '@fixtures';
+import { makeAliasSuggestion, makeFileSuggestion } from '@fixtures';
+import { Chance } from 'chance';
+
+const chance = new Chance();
 
 describe('standardExHandler', () => {
   let settings: SwitcherPlusSettings;
@@ -43,10 +48,37 @@ describe('standardExHandler', () => {
       expect(renderAsFileInfoPanelSpy).toHaveBeenCalledWith(
         mockParentEl,
         ['qsp-suggestion-file'],
-        mockFile.basename,
+        null,
         sugg.file,
         sugg.matchType,
         sugg.match,
+      );
+
+      renderAsFileInfoPanelSpy.mockRestore();
+    });
+
+    it('should add a class for downranked suggestions', () => {
+      const mockFile = new TFile();
+      const alias = chance.word();
+      const sugg = makeAliasSuggestion(mockFile, alias);
+      sugg.downranked = true;
+
+      const mockParentEl = mock<HTMLElement>();
+      const renderAsFileInfoPanelSpy = jest
+        .spyOn(Handler.prototype, 'renderAsFileInfoPanel')
+        .mockReturnValueOnce(null);
+
+      sut.renderSuggestion(sugg, mockParentEl);
+
+      expect(mockParentEl.addClass).toHaveBeenCalledWith('mod-downranked');
+      expect(renderAsFileInfoPanelSpy).toHaveBeenCalledWith(
+        mockParentEl,
+        ['qsp-suggestion-alias'],
+        alias,
+        sugg.file,
+        sugg.matchType,
+        sugg.match,
+        false,
       );
 
       renderAsFileInfoPanelSpy.mockRestore();
@@ -75,6 +107,44 @@ describe('standardExHandler', () => {
       );
 
       navigateToLeafOrOpenFileSpy.mockRestore();
+    });
+  });
+
+  describe('addPropertiesToStandardSuggestions', () => {
+    const mockFile = new TFile();
+    const inputInfo = new InputInfo();
+    inputInfo.currentWorkspaceEnvList.openWorkspaceFiles = new Set([mockFile]);
+    inputInfo.currentWorkspaceEnvList.starredFiles = new Set([mockFile]);
+    inputInfo.currentWorkspaceEnvList.mostRecentFiles = new Set([mockFile]);
+
+    it('should set extra properties on alias suggestions', () => {
+      const sugg = makeAliasSuggestion(mockFile);
+
+      sut.addPropertiesToStandardSuggestions(inputInfo, sugg);
+
+      expect(sugg).toMatchObject({
+        ...sugg,
+        matchType: MatchType.Primary,
+        matchText: sugg.alias,
+        isOpenInEditor: true,
+        isRecentOpen: true,
+        isStarred: true,
+      });
+    });
+
+    it('should set extra properties on file suggestions', () => {
+      const sugg = makeFileSuggestion(mockFile);
+
+      sut.addPropertiesToStandardSuggestions(inputInfo, sugg);
+
+      expect(sugg).toMatchObject({
+        ...sugg,
+        matchType: MatchType.Path,
+        matchText: mockFile.path,
+        isOpenInEditor: true,
+        isRecentOpen: true,
+        isStarred: true,
+      });
     });
   });
 });

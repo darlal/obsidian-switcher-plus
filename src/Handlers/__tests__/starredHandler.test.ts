@@ -254,7 +254,7 @@ describe('starredHandler', () => {
       expect(renderAsFileInfoPanelSpy).toHaveBeenCalledWith(
         mockParentEl,
         ['qsp-suggestion-starred'],
-        item.title,
+        null,
         sugg.file,
         sugg.matchType,
         sugg.match,

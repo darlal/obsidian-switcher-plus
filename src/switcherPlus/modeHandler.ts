@@ -8,6 +8,7 @@ import {
   StarredHandler,
   CommandHandler,
   StandardExHandler,
+  SupportedSystemSuggestions,
 } from 'src/Handlers';
 import {
   isSymbolSuggestion,
@@ -15,7 +16,6 @@ import {
   isExSuggestion,
   isOfType,
   isUnresolvedSuggestion,
-  isFileSuggestion,
   isFileStarredItem,
   isTFile,
 } from 'src/utils';
@@ -140,61 +140,73 @@ export class ModeHandler {
   }
 
   renderSuggestion(sugg: AnySuggestion, parentEl: HTMLElement): boolean {
-    const { inputInfo } = this;
+    const {
+      inputInfo,
+      settings: { overrideStandardModeBehaviors },
+    } = this;
     const { mode } = inputInfo;
+    const isHeadingMode = mode === Mode.HeadingsList;
     let handled = false;
-    let handler: Handler<AnySuggestion> = null;
 
-    if (isExSuggestion(sugg)) {
-      handler = this.getHandler(sugg);
-    } else if (mode === Mode.HeadingsList) {
-      if (!sugg) {
+    if (sugg === null) {
+      if (isHeadingMode) {
         // in Headings mode, a null suggestion should be rendered to allow for note creation
         const headingHandler = this.getHandler(mode);
         const searchText = inputInfo.parsedCommand(mode)?.parsedInput;
 
         headingHandler.renderFileCreationSuggestion(parentEl, searchText);
         handled = true;
-      } else if (isFileSuggestion(sugg)) {
-        // in Headings mode, StandardExHandler should handle rendering for FileSuggestion
-        handler = this.getHandler(sugg);
       }
-    }
+    } else if (!isUnresolvedSuggestion(sugg)) {
+      if (overrideStandardModeBehaviors || isHeadingMode || isExSuggestion(sugg)) {
+        // when overriding standard mode, or, in Headings mode, StandardExHandler should
+        // handle rendering for FileSuggestion and Alias suggestion
+        const handler = this.getHandler(sugg);
 
-    if (handler) {
-      handler.renderSuggestion(sugg, parentEl);
-      handled = true;
+        if (mode === Mode.Standard) {
+          // suggestions in standard mode are created by core Obsidian and are
+          // missing some properties, try to add them
+          (handler as StandardExHandler)?.addPropertiesToStandardSuggestions(
+            inputInfo,
+            sugg as SupportedSystemSuggestions,
+          );
+        }
+
+        handler.renderSuggestion(sugg, parentEl);
+        handled = true;
+      }
     }
 
     return handled;
   }
 
   onChooseSuggestion(sugg: AnySuggestion, evt: MouseEvent | KeyboardEvent): boolean {
-    const { inputInfo } = this;
+    const {
+      inputInfo,
+      settings: { overrideStandardModeBehaviors },
+    } = this;
     const { mode } = inputInfo;
+    const isHeadingMode = mode === Mode.HeadingsList;
     let handled = false;
-    let handler: Handler<AnySuggestion> = null;
 
-    if (isExSuggestion(sugg)) {
-      handler = this.getHandler(sugg);
-    } else if (mode === Mode.HeadingsList) {
-      if (!sugg) {
+    if (sugg === null) {
+      if (isHeadingMode) {
         // in Headings mode, a null suggestion should create a new note
         const headingHandler = this.getHandler(mode);
         const filename = inputInfo.parsedCommand(mode)?.parsedInput;
 
         headingHandler.createFile(filename, evt);
         handled = true;
-      } else if (!isUnresolvedSuggestion(sugg)) {
-        // in Headings mode, StandardExHandler should handle the onChoose action for File
-        // and Alias suggestion so that the preferOpenInNewPane setting can be handled properly
-        handler = this.getHandler(sugg);
       }
-    }
-
-    if (handler) {
-      handler.onChooseSuggestion(sugg, evt);
-      handled = true;
+    } else if (!isUnresolvedSuggestion(sugg)) {
+      if (overrideStandardModeBehaviors || isHeadingMode || isExSuggestion(sugg)) {
+        // when overriding standard mode, or, in Headings mode, StandardExHandler should
+        // handle the onChoose action for File and Alias suggestion so that
+        // the preferOpenInNewPane setting can be handled properly
+        const handler = this.getHandler(sugg);
+        handler.onChooseSuggestion(sugg, evt);
+        handled = true;
+      }
     }
 
     return handled;

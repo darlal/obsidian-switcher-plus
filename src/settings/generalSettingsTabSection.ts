@@ -15,6 +15,14 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     );
 
     this.setPathDisplayFormat(containerEl, this.config);
+
+    this.addToggleSetting(
+      containerEl,
+      'Override Standard mode behavior',
+      'When enabled, Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to inject custom behavior.',
+      this.config.overrideStandardModeBehaviors,
+      'overrideStandardModeBehaviors',
+    );
   }
 
   setPathDisplayFormat(containerEl: HTMLElement, config: SwitcherPlusSettings): void {

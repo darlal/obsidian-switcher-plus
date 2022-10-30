@@ -134,7 +134,7 @@ export enum MatchType {
   None = 0,
   Primary,
   Basename,
-  ParentPath,
+  Path,
 }
 
 export interface Suggestion<T> extends FuzzyMatch<T> {
@@ -257,6 +257,7 @@ export interface SettingsData {
   pathDisplayFormat: PathDisplayFormat;
   hidePathIfRoot: boolean;
   enabledRelatedItems: RelationType[];
+  overrideStandardModeBehaviors: boolean;
 }
 
 export interface SearchQuery {

@@ -547,14 +547,14 @@ describe('headingsHandler', () => {
       shouldSearchFilenameSpy.mockRestore();
     });
 
-    test('with filter search term, it should fallback match against file path when there is no H1 match and no match against the filename (leaf segment)', () => {
+    test('with filter search term, it should fallback match against file path when there is no H1 match and no match against the basename', () => {
       const filterText = 'foo';
       const path = `path/${filterText}/bar`; // only path matters for this test
       const results: Array<FileSuggestion> = [];
       const expectedMatch = makeFuzzyMatch();
 
       const expectedFile = new TFile();
-      expectedFile.parent = mock<TFolder>({ path });
+      expectedFile.path = path;
 
       mockMetadataCache.getFileCache.calledWith(expectedFile).mockReturnValue({
         headings: [makeHeading("words that don't match", 1)],

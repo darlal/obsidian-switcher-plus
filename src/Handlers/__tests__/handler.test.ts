@@ -22,6 +22,7 @@ import {
   fuzzySearch,
   TAbstractFile,
   FileView,
+  SearchMatchPart,
 } from 'obsidian';
 import {
   defaultOpenViewState,
@@ -1297,6 +1298,108 @@ describe('Handler', () => {
     });
   });
 
+  describe('splitSearchMatchesAtBasename', () => {
+    const filename = 'Pane layout II.md'.toLowerCase();
+    const filepath = 'Obsidian Help/Panes/Pane layout II.md'.toLowerCase();
+    const file = new TFile();
+    file.name = filename;
+    file.path = filepath;
+
+    const matchPart: (query: string, offset?: number) => SearchMatchPart = (
+      query,
+      offset = 0,
+    ) => {
+      const start = filepath.indexOf(query, offset);
+      const end = start + query.length;
+      return [start, end];
+    };
+
+    it('should return matches for the path segment', () => {
+      const query = 'help/pane';
+      const matches = [matchPart(query)];
+
+      const {
+        pathMatch: { matches: pathMatches },
+        basenameMatch,
+      } = sut.splitSearchMatchesAtBasename(file, { matches, score: 0 });
+
+      expect(basenameMatch).toBeNull();
+      expect(pathMatches).toHaveLength(1);
+      expect(filepath.slice(pathMatches[0][0], pathMatches[0][1])).toBe(query);
+    });
+
+    it('should return matches for the filename segment', () => {
+      const query = 'layout';
+      const matches = [matchPart(query)];
+
+      const {
+        pathMatch,
+        basenameMatch: { matches: nameMatches },
+      } = sut.splitSearchMatchesAtBasename(file, { matches, score: 0 });
+
+      expect(pathMatch).toBeNull();
+      expect(nameMatches).toHaveLength(1);
+      expect(filename.slice(nameMatches[0][0], nameMatches[0][1])).toBe(query);
+    });
+
+    it('should return matches for both path and filename segments', () => {
+      const matches = [matchPart('obsidian'), matchPart('layout')];
+
+      const {
+        pathMatch: { matches: pathMatches },
+        basenameMatch: { matches: nameMatches },
+      } = sut.splitSearchMatchesAtBasename(file, { matches, score: 0 });
+
+      expect(pathMatches).toHaveLength(1);
+      expect(filepath.slice(pathMatches[0][0], pathMatches[0][1])).toBe('obsidian');
+
+      expect(nameMatches).toHaveLength(1);
+      expect(filename.slice(nameMatches[0][0], nameMatches[0][1])).toBe('layout');
+    });
+
+    it('should return matches for both path and filename segments when a single match spans both segments', () => {
+      const matches = [matchPart('panes/pane')];
+
+      const {
+        pathMatch: { matches: pathMatches },
+        basenameMatch: { matches: nameMatches },
+      } = sut.splitSearchMatchesAtBasename(file, { matches, score: 0 });
+
+      expect(pathMatches).toHaveLength(1);
+      expect(filepath.slice(pathMatches[0][0], pathMatches[0][1])).toBe('panes/');
+
+      expect(nameMatches).toHaveLength(1);
+      expect(filename.slice(nameMatches[0][0], nameMatches[0][1])).toBe('pane');
+    });
+
+    it('should return matches for both path and filename segments when there are multiple matches in each segment', () => {
+      const matches = [
+        matchPart('n hel'),
+        matchPart('/', 8),
+        matchPart('anes/p', 8),
+        matchPart('n', 20),
+        matchPart(' ', 20),
+        matchPart('ayout', 20),
+      ];
+
+      const {
+        pathMatch: { matches: pathMatches },
+        basenameMatch: { matches: nameMatches },
+      } = sut.splitSearchMatchesAtBasename(file, { matches, score: 0 });
+
+      expect(pathMatches).toHaveLength(3);
+      expect(filepath.slice(pathMatches[0][0], pathMatches[0][1])).toBe('n hel');
+      expect(filepath.slice(pathMatches[1][0], pathMatches[1][1])).toBe('/');
+      expect(filepath.slice(pathMatches[2][0], pathMatches[2][1])).toBe('anes/');
+
+      expect(nameMatches).toHaveLength(4);
+      expect(filename.slice(nameMatches[0][0], nameMatches[0][1])).toBe('p');
+      expect(filename.slice(nameMatches[1][0], nameMatches[1][1])).toBe('n');
+      expect(filename.slice(nameMatches[2][0], nameMatches[2][1])).toBe(' ');
+      expect(filename.slice(nameMatches[3][0], nameMatches[3][1])).toBe('ayout');
+    });
+  });
+
   describe('fuzzySearchStrings', () => {
     it('should return result for primary string', () => {
       const filterText = 'primary';
@@ -1338,7 +1441,8 @@ describe('Handler', () => {
   });
 
   describe('fuzzySearchWithFallback', () => {
-    const filterText = 'foo';
+    const filterText = chance.word();
+    const filepath = `path/to/${filterText}/${filterText} name.md`;
     const mockPrepQuery = makePreparedQuery(filterText);
     const match = makeFuzzyMatch();
     let mockFuzzySearch: jest.MockedFn<typeof fuzzySearch>;
@@ -1347,7 +1451,7 @@ describe('Handler', () => {
       mockFuzzySearch = jest
         .mocked<typeof fuzzySearch>(fuzzySearch)
         .mockImplementation((_q, text: string) => {
-          return text === filterText ? match : null;
+          return text === filterText || text === filepath ? match : null;
         });
     });
 
@@ -1384,14 +1488,29 @@ describe('Handler', () => {
 
     it('should match file path', () => {
       const mockFile = new TFile();
-      mockFile.parent = mock<TFolder>({ path: filterText });
+      mockFile.path = filterText;
 
       const result = sut.fuzzySearchWithFallback(mockPrepQuery, null, mockFile);
 
       expect(result).toEqual(
         expect.objectContaining({
-          matchType: MatchType.ParentPath,
-          matchText: filterText,
+          matchType: MatchType.Path,
+          matchText: mockFile.path,
+          match,
+        }),
+      );
+    });
+
+    it("should partially match filepath and basename segments when there isn't a full basename match", () => {
+      const mockFile = new TFile();
+      mockFile.path = filepath;
+
+      const result = sut.fuzzySearchWithFallback(mockPrepQuery, null, mockFile);
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          matchType: MatchType.Path,
+          matchText: mockFile.path,
           match,
         }),
       );
@@ -1401,7 +1520,6 @@ describe('Handler', () => {
   describe('renderAsFileInfoPanel', () => {
     const mockFile = new TFile();
     const parentElStyles = [chance.word()];
-    const content = chance.sentence();
     const match = makeFuzzyMatch();
     const mockContentEl = mock<HTMLDivElement>();
     const mockParentEl = mock<HTMLElement>();
@@ -1423,8 +1541,9 @@ describe('Handler', () => {
       renderPathSpy.mockReset();
     });
 
-    it('should render a suggestion with match offsets', () => {
-      const matchType = MatchType.Basename;
+    it('should render a suggestion with primaryString match offsets', () => {
+      const matchType = MatchType.Primary;
+      const content = chance.sentence();
 
       renderContentSpy.mockReturnValueOnce(mockContentEl);
       renderPathSpy.mockReturnValueOnce(null);
@@ -1439,9 +1558,45 @@ describe('Handler', () => {
       );
 
       expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, content, match);
+
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining(['mod-complex', ...parentElStyles]),
       );
+
+      expect(renderPathSpy).toHaveBeenCalledWith(
+        mockContentEl,
+        mockFile,
+        true,
+        null,
+        false,
+      );
+    });
+
+    it('should render a suggestion with basename match offsets', () => {
+      const matchType = MatchType.Basename;
+
+      renderContentSpy.mockReturnValueOnce(mockContentEl);
+      renderPathSpy.mockReturnValueOnce(null);
+
+      sut.renderAsFileInfoPanel(
+        mockParentEl,
+        parentElStyles,
+        null,
+        mockFile,
+        matchType,
+        match,
+      );
+
+      expect(renderContentSpy).toHaveBeenCalledWith(
+        mockParentEl,
+        mockFile.basename,
+        match,
+      );
+
+      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
+        expect.arrayContaining(['mod-complex', ...parentElStyles]),
+      );
+
       expect(renderPathSpy).toHaveBeenCalledWith(
         mockContentEl,
         mockFile,
@@ -1452,7 +1607,7 @@ describe('Handler', () => {
     });
 
     it('should render a suggestion with parent path match', () => {
-      const matchType = MatchType.ParentPath;
+      const matchType = MatchType.Path;
 
       renderContentSpy.mockReturnValueOnce(mockContentEl);
       renderPathSpy.mockReturnValueOnce(null);
@@ -1460,16 +1615,22 @@ describe('Handler', () => {
       sut.renderAsFileInfoPanel(
         mockParentEl,
         parentElStyles,
-        content,
+        null,
         mockFile,
         matchType,
         match,
       );
 
-      expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, content, null);
+      expect(renderContentSpy).toHaveBeenCalledWith(
+        mockParentEl,
+        mockFile.basename,
+        null,
+      );
+
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining(['mod-complex', ...parentElStyles]),
       );
+
       expect(renderPathSpy).toHaveBeenCalledWith(
         mockContentEl,
         mockFile,

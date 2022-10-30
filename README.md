@@ -180,6 +180,7 @@ Related Items can be viewed by opening Quick Switcher++, typing some characters 
 |---------------------------------|-------------|---------|
 | Default to open in new pane | **Enabled**: navigating to un-opened files will open a new editor pane whenever possible (as if cmd/ctrl were held). When the file is already open, the existing pane will be activated. This overrides all other pane settings. | enabled |
 | Preferred file path display format | The preferred way to display file paths in suggestions. Note: by default, path information will not be displayed for files at the root of the vault. | `Parent folder & filename` |
+| Override Standard mode behavior | **Enabled**: Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to inject custom behavior. Custom behavior includes features like enhance rendering of suggestion items to display additional information, special path display handling, and tab navigation features. **Disabled**: No changes are made to the default Obsidian builtin functionality (Standard Mode). | enabled |
 
 ## Global Commands for Hotkeys
 

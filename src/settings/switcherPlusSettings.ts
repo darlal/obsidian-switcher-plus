@@ -43,6 +43,7 @@ export class SwitcherPlusSettings {
       pathDisplayFormat: PathDisplayFormat.FolderWithFilename,
       hidePathIfRoot: true,
       enabledRelatedItems: Object.values(RelationType),
+      overrideStandardModeBehaviors: true,
     };
   }
 
@@ -310,6 +311,14 @@ export class SwitcherPlusSettings {
 
   set enabledRelatedItems(value: RelationType[]) {
     this.data.enabledRelatedItems = value;
+  }
+
+  get overrideStandardModeBehaviors(): boolean {
+    return this.data.overrideStandardModeBehaviors;
+  }
+
+  set overrideStandardModeBehaviors(value: boolean) {
+    this.data.overrideStandardModeBehaviors = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

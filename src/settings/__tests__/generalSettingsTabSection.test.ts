@@ -55,6 +55,25 @@ describe('generalSettingsTabSection', () => {
     addToggleSettingSpy.mockRestore();
   });
 
+  it('should show the overrideStandardModeBehaviors setting', () => {
+    const addToggleSettingSpy = jest.spyOn(
+      SettingsTabSection.prototype,
+      'addToggleSetting',
+    );
+
+    sut.display(mockContainerEl);
+
+    expect(addToggleSettingSpy).toBeCalledWith(
+      mockContainerEl,
+      'Override Standard mode behavior',
+      expect.any(String),
+      config.overrideStandardModeBehaviors,
+      'overrideStandardModeBehaviors',
+    );
+
+    addToggleSettingSpy.mockRestore();
+  });
+
   describe('setPathDisplayFormat', () => {
     it('should show the pathDisplayFormat setting', () => {
       const addDropdownSettingSpy = jest.spyOn(

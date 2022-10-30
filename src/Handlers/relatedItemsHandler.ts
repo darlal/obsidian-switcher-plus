@@ -100,7 +100,7 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
       this.renderAsFileInfoPanel(
         parentEl,
         ['qsp-suggestion-related'],
-        this.getTitleText(file),
+        null,
         file,
         matchType,
         match,
@@ -136,10 +136,6 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
         `Unable to open related file ${file.path}`,
       );
     }
-  }
-
-  override getTitleText(sourceFile: TFile): string {
-    return sourceFile?.basename;
   }
 
   getItems(sourceInfo: SourceInfo): RelatedItemsInfo[] {
