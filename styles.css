@@ -5,7 +5,8 @@
 
 /* suggestion file path icon */
 .qsp-path-indicator {
-  margin-right:4px;
+  margin-right: 4px;
+  vertical-align: middle;
 }
 
 /* symbol suggestion, symbol type icon */
