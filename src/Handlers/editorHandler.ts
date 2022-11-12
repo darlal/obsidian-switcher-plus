@@ -76,6 +76,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
   renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): void {
     if (sugg) {
       const { file, matchType, match, item } = sugg;
+      const hideBasename = [MatchType.None, MatchType.Primary].includes(matchType);
 
       this.renderAsFileInfoPanel(
         parentEl,
@@ -84,6 +85,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
         file,
         matchType,
         match,
+        hideBasename,
       );
 
       this.renderOptionalIndicators(parentEl, sugg);

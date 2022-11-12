@@ -1543,7 +1543,7 @@ describe('Handler', () => {
 
     it('should render a suggestion with primaryString match offsets', () => {
       const matchType = MatchType.Primary;
-      const content = chance.sentence();
+      const primaryString = chance.sentence();
 
       renderContentSpy.mockReturnValueOnce(mockContentEl);
       renderPathSpy.mockReturnValueOnce(null);
@@ -1551,13 +1551,13 @@ describe('Handler', () => {
       sut.renderAsFileInfoPanel(
         mockParentEl,
         parentElStyles,
-        content,
+        primaryString,
         mockFile,
         matchType,
         match,
       );
 
-      expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, content, match);
+      expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, primaryString, match);
 
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining(['mod-complex', ...parentElStyles]),
@@ -1569,6 +1569,68 @@ describe('Handler', () => {
         true,
         null,
         false,
+      );
+    });
+
+    it('should render a suggestion with primaryString and no matches for primaryString', () => {
+      const matchType = MatchType.None;
+      const primaryString = chance.sentence();
+
+      renderContentSpy.mockReturnValueOnce(mockContentEl);
+      renderPathSpy.mockReturnValueOnce(null);
+
+      sut.renderAsFileInfoPanel(
+        mockParentEl,
+        parentElStyles,
+        primaryString,
+        mockFile,
+        matchType,
+        match,
+      );
+
+      expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, primaryString, null);
+
+      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
+        expect.arrayContaining(['mod-complex', ...parentElStyles]),
+      );
+
+      expect(renderPathSpy).toHaveBeenCalledWith(
+        mockContentEl,
+        mockFile,
+        true,
+        null,
+        false,
+      );
+    });
+
+    it('should render a suggestion with primaryString and match offsets for path', () => {
+      const matchType = MatchType.Path;
+      const primaryString = chance.sentence();
+
+      renderContentSpy.mockReturnValueOnce(mockContentEl);
+      renderPathSpy.mockReturnValueOnce(null);
+
+      sut.renderAsFileInfoPanel(
+        mockParentEl,
+        parentElStyles,
+        primaryString,
+        mockFile,
+        matchType,
+        match,
+      );
+
+      expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, primaryString, null);
+
+      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
+        expect.arrayContaining(['mod-complex', ...parentElStyles]),
+      );
+
+      expect(renderPathSpy).toHaveBeenCalledWith(
+        mockContentEl,
+        mockFile,
+        true,
+        match,
+        true,
       );
     });
 
@@ -1606,7 +1668,7 @@ describe('Handler', () => {
       );
     });
 
-    it('should render a suggestion with parent path match', () => {
+    it('should render a suggestion with parent path match offsets', () => {
       const matchType = MatchType.Path;
 
       renderContentSpy.mockReturnValueOnce(mockContentEl);

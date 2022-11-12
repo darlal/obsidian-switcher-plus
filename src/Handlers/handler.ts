@@ -814,8 +814,12 @@ export abstract class Handler<T> {
     let primaryMatch: SearchResult = null;
     let pathMatch: SearchResult = null;
 
-    if (primaryString?.length && matchType === MatchType.Primary) {
-      primaryMatch = match;
+    if (primaryString?.length) {
+      if (matchType === MatchType.Primary) {
+        primaryMatch = match;
+      } else if (matchType === MatchType.Path) {
+        pathMatch = match;
+      }
     } else if (file) {
       primaryString = file.basename;
 

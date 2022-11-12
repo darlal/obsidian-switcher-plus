@@ -274,6 +274,7 @@ describe('editorHandler', () => {
         sugg.file,
         sugg.matchType,
         sugg.match,
+        true,
       );
 
       renderAsFileInfoPanelSpy.mockRestore();
