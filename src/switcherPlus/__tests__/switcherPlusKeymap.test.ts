@@ -5,6 +5,7 @@ import {
   KeymapEventHandler,
   KeymapEventListener,
   Modifier,
+  Platform,
   Scope,
 } from 'obsidian';
 import { SwitcherPlusKeymap } from 'src/switcherPlus';
@@ -133,6 +134,31 @@ describe('SwitcherPlusKeymap', () => {
         expect(mockChooser.setSelectedItem).not.toHaveBeenCalled();
       },
     );
+  });
+
+  describe('registerTabBindings', () => {
+    beforeEach(() => {
+      mockReset(mockScope);
+    });
+
+    it('should register Tab creation keys', () => {
+      const modKey: Modifier = Platform.isMacOS ? 'Meta' : 'Ctrl';
+      const keys: [Modifier[], string][] = [
+        [[modKey], '\\'],
+        [[modKey, 'Shift'], '\\'],
+        [[modKey], 'o'],
+      ];
+
+      new SwitcherPlusKeymap(mockScope, mockChooser, mockModal);
+
+      // convert to [][] so each call can be checked separately
+      const expected = keys.map(([modifiers, key]) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return [modifiers, key, expect.any(Function)];
+      });
+
+      expect(mockScope.register.mock.calls).toEqual(expect.arrayContaining(expected));
+    });
   });
 
   describe('updateKeymapForMode', () => {

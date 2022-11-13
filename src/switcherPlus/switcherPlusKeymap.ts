@@ -21,6 +21,10 @@ export class SwitcherPlusKeymap {
   private standardInstructionsElSelector = '.prompt-instructions';
   private standardInstructionsElDataValue = 'standard';
 
+  modKey: Modifier = 'Ctrl';
+  modKeyText = 'ctrl';
+  shiftText = 'shift';
+
   get isOpen(): boolean {
     return this._isOpen;
   }
@@ -34,8 +38,15 @@ export class SwitcherPlusKeymap {
     private chooser: Chooser<AnySuggestion>,
     private modal: SwitcherPlus,
   ) {
+    if (Platform.isMacOS) {
+      this.modKey = 'Meta';
+      this.modKeyText = '⌘';
+      this.shiftText = '⇧';
+    }
+
     this.initKeysInfo();
     this.registerNavigationBindings(scope);
+    this.registerTabBindings(scope);
     this.addDataAttrToInstructionsEl(
       modal.containerEl,
       this.standardInstructionsElSelector,
@@ -52,16 +63,6 @@ export class SwitcherPlusKeymap {
       Mode.SymbolList,
     ];
 
-    let modKey = 'Ctrl';
-    let modKeyText = 'ctrl';
-    let shiftText = 'shift';
-
-    if (Platform.isMacOS) {
-      modKey = 'Meta';
-      modKeyText = '⌘';
-      shiftText = '⇧';
-    }
-
     // standard mode keys that are registered by default, and
     // should be unregistered in custom modes, then re-registered in standard mode
     // example: { modifiers: 'Shift', key: 'Enter' }
@@ -77,31 +78,34 @@ export class SwitcherPlusKeymap {
         modifiers: null,
         key: null,
         func: null,
-        command: `${modKeyText} ↵`,
+        command: `${this.modKeyText} ↵`,
         purpose: 'open in new tab',
       },
       {
+        isInstructionOnly: true,
         modes: customFileBasedModes,
-        modifiers: modKey,
+        modifiers: this.modKey,
         key: '\\',
-        func: this.useSelectedItem.bind(this),
-        command: `${modKeyText} \\`,
+        func: null,
+        command: `${this.modKeyText} \\`,
         purpose: 'open to the right',
       },
       {
+        isInstructionOnly: true,
         modes: customFileBasedModes,
-        modifiers: `${modKey},Shift`,
+        modifiers: `${this.modKey},Shift`,
         key: '\\',
-        func: this.useSelectedItem.bind(this),
-        command: `${modKeyText} ${shiftText} \\`,
+        func: null,
+        command: `${this.modKeyText} ${this.shiftText} \\`,
         purpose: 'open below',
       },
       {
+        isInstructionOnly: true,
         modes: customFileBasedModes,
-        modifiers: modKey,
+        modifiers: this.modKey,
         key: 'o',
-        func: this.useSelectedItem.bind(this),
-        command: `${modKeyText} o`,
+        func: null,
+        command: `${this.modKeyText} o`,
         purpose: 'open in new window',
       },
       {
@@ -138,6 +142,18 @@ export class SwitcherPlusKeymap {
 
     keys.forEach((v) => {
       scope.register(v[0], v[1], this.navigateItems.bind(this));
+    });
+  }
+
+  registerTabBindings(scope: Scope): void {
+    const keys: [Modifier[], string][] = [
+      [[this.modKey], '\\'],
+      [[this.modKey, 'Shift'], '\\'],
+      [[this.modKey], 'o'],
+    ];
+
+    keys.forEach((v) => {
+      scope.register(v[0], v[1], this.useSelectedItem.bind(this));
     });
   }
 
