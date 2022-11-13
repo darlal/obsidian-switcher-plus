@@ -12,7 +12,7 @@ export class RelatedItemsSettingsTabSection extends SettingsTabSection {
     this.addTextSetting(
       containerEl,
       'Related Items list mode trigger',
-      'Character that will trigger related items list mode in the switcher',
+      'Character that will trigger related items list mode in the switcher. This triggers a display of Related Items for the source file of the currently selected (highlighted) suggestion in the switcher',
       config.relatedItemsListCommand,
       'relatedItemsListCommand',
       config.relatedItemsListPlaceholderText,

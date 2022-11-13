@@ -65,15 +65,17 @@ Find the file you're looking for by searching through the headings contained in 
 
 ## Symbol Navigation (Headings, Hashtags, Links, Embeddings)
 
-View, filter, and navigate to any symbol (Headings, Hashtags, Links, Embedding) in a file directly from the Quick Switcher.
+View, filter, and navigate to any symbol (Headings, Hashtags, Links, Embedding, Callouts) in a file directly from the Quick Switcher, whether the file is currently open in an editor or not. This feature can be triggered in two ways a) for the active file in the currently active editor pane, b) for the currently selected (highlighted) suggestion in the switcher itself.
 
-### For the currently open and focused pane:
+### For active file in the active editor pane:
 
-Symbols can be viewed directly by using the `Quick Switcher++: Open in Symbol Mode` global hotkey (see below).
+The `Quick Switcher++: Open Symbols for the active editor` command will always trigger Symbol mode for the current **active file in the active editor pane** (the file actively being edited). Meaning, when this command is triggered (either via a hotkey or via the command palette), the list of symbol suggestions will always be symbols from **the active file in the active editor pane** when the command was triggered.
 
-### Embedded Symbol search (for any other file, open or not):
+### For any other file in the vault, open or not:
 
-Symbols can be viewed by opening Quick Switcher++, typing some characters to filter and/or using the arrow keys to select (highlight) the file of interest. Then, once the file of interest is selected/highlighted, type the `@` (default) character to view the symbols for the file of interest.
+The Symbol mode trigger character (default `@`) will always trigger Symbol mode for the currently **highlighted suggestion in the switcher**. Meaning, when you open up the switcher and it's displaying a list of your recent files (or a list of file search results), the source file for whichever suggestion is highlighted when you type `@` is the file whose symbols will be displayed. The resulting list of symbol suggestions will be from the file suggestion that was highlighted when the `@` was typed. You can use the navigation keys to select (highlight) which file will be used as the source file before typing `@`.
+
+For example: symbols can be viewed by opening Quick Switcher++, typing some characters to filter and/or using the arrow keys to select (highlight) the file of interest. Then, once the file of interest is selected/highlighted, type the trigger character (default `@`) to view the symbols for the file of interest.
 
 ![symbol outline preview](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/symbol-outline.png)
 
@@ -144,7 +146,17 @@ View, search, and run Obsidian commands quickly using the default `>` command.
 
 ## Related Items
 
-View, filter, and navigate to files that are "related" to the selected input file. Currently, there are two types of relations supported, Backlinks, and File system location.
+View, filter, and navigate to files that are "related" to the selected input file directly from the Quick Switcher, whether the file is currently open in an editor or not. Currently, there are two types of relations supported, Backlinks, and File system location. This feature can be triggered in two ways a) for the active file in the currently active editor pane, b) for the currently selected (highlighted) suggestion in the switcher itself.
+
+### For active file in the active editor pane:
+
+The `Quick Switcher++: Open Related Items for the active editor` command will always trigger Related Items mode for the current **active file in the active editor pane** (the file actively being edited). Meaning, when this command is triggered (either via a hotkey or via the command palette), the list of related item suggestions will always be related to **the active file in the active editor pane** when the command was triggered.
+
+### For any other file in the vault, open or not:
+
+The Related Items mode trigger character (default `~`) will always trigger Related Items mode for the currently **highlighted suggestion in the switcher**. Meaning, when you open up the switcher and it's displaying a list of your recent files (or a list of file search results), the source file for whichever suggestion is highlighted when you type `~` is the file whose relations will be displayed. The resulting list of related item suggestions will be for the file suggestion that was highlighted when the `~` was typed. You can use the navigation keys to select (highlight) which file will be used as the source file before typing `~`.
+
+For example: related items can be viewed by opening Quick Switcher++, typing some characters to filter and/or using the arrow keys to select (highlight) the file of interest. Then, once the file of interest is selected/highlighted, type the trigger character (default `~`) to view the related items for the file of interest.
 
 ### Backlinks relation (`backlink`)
 
@@ -188,12 +200,12 @@ The following Global Commands are registered by the plugin, which can be used fo
 
 * `Quick Switcher++: Open`
 * `Quick Switcher++: Open in Editor Mode`
-* `Quick Switcher++: Open in Symbol Mode`
+* `Quick Switcher++: Open Symbols for the active editor`
 * `Quick Switcher++: Open in Workspaces Mode`
 * `Quick Switcher++: Open in Headings Mode`
 * `Quick Switcher++: Open in Starred Mode`
 * `Quick Switcher++: Open in Commands Mode`
-* `Quick Switcher++: Open in Related Items Mode`
+* `Quick Switcher++: Open Related Items for the active editor`
 
 ## Installation
 

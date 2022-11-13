@@ -11,7 +11,7 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
     this.addTextSetting(
       containerEl,
       'Symbol list mode trigger',
-      'Character that will trigger symbol list mode in the switcher',
+      'Character that will trigger symbol list mode in the switcher. This triggers a display of Symbols for the source file of the currently selected (highlighted) suggestion in the switcher',
       config.symbolListCommand,
       'symbolListCommand',
       config.symbolListPlaceholderText,

@@ -22,7 +22,7 @@ export default class SwitcherPlusPlugin extends Plugin {
     );
     this.registerCommand(
       'switcher-plus:open-symbols',
-      'Open in Symbol Mode',
+      'Open Symbols for the active editor',
       Mode.SymbolList,
       'lucide-dollar-sign',
     );
@@ -52,7 +52,7 @@ export default class SwitcherPlusPlugin extends Plugin {
     );
     this.registerCommand(
       'switcher-plus:open-related-items',
-      'Open in Related Items Mode',
+      'Open Related Items for the active editor',
       Mode.RelatedItemsList,
       'lucide-file-plus-2',
     );
