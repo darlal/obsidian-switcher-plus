@@ -136,7 +136,7 @@ Note: the built-in system [Starred Notes](https://help.obsidian.md/Plugins/Starr
 
 ## Run Commands
 
-View, search, and run Obsidian commands quickly using the default `>` command.
+View, search, and run Obsidian commands quickly using the default `>` command. When there is no search text, the suggestion list will display the list of pinned commands, followed by a list of commands that were recently executed. When there are no pinned commands and no recently executed commands, then all commands are displayed initially. When there is search text, the suggestion list will only display commands that matched the search text.
 
 ### Command configuration
 

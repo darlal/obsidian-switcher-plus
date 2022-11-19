@@ -71,6 +71,10 @@ declare module 'obsidian' {
     commands: {
       listCommands(): Command[];
       executeCommandById(id: string): boolean;
+      findCommand(id: string): Command;
+    };
+    hotkeyManager: {
+      printHotkeyForCommand(id: string): string;
     };
   }
 

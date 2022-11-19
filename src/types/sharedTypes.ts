@@ -203,6 +203,7 @@ export interface UnresolvedSuggestion extends Omit<Suggestion<string>, 'item' | 
 
 export interface CommandSuggestion extends Omit<Suggestion<Command>, 'file'> {
   type: SuggestionType.CommandList;
+  isPinned?: boolean;
 }
 
 export type AnyExSuggestionPayload = WorkspaceLeaf | SymbolInfo | WorkspaceInfo;

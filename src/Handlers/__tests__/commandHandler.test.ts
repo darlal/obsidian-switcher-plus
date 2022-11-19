@@ -1,3 +1,4 @@
+import { Chance } from 'chance';
 import { Mode, CommandSuggestion, SuggestionType } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { CommandHandler, COMMAND_PALETTE_PLUGIN_ID, Handler } from 'src/Handlers';
@@ -18,8 +19,9 @@ import {
   makeCommandItem,
   makeCommandSuggestion,
 } from '@fixtures';
-import { mock, MockProxy } from 'jest-mock-extended';
+import { mock, mockFn, MockProxy } from 'jest-mock-extended';
 
+const chance = new Chance();
 const expectedCommandName = 'Command 1';
 
 function makeCommandPalettePluginInstall(): MockProxy<InstalledPlugin> {
@@ -57,6 +59,8 @@ describe('commandHandler', () => {
   let mockCommandPalettePluginInstance: MockProxy<CommandPalettePluginInstance>;
   let mockCommands: Command[];
   let sut: CommandHandler;
+  const mockFindCommand = mockFn();
+  const mockPrintHotkeyForCommand = mockFn();
 
   beforeAll(() => {
     const commandPalettePluginInstall = makeCommandPalettePluginInstall();
@@ -77,6 +81,10 @@ describe('commandHandler', () => {
       commands: {
         listCommands: jest.fn(() => mockCommands),
         executeCommandById: jest.fn(),
+        findCommand: mockFindCommand,
+      },
+      hotkeyManager: {
+        printHotkeyForCommand: mockPrintHotkeyForCommand,
       },
     });
 
@@ -201,6 +209,61 @@ describe('commandHandler', () => {
 
       renderContentSpy.mockRestore();
     });
+
+    it('should render indicator icons', () => {
+      const mockFlairContainer = mock<HTMLDivElement>();
+      const item = makeCommandItem();
+      item.icon = 'iconName';
+      const sugg = makeCommandSuggestion(item);
+      sugg.isPinned = true;
+
+      const mockParentEl = mock<HTMLElement>();
+      mockParentEl.createDiv.mockReturnValue(mock<HTMLDivElement>());
+
+      const renderIndicatorSpy = jest.spyOn(Handler.prototype, 'renderIndicator');
+      const createFlairContainerSpy = jest
+        .spyOn(Handler.prototype, 'createFlairContainer')
+        .mockReturnValueOnce(mockFlairContainer);
+
+      sut.renderSuggestion(sugg, mockParentEl);
+
+      expect(renderIndicatorSpy.mock.calls).toEqual([
+        [mockFlairContainer, [], item.icon],
+        [mockFlairContainer, [], 'filled-pin'],
+      ]);
+
+      renderIndicatorSpy.mockRestore();
+      createFlairContainerSpy.mockRestore();
+    });
+
+    it('should render optional icons', () => {
+      const mockFlairContainer = mock<HTMLDivElement>();
+      const item = makeCommandItem();
+      const sugg = makeCommandSuggestion(item);
+      sugg.isRecentOpen = true;
+
+      const mockParentEl = mock<HTMLElement>();
+      mockParentEl.createDiv.mockReturnValue(mock<HTMLDivElement>());
+
+      const renderOptionalIndicatorsSpy = jest.spyOn(
+        Handler.prototype,
+        'renderOptionalIndicators',
+      );
+      const createFlairContainerSpy = jest
+        .spyOn(Handler.prototype, 'createFlairContainer')
+        .mockReturnValueOnce(mockFlairContainer);
+
+      sut.renderSuggestion(sugg, mockParentEl);
+
+      expect(renderOptionalIndicatorsSpy).toHaveBeenCalledWith(
+        mockParentEl,
+        sugg,
+        mockFlairContainer,
+      );
+
+      renderOptionalIndicatorsSpy.mockRestore();
+      createFlairContainerSpy.mockRestore();
+    });
   });
 
   describe('onChooseSuggestion', () => {
@@ -235,28 +298,45 @@ describe('commandHandler', () => {
       mockCommandPalettePluginInstance.options.pinned = oldPinnedCommandIds;
     });
 
-    it('should order commands by name', () => {
+    it('should return empty array if items cannot be found', () => {
+      const getInitialCommandListSpy = jest
+        .spyOn(sut, 'getInitialCommandList')
+        .mockReturnValueOnce(null);
+
+      const results = sut.getItems(false, null);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(0);
+
+      getInitialCommandListSpy.mockRestore();
+    });
+
+    it('should return all commands', () => {
+      const recentCommandIds = ['recent:commandB'];
       mockCommands = [
-        makeCommandItem({ name: 'Command C' }),
-        makeCommandItem({ name: 'Command B' }),
+        makeCommandItem({ name: 'Command C', id: 'pinned:commandC' }),
+        makeCommandItem({ name: 'Command B', id: 'recent:commandB' }),
         makeCommandItem({ name: 'Command A' }),
         makeCommandItem({ name: 'Command D' }),
         makeCommandItem({ name: 'Command C' }),
       ];
+      mockCommandPalettePluginInstance.options.pinned = ['pinned:commandC'];
 
-      const results = sut.getItems();
+      const results = sut.getItems(true, recentCommandIds);
+
+      const resultNames = new Set(results.map((v) => v.cmd.name));
       expect(results).toHaveLength(5);
-      expect(results[0].name).toBe('Command A');
-      expect(results[1].name).toBe('Command B');
-      expect(results[2].name).toBe('Command C');
-      expect(results[3].name).toBe('Command C');
-      expect(results[4].name).toBe('Command D');
+      expect(mockCommands.every((command) => resultNames.has(command.name))).toBe(true);
+      expect(results.find((v) => v.cmd.id === 'pinned:commandC').isPinned).toBe(true);
+      expect(results.find((v) => v.cmd.id === 'recent:commandB').isRecentOpen).toBe(true);
     });
 
-    it('should order pinned commands first', () => {
+    it('should order pinned commands first, then recently used', () => {
+      const recentCommandIds = ['recent:commandA', 'recent:commandB'];
       mockCommands = [
-        makeCommandItem({ name: 'Command B' }),
-        makeCommandItem({ name: 'Command A' }),
+        makeCommandItem({ name: 'Command B', id: 'recent:commandB' }),
+        makeCommandItem({ name: 'Command A', id: 'recent:commandA' }),
+        makeCommandItem({ name: 'Command C' }),
         makeCommandItem({ name: 'Command Pinned 1', id: 'pinned:command1' }),
         makeCommandItem({ name: 'Command Pinned 2', id: 'pinned:command2' }),
       ];
@@ -265,12 +345,74 @@ describe('commandHandler', () => {
         'pinned:command2',
       ];
 
-      const results = sut.getItems();
+      mockFindCommand.mockImplementation((id) => mockCommands.find((c) => c.id === id));
+
+      const results = sut.getItems(false, recentCommandIds);
+
       expect(results).toHaveLength(4);
-      expect(results[0].name).toBe('Command Pinned 1');
-      expect(results[1].name).toBe('Command Pinned 2');
-      expect(results[2].name).toBe('Command A');
-      expect(results[3].name).toBe('Command B');
+      expect(results[0].cmd.name).toBe('Command Pinned 1');
+      expect(results[1].cmd.name).toBe('Command Pinned 2');
+      expect(results[2].cmd.name).toBe('Command A');
+      expect(results[3].cmd.name).toBe('Command B');
+
+      mockFindCommand.mockReset();
+    });
+  });
+
+  describe('renderHotkeyForCommand', () => {
+    it('should create an element for a hotkey', () => {
+      const mockFlairContainer = mock<HTMLElement>();
+      const keyStr = chance.word();
+      const id = chance.word();
+      mockPrintHotkeyForCommand.calledWith(id).mockReturnValueOnce(keyStr);
+
+      sut.renderHotkeyForCommand(id, mockApp, mockFlairContainer);
+
+      expect(mockPrintHotkeyForCommand).toHaveBeenCalledWith(id);
+      expect(mockFlairContainer.createEl).toHaveBeenCalledWith(
+        'kbd',
+        expect.objectContaining({ text: keyStr }),
+      );
+    });
+
+    it('should log errors to the console', () => {
+      const id = chance.word();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      mockPrintHotkeyForCommand.mockImplementationOnce(() => {
+        throw new Error('renderHotkeyForCommand unit test error');
+      });
+
+      sut.renderHotkeyForCommand(id, mockApp, null);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        id,
+        expect.anything(),
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+  });
+
+  describe('saveUsageToList', () => {
+    it('should add a new item to index 0', () => {
+      const id = 'expected';
+      const recentCommandIds = ['id A', 'id B'];
+
+      sut.saveUsageToList(id, recentCommandIds);
+
+      expect(recentCommandIds).toHaveLength(3);
+      expect(recentCommandIds[0]).toBe(id);
+    });
+
+    it('should move an existing item from an old index to index 0', () => {
+      const id = 'expected';
+      const recentCommandIds = ['id A', id, 'id B'];
+
+      sut.saveUsageToList(id, recentCommandIds);
+
+      expect(recentCommandIds).toHaveLength(3);
+      expect(recentCommandIds[0]).toBe(id);
     });
   });
 });
