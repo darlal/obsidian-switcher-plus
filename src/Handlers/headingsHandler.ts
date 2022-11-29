@@ -1,3 +1,4 @@
+import { StandardExHandler } from './standardExHandler';
 import { EditorHandler } from './editorHandler';
 import {
   HeadingCache,
@@ -378,10 +379,12 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     // create suggestions where there is a match with an unresolved link
     while (i--) {
       const unresolved = unresolvedList[i];
-      const { match } = this.fuzzySearchWithFallback(prepQuery, unresolved);
+      const result = this.fuzzySearchWithFallback(prepQuery, unresolved);
 
-      if (match) {
-        suggestions.push(this.createUnresolvedSuggestion(unresolved, match));
+      if (result.matchType !== MatchType.None) {
+        suggestions.push(
+          StandardExHandler.createUnresolvedSuggestion(unresolved, result),
+        );
       }
     }
   }
@@ -401,17 +404,6 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
     Handler.updateWorkspaceEnvListStatus(inputInfo.currentWorkspaceEnvList, sugg);
     return this.downrankScoreIfIgnored(sugg);
-  }
-
-  private createUnresolvedSuggestion(
-    linktext: string,
-    match: SearchResult,
-  ): UnresolvedSuggestion {
-    return {
-      linktext,
-      ...this.createSearchMatch(match, MatchType.Primary, linktext),
-      type: SuggestionType.Unresolved,
-    };
   }
 
   private createFileSuggestion(

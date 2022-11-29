@@ -1,3 +1,4 @@
+import { StandardExHandler } from './standardExHandler';
 import {
   sortSearchResults,
   WorkspaceLeaf,
@@ -15,12 +16,15 @@ import {
   SearchResultWithFallback,
   SourceInfo,
   SuggestionType,
+  UnresolvedSuggestion,
 } from 'src/types';
 import { InputInfo, SourcedParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 import { Handler } from './handler';
 import { isTFile, isUnresolvedSuggestion, matcherFnForRegExList } from 'src/utils';
 
-export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
+export class RelatedItemsHandler extends Handler<
+  RelatedItemsSuggestion | UnresolvedSuggestion
+> {
   private inputInfo: InputInfo;
 
   override get commandString(): string {
@@ -48,35 +52,23 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
     }
   }
 
-  getSuggestions(inputInfo: InputInfo): RelatedItemsSuggestion[] {
-    const suggestions: RelatedItemsSuggestion[] = [];
+  getSuggestions(
+    inputInfo: InputInfo,
+  ): (RelatedItemsSuggestion | UnresolvedSuggestion)[] {
+    const suggestions: (RelatedItemsSuggestion | UnresolvedSuggestion)[] = [];
 
     if (inputInfo) {
       this.inputInfo = inputInfo;
       inputInfo.buildSearchQuery();
 
-      const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
+      const { hasSearchTerm } = inputInfo.searchQuery;
       const cmd = inputInfo.parsedCommand(Mode.RelatedItemsList) as SourcedParsedCommand;
       const items = this.getItems(cmd.source);
 
       items.forEach((item) => {
-        let shouldPush = true;
-        let result: SearchResultWithFallback = { matchType: MatchType.None, match: null };
-
-        if (hasSearchTerm) {
-          result = this.fuzzySearchWithFallback(prepQuery, null, item.file);
-          shouldPush = result.matchType !== MatchType.None;
-        }
-
-        if (shouldPush) {
-          suggestions.push(
-            RelatedItemsHandler.createSuggestion(
-              inputInfo.currentWorkspaceEnvList,
-              item,
-              item.file,
-              result,
-            ),
-          );
+        const sugg = this.searchOutgoingLink(inputInfo, item);
+        if (sugg) {
+          suggestions.push(sugg);
         }
       });
 
@@ -94,6 +86,7 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
       const iconMap = new Map<RelationType, string>([
         [RelationType.Backlink, 'links-coming-in'],
         [RelationType.DiskLocation, 'folder-tree'],
+        [RelationType.OutgoingLink, 'links-going-out'],
       ]);
 
       parentEl.setAttribute('data-relation-type', item.relationType);
@@ -106,8 +99,7 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
         match,
       );
 
-      const flairContainerEl = this.createFlairContainer(parentEl);
-      this.renderOptionalIndicators(parentEl, sugg, flairContainerEl);
+      const flairContainerEl = this.renderOptionalIndicators(parentEl, sugg);
 
       if (sugg.item.count) {
         // show the count of backlinks
@@ -138,6 +130,36 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
     }
   }
 
+  searchOutgoingLink(
+    inputInfo: InputInfo,
+    item: RelatedItemsInfo,
+  ): RelatedItemsSuggestion | UnresolvedSuggestion | null {
+    let primaryString = null;
+    let file = item.file;
+    let result: SearchResultWithFallback = { matchType: MatchType.None, match: null };
+    const isUnresolved = file === null && item.unresolvedText?.length;
+    const {
+      currentWorkspaceEnvList,
+      searchQuery: { hasSearchTerm, prepQuery },
+    } = inputInfo;
+
+    if (isUnresolved) {
+      primaryString = item.unresolvedText;
+      file = null;
+    }
+
+    if (hasSearchTerm) {
+      result = this.fuzzySearchWithFallback(prepQuery, primaryString, file);
+      if (result.matchType === MatchType.None) {
+        return null;
+      }
+    }
+
+    return isUnresolved
+      ? StandardExHandler.createUnresolvedSuggestion(primaryString, result)
+      : RelatedItemsHandler.createSuggestion(currentWorkspaceEnvList, item, result);
+  }
+
   getItems(sourceInfo: SourceInfo): RelatedItemsInfo[] {
     const relatedItems: RelatedItemsInfo[] = [];
     const { metadataCache } = this.app;
@@ -157,6 +179,8 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
         this.addBacklinks(targetPath, linkMap, relatedItems);
       } else if (relationType === RelationType.DiskLocation) {
         this.addRelatedDiskFiles(file, relatedItems);
+      } else {
+        this.addOutgoingLinks(file, relatedItems);
       }
     });
 
@@ -186,6 +210,36 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
           nodes = nodes.concat((node as TFolder).children);
         }
       }
+    }
+  }
+
+  addOutgoingLinks(sourceFile: TFile, collection: RelatedItemsInfo[]): void {
+    if (sourceFile) {
+      const destUnresolved = new Set<string>();
+      const destFiles = new Set<TFile>();
+      const { metadataCache } = this.app;
+      const outgoingLinks = metadataCache.getFileCache(sourceFile).links ?? [];
+
+      outgoingLinks.forEach((linkCache) => {
+        const destPath = linkCache.link;
+        const destFile = metadataCache.getFirstLinkpathDest(destPath, sourceFile.path);
+
+        if (destFile) {
+          if (!destFiles.has(destFile) && destFile !== sourceFile) {
+            destFiles.add(destFile);
+            collection.push({ file: destFile, relationType: RelationType.OutgoingLink });
+          }
+        } else {
+          if (!destUnresolved.has(destPath)) {
+            destUnresolved.add(destPath);
+            collection.push({
+              file: null,
+              relationType: RelationType.OutgoingLink,
+              unresolvedText: destPath,
+            });
+          }
+        }
+      });
     }
   }
 
@@ -260,12 +314,11 @@ export class RelatedItemsHandler extends Handler<RelatedItemsSuggestion> {
   static createSuggestion(
     currentWorkspaceEnvList: WorkspaceEnvList,
     item: RelatedItemsInfo,
-    file: TFile,
     result: SearchResultWithFallback,
   ): RelatedItemsSuggestion {
     const sugg: RelatedItemsSuggestion = {
       item,
-      file: file,
+      file: item?.file,
       type: SuggestionType.RelatedItemsList,
       ...result,
     };

@@ -1,8 +1,16 @@
 import { Handler } from './handler';
-import { FileSuggestion, AliasSuggestion, AnySuggestion, MatchType } from 'src/types';
 import { WorkspaceLeaf } from 'obsidian';
 import { InputInfo } from 'src/switcherPlus';
 import { isAliasSuggestion, isFileSuggestion } from 'src/utils';
+import {
+  FileSuggestion,
+  AliasSuggestion,
+  AnySuggestion,
+  MatchType,
+  SuggestionType,
+  UnresolvedSuggestion,
+  SearchResultWithFallback,
+} from 'src/types';
 
 export type SupportedSystemSuggestions = FileSuggestion | AliasSuggestion;
 
@@ -108,5 +116,16 @@ export class StandardExHandler extends Handler<SupportedSystemSuggestions> {
 
     // patch with missing properties required for enhanced custom rendering
     Handler.updateWorkspaceEnvListStatus(inputInfo.currentWorkspaceEnvList, sugg);
+  }
+
+  static createUnresolvedSuggestion(
+    linktext: string,
+    result: SearchResultWithFallback,
+  ): UnresolvedSuggestion {
+    return {
+      linktext,
+      type: SuggestionType.Unresolved,
+      ...result,
+    };
   }
 }

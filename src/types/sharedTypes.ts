@@ -173,12 +173,14 @@ export interface StarredSuggestion extends Suggestion<StarredPluginItem> {
 export enum RelationType {
   DiskLocation = 'disk-location',
   Backlink = 'backlink',
+  OutgoingLink = 'outgoing-link',
 }
 
 export interface RelatedItemsInfo {
   relationType: RelationType;
   file: TFile;
   count?: number;
+  unresolvedText?: string;
 }
 
 export interface RelatedItemsSuggestion extends Suggestion<RelatedItemsInfo> {

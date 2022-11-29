@@ -146,7 +146,7 @@ View, search, and run Obsidian commands quickly using the default `>` command. W
 
 ## Related Items
 
-View, filter, and navigate to files that are "related" to the selected input file directly from the Quick Switcher, whether the file is currently open in an editor or not. Currently, there are two types of relations supported, Backlinks, and File system location. This feature can be triggered in two ways a) for the active file in the currently active editor pane, b) for the currently selected (highlighted) suggestion in the switcher itself.
+View, filter, and navigate to files that are "related" to the selected input file directly from the Quick Switcher, whether the file is currently open in an editor or not. The supported relation types are: Outgoing links, Backlinks, and File system location. This feature can be triggered in two ways a) for the active file in the currently active editor pane, b) for the currently selected (highlighted) suggestion in the switcher itself.
 
 ### For active file in the active editor pane:
 
@@ -166,24 +166,20 @@ When the Related Items command is triggered for a selected input suggestion/file
 
 Unresolved Links are outgoing links that point to files that do not exist in the vault. The Related Items commands can also be triggered for Unresolved Link suggestions, and will behave the same as a regular file.
 
+### Outgoing links relation (`outgoing-link`)
+
+When the Related Items command is triggered for a selected input suggestion/file, all of the internal outgoing links from the input file will displayed in the result list.
+
 ### File system location relation (`disk-location`)
 
 When the Related Items command is triggered for a selected input suggestion/file, all files that are located in the same directory in the File System (or otherwise specified in the settings) as the input file will be displayed in the result list.
-
-### For the currently open and focused pane:
-
-Related items can be viewed directly by using the `Quick Switcher++: Open in Related Items Mode` global hotkey (see below).
-
-### Embedded related items search (for any other file, open or not):
-
-Related Items can be viewed by opening Quick Switcher++, typing some characters to filter and/or using the arrow keys to select (highlight) the file of interest. Then, once the file of interest is selected/highlighted, type the `~` (default) character to view the related items for the file of interest.
 
 ### Related Items Configuration
 
 | Setting                         | Description | Default |
 |---------------------------------|-------------|---------|
 | Related items list mode trigger | Character that will trigger related items list mode in the switcher. | `~` |
-| Show related item types         | Specify which relation types are enabled to be displayed in the result list. | `backlink`<br />`disk-location` |
+| Show related item types         | Specify which relation types are enabled to be displayed in the result list. | `backlink`<br />`disk-location`<br />`outgoing-link` |
 | Exclude open files              | **Enabled**: related files which are already open in an editor will not be displayed in the list. **Disabled**: All related files will be displayed in the list. | disabled |
 
 ## General Settings

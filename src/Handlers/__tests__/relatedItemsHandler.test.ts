@@ -1,3 +1,5 @@
+import { isUnresolvedSuggestion } from 'src/utils';
+import { RelatedItemsSuggestion } from './../../types/sharedTypes';
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler, RelatedItemsHandler } from 'src/Handlers';
@@ -28,6 +30,7 @@ import {
   makeRelatedItemsSuggestion,
   makeStarredSuggestion,
   makeUnresolvedSuggestion,
+  makeLink,
 } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
 
@@ -113,7 +116,7 @@ describe('relatedItemsHandler', () => {
   });
 
   beforeEach(() => {
-    // reset for each test because symbol mode will use saved data from previous runs
+    // reset for each test because RelatedItems mode will use saved data from previous runs
     sut = new RelatedItemsHandler(mockApp, settings);
   });
 
@@ -307,17 +310,21 @@ describe('relatedItemsHandler', () => {
       const inputInfo = new InputInfo(relatedItemsTrigger);
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
 
-      const results = sut.getSuggestions(inputInfo);
+      const results = sut
+        .getSuggestions(inputInfo)
+        .filter((v): v is RelatedItemsSuggestion => !isUnresolvedSuggestion(v));
 
       expect(results.every((v) => v.file !== null)).toBe(true);
     });
 
-    test('with default settings, it should return suggestions', () => {
+    test('with default settings, it should return diskfile, and backlink suggestions', () => {
       const inputInfo = new InputInfo(relatedItemsTrigger);
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
       mockMetadataCache.resolvedLinks = makeBacklink(file1, mockRootSplitLeaf.view.file);
 
-      const results = sut.getSuggestions(inputInfo);
+      const results = sut
+        .getSuggestions(inputInfo)
+        .filter((v): v is RelatedItemsSuggestion => !isUnresolvedSuggestion(v));
 
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
       expect(results).toBeInstanceOf(Array);
@@ -341,13 +348,46 @@ describe('relatedItemsHandler', () => {
       mockMetadataCache.resolvedLinks = {};
     });
 
+    test('with default settings, it should return OutgoingLink suggestions', () => {
+      const inputInfo = new InputInfo(relatedItemsTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+
+      const mockRootSplitFile = mockRootSplitLeaf.view.file;
+      mockMetadataCache.getFirstLinkpathDest
+        .calledWith(file1.path, mockRootSplitFile.path)
+        .mockReturnValue(file1);
+      mockMetadataCache.getFileCache.mockReturnValueOnce({
+        links: [makeLink(file1.path, null)],
+      });
+
+      const results = sut
+        .getSuggestions(inputInfo)
+        .filter(
+          (v): v is RelatedItemsSuggestion =>
+            !isUnresolvedSuggestion(v) &&
+            v.item.relationType === RelationType.OutgoingLink,
+        );
+
+      expect(results).toHaveLength(1);
+      expect(results[0].file).toBe(file1);
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(mockRootSplitFile);
+      expect(mockMetadataCache.getFirstLinkpathDest).toHaveBeenCalledWith(
+        file1.path,
+        mockRootSplitFile.path,
+      );
+
+      mockMetadataCache.getFirstLinkpathDest.mockReset();
+    });
+
     it('should return backlinks for Unresolved input suggestions', () => {
       const inputInfo = new InputInfo(relatedItemsTrigger);
       const unresolvedSugg = makeUnresolvedSuggestion(file1.path);
       sut.validateCommand(inputInfo, 0, '', unresolvedSugg, null);
       mockMetadataCache.unresolvedLinks = makeBacklink(file2, file1);
 
-      const results = sut.getSuggestions(inputInfo);
+      const results = sut
+        .getSuggestions(inputInfo)
+        .filter((v): v is RelatedItemsSuggestion => !isUnresolvedSuggestion(v));
 
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
       expect(results).toBeInstanceOf(Array);
@@ -372,7 +412,9 @@ describe('relatedItemsHandler', () => {
       const inputInfo = new InputInfo(`${relatedItemsTrigger}${filterText}`);
       sut.validateCommand(inputInfo, 0, filterText, null, mockRootSplitLeaf);
 
-      const results = sut.getSuggestions(inputInfo);
+      const results = sut
+        .getSuggestions(inputInfo)
+        .filter((v): v is RelatedItemsSuggestion => !isUnresolvedSuggestion(v));
 
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
       expect(results).toBeInstanceOf(Array);
@@ -404,7 +446,9 @@ describe('relatedItemsHandler', () => {
 
       sut.validateCommand(inputInfo, 0, filterText, null, mockRootSplitLeaf);
 
-      let results = sut.getSuggestions(inputInfo);
+      let results = sut
+        .getSuggestions(inputInfo)
+        .filter((v): v is RelatedItemsSuggestion => !isUnresolvedSuggestion(v));
 
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
       expect(results).toBeInstanceOf(Array);
@@ -435,7 +479,9 @@ describe('relatedItemsHandler', () => {
       // leaf from the previous run
       sut.validateCommand(inputInfo, 0, filterText, null, mockTempLeaf);
 
-      results = sut.getSuggestions(inputInfo);
+      results = sut
+        .getSuggestions(inputInfo)
+        .filter((v): v is RelatedItemsSuggestion => !isUnresolvedSuggestion(v));
 
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
       expect(results).toBeInstanceOf(Array);
@@ -614,6 +660,71 @@ describe('relatedItemsHandler', () => {
       expect(getActiveLeafSpy).toHaveBeenCalled();
 
       getActiveLeafSpy.mockRestore();
+    });
+  });
+
+  describe('addOutgoingLinks', () => {
+    it('should not throw when .getFileCache does not contain any links', () => {
+      mockMetadataCache.getFileCache.mockReturnValueOnce({ links: null });
+
+      expect(() => sut.addOutgoingLinks(file1, [])).not.toThrow();
+    });
+
+    it('should not add an item for a file that references itself', () => {
+      mockMetadataCache.getFirstLinkpathDest
+        .calledWith(file1.path, file1.path)
+        .mockReturnValue(file1);
+      mockMetadataCache.getFileCache.mockReturnValueOnce({
+        links: [makeLink(file1.path, null)],
+      });
+
+      const results: RelatedItemsInfo[] = [];
+      sut.addOutgoingLinks(file1, results);
+
+      expect(results).toHaveLength(0);
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(file1);
+      expect(mockMetadataCache.getFirstLinkpathDest).toHaveBeenCalledWith(
+        file1.path,
+        file1.path,
+      );
+
+      mockMetadataCache.getFirstLinkpathDest.mockReset();
+    });
+
+    test('that a single item is added for a file link even if it is referenced multiple times', () => {
+      mockMetadataCache.getFirstLinkpathDest
+        .calledWith(file2.path, file1.path)
+        .mockReturnValue(file2);
+      mockMetadataCache.getFileCache.mockReturnValueOnce({
+        links: [makeLink(file2.path, null), makeLink(file2.path, null)],
+      });
+
+      const results: RelatedItemsInfo[] = [];
+      sut.addOutgoingLinks(file1, results);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].file).toBe(file2);
+      expect(results[0].relationType).toBe(RelationType.OutgoingLink);
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(file1);
+      expect(mockMetadataCache.getFirstLinkpathDest).toHaveBeenCalledWith(
+        file2.path,
+        file1.path,
+      );
+
+      mockMetadataCache.getFirstLinkpathDest.mockReset();
+    });
+
+    test('that a single item is added for an unresolved link even if it is referenced multiple times', () => {
+      mockMetadataCache.getFileCache.mockReturnValueOnce({
+        links: [makeLink('no exist', null), makeLink('no exist', null)],
+      });
+
+      const results: RelatedItemsInfo[] = [];
+      sut.addOutgoingLinks(file1, results);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].unresolvedText).toBe('no exist');
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(file1);
     });
   });
 });
