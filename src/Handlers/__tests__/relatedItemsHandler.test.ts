@@ -705,6 +705,7 @@ describe('relatedItemsHandler', () => {
       expect(results).toHaveLength(1);
       expect(results[0].file).toBe(file2);
       expect(results[0].relationType).toBe(RelationType.OutgoingLink);
+      expect(results[0].count).toBe(2);
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(file1);
       expect(mockMetadataCache.getFirstLinkpathDest).toHaveBeenCalledWith(
         file2.path,
@@ -724,6 +725,7 @@ describe('relatedItemsHandler', () => {
 
       expect(results).toHaveLength(1);
       expect(results[0].unresolvedText).toBe('no exist');
+      expect(results[0].count).toBe(2);
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(file1);
     });
   });

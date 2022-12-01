@@ -66,7 +66,7 @@ export class RelatedItemsHandler extends Handler<
       const items = this.getItems(cmd.source);
 
       items.forEach((item) => {
-        const sugg = this.searchOutgoingLink(inputInfo, item);
+        const sugg = this.searchAndCreateSuggestion(inputInfo, item);
         if (sugg) {
           suggestions.push(sugg);
         }
@@ -130,7 +130,7 @@ export class RelatedItemsHandler extends Handler<
     }
   }
 
-  searchOutgoingLink(
+  searchAndCreateSuggestion(
     inputInfo: InputInfo,
     item: RelatedItemsInfo,
   ): RelatedItemsSuggestion | UnresolvedSuggestion | null {
@@ -215,28 +215,35 @@ export class RelatedItemsHandler extends Handler<
 
   addOutgoingLinks(sourceFile: TFile, collection: RelatedItemsInfo[]): void {
     if (sourceFile) {
-      const destUnresolved = new Set<string>();
-      const destFiles = new Set<TFile>();
+      const destUnresolved = new Map<string, RelatedItemsInfo>();
+      const destFiles = new Map<TFile, RelatedItemsInfo>();
       const { metadataCache } = this.app;
       const outgoingLinks = metadataCache.getFileCache(sourceFile).links ?? [];
+      const incrementCount = (info: RelatedItemsInfo) =>
+        info ? !!(info.count += 1) : false;
 
       outgoingLinks.forEach((linkCache) => {
         const destPath = linkCache.link;
         const destFile = metadataCache.getFirstLinkpathDest(destPath, sourceFile.path);
+        let info: RelatedItemsInfo;
 
         if (destFile) {
-          if (!destFiles.has(destFile) && destFile !== sourceFile) {
-            destFiles.add(destFile);
-            collection.push({ file: destFile, relationType: RelationType.OutgoingLink });
+          if (!incrementCount(destFiles.get(destFile)) && destFile !== sourceFile) {
+            info = { file: destFile, relationType: RelationType.OutgoingLink, count: 1 };
+            destFiles.set(destFile, info);
+            collection.push(info);
           }
         } else {
-          if (!destUnresolved.has(destPath)) {
-            destUnresolved.add(destPath);
-            collection.push({
+          if (!incrementCount(destUnresolved.get(destPath))) {
+            info = {
               file: null,
               relationType: RelationType.OutgoingLink,
               unresolvedText: destPath,
-            });
+              count: 1,
+            };
+
+            destUnresolved.set(destPath, info);
+            collection.push(info);
           }
         }
       });
