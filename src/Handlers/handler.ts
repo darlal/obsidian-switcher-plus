@@ -872,6 +872,7 @@ export abstract class Handler<T> {
     sugg: AnySuggestion,
     flairContainerEl: HTMLDivElement = null,
   ): HTMLDivElement {
+    const { showOptionalIndicatorIcons } = this.settings;
     const indicatorData = new Map<keyof AnySuggestion, Record<string, string>>();
     indicatorData.set('isRecentOpen', {
       iconName: 'history',
@@ -895,13 +896,15 @@ export abstract class Handler<T> {
       flairContainerEl = this.createFlairContainer(parentEl);
     }
 
-    for (const [state, data] of indicatorData.entries()) {
-      if (sugg[state] === true) {
-        if (data.parentElClass) {
-          parentEl?.addClass(data.parentElClass);
-        }
+    if (showOptionalIndicatorIcons) {
+      for (const [state, data] of indicatorData.entries()) {
+        if (sugg[state] === true) {
+          if (data.parentElClass) {
+            parentEl?.addClass(data.parentElClass);
+          }
 
-        this.renderIndicator(flairContainerEl, [data.indicatorElClass], data.iconName);
+          this.renderIndicator(flairContainerEl, [data.indicatorElClass], data.iconName);
+        }
       }
     }
 

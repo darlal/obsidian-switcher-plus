@@ -23,6 +23,14 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       this.config.overrideStandardModeBehaviors,
       'overrideStandardModeBehaviors',
     );
+
+    this.addToggleSetting(
+      containerEl,
+      'Show indicator icons',
+      'Display icons to indicate that an item is recent, starred, etc..',
+      this.config.showOptionalIndicatorIcons,
+      'showOptionalIndicatorIcons',
+    );
   }
 
   setPathDisplayFormat(containerEl: HTMLElement, config: SwitcherPlusSettings): void {

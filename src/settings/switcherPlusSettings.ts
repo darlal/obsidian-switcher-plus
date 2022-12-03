@@ -43,6 +43,7 @@ export class SwitcherPlusSettings {
       pathDisplayFormat: PathDisplayFormat.FolderWithFilename,
       hidePathIfRoot: true,
       enabledRelatedItems: Object.values(RelationType),
+      showOptionalIndicatorIcons: true,
       overrideStandardModeBehaviors: true,
     };
   }
@@ -311,6 +312,14 @@ export class SwitcherPlusSettings {
 
   set enabledRelatedItems(value: RelationType[]) {
     this.data.enabledRelatedItems = value;
+  }
+
+  get showOptionalIndicatorIcons(): boolean {
+    return this.data.showOptionalIndicatorIcons;
+  }
+
+  set showOptionalIndicatorIcons(value: boolean) {
+    this.data.showOptionalIndicatorIcons = value;
   }
 
   get overrideStandardModeBehaviors(): boolean {

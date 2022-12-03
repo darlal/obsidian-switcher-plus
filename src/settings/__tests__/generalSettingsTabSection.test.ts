@@ -12,6 +12,7 @@ describe('generalSettingsTabSection', () => {
   let mockPluginSettingTab: MockProxy<PluginSettingTab>;
   let mockContainerEl: MockProxy<HTMLElement>;
   let config: SwitcherPlusSettings;
+  let addToggleSettingSpy: jest.SpyInstance;
   let sut: GeneralSettingsTabSection;
 
   beforeAll(() => {
@@ -19,59 +20,83 @@ describe('generalSettingsTabSection', () => {
     mockContainerEl = mock<HTMLElement>();
     mockPluginSettingTab = mock<PluginSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
+    addToggleSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'addToggleSetting');
 
     sut = new GeneralSettingsTabSection(mockApp, mockPluginSettingTab, config);
   });
 
-  it('should display a header for the section', () => {
-    const addSectionTitleSpy = jest.spyOn(
-      SettingsTabSection.prototype,
-      'addSectionTitle',
-    );
-
-    sut.display(mockContainerEl);
-
-    expect(addSectionTitleSpy).toHaveBeenCalledWith(mockContainerEl, 'General Settings');
-
-    addSectionTitleSpy.mockRestore();
-  });
-
-  it('should show the onOpenPreferNewTab setting', () => {
-    const addToggleSettingSpy = jest.spyOn(
-      SettingsTabSection.prototype,
-      'addToggleSetting',
-    );
-
-    sut.display(mockContainerEl);
-
-    expect(addToggleSettingSpy).toBeCalledWith(
-      mockContainerEl,
-      'Default to open in new tab',
-      expect.any(String),
-      config.onOpenPreferNewTab,
-      'onOpenPreferNewTab',
-    );
-
+  afterAll(() => {
     addToggleSettingSpy.mockRestore();
   });
 
-  it('should show the overrideStandardModeBehaviors setting', () => {
-    const addToggleSettingSpy = jest.spyOn(
-      SettingsTabSection.prototype,
-      'addToggleSetting',
-    );
+  describe('display settings', () => {
+    beforeEach(() => {
+      addToggleSettingSpy.mockClear();
+    });
 
-    sut.display(mockContainerEl);
+    it('should display a header for the section', () => {
+      const addSectionTitleSpy = jest.spyOn(
+        SettingsTabSection.prototype,
+        'addSectionTitle',
+      );
 
-    expect(addToggleSettingSpy).toBeCalledWith(
-      mockContainerEl,
-      'Override Standard mode behavior',
-      expect.any(String),
-      config.overrideStandardModeBehaviors,
-      'overrideStandardModeBehaviors',
-    );
+      sut.display(mockContainerEl);
 
-    addToggleSettingSpy.mockRestore();
+      expect(addSectionTitleSpy).toHaveBeenCalledWith(
+        mockContainerEl,
+        'General Settings',
+      );
+
+      addSectionTitleSpy.mockRestore();
+    });
+
+    it('should show the onOpenPreferNewTab setting', () => {
+      sut.display(mockContainerEl);
+
+      expect(addToggleSettingSpy).toBeCalledWith(
+        mockContainerEl,
+        'Default to open in new tab',
+        expect.any(String),
+        config.onOpenPreferNewTab,
+        'onOpenPreferNewTab',
+      );
+    });
+
+    it('should show the overrideStandardModeBehaviors setting', () => {
+      sut.display(mockContainerEl);
+
+      expect(addToggleSettingSpy).toBeCalledWith(
+        mockContainerEl,
+        'Override Standard mode behavior',
+        expect.any(String),
+        config.overrideStandardModeBehaviors,
+        'overrideStandardModeBehaviors',
+      );
+    });
+
+    it('should show path settings', () => {
+      const setPathDisplayFormatSpy = jest
+        .spyOn(sut, 'setPathDisplayFormat')
+        .mockReturnValueOnce();
+
+      sut.display(mockContainerEl);
+
+      expect(setPathDisplayFormatSpy).toHaveBeenCalled();
+
+      setPathDisplayFormatSpy.mockRestore();
+    });
+
+    it('should show the showOptionalIndicatorIcons setting', () => {
+      sut.display(mockContainerEl);
+
+      expect(addToggleSettingSpy).toBeCalledWith(
+        mockContainerEl,
+        'Show indicator icons',
+        expect.any(String),
+        config.showOptionalIndicatorIcons,
+        'showOptionalIndicatorIcons',
+      );
+    });
   });
 
   describe('setPathDisplayFormat', () => {

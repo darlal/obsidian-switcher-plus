@@ -1736,11 +1736,25 @@ describe('Handler', () => {
       mockParentEl.createDiv.mockReturnValueOnce(mockFlairContainer);
       mockFlairContainer.createSpan.mockReturnValueOnce(mockFlairEl);
 
-      const result = sut.renderOptionalIndicators(mockParentEl, sugg, mockFlairContainer);
+      const result = sut.renderOptionalIndicators(mockParentEl, sugg, null);
 
       expect(result).toBe(mockFlairContainer);
       expect(mockParentEl.addClass).toHaveBeenCalledWith('qsp-open-editor');
       expect(mockSetIcon).toHaveBeenCalledWith(mockFlairEl, 'lucide-file-edit');
+    });
+
+    it('should not render icons with the showOptionalIndicatorIcons disabled', () => {
+      mockSettings.showOptionalIndicatorIcons = false;
+      const mockParentEl = mock<HTMLElement>();
+      const mockFlairContainer = mock<HTMLDivElement>();
+      mockParentEl.createDiv.mockReturnValueOnce(mockFlairContainer);
+
+      const result = sut.renderOptionalIndicators(mockParentEl, null, null);
+
+      expect(result).toBe(mockFlairContainer);
+      expect(mockSetIcon).not.toHaveBeenCalled();
+
+      mockSettings.showOptionalIndicatorIcons = true;
     });
   });
 

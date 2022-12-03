@@ -260,6 +260,7 @@ export interface SettingsData {
   pathDisplayFormat: PathDisplayFormat;
   hidePathIfRoot: boolean;
   enabledRelatedItems: RelationType[];
+  showOptionalIndicatorIcons: boolean;
   overrideStandardModeBehaviors: boolean;
 }
 
