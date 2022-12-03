@@ -18,6 +18,14 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
 
     this.addToggleSetting(
       containerEl,
+      'Hide path for root items',
+      'When enabled, path information will be hidden for items at the root of the vault.',
+      this.config.hidePathIfRoot,
+      'hidePathIfRoot',
+    ).setClass('qsp-setting-item-indent');
+
+    this.addToggleSetting(
+      containerEl,
       'Override Standard mode behavior',
       'When enabled, Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to inject custom behavior.',
       this.config.overrideStandardModeBehaviors,

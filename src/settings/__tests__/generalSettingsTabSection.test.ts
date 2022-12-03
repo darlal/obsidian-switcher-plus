@@ -86,6 +86,18 @@ describe('generalSettingsTabSection', () => {
       setPathDisplayFormatSpy.mockRestore();
     });
 
+    it('should show the hidePathIfRoot setting', () => {
+      sut.display(mockContainerEl);
+
+      expect(addToggleSettingSpy).toBeCalledWith(
+        mockContainerEl,
+        'Hide path for root items',
+        expect.any(String),
+        config.hidePathIfRoot,
+        'hidePathIfRoot',
+      );
+    });
+
     it('should show the showOptionalIndicatorIcons setting', () => {
       sut.display(mockContainerEl);
 
