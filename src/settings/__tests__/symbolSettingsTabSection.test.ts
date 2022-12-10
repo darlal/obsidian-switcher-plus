@@ -3,13 +3,14 @@ import {
   SymbolSettingsTabSection,
   SettingsTabSection,
   SwitcherPlusSettings,
+  SwitcherPlusSettingTab,
 } from 'src/settings';
 import { mock, mockClear, MockProxy } from 'jest-mock-extended';
-import { App, PluginSettingTab, Setting, ViewRegistry } from 'obsidian';
+import { App, Setting, ViewRegistry } from 'obsidian';
 
 describe('symbolSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
-  let mockPluginSettingTab: MockProxy<PluginSettingTab>;
+  let mockPluginSettingTab: MockProxy<SwitcherPlusSettingTab>;
   let config: SwitcherPlusSettings;
   let mockContainerEl: MockProxy<HTMLElement>;
   let addToggleSettingSpy: jest.SpyInstance;
@@ -18,7 +19,7 @@ describe('symbolSettingsTabSection', () => {
   beforeAll(() => {
     mockApp = mock<App>({ viewRegistry: mock<ViewRegistry>() });
     mockContainerEl = mock<HTMLElement>();
-    mockPluginSettingTab = mock<PluginSettingTab>({ containerEl: mockContainerEl });
+    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
     addToggleSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'addToggleSetting');
   });

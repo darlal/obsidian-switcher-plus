@@ -1,5 +1,6 @@
 import { SwitcherPlusSettings } from './switcherPlusSettings';
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { SwitcherPlusSettingTab } from './switcherPlusSettingTab';
+import { App, Setting } from 'obsidian';
 import { WritableKeysWithValueOfType } from 'src/types';
 import { WritableKeys } from 'ts-essentials';
 
@@ -13,7 +14,7 @@ type ListTypedConfigKey = WritableKeysWithValueOfType<
 export abstract class SettingsTabSection {
   constructor(
     protected app: App,
-    protected mainSettingsTab: PluginSettingTab,
+    protected mainSettingsTab: SwitcherPlusSettingTab,
     protected config: SwitcherPlusSettings,
   ) {}
 

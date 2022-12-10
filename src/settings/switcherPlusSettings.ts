@@ -1,7 +1,13 @@
-import { PathDisplayFormat, RelationType, SettingsData, SymbolType } from 'src/types';
 import { getSystemSwitcherInstance } from 'src/utils';
 import type SwitcherPlusPlugin from 'src/main';
 import { QuickSwitcherOptions } from 'obsidian';
+import {
+  Mode,
+  PathDisplayFormat,
+  RelationType,
+  SettingsData,
+  SymbolType,
+} from 'src/types';
 
 export class SwitcherPlusSettings {
   private readonly data: SettingsData;
@@ -45,6 +51,10 @@ export class SwitcherPlusSettings {
       enabledRelatedItems: Object.values(RelationType),
       showOptionalIndicatorIcons: true,
       overrideStandardModeBehaviors: true,
+      enabledRibbonCommands: [
+        Mode[Mode.HeadingsList] as keyof typeof Mode,
+        Mode[Mode.SymbolList] as keyof typeof Mode,
+      ],
     };
   }
 
@@ -328,6 +338,15 @@ export class SwitcherPlusSettings {
 
   set overrideStandardModeBehaviors(value: boolean) {
     this.data.overrideStandardModeBehaviors = value;
+  }
+
+  get enabledRibbonCommands(): Array<keyof typeof Mode> {
+    return this.data.enabledRibbonCommands;
+  }
+
+  set enabledRibbonCommands(value: Array<keyof typeof Mode>) {
+    // remove any duplicates before storing
+    this.data.enabledRibbonCommands = [...new Set(value)];
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

@@ -14,7 +14,7 @@ import type SwitcherPlusPlugin from '../main';
 type ConstructableSettingsTabSection = {
   new (
     app: App,
-    mainSettingsTab: PluginSettingTab,
+    mainSettingsTab: SwitcherPlusSettingTab,
     config: SwitcherPlusSettings,
   ): SettingsTabSection;
 };
@@ -22,7 +22,7 @@ type ConstructableSettingsTabSection = {
 export class SwitcherPlusSettingTab extends PluginSettingTab {
   constructor(
     app: App,
-    plugin: SwitcherPlusPlugin,
+    public plugin: SwitcherPlusPlugin,
     private config: SwitcherPlusSettings,
   ) {
     super(app, plugin);

@@ -1,10 +1,23 @@
+import { Modal } from 'obsidian';
 import { SwitcherPlusSettings } from 'src/settings';
-import { PathDisplayFormat } from 'src/types';
+import { Mode, PathDisplayFormat } from 'src/types';
 import { SettingsTabSection } from './settingsTabSection';
 
 export class GeneralSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
+    const { config } = this;
+
     this.addSectionTitle(containerEl, 'General Settings');
+    this.setEnabledRibbonCommands(containerEl, config);
+
+    this.setPathDisplayFormat(containerEl, config);
+    this.addToggleSetting(
+      containerEl,
+      'Hide path for root items',
+      'When enabled, path information will be hidden for items at the root of the vault.',
+      this.config.hidePathIfRoot,
+      'hidePathIfRoot',
+    ).setClass('qsp-setting-item-indent');
 
     this.addToggleSetting(
       containerEl,
@@ -13,16 +26,6 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       this.config.onOpenPreferNewTab,
       'onOpenPreferNewTab',
     );
-
-    this.setPathDisplayFormat(containerEl, this.config);
-
-    this.addToggleSetting(
-      containerEl,
-      'Hide path for root items',
-      'When enabled, path information will be hidden for items at the root of the vault.',
-      this.config.hidePathIfRoot,
-      'hidePathIfRoot',
-    ).setClass('qsp-setting-item-indent');
 
     this.addToggleSetting(
       containerEl,
@@ -62,5 +65,48 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         config.save();
       },
     );
+  }
+
+  setEnabledRibbonCommands(containerEl: HTMLElement, config: SwitcherPlusSettings) {
+    const modeNames = Object.values(Mode)
+      .filter((v) => isNaN(Number(v)))
+      .sort();
+    const modeNamesStr = modeNames.join(' ');
+    const desc = `Display an icon in the ribbon menu to launch specific modes. Add one mode per line. Available modes: ${modeNamesStr}`;
+
+    this.createSetting(containerEl, 'Show ribbon icons', desc).addTextArea((textArea) => {
+      textArea.setValue(config.enabledRibbonCommands.join('\n'));
+
+      textArea.inputEl.addEventListener('focusout', () => {
+        const values = textArea
+          .getValue()
+          .split('\n')
+          .map((v) => v.trim())
+          .filter((v) => v.length > 0);
+
+        const invalidValues = Array.from(new Set(values)).filter(
+          (v) => !modeNames.includes(v),
+        );
+
+        if (invalidValues.length) {
+          this.showErrorPopup(invalidValues.join('<br/>'), modeNamesStr);
+        } else {
+          config.enabledRibbonCommands = values as Array<keyof typeof Mode>;
+          config.save();
+
+          // force unregister/register of ribbon commands, so the changes take
+          // effect immediately
+          this.mainSettingsTab.plugin.registerRibbonCommandIcons();
+        }
+      });
+    });
+  }
+
+  showErrorPopup(invalidValues: string, validModes: string): void {
+    const popup = new Modal(this.app);
+
+    popup.titleEl.setText('Invalid mode');
+    popup.contentEl.innerHTML = `Changes not saved. Available modes are: ${validModes}. The following are invalid:<br/><br/>${invalidValues}`;
+    popup.open();
   }
 }

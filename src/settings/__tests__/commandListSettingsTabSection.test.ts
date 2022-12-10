@@ -2,13 +2,14 @@ import {
   CommandListSettingsTabSection,
   SettingsTabSection,
   SwitcherPlusSettings,
+  SwitcherPlusSettingTab,
 } from 'src/settings';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { App, PluginSettingTab } from 'obsidian';
+import { App } from 'obsidian';
 
 describe('commandListSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
-  let mockPluginSettingTab: MockProxy<PluginSettingTab>;
+  let mockPluginSettingTab: MockProxy<SwitcherPlusSettingTab>;
   let config: SwitcherPlusSettings;
   let mockContainerEl: MockProxy<HTMLElement>;
   let sut: CommandListSettingsTabSection;
@@ -16,7 +17,7 @@ describe('commandListSettingsTabSection', () => {
   beforeAll(() => {
     mockApp = mock<App>();
     mockContainerEl = mock<HTMLElement>();
-    mockPluginSettingTab = mock<PluginSettingTab>({ containerEl: mockContainerEl });
+    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
 
     sut = new CommandListSettingsTabSection(mockApp, mockPluginSettingTab, config);

@@ -262,6 +262,7 @@ export interface SettingsData {
   enabledRelatedItems: RelationType[];
   showOptionalIndicatorIcons: boolean;
   overrideStandardModeBehaviors: boolean;
+  enabledRibbonCommands: Array<keyof typeof Mode>;
 }
 
 export interface SearchQuery {

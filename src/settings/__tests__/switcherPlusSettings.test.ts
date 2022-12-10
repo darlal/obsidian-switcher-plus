@@ -1,5 +1,6 @@
 import {
   LinkType,
+  Mode,
   PathDisplayFormat,
   RelationType,
   SettingsData,
@@ -60,6 +61,10 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     enabledRelatedItems: Object.values(RelationType),
     showOptionalIndicatorIcons: true,
     overrideStandardModeBehaviors: true,
+    enabledRibbonCommands: [
+      Mode[Mode.HeadingsList] as keyof typeof Mode,
+      Mode[Mode.SymbolList] as keyof typeof Mode,
+    ],
   };
 
   if (!useDefault) {
@@ -88,6 +93,11 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     data.enabledRelatedItems = chance.pickset(Object.values(RelationType), 2);
     data.showOptionalIndicatorIcons = chance.bool();
     data.overrideStandardModeBehaviors = chance.bool();
+
+    const ribbonCommands = Object.values(Mode).filter((v) => isNaN(Number(v))) as Array<
+      keyof typeof Mode
+    >;
+    data.enabledRibbonCommands = chance.pickset(ribbonCommands, 3);
 
     data.includeSidePanelViewTypes = [
       chance.word(),
@@ -191,6 +201,7 @@ describe('SwitcherPlusSettings', () => {
     sut.enabledRelatedItems = settings.enabledRelatedItems;
     sut.showOptionalIndicatorIcons = settings.showOptionalIndicatorIcons;
     sut.overrideStandardModeBehaviors = settings.overrideStandardModeBehaviors;
+    sut.enabledRibbonCommands = settings.enabledRibbonCommands;
 
     sut.setSymbolTypeEnabled(
       SymbolType.Heading,

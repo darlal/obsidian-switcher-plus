@@ -3,6 +3,73 @@ import { SwitcherPlusSettings, SwitcherPlusSettingTab } from 'src/settings';
 import { createSwitcherPlus } from 'src/switcherPlus';
 import { Mode } from 'src/types';
 
+type CommandInfo = {
+  id: string;
+  name: string;
+  mode: Mode;
+  iconId: string;
+  ribbonIconEl: HTMLElement;
+};
+
+const COMMAND_DATA: CommandInfo[] = [
+  {
+    id: 'switcher-plus:open',
+    name: 'Open',
+    mode: Mode.Standard,
+    iconId: 'lucide-search',
+    ribbonIconEl: null,
+  },
+  {
+    id: 'switcher-plus:open-editors',
+    name: 'Open in Editor Mode',
+    mode: Mode.EditorList,
+    iconId: 'lucide-file-edit',
+    ribbonIconEl: null,
+  },
+  {
+    id: 'switcher-plus:open-symbols',
+    name: 'Open Symbols for the active editor',
+    mode: Mode.SymbolList,
+    iconId: 'lucide-dollar-sign',
+    ribbonIconEl: null,
+  },
+  {
+    id: 'switcher-plus:open-workspaces',
+    name: 'Open in Workspaces Mode',
+    mode: Mode.WorkspaceList,
+    iconId: 'lucide-album',
+    ribbonIconEl: null,
+  },
+  {
+    id: 'switcher-plus:open-headings',
+    name: 'Open in Headings Mode',
+    mode: Mode.HeadingsList,
+    iconId: 'lucide-file-search',
+    ribbonIconEl: null,
+  },
+  {
+    id: 'switcher-plus:open-starred',
+    name: 'Open in Starred Mode',
+    mode: Mode.StarredList,
+    iconId: 'star',
+    ribbonIconEl: null,
+  },
+  {
+    id: 'switcher-plus:open-commands',
+    name: 'Open in Commands Mode',
+    mode: Mode.CommandList,
+    iconId: 'run-command',
+    ribbonIconEl: null,
+  },
+  {
+    id: 'switcher-plus:open-related-items',
+    name: 'Open Related Items for the active editor',
+    mode: Mode.RelatedItemsList,
+    iconId: 'lucide-file-plus-2',
+    ribbonIconEl: null,
+  },
+];
+
 export default class SwitcherPlusPlugin extends Plugin {
   public options: SwitcherPlusSettings;
 
@@ -12,50 +79,11 @@ export default class SwitcherPlusPlugin extends Plugin {
     this.options = options;
 
     this.addSettingTab(new SwitcherPlusSettingTab(this.app, this, options));
+    this.registerRibbonCommandIcons();
 
-    this.registerCommand('switcher-plus:open', 'Open', Mode.Standard);
-    this.registerCommand(
-      'switcher-plus:open-editors',
-      'Open in Editor Mode',
-      Mode.EditorList,
-      'lucide-file-edit',
-    );
-    this.registerCommand(
-      'switcher-plus:open-symbols',
-      'Open Symbols for the active editor',
-      Mode.SymbolList,
-      'lucide-dollar-sign',
-    );
-    this.registerCommand(
-      'switcher-plus:open-workspaces',
-      'Open in Workspaces Mode',
-      Mode.WorkspaceList,
-      'lucide-album',
-    );
-    this.registerCommand(
-      'switcher-plus:open-headings',
-      'Open in Headings Mode',
-      Mode.HeadingsList,
-      'lucide-file-search',
-    );
-    this.registerCommand(
-      'switcher-plus:open-starred',
-      'Open in Starred Mode',
-      Mode.StarredList,
-      'star',
-    );
-    this.registerCommand(
-      'switcher-plus:open-commands',
-      'Open in Commands Mode',
-      Mode.CommandList,
-      'run-command',
-    );
-    this.registerCommand(
-      'switcher-plus:open-related-items',
-      'Open Related Items for the active editor',
-      Mode.RelatedItemsList,
-      'lucide-file-plus-2',
-    );
+    COMMAND_DATA.forEach(({ id, name, mode, iconId }) => {
+      this.registerCommand(id, name, mode, iconId);
+    });
   }
 
   registerCommand(id: string, name: string, mode: Mode, iconId?: string): void {
@@ -65,19 +93,47 @@ export default class SwitcherPlusPlugin extends Plugin {
       icon: iconId,
       hotkeys: [],
       checkCallback: (checking) => {
-        // modal needs to be created dynamically (same as system switcher)
-        // as system options are evaluated in the modal constructor
-        const modal = createSwitcherPlus(this.app, this);
-        if (modal) {
-          if (!checking) {
-            modal.openInMode(mode);
-          }
-
-          return true;
-        }
-
-        return false;
+        return this.createModalAndOpen(mode, checking);
       },
     });
+  }
+
+  registerRibbonCommandIcons(): void {
+    // remove any registered icons
+    COMMAND_DATA.forEach((data) => {
+      data.ribbonIconEl?.remove();
+      data.ribbonIconEl = null;
+    });
+
+    // map to keyed object
+    const commandDataByMode = COMMAND_DATA.reduce((acc, curr) => {
+      acc[curr.mode] = curr;
+      return acc;
+    }, {} as Record<Mode, CommandInfo>);
+
+    this.options.enabledRibbonCommands.forEach((command) => {
+      const data = commandDataByMode[Mode[command]];
+
+      if (data) {
+        data.ribbonIconEl = this.addRibbonIcon(data.iconId, data.name, () => {
+          this.createModalAndOpen(data.mode, false);
+        });
+      }
+    });
+  }
+
+  createModalAndOpen(mode: Mode, isChecking: boolean): boolean {
+    // modal needs to be created dynamically (same as system switcher)
+    // as system options are evaluated in the modal constructor
+    const modal = createSwitcherPlus(this.app, this);
+    if (!modal) {
+      return false;
+    }
+
+    if (!isChecking) {
+      modal.openInMode(mode);
+    }
+
+    return true;
   }
 }

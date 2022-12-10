@@ -1,10 +1,13 @@
-import { SettingsTabSection, SwitcherPlusSettings } from 'src/settings';
+import {
+  SettingsTabSection,
+  SwitcherPlusSettings,
+  SwitcherPlusSettingTab,
+} from 'src/settings';
 import { Chance } from 'chance';
 import { mock, MockProxy, mockReset } from 'jest-mock-extended';
 import {
   App,
   DropdownComponent,
-  PluginSettingTab,
   Setting,
   TextAreaComponent,
   TextComponent,
@@ -21,7 +24,7 @@ class SUT extends SettingsTabSection {
 
 describe('settingsTabSection', () => {
   let mockApp: MockProxy<App>;
-  let mockPluginSettingTab: MockProxy<PluginSettingTab>;
+  let mockPluginSettingTab: MockProxy<SwitcherPlusSettingTab>;
   let mockConfig: MockProxy<SwitcherPlusSettings>;
   let mockContainerEl: MockProxy<HTMLElement>;
   let sut: SUT;
@@ -29,7 +32,7 @@ describe('settingsTabSection', () => {
   beforeAll(() => {
     mockApp = mock<App>();
     mockContainerEl = mock<HTMLElement>();
-    mockPluginSettingTab = mock<PluginSettingTab>({ containerEl: mockContainerEl });
+    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({ containerEl: mockContainerEl });
     mockConfig = mock<SwitcherPlusSettings>();
 
     sut = sut = new SUT(mockApp, mockPluginSettingTab, mockConfig);

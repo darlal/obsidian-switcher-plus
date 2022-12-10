@@ -2,14 +2,15 @@ import {
   GeneralSettingsTabSection,
   SettingsTabSection,
   SwitcherPlusSettings,
+  SwitcherPlusSettingTab,
 } from 'src/settings';
-import { mock, MockProxy } from 'jest-mock-extended';
-import { App, PluginSettingTab, Setting } from 'obsidian';
-import { PathDisplayFormat } from 'src/types';
+import { mock, mockFn, MockProxy, mockReset } from 'jest-mock-extended';
+import { App, Setting, TextAreaComponent } from 'obsidian';
+import { Mode, PathDisplayFormat } from 'src/types';
 
 describe('generalSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
-  let mockPluginSettingTab: MockProxy<PluginSettingTab>;
+  let mockPluginSettingTab: MockProxy<SwitcherPlusSettingTab>;
   let mockContainerEl: MockProxy<HTMLElement>;
   let config: SwitcherPlusSettings;
   let addToggleSettingSpy: jest.SpyInstance;
@@ -18,9 +19,12 @@ describe('generalSettingsTabSection', () => {
   beforeAll(() => {
     mockApp = mock<App>();
     mockContainerEl = mock<HTMLElement>();
-    mockPluginSettingTab = mock<PluginSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
     addToggleSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'addToggleSetting');
+    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({
+      containerEl: mockContainerEl,
+      plugin: { registerRibbonCommandIcons: mockFn() },
+    });
 
     sut = new GeneralSettingsTabSection(mockApp, mockPluginSettingTab, config);
   });
@@ -109,6 +113,18 @@ describe('generalSettingsTabSection', () => {
         'showOptionalIndicatorIcons',
       );
     });
+
+    it('should show setting to change ribbon commands', () => {
+      const setEnabledRibbonCommandsSpy = jest
+        .spyOn(sut, 'setEnabledRibbonCommands')
+        .mockReturnValueOnce();
+
+      sut.display(mockContainerEl);
+
+      expect(setEnabledRibbonCommandsSpy).toHaveBeenCalled();
+
+      setEnabledRibbonCommandsSpy.mockRestore();
+    });
   });
 
   describe('setPathDisplayFormat', () => {
@@ -152,6 +168,96 @@ describe('generalSettingsTabSection', () => {
 
       addDropdownSettingSpy.mockRestore();
       configSaveSpy.mockRestore();
+    });
+  });
+
+  describe('setEnabledRibbonCommands', () => {
+    let mockSetting: MockProxy<Setting>;
+    let mockTextComp: MockProxy<TextAreaComponent>;
+    let mockInputEl: MockProxy<HTMLInputElement>;
+    let createSettingSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      mockSetting = mock<Setting>();
+      mockInputEl = mock<HTMLInputElement>();
+      mockTextComp = mock<TextAreaComponent>({
+        inputEl: mockInputEl,
+      });
+
+      createSettingSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'createSetting')
+        .mockReturnValue(mockSetting);
+
+      mockSetting.addTextArea.mockImplementation((cb) => {
+        cb(mockTextComp);
+        return mockSetting;
+      });
+    });
+
+    afterAll(() => {
+      createSettingSpy.mockRestore();
+    });
+
+    afterEach(() => {
+      mockReset(mockTextComp);
+      mockReset(mockInputEl);
+    });
+
+    it('should show the enabledRibbonCommands setting', () => {
+      const { enabledRibbonCommands } = config;
+
+      sut.setEnabledRibbonCommands(mockContainerEl, config);
+
+      expect(mockTextComp.setValue).toHaveBeenCalledWith(
+        enabledRibbonCommands.join('\n'),
+      );
+    });
+
+    it('should save updated value', () => {
+      const enabledCommands = `${Mode[Mode.Standard]}\n${Mode[Mode.SymbolList]}`;
+      const saveSpy = jest.spyOn(config, 'save');
+
+      let focusoutFn: EventListener;
+      mockInputEl.addEventListener.mockImplementation((evtStr, listener) => {
+        focusoutFn = listener as EventListener;
+      });
+
+      config.enabledRibbonCommands = []; // start with no values set
+      mockTextComp.getValue.mockReturnValue(enabledCommands);
+
+      sut.setEnabledRibbonCommands(mockContainerEl, config);
+      focusoutFn(null); // trigger the callback to save
+
+      expect(mockTextComp.getValue).toHaveBeenCalled();
+      expect(saveSpy).toHaveBeenCalled();
+      expect(config.enabledRibbonCommands).toEqual(
+        expect.arrayContaining(enabledCommands.split('\n')),
+      );
+
+      saveSpy.mockRestore();
+    });
+
+    it('should not save changes when invalid related items types are added', () => {
+      const enabledCommands = 'invalid type';
+      const initialCommands = [Mode[Mode.CommandList]] as Array<keyof typeof Mode>;
+      const saveSpy = jest.spyOn(config, 'save');
+
+      let focusoutFn: EventListener;
+      mockInputEl.addEventListener.mockImplementation((evtStr, listener) => {
+        focusoutFn = listener as EventListener;
+      });
+
+      config.enabledRibbonCommands = initialCommands;
+      mockTextComp.getValue.mockReturnValue(enabledCommands);
+
+      sut.setEnabledRibbonCommands(mockContainerEl, config);
+      focusoutFn(null); // trigger the callback to save
+
+      expect(mockTextComp.getValue).toHaveBeenCalled();
+      expect(config.enabledRibbonCommands).toEqual(initialCommands);
+      expect(saveSpy).not.toHaveBeenCalled();
+
+      saveSpy.mockRestore();
     });
   });
 });

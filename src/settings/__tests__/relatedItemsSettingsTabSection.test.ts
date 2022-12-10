@@ -2,14 +2,15 @@ import {
   RelatedItemsSettingsTabSection,
   SettingsTabSection,
   SwitcherPlusSettings,
+  SwitcherPlusSettingTab,
 } from 'src/settings';
 import { RelationType } from 'src/types';
 import { mock, MockProxy, mockReset } from 'jest-mock-extended';
-import { App, PluginSettingTab, Setting, TextAreaComponent } from 'obsidian';
+import { App, Setting, TextAreaComponent } from 'obsidian';
 
 describe('relatedItemsSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
-  let mockPluginSettingTab: MockProxy<PluginSettingTab>;
+  let mockPluginSettingTab: MockProxy<SwitcherPlusSettingTab>;
   let config: SwitcherPlusSettings;
   let mockContainerEl: MockProxy<HTMLElement>;
   let sut: RelatedItemsSettingsTabSection;
@@ -17,7 +18,7 @@ describe('relatedItemsSettingsTabSection', () => {
   beforeAll(() => {
     mockApp = mock<App>();
     mockContainerEl = mock<HTMLElement>();
-    mockPluginSettingTab = mock<PluginSettingTab>({ containerEl: mockContainerEl });
+    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
 
     sut = new RelatedItemsSettingsTabSection(mockApp, mockPluginSettingTab, config);
