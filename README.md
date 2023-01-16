@@ -1,7 +1,7 @@
 # Quick Switcher++ for Obsidian
 
-[![GitHub release (latest SemVer including pre-releases)](https://img.shields.io/github/v/release/darlal/obsidian-switcher-plus?include_prereleases&sort=semver&style=for-the-badge)](https://github.com/darlal/obsidian-switcher-plus/releases/latest) [![GitHub all releases](https://img.shields.io/github/downloads/darlal/obsidian-switcher-plus/total?style=for-the-badge)](https://github.com/darlal/obsidian-switcher-plus/releases/latest)
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/darlal/obsidian-switcher-plus/Create%20and%20publish%20release?logo=github&style=for-the-badge)](https://github.com/darlal/obsidian-switcher-plus/actions)
+[![Latest Release](https://img.shields.io/github/v/release/darlal/obsidian-switcher-plus?include_prereleases&sort=semver&style=for-the-badge)](https://github.com/darlal/obsidian-switcher-plus/releases/latest) [![Total Downloads](https://img.shields.io/github/downloads/darlal/obsidian-switcher-plus/total?style=for-the-badge)](https://github.com/darlal/obsidian-switcher-plus/releases/latest)
+[![Build Workflow Status](https://img.shields.io/github/actions/workflow/status/darlal/obsidian-switcher-plus/test.yml?branch=master&logo=github&style=for-the-badge)](https://github.com/darlal/obsidian-switcher-plus/actions/workflows/test.yml)
 
 
 Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](https://obsidian.md/) plugin that extends the functionality of the builtin "Quick Switcher". [What's new?](https://github.com/darlal/obsidian-switcher-plus/releases)
