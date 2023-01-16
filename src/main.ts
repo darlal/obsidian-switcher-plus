@@ -14,7 +14,7 @@ type CommandInfo = {
 const COMMAND_DATA: CommandInfo[] = [
   {
     id: 'switcher-plus:open',
-    name: 'Open',
+    name: 'Open in Standard Mode',
     mode: Mode.Standard,
     iconId: 'lucide-search',
     ribbonIconEl: null,
