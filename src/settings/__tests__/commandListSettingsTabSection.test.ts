@@ -44,7 +44,7 @@ describe('commandListSettingsTabSection', () => {
 
     sut.display(mockContainerEl);
 
-    expect(addTextSettingSpy).toBeCalledWith(
+    expect(addTextSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Command list mode trigger',
       expect.any(String),

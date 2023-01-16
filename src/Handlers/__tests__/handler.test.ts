@@ -964,7 +964,7 @@ describe('Handler', () => {
       sut.activateLeafOrOpenFile(navType, file, errorContext, leaf);
 
       expect(activateLeafSpy).not.toHaveBeenCalled();
-      expect(openFileInLeafSpy).toBeCalledWith(
+      expect(openFileInLeafSpy).toHaveBeenCalledWith(
         file,
         navType,
         defaultOpenViewState,
@@ -1078,7 +1078,12 @@ describe('Handler', () => {
 
       sut.renderContent(mockParentEl, content, results, offset);
 
-      expect(mockRenderResults).toBeCalledWith(mockTitleEl, content, results, offset);
+      expect(mockRenderResults).toHaveBeenCalledWith(
+        mockTitleEl,
+        content,
+        results,
+        offset,
+      );
       expect(mockParentEl.createDiv).toHaveBeenCalledWith(
         expect.objectContaining({
           cls: ['suggestion-content', 'qsp-content'],

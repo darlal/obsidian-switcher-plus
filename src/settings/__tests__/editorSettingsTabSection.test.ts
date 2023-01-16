@@ -44,7 +44,7 @@ describe('editorSettingsTabSection', () => {
 
     sut.display(mockContainerEl);
 
-    expect(addTextSettingSpy).toBeCalledWith(
+    expect(addTextSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Editor list mode trigger',
       expect.any(String),
@@ -64,7 +64,7 @@ describe('editorSettingsTabSection', () => {
 
     sut.display(mockContainerEl);
 
-    expect(addTextAreaSettingSpy).toBeCalledWith(
+    expect(addTextAreaSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Include side panel views',
       expect.any(String),

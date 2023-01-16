@@ -354,7 +354,7 @@ export class SwitcherPlusSettings {
   }
 
   async loadSettings(): Promise<void> {
-    const copy = <T>(source: T, target: T, keys: Array<keyof T>): void => {
+    const copy = <T extends object>(source: T, target: T, keys: Array<keyof T>): void => {
       for (const key of keys) {
         if (key in source) {
           target[key] = source[key];

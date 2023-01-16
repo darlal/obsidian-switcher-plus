@@ -61,7 +61,7 @@ describe('symbolSettingsTabSection', () => {
 
       sut.display(mockContainerEl);
 
-      expect(addTextSettingSpy).toBeCalledWith(
+      expect(addTextSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Symbol list mode trigger',
         expect.any(String),
@@ -76,7 +76,7 @@ describe('symbolSettingsTabSection', () => {
     it('should show the symbolsInLineOrder setting', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'List symbols as indented outline',
         expect.any(String),
@@ -88,7 +88,7 @@ describe('symbolSettingsTabSection', () => {
     it('should show the alwaysNewTabForSymbols setting', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Open Symbols in new tab',
         expect.any(String),
@@ -100,7 +100,7 @@ describe('symbolSettingsTabSection', () => {
     it('should show the useActiveTabForSymbolsOnMobile setting', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Open Symbols in active tab on mobile devices',
         expect.any(String),
@@ -112,7 +112,7 @@ describe('symbolSettingsTabSection', () => {
     it('should show the selectNearestHeading setting', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Auto-select nearest heading',
         expect.any(String),
@@ -124,7 +124,7 @@ describe('symbolSettingsTabSection', () => {
     it('should show the symbol type setting for Headings', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Show Headings',
         expect.any(String),
@@ -137,7 +137,7 @@ describe('symbolSettingsTabSection', () => {
     it('should show the symbol type setting for Tags', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Show Tags',
         expect.any(String),
@@ -150,7 +150,7 @@ describe('symbolSettingsTabSection', () => {
     it('should show the symbol type setting for Embeds', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Show Embeds',
         expect.any(String),
@@ -163,7 +163,7 @@ describe('symbolSettingsTabSection', () => {
     it('should show the symbol type setting for Callouts', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Show Callouts',
         expect.any(String),
@@ -176,7 +176,7 @@ describe('symbolSettingsTabSection', () => {
     it('should show the symbol type setting for Links', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Show Links',
         expect.any(String),
@@ -189,7 +189,7 @@ describe('symbolSettingsTabSection', () => {
     it('should show the symbol type setting for Links to headings', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Links to headings',
         expect.any(String),
@@ -202,7 +202,7 @@ describe('symbolSettingsTabSection', () => {
     it('should show the symbol type setting for Links to blocks', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Links to blocks',
         expect.any(String),

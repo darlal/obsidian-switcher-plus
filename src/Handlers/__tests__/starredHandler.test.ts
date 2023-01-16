@@ -350,7 +350,7 @@ describe('starredHandler', () => {
 
       expect(results).toHaveLength(1);
       expect(resultItem.title).toBe(file.basename);
-      expect(mockVault.getAbstractFileByPath).toBeCalledWith(file.path);
+      expect(mockVault.getAbstractFileByPath).toHaveBeenCalledWith(file.path);
     });
 
     it('should not return items for starred items where the source file does not exist', () => {
@@ -364,7 +364,7 @@ describe('starredHandler', () => {
       const results = sut.getItems();
 
       expect(results).toHaveLength(0);
-      expect(mockVault.getAbstractFileByPath).toBeCalledWith(file.path);
+      expect(mockVault.getAbstractFileByPath).toHaveBeenCalledWith(file.path);
     });
   });
 });

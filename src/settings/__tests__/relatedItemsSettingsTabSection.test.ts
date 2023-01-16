@@ -45,7 +45,7 @@ describe('relatedItemsSettingsTabSection', () => {
 
     sut.display(mockContainerEl);
 
-    expect(addTextSettingSpy).toBeCalledWith(
+    expect(addTextSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Related Items list mode trigger',
       expect.any(String),
@@ -65,7 +65,7 @@ describe('relatedItemsSettingsTabSection', () => {
 
     sut.display(mockContainerEl);
 
-    expect(addToggleSettingSpy).toBeCalledWith(
+    expect(addToggleSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Exclude open files',
       expect.any(String),
@@ -81,7 +81,7 @@ describe('relatedItemsSettingsTabSection', () => {
 
     sut.display(mockContainerEl);
 
-    expect(createSettingSpy).toBeCalledWith(
+    expect(createSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Show related item types',
       expect.any(String),

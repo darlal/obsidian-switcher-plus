@@ -44,7 +44,7 @@ describe('WorkspaceSettingsTabSection', () => {
 
     sut.display(mockContainerEl);
 
-    expect(addTextSettingSpy).toBeCalledWith(
+    expect(addTextSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Workspace list mode trigger',
       expect.any(String),

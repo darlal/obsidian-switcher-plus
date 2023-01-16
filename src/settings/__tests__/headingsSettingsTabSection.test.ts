@@ -51,7 +51,7 @@ describe('headingsSettingsTabSection', () => {
 
     sut.display(mockContainerEl);
 
-    expect(addTextSettingSpy).toBeCalledWith(
+    expect(addTextSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Headings list mode trigger',
       expect.any(String),
@@ -66,7 +66,7 @@ describe('headingsSettingsTabSection', () => {
   it('should show the strictHeadingsOnly setting', () => {
     sut.display(mockContainerEl);
 
-    expect(addToggleSettingSpy).toBeCalledWith(
+    expect(addToggleSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Show headings only',
       expect.any(String),
@@ -80,7 +80,7 @@ describe('headingsSettingsTabSection', () => {
   it('should show the searchAllHeadings setting', () => {
     sut.display(mockContainerEl);
 
-    expect(addToggleSettingSpy).toBeCalledWith(
+    expect(addToggleSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Search all headings',
       expect.any(String),
@@ -94,7 +94,7 @@ describe('headingsSettingsTabSection', () => {
   it('should show the shouldSearchFilenames setting', () => {
     sut.display(mockContainerEl);
 
-    expect(addToggleSettingSpy).toBeCalledWith(
+    expect(addToggleSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Search filenames',
       expect.any(String),
@@ -108,7 +108,7 @@ describe('headingsSettingsTabSection', () => {
   it('should show the excludeObsidianIgnoredFiles setting', () => {
     sut.display(mockContainerEl);
 
-    expect(addToggleSettingSpy).toBeCalledWith(
+    expect(addToggleSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Hide Obsidian "Excluded files"',
       expect.any(String),

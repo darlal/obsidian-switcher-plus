@@ -628,7 +628,7 @@ describe('headingsHandler', () => {
       sut.renderSuggestion(headingSugg, mockParentEl);
 
       expect(renderPathSpy).toHaveBeenCalledWith(mockContentEl, headingSugg.file);
-      expect(renderContentSpy).toBeCalledWith(
+      expect(renderContentSpy).toHaveBeenCalledWith(
         mockParentEl,
         headingSugg.item.heading,
         headingSugg.match,
@@ -724,7 +724,7 @@ describe('headingsHandler', () => {
       // by default scores are downranked by -10
       expect(result.match.score).toBe(-10);
       expect(result.downranked).toBe(true);
-      expect(mockMetadataCache.isUserIgnored).toBeCalledWith(sugg.file.path);
+      expect(mockMetadataCache.isUserIgnored).toHaveBeenCalledWith(sugg.file.path);
 
       mockMetadataCache.isUserIgnored.mockReset();
     });
@@ -760,7 +760,7 @@ describe('headingsHandler', () => {
       const result = sut.shouldIncludeFile(mockFile);
 
       expect(result).toBe(false);
-      expect(mockMetadataCache.isUserIgnored).toBeCalledWith(mockFile.path);
+      expect(mockMetadataCache.isUserIgnored).toHaveBeenCalledWith(mockFile.path);
 
       mockMetadataCache.isUserIgnored.mockReset();
     });
@@ -774,7 +774,7 @@ describe('headingsHandler', () => {
       const result = sut.shouldIncludeFile(mockFile);
 
       expect(result).toBe(true);
-      expect(mockMetadataCache.isUserIgnored).toBeCalledWith(mockFile.path);
+      expect(mockMetadataCache.isUserIgnored).toHaveBeenCalledWith(mockFile.path);
 
       mockMetadataCache.isUserIgnored.mockReset();
     });

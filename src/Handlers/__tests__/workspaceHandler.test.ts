@@ -197,7 +197,7 @@ describe('workspaceHandler', () => {
         match,
       } = suggestionInstance;
 
-      expect(renderContentSpy).toBeCalledWith(mockParentEl, id, match);
+      expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, id, match);
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining(['mod-complex', 'qsp-suggestion-workspace']),
       );

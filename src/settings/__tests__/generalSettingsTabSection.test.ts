@@ -57,7 +57,7 @@ describe('generalSettingsTabSection', () => {
     it('should show the onOpenPreferNewTab setting', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Default to open in new tab',
         expect.any(String),
@@ -69,7 +69,7 @@ describe('generalSettingsTabSection', () => {
     it('should show the overrideStandardModeBehaviors setting', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Override Standard mode behavior',
         expect.any(String),
@@ -93,7 +93,7 @@ describe('generalSettingsTabSection', () => {
     it('should show the hidePathIfRoot setting', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Hide path for root items',
         expect.any(String),
@@ -105,7 +105,7 @@ describe('generalSettingsTabSection', () => {
     it('should show the showOptionalIndicatorIcons setting', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toBeCalledWith(
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Show indicator icons',
         expect.any(String),

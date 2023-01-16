@@ -202,7 +202,7 @@ describe('commandHandler', () => {
 
       sut.renderSuggestion(sugg, mockParentEl);
 
-      expect(renderContentSpy).toBeCalledWith(mockParentEl, item.name, sugg.match);
+      expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, item.name, sugg.match);
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining(['mod-complex', 'qsp-suggestion-command']),
       );

@@ -21,13 +21,13 @@ describe('standardExHandler', () => {
   });
 
   test('validateCommand should throw', () => {
-    expect(() => sut.validateCommand(null, 0, '', null, null)).toThrowError(
+    expect(() => sut.validateCommand(null, 0, '', null, null)).toThrow(
       'Method not implemented.',
     );
   });
 
   test('getSuggestions should throw', () => {
-    expect(() => sut.getSuggestions(null)).toThrowError('Method not implemented.');
+    expect(() => sut.getSuggestions(null)).toThrow('Method not implemented.');
   });
 
   describe('renderSuggestion', () => {
