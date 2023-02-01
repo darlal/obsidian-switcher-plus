@@ -103,24 +103,21 @@ export class ModeHandler {
 
   insertSessionOpenModeCommandString(inputEl: HTMLInputElement): void {
     const { sessionOpenModeString, lastInput } = this;
-
-    if (
-      sessionOpenModeString !== null &&
-      sessionOpenModeString !== '' &&
-      !inputEl.value
-    ) {
+    if (lastInput && lastInput !== sessionOpenModeString) {
+      inputEl.value = lastInput;
+      // lastInput starts with `sessionOpenModeString`
+      inputEl.setSelectionRange(sessionOpenModeString.length, inputEl.value.length);
+    } else if (sessionOpenModeString !== null && sessionOpenModeString !== '') {
       // update UI with current command string in the case were openInMode was called
       inputEl.value = sessionOpenModeString;
-
-      if (lastInput) {
-        inputEl.value += lastInput;
-        inputEl.setSelectionRange(sessionOpenModeString.length, inputEl.value.length);
-        this.lastInput = null;
-      }
 
       // reset to null so user input is not overridden the next time onInput is called
       this.sessionOpenModeString = null;
     }
+
+    // the same logic as `sessionOpenModeString`
+    // make sure it will not override user's normal input.
+    this.lastInput = null;
   }
 
   updateSuggestions(
