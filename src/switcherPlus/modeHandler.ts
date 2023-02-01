@@ -95,7 +95,7 @@ export class ModeHandler {
       this.sessionOpenModeString = this.getHandler(mode).commandString;
     }
 
-    if (this.settings.preserveLastInput && lastInputInfoByMode[mode]) {
+    if (this.settings.preserveCommandPaletteLastInput && lastInputInfoByMode[mode]) {
       const lastInfo = lastInputInfoByMode[mode];
       this.lastInput = lastInfo.inputText;
     }

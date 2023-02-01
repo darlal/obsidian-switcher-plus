@@ -16,10 +16,10 @@ export class CommandListSettingsTabSection extends SettingsTabSection {
     );
     this.addToggleSetting(
       containerEl,
-      'Preserve last input',
-      'Controls whether the last typed input to Quick Switcher should be restored when opening it the next time.',
-      config.preserveLastInput,
-      'preserveLastInput',
+      'Preserve Command Palette last input',
+      'Controls whether the last typed input to the Command Palette should be restored when opening it the next time.',
+      config.preserveCommandPaletteLastInput,
+      'preserveCommandPaletteLastInput',
     );
   }
 }

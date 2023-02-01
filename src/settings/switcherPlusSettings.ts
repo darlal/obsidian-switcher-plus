@@ -64,7 +64,7 @@ export class SwitcherPlusSettings {
         alias: 0,
         h1: 0,
       },
-      preserveLastInput: false,
+      preserveCommandPaletteLastInput: false,
     };
   }
 
@@ -375,12 +375,12 @@ export class SwitcherPlusSettings {
     this.data.matchPriorityAdjustments = value;
   }
 
-  get preserveLastInput() {
-    return this.data.preserveLastInput;
+  get preserveCommandPaletteLastInput() {
+    return this.data.preserveCommandPaletteLastInput;
   }
 
-  set preserveLastInput(value: boolean) {
-    this.data.preserveLastInput = value;
+  set preserveCommandPaletteLastInput(value: boolean) {
+    this.data.preserveCommandPaletteLastInput = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {
