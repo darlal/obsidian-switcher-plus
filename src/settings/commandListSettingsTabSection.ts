@@ -14,5 +14,12 @@ export class CommandListSettingsTabSection extends SettingsTabSection {
       'commandListCommand',
       config.commandListPlaceholderText,
     );
+    this.addToggleSetting(
+      containerEl,
+      'Preserve last input',
+      'Controls whether the last typed input to Quick Switcher should be restored when opening it the next time.',
+      config.preserveLastInput,
+      'preserveLastInput',
+    );
   }
 }

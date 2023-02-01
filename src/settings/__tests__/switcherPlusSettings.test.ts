@@ -74,6 +74,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
       alias: 0,
       h1: 0,
     },
+    preserveLastInput: false,
   };
 
   if (!useDefault) {

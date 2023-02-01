@@ -265,6 +265,7 @@ export interface SettingsData {
   enabledRibbonCommands: Array<keyof typeof Mode>;
   enableMatchPriorityAdjustments: boolean;
   matchPriorityAdjustments: Record<string, number>;
+  preserveLastInput: boolean;
 }
 
 export interface SearchQuery {

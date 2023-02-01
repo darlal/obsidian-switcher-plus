@@ -31,11 +31,14 @@ import { SwitcherPlusSettings } from 'src/settings';
 import { WorkspaceLeaf, App, Chooser, Debouncer, debounce, TFile } from 'obsidian';
 import { SwitcherPlusKeymap } from './switcherPlusKeymap';
 
+const lastInputInfoByMode = {} as Record<Mode, InputInfo>;
+
 export class ModeHandler {
   private inputInfo: InputInfo;
   private handlersByMode: Map<Omit<Mode, 'Standard'>, Handler<AnySuggestion>>;
   private handlersByType: Map<SuggestionType, Handler<AnySuggestion>>;
   private sessionOpenModeString: string;
+  private lastInput: string;
   private debouncedGetSuggestions: Debouncer<
     [InputInfo, Chooser<AnySuggestion>, SwitcherPlus],
     void
@@ -91,14 +94,29 @@ export class ModeHandler {
     if (mode !== Mode.Standard) {
       this.sessionOpenModeString = this.getHandler(mode).commandString;
     }
+
+    if (this.settings.preserveLastInput && lastInputInfoByMode[mode]) {
+      const lastInfo = lastInputInfoByMode[mode];
+      this.lastInput = lastInfo.inputText;
+    }
   }
 
   insertSessionOpenModeCommandString(inputEl: HTMLInputElement): void {
-    const { sessionOpenModeString } = this;
+    const { sessionOpenModeString, lastInput } = this;
 
-    if (sessionOpenModeString !== null && sessionOpenModeString !== '') {
+    if (
+      sessionOpenModeString !== null &&
+      sessionOpenModeString !== '' &&
+      !inputEl.value
+    ) {
       // update UI with current command string in the case were openInMode was called
       inputEl.value = sessionOpenModeString;
+
+      if (lastInput) {
+        inputEl.value += lastInput;
+        inputEl.setSelectionRange(sessionOpenModeString.length, inputEl.value.length);
+        this.lastInput = null;
+      }
 
       // reset to null so user input is not overridden the next time onInput is called
       this.sessionOpenModeString = null;
@@ -121,9 +139,9 @@ export class ModeHandler {
     const activeSugg = ModeHandler.getActiveSuggestion(chooser);
     const inputInfo = this.determineRunMode(query, activeSugg, activeLeaf);
     this.inputInfo = inputInfo;
-
     const { mode } = inputInfo;
     exKeymap.updateKeymapForMode(mode);
+    lastInputInfoByMode[mode] = inputInfo;
 
     if (mode !== Mode.Standard) {
       if (mode === Mode.HeadingsList && inputInfo.parsedCommand().parsedInput?.length) {

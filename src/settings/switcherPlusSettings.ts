@@ -64,6 +64,7 @@ export class SwitcherPlusSettings {
         alias: 0,
         h1: 0,
       },
+      preserveLastInput: false,
     };
   }
 
@@ -372,6 +373,14 @@ export class SwitcherPlusSettings {
 
   set matchPriorityAdjustments(value: Record<string, number>) {
     this.data.matchPriorityAdjustments = value;
+  }
+
+  get preserveLastInput() {
+    return this.data.preserveLastInput;
+  }
+
+  set preserveLastInput(value: boolean) {
+    this.data.preserveLastInput = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {
