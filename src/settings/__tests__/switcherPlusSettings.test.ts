@@ -75,6 +75,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
       h1: 0,
     },
     preserveCommandPaletteLastInput: false,
+    preserveQuickSwitcherLastInput: false,
   };
 
   if (!useDefault) {

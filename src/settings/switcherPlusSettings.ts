@@ -65,6 +65,7 @@ export class SwitcherPlusSettings {
         h1: 0,
       },
       preserveCommandPaletteLastInput: false,
+      preserveQuickSwitcherLastInput: false,
     };
   }
 
@@ -381,6 +382,14 @@ export class SwitcherPlusSettings {
 
   set preserveCommandPaletteLastInput(value: boolean) {
     this.data.preserveCommandPaletteLastInput = value;
+  }
+
+  get preserveQuickSwitcherLastInput() {
+    return this.data.preserveQuickSwitcherLastInput;
+  }
+
+  set preserveQuickSwitcherLastInput(value: boolean) {
+    this.data.preserveQuickSwitcherLastInput = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

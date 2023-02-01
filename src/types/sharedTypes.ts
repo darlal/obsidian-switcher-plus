@@ -266,6 +266,7 @@ export interface SettingsData {
   enableMatchPriorityAdjustments: boolean;
   matchPriorityAdjustments: Record<string, number>;
   preserveCommandPaletteLastInput: boolean;
+  preserveQuickSwitcherLastInput: boolean;
 }
 
 export interface SearchQuery {

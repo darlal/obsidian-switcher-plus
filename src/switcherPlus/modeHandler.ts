@@ -95,9 +95,14 @@ export class ModeHandler {
       this.sessionOpenModeString = this.getHandler(mode).commandString;
     }
 
-    if (this.settings.preserveCommandPaletteLastInput && lastInputInfoByMode[mode]) {
-      const lastInfo = lastInputInfoByMode[mode];
-      this.lastInput = lastInfo.inputText;
+    if (lastInputInfoByMode[mode]) {
+      if (
+        (mode === Mode.CommandList && this.settings.preserveCommandPaletteLastInput) ||
+        (mode !== Mode.CommandList && this.settings.preserveQuickSwitcherLastInput)
+      ) {
+        const lastInfo = lastInputInfoByMode[mode];
+        this.lastInput = lastInfo.inputText;
+      }
     }
   }
 
@@ -105,8 +110,10 @@ export class ModeHandler {
     const { sessionOpenModeString, lastInput } = this;
     if (lastInput && lastInput !== sessionOpenModeString) {
       inputEl.value = lastInput;
-      // lastInput starts with `sessionOpenModeString`
-      inputEl.setSelectionRange(sessionOpenModeString.length, inputEl.value.length);
+      // `sessionOpenModeString` may `null` when in standard mode
+      // otherwise `lastInput` starts with `sessionOpenModeString`
+      const startsNumber = sessionOpenModeString ? sessionOpenModeString.length : 0;
+      inputEl.setSelectionRange(startsNumber, inputEl.value.length);
     } else if (sessionOpenModeString !== null && sessionOpenModeString !== '') {
       // update UI with current command string in the case were openInMode was called
       inputEl.value = sessionOpenModeString;

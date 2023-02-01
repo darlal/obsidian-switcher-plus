@@ -59,6 +59,20 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     );
 
     this.showMatchPriorityAdjustments(containerEl, config);
+    this.addToggleSetting(
+      containerEl,
+      'Preserve Command Palette last input',
+      'Controls whether the last typed input to the Command Palette should be restored when opening it the next time.',
+      config.preserveCommandPaletteLastInput,
+      'preserveCommandPaletteLastInput',
+    );
+    this.addToggleSetting(
+      containerEl,
+      'Preserve Quick Switcher last input',
+      'Controls whether the last typed input to Quick Switcher should be restored when opening it the next time.',
+      config.preserveQuickSwitcherLastInput,
+      'preserveQuickSwitcherLastInput',
+    );
   }
 
   setPathDisplayFormat(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
