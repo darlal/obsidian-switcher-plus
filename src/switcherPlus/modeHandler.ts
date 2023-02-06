@@ -144,6 +144,7 @@ export class ModeHandler {
     const inputInfo = this.determineRunMode(query, activeSugg, activeLeaf);
     this.inputInfo = inputInfo;
     const { mode } = inputInfo;
+
     exKeymap.updateKeymapForMode(mode);
     lastInputInfoByMode[mode] = inputInfo;
 
