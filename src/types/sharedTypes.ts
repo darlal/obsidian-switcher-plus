@@ -264,6 +264,7 @@ export interface SettingsData {
   showOptionalIndicatorIcons: boolean;
   overrideStandardModeBehaviors: boolean;
   enabledRibbonCommands: Array<keyof typeof Mode>;
+  fileExtAllowList: Array<string>;
   enableMatchPriorityAdjustments: boolean;
   matchPriorityAdjustments: Record<string, number>;
   preserveCommandPaletteLastInput: boolean;

@@ -56,6 +56,7 @@ export class SwitcherPlusSettings {
         Mode[Mode.HeadingsList] as keyof typeof Mode,
         Mode[Mode.SymbolList] as keyof typeof Mode,
       ],
+      fileExtAllowList: ['canvas'],
       enableMatchPriorityAdjustments: false,
       matchPriorityAdjustments: {
         isOpenInEditor: 0,
@@ -367,6 +368,14 @@ export class SwitcherPlusSettings {
   set enabledRibbonCommands(value: Array<keyof typeof Mode>) {
     // remove any duplicates before storing
     this.data.enabledRibbonCommands = [...new Set(value)];
+  }
+
+  get fileExtAllowList(): Array<string> {
+    return this.data.fileExtAllowList;
+  }
+
+  set fileExtAllowList(value: Array<string>) {
+    this.data.fileExtAllowList = value;
   }
 
   get enableMatchPriorityAdjustments(): boolean {

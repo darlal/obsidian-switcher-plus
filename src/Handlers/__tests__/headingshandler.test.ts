@@ -757,6 +757,29 @@ describe('headingsHandler', () => {
       mockViewRegistry.isExtensionRegistered.mockReset();
       mockMetadataCache.isUserIgnored.mockReset();
     });
+
+    it('should return true for files in the allowlist', () => {
+      const mockFile = new TFile();
+      mockFile.extension = 'canvas';
+
+      mockViewRegistry.isExtensionRegistered.mockReturnValueOnce(false);
+      mockMetadataCache.isUserIgnored
+        .calledWith(mockFile.path)
+        .mockReturnValueOnce(false);
+
+      builtInSystemOptionsSpy.mockReturnValueOnce({
+        showAllFileTypes: false,
+        showAttachments: false,
+        showExistingOnly: false,
+      });
+
+      const result = sut.shouldIncludeFile(mockFile);
+
+      expect(result).toBe(true);
+
+      mockViewRegistry.isExtensionRegistered.mockReset();
+      mockMetadataCache.isUserIgnored.mockReset();
+    });
   });
 
   describe('getRecentFilesSuggestions', () => {

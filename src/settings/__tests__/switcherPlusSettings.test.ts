@@ -66,6 +66,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
       Mode[Mode.HeadingsList] as keyof typeof Mode,
       Mode[Mode.SymbolList] as keyof typeof Mode,
     ],
+    fileExtAllowList: ['canvas'],
     enableMatchPriorityAdjustments: false,
     matchPriorityAdjustments: {
       isOpenInEditor: 0,
@@ -106,6 +107,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     data.enabledRelatedItems = chance.pickset(Object.values(RelationType), 2);
     data.showOptionalIndicatorIcons = chance.bool();
     data.overrideStandardModeBehaviors = chance.bool();
+    data.fileExtAllowList = [];
     data.enableMatchPriorityAdjustments = chance.bool();
     data.matchPriorityAdjustments = { h2: 0.5, isOpenInEditor: 0.5 };
 
@@ -218,6 +220,7 @@ describe('SwitcherPlusSettings', () => {
     sut.showOptionalIndicatorIcons = settings.showOptionalIndicatorIcons;
     sut.overrideStandardModeBehaviors = settings.overrideStandardModeBehaviors;
     sut.enabledRibbonCommands = settings.enabledRibbonCommands;
+    sut.fileExtAllowList = settings.fileExtAllowList;
     sut.enableMatchPriorityAdjustments = settings.enableMatchPriorityAdjustments;
     sut.matchPriorityAdjustments = settings.matchPriorityAdjustments;
 

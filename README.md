@@ -62,6 +62,7 @@ Find the file you're looking for by searching through the headings contained in 
 | Search filenames | **Enabled**: search and show suggestions for filenames <br />**Disabled**: Don't search through filenames (except for fallback searches) | disabled |
 | Exclude folders | List of folder path regex that will be used to exclude folders and their sub-directories from suggestion search. One per line. | None |
 | Hide Obsidian "Excluded files" | **Enabled**, suggestions for files that are in Obsidian\'s "Options > Files & Links > Excluded files" list will not be displayed. **Disabled**, suggestions for those files will be displayed but downranked. | disabled |
+| File extension override | Override the "Show attachments" and the "Show all file types" builtin, system Switcher settings and always search files with the listed extensions. | `canvas` |
 
 ## Symbol Navigation (Headings, Hashtags, Links, Embeddings)
 

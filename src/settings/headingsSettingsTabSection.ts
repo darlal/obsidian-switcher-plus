@@ -41,7 +41,7 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
       'shouldSearchFilenames',
     );
 
-    this.setExcludeFolders(containerEl, config);
+    this.showExcludeFolders(containerEl, config);
 
     this.addToggleSetting(
       containerEl,
@@ -50,9 +50,31 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
       config.excludeObsidianIgnoredFiles,
       'excludeObsidianIgnoredFiles',
     );
+
+    this.showFileExtAllowList(containerEl, config);
   }
 
-  setExcludeFolders(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
+  showFileExtAllowList(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
+    this.createSetting(
+      containerEl,
+      'File extension override',
+      'Override the "Show attachments" and the "Show all file types" builtin, system Switcher settings and always search files with the listed extensions. Add one path per line. For example to add ".canvas" file extension, just add "canvas".',
+    ).addTextArea((textArea) => {
+      textArea.setValue(config.fileExtAllowList.join('\n'));
+      textArea.inputEl.addEventListener('focusout', () => {
+        const allowList = textArea
+          .getValue()
+          .split('\n')
+          .map((v) => v.trim())
+          .filter((v) => v.length > 0);
+
+        config.fileExtAllowList = allowList;
+        config.save();
+      });
+    });
+  }
+
+  showExcludeFolders(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
     const settingName = 'Exclude folders';
 
     this.createSetting(
@@ -61,7 +83,7 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
       'When in Headings list mode, folder path that match any regex listed here will not be searched for suggestions. Path should start from the Vault Root. Add one path per line.',
     ).addTextArea((textArea) => {
       textArea.setValue(config.excludeFolders.join('\n'));
-      textArea.inputEl.addEventListener('blur', () => {
+      textArea.inputEl.addEventListener('focusout', () => {
         const excludes = textArea
           .getValue()
           .split('\n')

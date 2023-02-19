@@ -119,6 +119,84 @@ describe('headingsSettingsTabSection', () => {
     addToggleSettingSpy.mockReset();
   });
 
+  it('should show file extension override settings', () => {
+    const showFileExtAllowListSpy = jest
+      .spyOn(sut, 'showFileExtAllowList')
+      .mockReturnValueOnce();
+
+    sut.display(mockContainerEl);
+
+    expect(showFileExtAllowListSpy).toHaveBeenCalled();
+
+    showFileExtAllowListSpy.mockRestore();
+  });
+
+  describe('showFileExtAllowList setting', () => {
+    const allowList = 'foo\nbar';
+    let mockSetting: MockProxy<Setting>;
+    let mockTextComp: MockProxy<TextAreaComponent>;
+    let mockInputEl: MockProxy<HTMLInputElement>;
+    let createSettingSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      mockSetting = mock<Setting>();
+      mockInputEl = mock<HTMLInputElement>();
+      mockTextComp = mock<TextAreaComponent>({
+        inputEl: mockInputEl,
+      });
+
+      createSettingSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'createSetting')
+        .mockReturnValue(mockSetting);
+
+      mockSetting.addTextArea.mockImplementation((cb) => {
+        cb(mockTextComp);
+        return mockSetting;
+      });
+
+      config.fileExtAllowList = allowList.split('\n');
+    });
+
+    afterAll(() => {
+      config.fileExtAllowList = ['canvas'];
+      createSettingSpy.mockRestore();
+    });
+
+    it('should show the fileExtAllowList setting', () => {
+      sut.showFileExtAllowList(mockContainerEl, config);
+
+      expect(mockTextComp.setValue).toHaveBeenCalledWith(allowList);
+      expect(createSettingSpy).toHaveBeenCalledWith(
+        mockContainerEl,
+        'File extension override',
+        expect.any(String),
+      );
+    });
+
+    it('should save updated value', () => {
+      const saveSpy = jest.spyOn(config, 'save');
+
+      let focusoutFn: EventListener;
+      mockInputEl.addEventListener.mockImplementation((evtStr, listener) => {
+        focusoutFn = listener as EventListener;
+      });
+
+      config.fileExtAllowList = []; // start with no values set
+      mockTextComp.getValue.mockReturnValue(allowList);
+
+      sut.showFileExtAllowList(mockContainerEl, config);
+      focusoutFn(null); // trigger the callback to save
+
+      expect(mockTextComp.getValue).toHaveBeenCalled();
+      expect(saveSpy).toHaveBeenCalled();
+      expect(config.fileExtAllowList).toEqual(
+        expect.arrayContaining(allowList.split('\n')),
+      );
+
+      saveSpy.mockRestore();
+    });
+  });
+
   describe('excludeFolders setting', () => {
     const excludedPaths = 'foo\nbar';
     let mockSetting: MockProxy<Setting>;
@@ -151,7 +229,7 @@ describe('headingsSettingsTabSection', () => {
     });
 
     it('should show the excludeFolders setting', () => {
-      sut.setExcludeFolders(mockContainerEl, config);
+      sut.showExcludeFolders(mockContainerEl, config);
 
       expect(mockTextComp.setValue).toHaveBeenCalledWith(excludedPaths);
       expect(createSettingSpy).toHaveBeenCalledWith(
@@ -164,16 +242,16 @@ describe('headingsSettingsTabSection', () => {
     it('should save updated value', () => {
       const saveSpy = jest.spyOn(config, 'save');
 
-      let onBlurFn: EventListener;
+      let focusoutFn: EventListener;
       mockInputEl.addEventListener.mockImplementation((evtStr, listener) => {
-        onBlurFn = listener as EventListener;
+        focusoutFn = listener as EventListener;
       });
 
       config.excludeFolders = []; // start with no values set
       mockTextComp.getValue.mockReturnValue(excludedPaths);
 
-      sut.setExcludeFolders(mockContainerEl, config);
-      onBlurFn(null); // trigger the callback to save
+      sut.showExcludeFolders(mockContainerEl, config);
+      focusoutFn(null); // trigger the callback to save
 
       expect(mockTextComp.getValue).toHaveBeenCalled();
       expect(saveSpy).toHaveBeenCalled();

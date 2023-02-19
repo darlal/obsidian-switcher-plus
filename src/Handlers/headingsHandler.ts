@@ -209,11 +209,12 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   }
 
   shouldIncludeFile(file: TAbstractFile): boolean {
-    let retVal = false;
+    let isIncluded = false;
     const {
       settings: {
         excludeObsidianIgnoredFiles,
         builtInSystemOptions: { showAttachments, showAllFileTypes },
+        fileExtAllowList,
       },
       app: { viewRegistry, metadataCache },
     } = this;
@@ -222,13 +223,18 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       const { extension } = file;
 
       if (!metadataCache.isUserIgnored(file.path) || !excludeObsidianIgnoredFiles) {
-        retVal = viewRegistry.isExtensionRegistered(extension)
+        isIncluded = viewRegistry.isExtensionRegistered(extension)
           ? showAttachments || extension === 'md'
           : showAllFileTypes;
+
+        if (!isIncluded) {
+          const allowList = new Set(fileExtAllowList);
+          isIncluded = allowList.has(extension);
+        }
       }
     }
 
-    return retVal;
+    return isIncluded;
   }
 
   private addAliasSuggestions(
