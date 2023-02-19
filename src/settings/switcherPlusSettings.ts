@@ -34,6 +34,7 @@ export class SwitcherPlusSettings {
       relatedItemsListCommand: '~',
       strictHeadingsOnly: false,
       searchAllHeadings: true,
+      headingsSearchDebounceMilli: 250,
       excludeViewTypes: ['empty'],
       referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'],
       limit: 50,
@@ -223,6 +224,14 @@ export class SwitcherPlusSettings {
 
   set searchAllHeadings(value: boolean) {
     this.data.searchAllHeadings = value;
+  }
+
+  get headingsSearchDebounceMilli(): number {
+    return this.data.headingsSearchDebounceMilli;
+  }
+
+  set headingsSearchDebounceMilli(value: number) {
+    this.data.headingsSearchDebounceMilli = value;
   }
 
   get excludeViewTypes(): Array<string> {

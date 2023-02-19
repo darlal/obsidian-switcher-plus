@@ -47,6 +47,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     relatedItemsListCommand: '~',
     strictHeadingsOnly: false,
     searchAllHeadings: true,
+    headingsSearchDebounceMilli: 250,
     limit: 50,
     selectNearestHeading: true,
     excludeLinkSubTypes: LinkType.None,
@@ -91,6 +92,7 @@ function transientSettingsData(useDefault: boolean): SettingsData {
     data.commandListCommand = chance.word();
     data.strictHeadingsOnly = chance.bool();
     data.searchAllHeadings = chance.bool();
+    data.headingsSearchDebounceMilli = chance.millisecond();
     data.limit = chance.integer();
     data.selectNearestHeading = chance.bool();
     data.starredListCommand = chance.word();
@@ -200,6 +202,7 @@ describe('SwitcherPlusSettings', () => {
     sut.relatedItemsListCommand = settings.relatedItemsListCommand;
     sut.strictHeadingsOnly = settings.strictHeadingsOnly;
     sut.searchAllHeadings = settings.searchAllHeadings;
+    sut.headingsSearchDebounceMilli = settings.headingsSearchDebounceMilli;
     sut.includeSidePanelViewTypes = settings.includeSidePanelViewTypes;
     sut.limit = settings.limit;
     sut.selectNearestHeading = settings.selectNearestHeading;

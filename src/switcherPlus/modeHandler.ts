@@ -75,7 +75,12 @@ export class ModeHandler {
       [SuggestionType.Alias, standardExHandler],
     ]);
 
-    this.debouncedGetSuggestions = debounce(this.getSuggestions.bind(this), 400, true);
+    this.debouncedGetSuggestions = debounce(
+      this.getSuggestions.bind(this),
+      settings.headingsSearchDebounceMilli,
+      true,
+    );
+
     this.reset();
   }
 

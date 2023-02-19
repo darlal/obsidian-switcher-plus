@@ -245,6 +245,7 @@ export interface SettingsData {
   relatedItemsListCommand: string;
   strictHeadingsOnly: boolean;
   searchAllHeadings: boolean;
+  headingsSearchDebounceMilli: number;
   excludeViewTypes: Array<string>;
   referenceViews: Array<string>;
   limit: number;
