@@ -1,4 +1,7 @@
+import { CanvasNodeData } from 'obsidian/canvas';
+
 export * from 'obsidian';
+export * from './canvas';
 
 declare module 'obsidian' {
   export interface PluginInstance {
@@ -105,5 +108,17 @@ declare module 'obsidian' {
 
   export interface Workspace {
     floatingSplit: WorkspaceRoot;
+  }
+
+  export interface CanvasNodeElement extends CanvasNodeData {
+    containerEl: string;
+  }
+
+  export interface CanvasFileView extends FileView {
+    canvas: {
+      nodes: Map<string, CanvasNodeElement>;
+      selectOnly(node: CanvasNodeElement): void;
+      zoomToSelection(): void;
+    };
   }
 }

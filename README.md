@@ -10,7 +10,7 @@ Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](ht
 
 * [Find files by headings instead of filename](#search-headings-instead-of-filename)
   * [Configuration](#search-headings-configuration)
-* [Navigate to symbols (Headings, Hashtags, Links, Embeddings) in your notes](#symbol-navigation-headings-hashtags-links-embeddings)
+* [Navigate to symbols (Canvas Nodes, Headings, Hashtags, Links, Embeddings) in your notes](#symbol-navigation-canvas-nodes-headings-hashtags-links-embeddings)
   * [Configuration](#symbol-navigation-configuration)
 * [Navigate between open editors, and side panels](#navigate-between-open-editors)
   * [Configuration](#editor-navigation-configuration)
@@ -64,15 +64,15 @@ Find the file you're looking for by searching through the headings contained in 
 | Hide Obsidian "Excluded files" | **Enabled**, suggestions for files that are in Obsidian\'s "Options > Files & Links > Excluded files" list will not be displayed. **Disabled**, suggestions for those files will be displayed but downranked. | disabled |
 | File extension override | Override the "Show attachments" and the "Show all file types" builtin, system Switcher settings and always search files with the listed extensions. | `canvas` |
 
-## Symbol Navigation (Headings, Hashtags, Links, Embeddings)
+## Symbol Navigation (Canvas Nodes, Headings, Hashtags, Links, Embeddings)
 
-View, filter, and navigate to any symbol (Headings, Hashtags, Links, Embedding, Callouts) in a file directly from the Quick Switcher, whether the file is currently open in an editor or not. This feature can be triggered in two ways a) for the active file in the currently active editor pane, b) for the currently selected (highlighted) suggestion in the switcher itself.
+View, filter, and navigate to any symbol (Canvas Nodes, Headings, Hashtags, Links, Embedding, Callouts) in a file directly from the Quick Switcher, whether the file is currently open in an editor or not. This feature can be triggered in two ways a) for the active file in the currently active editor pane, b) for the currently selected (highlighted) suggestion in the switcher itself.
 
-### For active file in the active editor pane:
+### For active file in the active editor pane
 
 The `Quick Switcher++: Open Symbols for the active editor` command will always trigger Symbol mode for the current **active file in the active editor pane** (the file actively being edited). Meaning, when this command is triggered (either via a hotkey or via the command palette), the list of symbol suggestions will always be symbols from **the active file in the active editor pane** when the command was triggered.
 
-### For any other file in the vault, open or not:
+### Embedded Symbol mode: For any other file in the vault, open or not
 
 The Symbol mode trigger character (default `@`) will always trigger Symbol mode for the currently **highlighted suggestion in the switcher**. Meaning, when you open up the switcher and it's displaying a list of your recent files (or a list of file search results), the source file for whichever suggestion is highlighted when you type `@` is the file whose symbols will be displayed. The resulting list of symbol suggestions will be from the file suggestion that was highlighted when the `@` was typed. You can use the navigation keys to select (highlight) which file will be used as the source file before typing `@`.
 

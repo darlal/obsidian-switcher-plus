@@ -16,6 +16,7 @@ import {
 } from 'obsidian';
 import type { SuggestModal, StarredPluginItem } from 'obsidian';
 import { PickKeys, WritableKeys } from 'ts-essentials';
+import { AllCanvasNodeData } from 'obsidian/canvas';
 
 // Pick from T the keys that are writable and whose value is of type K
 export type WritableKeysWithValueOfType<T, K> = PickKeys<Pick<T, WritableKeys<T>>, K>;
@@ -45,6 +46,7 @@ export enum SymbolType {
   Tag = 4,
   Heading = 8,
   Callout = 16,
+  CanvasNode = 32,
 }
 
 export enum LinkType {
@@ -102,7 +104,8 @@ export type AnySymbolInfoPayload =
   | EmbedCache
   | TagCache
   | HeadingCache
-  | CalloutCache;
+  | CalloutCache
+  | AllCanvasNodeData;
 
 export interface SymbolInfo {
   type: 'symbolInfo';

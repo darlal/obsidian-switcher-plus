@@ -11,7 +11,7 @@ import {
   SymbolInfo,
 } from 'src/types';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
-import { Handler, SymbolHandler } from 'src/Handlers';
+import { Handler, SymbolHandler, SymbolInfoExcludingCanvasNodes } from 'src/Handlers';
 import {
   WorkspaceLeaf,
   PreparedQuery,
@@ -30,6 +30,8 @@ import {
   Vault,
   OpenViewState,
   setIcon,
+  CanvasFileView,
+  CanvasNodeElement,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -50,9 +52,18 @@ import {
   makeHeadingSuggestion,
   makeSearchStarredItem,
   getCallouts,
+  makeCanvasFileContentString,
 } from '@fixtures';
-import { mock, MockProxy, mockClear } from 'jest-mock-extended';
+import { mock, MockProxy, mockClear, mockFn } from 'jest-mock-extended';
 import { Chance } from 'chance';
+import {
+  AllCanvasNodeData,
+  CanvasData,
+  CanvasFileData,
+  CanvasGroupData,
+  CanvasLinkData,
+  CanvasTextData,
+} from 'obsidian/canvas';
 
 const chance = new Chance();
 
@@ -600,6 +611,24 @@ describe('symbolHandler', () => {
 
       excludeLinkSubTypesSpy.mockRestore();
     });
+
+    it('should return suggestions for canvas files', async () => {
+      const mockCanvasFile = new TFile();
+      mockCanvasFile.extension = 'canvas';
+      const activeLeaf = makeLeaf(mockCanvasFile);
+      const fileContent = makeCanvasFileContentString();
+      const canvasNodes = (JSON.parse(fileContent) as CanvasData).nodes;
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, activeLeaf);
+
+      mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+
+      const results = await sut.getSuggestions(inputInfo);
+
+      expect(results.every((sugg) => sugg.type === SuggestionType.SymbolList)).toBe(true);
+      expect(results).toHaveLength(canvasNodes.length);
+      expect(mockVault.cachedRead).toHaveBeenCalledWith(mockCanvasFile);
+    });
   });
 
   describe('renderSuggestion', () => {
@@ -686,6 +715,7 @@ describe('symbolHandler', () => {
 
       const inputInfo = new InputInfo(symbolTrigger);
       const handler = new SymbolHandler(mockApp, settings);
+      symbolSugg.item.indentLevel = 2;
 
       handler.validateCommand(inputInfo, 0, 'foo', null, mockRootSplitLeaf);
       await handler.getSuggestions(inputInfo);
@@ -694,6 +724,22 @@ describe('symbolHandler', () => {
 
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining([`qsp-symbol-l${symbolSugg.item.indentLevel}`]),
+      );
+    });
+
+    it('should render a canvas suggestion', () => {
+      const canvasNodes = (JSON.parse(makeCanvasFileContentString()) as CanvasData).nodes;
+      const canvasSugg = makeSymbolSuggestion(canvasNodes[0], SymbolType.CanvasNode);
+
+      sut.renderSuggestion(canvasSugg, mockParentEl);
+
+      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
+        expect.arrayContaining(['mod-complex', 'qsp-suggestion-symbol']),
+      );
+      expect(renderContentSpy).toHaveBeenCalledWith(
+        mockParentEl,
+        (canvasSugg.item.symbol as CanvasGroupData).label,
+        symbolSugg.match,
       );
     });
   });
@@ -705,11 +751,13 @@ describe('symbolHandler', () => {
       mockWorkspace.getLeaf.mockReturnValue(fileContainerLeaf);
     });
 
-    const getExpectedEphemeralState = (sugg: SymbolSuggestion): OpenViewState => {
+    const getExpectedEphemeralState = (
+      symbolInfo: SymbolInfoExcludingCanvasNodes,
+    ): OpenViewState => {
       const {
         start: { line, col },
         end: endLoc,
-      } = sugg.item.symbol.position;
+      } = symbolInfo.symbol.position;
 
       const state: Record<string, unknown> = {
         active: true,
@@ -735,12 +783,14 @@ describe('symbolHandler', () => {
 
     it('should activate the existing workspaceLeaf that contains the target symbol and scroll that view via eState', async () => {
       const mockEvt = mock<KeyboardEvent>();
-      const expectedState = getExpectedEphemeralState(symbolSugg);
       const mockLeaf = makeLeaf(symbolSugg.file);
+      const expectedState = getExpectedEphemeralState(
+        symbolSugg.item as SymbolInfoExcludingCanvasNodes,
+      );
 
       const navigateToLeafOrOpenFileSpy = jest.spyOn(
         Handler.prototype,
-        'navigateToLeafOrOpenFile',
+        'navigateToLeafOrOpenFileAsync',
       );
 
       const inputInfo = new InputInfo(symbolTrigger);
@@ -754,13 +804,91 @@ describe('symbolHandler', () => {
       expect(navigateToLeafOrOpenFileSpy).toHaveBeenCalledWith(
         mockEvt,
         symbolSugg.file,
-        expect.any(String),
         expectedState,
         mockLeaf,
         Mode.SymbolList,
       );
 
       navigateToLeafOrOpenFileSpy.mockRestore();
+    });
+
+    it('should center the chosen canvas node in the viewport', async () => {
+      const mockNodeData = mock<CanvasFileData>({ id: 'foo' });
+      const mockCanvasNodeEl = mock<CanvasNodeElement>({ id: mockNodeData.id });
+      const mockFile = new TFile();
+      const promise = Promise.resolve();
+      const inputInfo = new InputInfo(symbolTrigger);
+
+      const mockCanvasView = mock<CanvasFileView>();
+      mockCanvasView.file = mockFile;
+      mockCanvasView.getViewType.mockReturnValue('canvas');
+      mockCanvasView.canvas.selectOnly = mockFn();
+      mockCanvasView.canvas.zoomToSelection = mockFn();
+      mockCanvasView.canvas.nodes = new Map<string, CanvasNodeElement>([
+        [mockCanvasNodeEl.id, mockCanvasNodeEl],
+      ]);
+
+      const canvasSugg = makeSymbolSuggestion(
+        mockNodeData,
+        SymbolType.CanvasNode,
+        mockFile,
+      );
+
+      const mockLeaf = mock<WorkspaceLeaf>({
+        view: mockCanvasView,
+      });
+
+      const getActiveLeafSpy = jest
+        .spyOn(SymbolHandler.prototype, 'getActiveLeaf')
+        .mockReturnValueOnce(mockLeaf);
+
+      const navigateToLeafOrOpenFileSpy = jest
+        .spyOn(SymbolHandler.prototype, 'navigateToLeafOrOpenFileAsync')
+        .mockReturnValueOnce(promise);
+
+      sut.validateCommand(inputInfo, 0, '', null, mockLeaf);
+      await sut.getSuggestions(inputInfo);
+
+      sut.onChooseSuggestion(canvasSugg, null);
+      await promise;
+
+      expect(mockCanvasView.canvas.selectOnly).toHaveBeenCalledWith(mockCanvasNodeEl);
+      expect(mockCanvasView.canvas.zoomToSelection).toHaveBeenCalled();
+
+      navigateToLeafOrOpenFileSpy.mockRestore();
+      getActiveLeafSpy.mockRestore();
+    });
+
+    it('should log any navigation errors to the console', async () => {
+      const mockFile = new TFile();
+      const canvasSugg = makeSymbolSuggestion(null, SymbolType.CanvasNode, mockFile);
+      const errorMsg = 'SymbolHandler onChooseSuggestion Unit test error';
+      const rejectedPromise = Promise.reject(errorMsg);
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, makeLeaf(mockFile));
+      await sut.getSuggestions(inputInfo);
+
+      const navigateToLeafOrOpenFileSpy = jest
+        .spyOn(SymbolHandler.prototype, 'navigateToLeafOrOpenFileAsync')
+        .mockReturnValueOnce(rejectedPromise);
+
+      sut.onChooseSuggestion(canvasSugg, null);
+
+      try {
+        await rejectedPromise;
+      } catch (e) {
+        /* noop */
+      }
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        `Switcher++: Unable to navigate to symbols for file ${mockFile.path}`,
+        errorMsg,
+      );
+
+      navigateToLeafOrOpenFileSpy.mockRestore();
+      consoleLogSpy.mockRestore();
     });
   });
 
@@ -840,6 +968,7 @@ describe('symbolHandler', () => {
 
   describe('addCalloutsFromSource', () => {
     const mockFile = new TFile();
+
     it('should add symbol information for callouts', async () => {
       const results: SymbolInfo[] = [];
       mockVault.cachedRead.mockResolvedValueOnce(fileContentWithCallout);
@@ -852,7 +981,7 @@ describe('symbolHandler', () => {
 
     it('should log any exceptions reading a file to the console', async () => {
       const expectedMsg = `Switcher++: error reading file to extract callout information. ${mockFile.path} `;
-      const errorMsg = 'Unit test error';
+      const errorMsg = 'addCalloutsFromSource Unit test error';
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
       mockVault.cachedRead.mockRejectedValueOnce(errorMsg);
@@ -863,6 +992,75 @@ describe('symbolHandler', () => {
       expect(mockVault.cachedRead).toHaveBeenCalledWith(mockFile);
 
       consoleLogSpy.mockRestore();
+    });
+  });
+
+  describe('addCanvasSymbolsFromSource', () => {
+    const mockFile = new TFile();
+
+    it('should add symbol information for canvas nodes', async () => {
+      const results: SymbolInfo[] = [];
+      const fileContent = makeCanvasFileContentString();
+      const canvasNodes = (JSON.parse(fileContent) as CanvasData).nodes;
+      mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+
+      await sut.addCanvasSymbolsFromSource(mockFile, results);
+
+      expect(mockVault.cachedRead).toHaveBeenCalledWith(mockFile);
+      expect(results).toHaveLength(canvasNodes.length);
+    });
+
+    it('should log any exceptions reading a file to the console', async () => {
+      const expectedMsg = `Switcher++: error reading file to extract canvas node information. ${mockFile.path} `;
+      const errorMsg = 'addCanvasSymbolsFromSource Unit test error';
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      mockVault.cachedRead.mockRejectedValueOnce(errorMsg);
+
+      await sut.addCanvasSymbolsFromSource(mockFile, []);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(expectedMsg, errorMsg);
+      expect(mockVault.cachedRead).toHaveBeenCalledWith(mockFile);
+
+      consoleLogSpy.mockRestore();
+    });
+  });
+
+  describe('getSuggestionTextForCanvasNode', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const canvasNodes = JSON.parse(makeCanvasFileContentString())
+      .nodes as AllCanvasNodeData[];
+
+    it('should return .file for CanvasFileData', () => {
+      const node = canvasNodes.find((v) => v.type === 'file');
+      const expectedStr = (node as CanvasFileData).file;
+
+      const result = SymbolHandler.getSuggestionTextForCanvasNode(node);
+      expect(result).toBe(expectedStr);
+    });
+
+    it('should return .text for CanvasTextData', () => {
+      const node = canvasNodes.find((v) => v.type === 'text');
+      const expectedStr = (node as CanvasTextData).text;
+
+      const result = SymbolHandler.getSuggestionTextForCanvasNode(node);
+      expect(result).toBe(expectedStr);
+    });
+
+    it('should return .url for CanvasLinkData', () => {
+      const node = canvasNodes.find((v) => v.type === 'link');
+      const expectedStr = (node as CanvasLinkData).url;
+
+      const result = SymbolHandler.getSuggestionTextForCanvasNode(node);
+      expect(result).toBe(expectedStr);
+    });
+
+    it('should return .label for CanvasGroupData', () => {
+      const node = canvasNodes.find((v) => v.type === 'group');
+      const expectedStr = (node as CanvasGroupData).label;
+
+      const result = SymbolHandler.getSuggestionTextForCanvasNode(node);
+      expect(result).toBe(expectedStr);
     });
   });
 });
