@@ -160,7 +160,6 @@ export class CommandHandler extends Handler<CommandSuggestion> {
 
     const pinnedCommandIds = this.getPinnedCommandIds();
     pinnedCommandIds.forEach((id) => findAndAdd(id, true, false));
-    commands.sort((a, b) => a.cmd.name.localeCompare(b.cmd.name));
 
     // remove any pinned commands from the recently used list so they don't show up in
     // both pinned and recent sections
