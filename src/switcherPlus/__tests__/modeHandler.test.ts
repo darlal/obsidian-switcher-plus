@@ -272,10 +272,7 @@ describe('modeHandler', () => {
         sut.updateSuggestions(expectToRestore, mockChooser, null);
 
         mockInputEl.value = '';
-        mockInputEl.selectionStart = 0;
-        mockInputEl.selectionEnd = 0;
         sut.setSessionOpenMode(Mode.CommandList, null);
-
         sut.insertSessionOpenModeOrLastInputString(mockInputEl);
 
         expect(mockInputEl).toHaveProperty('value', expectToRestore);
@@ -285,11 +282,12 @@ describe('modeHandler', () => {
           commandTrigger.length,
           expectToRestore.length,
         );
+
         // if we open another mode, it wouldn't restore last input
         mockInputEl.value = '';
         sut.setSessionOpenMode(Mode.SymbolList, null);
-
         sut.insertSessionOpenModeOrLastInputString(mockInputEl);
+
         expect(mockInputEl).toHaveProperty('value', symbolTrigger);
 
         mockSettings.preserveCommandPaletteLastInput = false;
@@ -304,7 +302,6 @@ describe('modeHandler', () => {
 
         mockInputEl.value = '';
         sut.setSessionOpenMode(Mode.CommandList, null);
-
         sut.insertSessionOpenModeOrLastInputString(mockInputEl);
 
         expect(mockInputEl).toHaveProperty('value', commandTrigger);
@@ -314,17 +311,17 @@ describe('modeHandler', () => {
         mockSettings.preserveCommandPaletteLastInput = false;
         mockSettings.preserveQuickSwitcherLastInput = true;
 
+        // will not save, because `preserveCommandPaletteLastInput` is false.
         sut.updateSuggestions(`${commandTrigger} any text`, mockChooser, null);
 
         mockInputEl.value = '';
         sut.setSessionOpenMode(Mode.CommandList, null);
-
         sut.insertSessionOpenModeOrLastInputString(mockInputEl);
 
         // will not save command last input if the configuration is falsy.
         expect(mockInputEl).toHaveProperty('value', commandTrigger);
 
-        // save first input
+        // save input
         const expectToRestore = `${editorTrigger} hello`;
         sut.updateSuggestions(expectToRestore, mockChooser, null);
 
