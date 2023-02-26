@@ -254,7 +254,7 @@ describe('modeHandler', () => {
       const mockChooser = mock<Chooser<AnySuggestion>>();
       const mockInputEl = mock<HTMLInputElement>();
 
-      let getSuggestionSpy: jest.SpyInstance<any, any, any>;
+      let getSuggestionSpy: jest.SpyInstance;
       beforeAll(() => {
         sut = new ModeHandler(mockApp, mockSettings, mockKeymap);
         getSuggestionSpy = jest
@@ -262,7 +262,7 @@ describe('modeHandler', () => {
           .mockReturnValue();
       });
       afterAll(() => {
-        getSuggestionSpy.mockClear();
+        getSuggestionSpy.mockRestore();
       });
       it('should restore the command string into the input element', () => {
         mockSettings.preserveCommandPaletteLastInput = true;
