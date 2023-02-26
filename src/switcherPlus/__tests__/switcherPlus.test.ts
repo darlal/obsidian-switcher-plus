@@ -152,7 +152,7 @@ describe('switcherPlus', () => {
     it('should forward to ModeHandler to get suggestions', () => {
       const insertCmdStringSpy = jest.spyOn(
         ModeHandler.prototype,
-        'insertSessionOpenModeCommandString',
+        'insertSessionOpenModeOrLastInputString',
       );
 
       const mhUpdateSuggestionsSpy = jest
@@ -186,7 +186,7 @@ describe('switcherPlus', () => {
     it('should forward to builtin system switcher if not handled by Modehandler', () => {
       const insertCmdStringSpy = jest.spyOn(
         ModeHandler.prototype,
-        'insertSessionOpenModeCommandString',
+        'insertSessionOpenModeOrLastInputString',
       );
 
       const mhUpdateSuggestionsSpy = jest

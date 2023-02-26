@@ -106,7 +106,7 @@ export class ModeHandler {
     }
   }
 
-  insertSessionOpenModeCommandString(inputEl: HTMLInputElement): void {
+  insertSessionOpenModeOrLastInputString(inputEl: HTMLInputElement): void {
     const { sessionOpenModeString, lastInput } = this;
     if (lastInput && lastInput !== sessionOpenModeString) {
       inputEl.value = lastInput;
