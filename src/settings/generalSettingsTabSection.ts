@@ -61,15 +61,15 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     this.showMatchPriorityAdjustments(containerEl, config);
     this.addToggleSetting(
       containerEl,
-      'Preserve Command Palette last input',
-      'Controls whether the last typed input to the Command Palette should be restored when opening it the next time.',
+      'Restore previous input in Command Mode',
+      'When enabled, restore the last typed input in Command Mode when launched via global command hotkey.',
       config.preserveCommandPaletteLastInput,
       'preserveCommandPaletteLastInput',
     );
     this.addToggleSetting(
       containerEl,
-      'Preserve Quick Switcher last input',
-      'Controls whether the last typed input to Quick Switcher should be restored when opening it the next time.',
+      'Restore previous input',
+      'When enabled, restore the last typed input when launched via global command hotkey.',
       config.preserveQuickSwitcherLastInput,
       'preserveQuickSwitcherLastInput',
     );

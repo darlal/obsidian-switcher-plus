@@ -193,6 +193,8 @@ When the Related Items command is triggered for a selected input suggestion/file
 | Override Standard mode behavior | **Enabled**: Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to inject custom behavior. Custom behavior includes features like enhance rendering of suggestion items to display additional information, special path display handling, and tab navigation features.<br />**Disabled**: No changes are made to the default Obsidian builtin functionality (Standard Mode). | enabled |
 | Show indicator icons | **Enabled**: Display icons to indicate that an item is recent, starred, etc... | enabled |
 | Result priority adjustments | **Enabled**: Artificially increase the match score of the specified item types by a fixed percentage so they appear higher in the results list. See the list of [result types](/src/settings/generalSettingsTabSection.ts#L6) that can be prioritized. Note that the adjustments are independent of each other, e.g. if adjustments are specified for both `Starred items` and `Open items` a result for a file that is open and starred will receive both adjustments.<br />**Disabled** result match scores are not adjusted. | disabled |
+| Restore previous input in Command Mode | **Enabled**: restore previous command mode input when launched via global command hotkey | disabled |
+| Restore previous input | **Enabled**: restore previous switcher input when launched via global command hotkey | disabled |
 
 ## Global Commands for Hotkeys
 
