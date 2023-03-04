@@ -64,6 +64,8 @@ export class SwitcherPlusSettings {
         alias: 0,
         h1: 0,
       },
+      preserveCommandPaletteLastInput: false,
+      preserveQuickSwitcherLastInput: false,
     };
   }
 
@@ -372,6 +374,22 @@ export class SwitcherPlusSettings {
 
   set matchPriorityAdjustments(value: Record<string, number>) {
     this.data.matchPriorityAdjustments = value;
+  }
+
+  get preserveCommandPaletteLastInput() {
+    return this.data.preserveCommandPaletteLastInput;
+  }
+
+  set preserveCommandPaletteLastInput(value: boolean) {
+    this.data.preserveCommandPaletteLastInput = value;
+  }
+
+  get preserveQuickSwitcherLastInput() {
+    return this.data.preserveQuickSwitcherLastInput;
+  }
+
+  set preserveQuickSwitcherLastInput(value: boolean) {
+    this.data.preserveQuickSwitcherLastInput = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

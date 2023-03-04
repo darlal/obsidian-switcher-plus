@@ -31,11 +31,14 @@ import { SwitcherPlusSettings } from 'src/settings';
 import { WorkspaceLeaf, App, Chooser, Debouncer, debounce, TFile } from 'obsidian';
 import { SwitcherPlusKeymap } from './switcherPlusKeymap';
 
+const lastInputInfoByMode = {} as Record<Mode, InputInfo>;
+
 export class ModeHandler {
   private inputInfo: InputInfo;
   private handlersByMode: Map<Omit<Mode, 'Standard'>, Handler<AnySuggestion>>;
   private handlersByType: Map<SuggestionType, Handler<AnySuggestion>>;
   private sessionOpenModeString: string;
+  private lastInput: string;
   private debouncedGetSuggestions: Debouncer<
     [InputInfo, Chooser<AnySuggestion>, SwitcherPlus],
     void
@@ -91,18 +94,37 @@ export class ModeHandler {
     if (mode !== Mode.Standard) {
       this.sessionOpenModeString = this.getHandler(mode).commandString;
     }
+
+    if (lastInputInfoByMode[mode]) {
+      if (
+        (mode === Mode.CommandList && this.settings.preserveCommandPaletteLastInput) ||
+        (mode !== Mode.CommandList && this.settings.preserveQuickSwitcherLastInput)
+      ) {
+        const lastInfo = lastInputInfoByMode[mode];
+        this.lastInput = lastInfo.inputText;
+      }
+    }
   }
 
-  insertSessionOpenModeCommandString(inputEl: HTMLInputElement): void {
-    const { sessionOpenModeString } = this;
-
-    if (sessionOpenModeString !== null && sessionOpenModeString !== '') {
+  insertSessionOpenModeOrLastInputString(inputEl: HTMLInputElement): void {
+    const { sessionOpenModeString, lastInput } = this;
+    if (lastInput && lastInput !== sessionOpenModeString) {
+      inputEl.value = lastInput;
+      // `sessionOpenModeString` may `null` when in standard mode
+      // otherwise `lastInput` starts with `sessionOpenModeString`
+      const startsNumber = sessionOpenModeString ? sessionOpenModeString.length : 0;
+      inputEl.setSelectionRange(startsNumber, inputEl.value.length);
+    } else if (sessionOpenModeString !== null && sessionOpenModeString !== '') {
       // update UI with current command string in the case were openInMode was called
       inputEl.value = sessionOpenModeString;
 
       // reset to null so user input is not overridden the next time onInput is called
       this.sessionOpenModeString = null;
     }
+
+    // the same logic as `sessionOpenModeString`
+    // make sure it will not override user's normal input.
+    this.lastInput = null;
   }
 
   updateSuggestions(
@@ -121,9 +143,10 @@ export class ModeHandler {
     const activeSugg = ModeHandler.getActiveSuggestion(chooser);
     const inputInfo = this.determineRunMode(query, activeSugg, activeLeaf);
     this.inputInfo = inputInfo;
-
     const { mode } = inputInfo;
+
     exKeymap.updateKeymapForMode(mode);
+    lastInputInfoByMode[mode] = inputInfo;
 
     if (mode !== Mode.Standard) {
       if (mode === Mode.HeadingsList && inputInfo.parsedCommand().parsedInput?.length) {

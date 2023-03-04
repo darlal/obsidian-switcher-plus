@@ -59,6 +59,20 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     );
 
     this.showMatchPriorityAdjustments(containerEl, config);
+    this.addToggleSetting(
+      containerEl,
+      'Restore previous input in Command Mode',
+      'When enabled, restore the last typed input in Command Mode when launched via global command hotkey.',
+      config.preserveCommandPaletteLastInput,
+      'preserveCommandPaletteLastInput',
+    );
+    this.addToggleSetting(
+      containerEl,
+      'Restore previous input',
+      'When enabled, restore the last typed input when launched via global command hotkey.',
+      config.preserveQuickSwitcherLastInput,
+      'preserveQuickSwitcherLastInput',
+    );
   }
 
   setPathDisplayFormat(containerEl: HTMLElement, config: SwitcherPlusSettings): void {

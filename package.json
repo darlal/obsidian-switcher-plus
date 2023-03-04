@@ -10,8 +10,9 @@
   "scripts": {
     "bundle": "rollup --bundleConfigAsCjs -c rollup.config.js",
     "package-plugin": "cp -a ./styles.css ./manifest.json ./versions.json ./dist/darlal-switcher-plus",
-    "build": "run-s lint bundle package-plugin",
-    "build:watch": "onchange 'src/**/*.ts' -- npm run build",
+    "build": "run-s lint build:fast",
+    "build:fast": "run-s bundle package-plugin",
+    "build:watch": "onchange 'src/**/*.ts' -- npm run build:fast",
     "ci": "BUILD=production run-s lint test bundle package-plugin",
     "lint": "eslint '*/**/*.{js,ts}'",
     "test": "jest",

@@ -228,14 +228,14 @@ describe('modeHandler', () => {
       );
     });
 
-    describe('insertSessionOpenModeCommandString', () => {
+    describe('insertSessionOpenModeOrLastInputString', () => {
       const mockInputEl = mock<HTMLInputElement>();
 
       it('should insert the command string into the input element', () => {
         mockInputEl.value = '';
         sut.setSessionOpenMode(Mode.EditorList, null);
 
-        sut.insertSessionOpenModeCommandString(mockInputEl);
+        sut.insertSessionOpenModeOrLastInputString(mockInputEl);
 
         expect(mockInputEl).toHaveProperty('value', editorTrigger);
       });
@@ -244,9 +244,94 @@ describe('modeHandler', () => {
         mockInputEl.value = '';
         sut.setSessionOpenMode(Mode.Standard, null);
 
-        sut.insertSessionOpenModeCommandString(mockInputEl);
+        sut.insertSessionOpenModeOrLastInputString(mockInputEl);
 
         expect(mockInputEl).toHaveProperty('value', '');
+      });
+    });
+    describe('insertSessionOpenModeOrLastInputString should restore last text', () => {
+      const mockKeymap = mock<SwitcherPlusKeymap>();
+      const mockChooser = mock<Chooser<AnySuggestion>>();
+      const mockInputEl = mock<HTMLInputElement>();
+
+      let getSuggestionSpy: jest.SpyInstance;
+      beforeAll(() => {
+        sut = new ModeHandler(mockApp, mockSettings, mockKeymap);
+        getSuggestionSpy = jest
+          .spyOn(ModeHandler.prototype, 'getSuggestions')
+          .mockReturnValue();
+      });
+      afterAll(() => {
+        getSuggestionSpy.mockRestore();
+      });
+      it('should restore the command string into the input element', () => {
+        mockSettings.preserveCommandPaletteLastInput = true;
+
+        // save input
+        const expectToRestore = `${commandTrigger} hello`;
+        sut.updateSuggestions(expectToRestore, mockChooser, null);
+
+        mockInputEl.value = '';
+        sut.setSessionOpenMode(Mode.CommandList, null);
+        sut.insertSessionOpenModeOrLastInputString(mockInputEl);
+
+        expect(mockInputEl).toHaveProperty('value', expectToRestore);
+        // will auto select command text
+        // this make it easy to delete whole text
+        expect(mockInputEl.setSelectionRange).toHaveBeenCalledWith(
+          commandTrigger.length,
+          expectToRestore.length,
+        );
+
+        // if we open another mode, it wouldn't restore last input
+        mockInputEl.value = '';
+        sut.setSessionOpenMode(Mode.SymbolList, null);
+        sut.insertSessionOpenModeOrLastInputString(mockInputEl);
+
+        expect(mockInputEl).toHaveProperty('value', symbolTrigger);
+
+        mockSettings.preserveCommandPaletteLastInput = false;
+      });
+
+      it("shouldn't restore the command string into the input element without config", () => {
+        mockSettings.preserveCommandPaletteLastInput = false;
+
+        // save first input
+        const firstText = `${commandTrigger} hello`;
+        sut.updateSuggestions(firstText, mockChooser, null);
+
+        mockInputEl.value = '';
+        sut.setSessionOpenMode(Mode.CommandList, null);
+        sut.insertSessionOpenModeOrLastInputString(mockInputEl);
+
+        expect(mockInputEl).toHaveProperty('value', commandTrigger);
+      });
+
+      it('should restore the quicker switcher string into the input element', () => {
+        mockSettings.preserveCommandPaletteLastInput = false;
+        mockSettings.preserveQuickSwitcherLastInput = true;
+
+        // will not save, because `preserveCommandPaletteLastInput` is false.
+        sut.updateSuggestions(`${commandTrigger} any text`, mockChooser, null);
+
+        mockInputEl.value = '';
+        sut.setSessionOpenMode(Mode.CommandList, null);
+        sut.insertSessionOpenModeOrLastInputString(mockInputEl);
+
+        // will not save command last input if the configuration is falsy.
+        expect(mockInputEl).toHaveProperty('value', commandTrigger);
+
+        // save input
+        const expectToRestore = `${editorTrigger} hello`;
+        sut.updateSuggestions(expectToRestore, mockChooser, null);
+
+        mockInputEl.value = '';
+        sut.setSessionOpenMode(Mode.EditorList, null);
+
+        sut.insertSessionOpenModeOrLastInputString(mockInputEl);
+        expect(mockInputEl).toHaveProperty('value', expectToRestore);
+
+        mockSettings.preserveQuickSwitcherLastInput = false;
       });
     });
   });
