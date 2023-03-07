@@ -328,16 +328,10 @@ export abstract class Handler<T> {
    * Reveals and optionally bring into focus a WorkspaceLeaf, including leaves
    * from the side panels.
    * @param  {WorkspaceLeaf} leaf
-   * @param  {boolean} pushHistory?
-   * @param  {Record<string} eState?
-   * @param  {} unknown>
+   * @param  {Record<string, unknown>} eState?
    * @returns void
    */
-  activateLeaf(
-    leaf: WorkspaceLeaf,
-    pushHistory?: boolean,
-    eState?: Record<string, unknown>,
-  ): void {
+  activateLeaf(leaf: WorkspaceLeaf, eState?: Record<string, unknown>): void {
     const { workspace } = this.app;
     const isInSidePanel = !this.isMainPanelLeaf(leaf);
     const state = { focus: true, ...eState };
@@ -346,7 +340,7 @@ export abstract class Handler<T> {
       workspace.revealLeaf(leaf);
     }
 
-    workspace.setActiveLeaf(leaf, pushHistory, true);
+    workspace.setActiveLeaf(leaf, { focus: true });
     leaf.view.setEphemeralState(state);
   }
 
@@ -487,7 +481,7 @@ export abstract class Handler<T> {
 
     if (leaf && navType === false) {
       const eState = openState?.eState as Record<string, unknown>;
-      this.activateLeaf(leaf, true, eState);
+      this.activateLeaf(leaf, eState);
     } else {
       this.openFileInLeaf(file, navType, openState, errorContext, splitDirection);
     }
@@ -529,7 +523,7 @@ export abstract class Handler<T> {
         const path = this.getPathDisplayText(file, format, excludeOptionalFilename);
 
         const iconEl = wrapperEl.createSpan({ cls: ['qsp-path-indicator'] });
-        setIcon(iconEl, 'folder', 13);
+        setIcon(iconEl, 'folder');
 
         const pathEl = wrapperEl.createSpan({ cls: 'qsp-path' });
         renderResults(pathEl, path, match);

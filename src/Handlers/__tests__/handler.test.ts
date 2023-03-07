@@ -619,20 +619,20 @@ describe('Handler', () => {
     it('should activate main panel leaf', () => {
       mockLeaf.getRoot.mockReturnValueOnce(mockWorkspace.rootSplit);
 
-      sut.activateLeaf(mockLeaf, true);
+      sut.activateLeaf(mockLeaf);
 
       expect(mockLeaf.getRoot).toHaveBeenCalled();
-      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, true, true);
+      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, { focus: true });
       expect(mockView.setEphemeralState).toHaveBeenCalled();
     });
 
     it('should activate side panel leaf', () => {
       mockLeaf.getRoot.mockReturnValueOnce(mockWorkspace.rightSplit);
 
-      sut.activateLeaf(mockLeaf, true);
+      sut.activateLeaf(mockLeaf);
 
       expect(mockLeaf.getRoot).toHaveBeenCalled();
-      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, true, true);
+      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, { focus: true });
       expect(mockView.setEphemeralState).toHaveBeenCalled();
       expect(mockWorkspace.revealLeaf).toHaveBeenCalledWith(mockLeaf);
     });
@@ -949,11 +949,7 @@ describe('Handler', () => {
       sut.activateLeafOrOpenFile(navType, file, null, leaf);
 
       expect(openFileInLeafSpy).not.toHaveBeenCalled();
-      expect(activateLeafSpy).toHaveBeenCalledWith(
-        leaf,
-        true,
-        defaultOpenViewState.eState,
-      );
+      expect(activateLeafSpy).toHaveBeenCalledWith(leaf, defaultOpenViewState.eState);
     });
 
     test('with existing leaf and navType true (new tab), it should create a new leaf "tab"', () => {
