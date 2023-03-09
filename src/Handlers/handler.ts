@@ -378,37 +378,23 @@ export abstract class Handler<T> {
    * @param  {TFile} file
    * @param  {PaneType|boolean} navType
    * @param  {OpenViewState} openState?
-   * @param  {string} errorContext?
    * @param  {SplitDirection} splitDirection if navType is 'split', the direction to
    * open the split. Defaults to 'vertical'
    * @returns void
    */
-  openFileInLeaf(
+  async openFileInLeaf(
     file: TFile,
     navType: PaneType | boolean,
     openState?: OpenViewState,
-    errorContext?: string,
     splitDirection: SplitDirection = 'vertical',
-  ): void {
+  ): Promise<void> {
     const { workspace } = this.app;
-    errorContext = errorContext ?? '';
-    const message = `Switcher++: error opening file. ${errorContext}`;
-
-    const getLeaf = () => {
-      return navType === 'split'
+    const leaf =
+      navType === 'split'
         ? workspace.getLeaf(navType, splitDirection)
         : workspace.getLeaf(navType);
-    };
 
-    try {
-      getLeaf()
-        .openFile(file, openState)
-        .catch((reason) => {
-          console.log(message, reason);
-        });
-    } catch (error) {
-      console.log(message, error);
-    }
+    await leaf.openFile(file, openState);
   }
 
   /**
@@ -437,6 +423,42 @@ export abstract class Handler<T> {
     mode?: Mode,
     shouldIncludeRefViews = false,
   ): void {
+    this.navigateToLeafOrOpenFileAsync(
+      evt,
+      file,
+      openState,
+      leaf,
+      mode,
+      shouldIncludeRefViews,
+    ).catch((reason) => {
+      console.log(`Switcher++: error navigating to open file. ${errorContext}`, reason);
+    });
+  }
+
+  /**
+   * Determines whether to activate (make active and focused) an existing WorkspaceLeaf
+   * (searches through all leaves), or create a new WorkspaceLeaf, or reuse an unpinned
+   * WorkspaceLeaf, or create a new window in order to display file. This takes user
+   * settings and event status into account.
+   * @param  {MouseEvent|KeyboardEvent} evt navigation trigger event
+   * @param  {TFile} file The file to display
+   * @param  {OpenViewState} openState? State to pass to the new, or activated view. If
+   * falsy, default values will be used
+   * @param  {WorkspaceLeaf} leaf? WorkspaceLeaf, or reference WorkspaceLeaf
+   * (backlink, outline, etc..) to activate if it's already known
+   * @param  {Mode} mode? Only Symbol mode has custom handling
+   * @param  {boolean} shouldIncludeRefViews whether reference WorkspaceLeaves are valid
+   * targets for activation
+   * @returns void
+   */
+  async navigateToLeafOrOpenFileAsync(
+    evt: MouseEvent | KeyboardEvent,
+    file: TFile,
+    openState?: OpenViewState,
+    leaf?: WorkspaceLeaf,
+    mode?: Mode,
+    shouldIncludeRefViews = false,
+  ): Promise<void> {
     const { leaf: targetLeaf } = this.findMatchingLeaf(file, leaf, shouldIncludeRefViews);
     const isAlreadyOpen = !!targetLeaf;
 
@@ -446,10 +468,9 @@ export abstract class Handler<T> {
       mode,
     );
 
-    this.activateLeafOrOpenFile(
+    await this.activateLeafOrOpenFile(
       navType,
       file,
-      errorContext,
       targetLeaf,
       openState,
       splitDirection,
@@ -460,7 +481,6 @@ export abstract class Handler<T> {
    * Activates leaf (if provided), or load file into another leaf based on navType
    * @param  {PaneType|boolean} navType
    * @param  {TFile} file
-   * @param  {string} errorContext
    * @param  {WorkspaceLeaf} leaf? optional if supplied and navType is
    * false then leaf will be activated
    * @param  {OpenViewState} openState?
@@ -468,14 +488,13 @@ export abstract class Handler<T> {
    * open the split
    * @returns void
    */
-  activateLeafOrOpenFile(
+  async activateLeafOrOpenFile(
     navType: PaneType | boolean,
     file: TFile,
-    errorContext: string,
     leaf?: WorkspaceLeaf,
     openState?: OpenViewState,
     splitDirection?: SplitDirection,
-  ): void {
+  ): Promise<void> {
     // default to having the pane active and focused
     openState = openState ?? { active: true, eState: { active: true, focus: true } };
 
@@ -483,7 +502,7 @@ export abstract class Handler<T> {
       const eState = openState?.eState as Record<string, unknown>;
       this.activateLeaf(leaf, eState);
     } else {
-      this.openFileInLeaf(file, navType, openState, errorContext, splitDirection);
+      await this.openFileInLeaf(file, navType, openState, splitDirection);
     }
   }
 

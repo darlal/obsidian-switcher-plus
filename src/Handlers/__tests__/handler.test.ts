@@ -670,71 +670,36 @@ describe('Handler', () => {
     });
   });
 
-  describe('openFileInLeaf', () => {
-    it('should log a message to the console if falsy values are passed in', () => {
-      let logWasCalled = false;
-      const consoleLogSpy = jest
-        .spyOn(console, 'log')
-        .mockImplementation((message: string) => {
-          if (message.startsWith('Switcher++: error opening file. ')) {
-            logWasCalled = true;
-          }
-        });
+  describe('navigateToLeafOrOpenFile', () => {
+    it('should log errors to the console', async () => {
+      const errorMsg = 'navigateToLeafOrOpenFile unit test error';
+      const rejectedPromise = Promise.reject(errorMsg);
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
-      sut.openFileInLeaf(null, false);
+      const navigateToLeafOrOpenFileAsyncSpy = jest
+        .spyOn(Handler.prototype, 'navigateToLeafOrOpenFileAsync')
+        .mockReturnValueOnce(rejectedPromise);
 
-      expect(logWasCalled).toBe(true);
+      sut.navigateToLeafOrOpenFile(null, null, errorMsg);
 
+      try {
+        await rejectedPromise;
+      } catch (e) {
+        /* noop */
+      }
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        `Switcher++: error navigating to open file. ${errorMsg}`,
+        errorMsg,
+      );
+
+      navigateToLeafOrOpenFileAsyncSpy.mockRestore();
       consoleLogSpy.mockRestore();
     });
+  });
 
-    it('should log a message to the console if openFile fails', () => {
-      const mockLeaf = makeLeaf();
-      const mockFile = new TFile();
-      const openState = { active: true };
-
-      // Promise used to trigger the error condition
-      const openFilePromise = Promise.resolve();
-
-      mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
-
-      mockLeaf.openFile.mockImplementationOnce((_file, _openState) => {
-        // throw to simulate openFile() failing
-        return openFilePromise.then(() => {
-          throw new Error('openFile() unit test mock error');
-        });
-      });
-
-      // Promise used to track the call to console.log
-      let consoleLogPromiseResolveFn: (value: void | PromiseLike<void>) => void;
-      const consoleLogPromise = new Promise<void>((resolve, _reject) => {
-        consoleLogPromiseResolveFn = resolve;
-      });
-
-      const consoleLogSpy = jest
-        .spyOn(console, 'log')
-        .mockImplementation((message: string) => {
-          if (message.startsWith('Switcher++: error opening file. ')) {
-            // resolve the consoleLogPromise. This allows allPromises to resolve itself
-            consoleLogPromiseResolveFn();
-          }
-        });
-
-      // wait for the other promises to resolve before this promise can resolve
-      const allPromises = Promise.all([openFilePromise, consoleLogPromise]);
-
-      sut.openFileInLeaf(mockFile, false, openState);
-
-      // when all the promises are resolved check expectations and clean up
-      return allPromises.finally(() => {
-        expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
-        expect(consoleLogSpy).toHaveBeenCalled();
-
-        consoleLogSpy.mockRestore();
-      });
-    });
-
-    it('should load a file in an existing leaf', () => {
+  describe('openFileInLeaf', () => {
+    it('should load a file in an existing leaf', async () => {
       const navType = false;
       const mockLeaf = makeLeaf();
       const mockFile = new TFile();
@@ -743,13 +708,13 @@ describe('Handler', () => {
       mockLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      sut.openFileInLeaf(mockFile, navType, openState, 'unit test.');
+      await sut.openFileInLeaf(mockFile, navType, openState);
 
       expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType);
       expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
     });
 
-    it('should load a file in a new leaf using navType "tab"', () => {
+    it('should load a file in a new leaf using navType "tab"', async () => {
       const navType = 'tab';
       const mockLeaf = makeLeaf();
       const mockFile = new TFile();
@@ -758,13 +723,13 @@ describe('Handler', () => {
       mockLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      sut.openFileInLeaf(mockFile, navType, openState, 'unit test.');
+      await sut.openFileInLeaf(mockFile, navType, openState);
 
       expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType);
       expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
     });
 
-    it('should load a file in a new leaf using navType "true"', () => {
+    it('should load a file in a new leaf using navType "true"', async () => {
       const navType = true;
       const mockLeaf = makeLeaf();
       const mockFile = new TFile();
@@ -773,13 +738,13 @@ describe('Handler', () => {
       mockLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      sut.openFileInLeaf(mockFile, navType, openState, 'unit test.');
+      await sut.openFileInLeaf(mockFile, navType, openState);
 
       expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType);
       expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
     });
 
-    it('should load a file in a new split using navType "split"', () => {
+    it('should load a file in a new split using navType "split"', async () => {
       const navType = 'split';
       const mockLeaf = makeLeaf();
       const mockFile = new TFile();
@@ -788,13 +753,13 @@ describe('Handler', () => {
       mockLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      sut.openFileInLeaf(mockFile, navType, openState, 'unit test.', 'horizontal');
+      await sut.openFileInLeaf(mockFile, navType, openState, 'horizontal');
 
       expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType, 'horizontal');
       expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
     });
 
-    it('should load a file in a popout window', () => {
+    it('should load a file in a popout window', async () => {
       const navType = 'window';
       const mockLeaf = makeLeaf();
       const mockFile = new TFile();
@@ -803,7 +768,7 @@ describe('Handler', () => {
       mockLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      sut.openFileInLeaf(mockFile, navType, openState, 'unit test.');
+      await sut.openFileInLeaf(mockFile, navType, openState);
 
       expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType);
       expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
@@ -909,78 +874,71 @@ describe('Handler', () => {
       activateLeafSpy.mockRestore();
     });
 
-    it('should open the file', () => {
+    it('should open the file', async () => {
       const file = new TFile();
       const navType = false;
-      const errorContext = chance.sentence();
 
-      sut.activateLeafOrOpenFile(navType, file, errorContext);
+      await sut.activateLeafOrOpenFile(navType, file);
 
       expect(openFileInLeafSpy).toHaveBeenCalledWith(
         file,
         navType,
         defaultOpenViewState,
-        errorContext,
         undefined,
       );
     });
 
-    it('should open the file in a new leaf "tab"', () => {
+    it('should open the file in a new leaf "tab"', async () => {
       const file = new TFile();
       const navType = true;
-      const errorContext = chance.sentence();
 
-      sut.activateLeafOrOpenFile(navType, file, errorContext);
+      await sut.activateLeafOrOpenFile(navType, file);
 
       expect(openFileInLeafSpy).toHaveBeenCalledWith(
         file,
         navType,
         defaultOpenViewState,
-        errorContext,
         undefined,
       );
     });
 
-    test('with existing leaf and navType false, it should activate the existing leaf', () => {
+    test('with existing leaf and navType false, it should activate the existing leaf', async () => {
       const file = new TFile();
       const navType = false;
       const leaf = makeLeaf();
 
-      sut.activateLeafOrOpenFile(navType, file, null, leaf);
+      await sut.activateLeafOrOpenFile(navType, file, leaf);
 
       expect(openFileInLeafSpy).not.toHaveBeenCalled();
       expect(activateLeafSpy).toHaveBeenCalledWith(leaf, defaultOpenViewState.eState);
     });
 
-    test('with existing leaf and navType true (new tab), it should create a new leaf "tab"', () => {
+    test('with existing leaf and navType true (new tab), it should create a new leaf "tab"', async () => {
       const file = new TFile();
       const navType = true;
       const leaf = makeLeaf();
-      const errorContext = chance.sentence();
 
-      sut.activateLeafOrOpenFile(navType, file, errorContext, leaf);
+      await sut.activateLeafOrOpenFile(navType, file, leaf);
 
       expect(activateLeafSpy).not.toHaveBeenCalled();
       expect(openFileInLeafSpy).toHaveBeenCalledWith(
         file,
         navType,
         defaultOpenViewState,
-        errorContext,
         undefined,
       );
     });
 
-    it('should use the default OpenViewState when a falsy value is passed in for opening files', () => {
+    it('should use the default OpenViewState when a falsy value is passed in for opening files', async () => {
       const file = new TFile();
       const navType = false;
 
-      sut.activateLeafOrOpenFile(navType, file, null);
+      await sut.activateLeafOrOpenFile(navType, file);
 
       expect(openFileInLeafSpy).toHaveBeenCalledWith(
         file,
         navType,
         defaultOpenViewState,
-        null,
         undefined,
       );
     });
