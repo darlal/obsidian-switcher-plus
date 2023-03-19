@@ -860,12 +860,14 @@ describe('Handler', () => {
     let activateLeafSpy: jest.SpyInstance;
 
     beforeAll(() => {
-      openFileInLeafSpy = jest.spyOn(Handler.prototype, 'openFileInLeaf');
       activateLeafSpy = jest.spyOn(Handler.prototype, 'activateLeaf');
+      openFileInLeafSpy = jest
+        .spyOn(Handler.prototype, 'openFileInLeaf')
+        .mockResolvedValue();
     });
 
     beforeEach(() => {
-      openFileInLeafSpy.mockReset();
+      openFileInLeafSpy.mockClear();
       activateLeafSpy.mockReset();
     });
 
