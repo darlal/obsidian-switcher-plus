@@ -23,14 +23,14 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     const { config } = this;
 
     this.addSectionTitle(containerEl, 'General Settings');
-    this.setEnabledRibbonCommands(containerEl, config);
+    this.showEnabledRibbonCommands(containerEl, config);
 
-    this.setPathDisplayFormat(containerEl, config);
+    this.showPathDisplayFormat(containerEl, config);
     this.addToggleSetting(
       containerEl,
       'Hide path for root items',
       'When enabled, path information will be hidden for items at the root of the vault.',
-      this.config.hidePathIfRoot,
+      config.hidePathIfRoot,
       'hidePathIfRoot',
     ).setClass('qsp-setting-item-indent');
 
@@ -54,11 +54,12 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       containerEl,
       'Show indicator icons',
       'Display icons to indicate that an item is recent, starred, etc..',
-      this.config.showOptionalIndicatorIcons,
+      config.showOptionalIndicatorIcons,
       'showOptionalIndicatorIcons',
     );
 
     this.showMatchPriorityAdjustments(containerEl, config);
+
     this.addToggleSetting(
       containerEl,
       'Restore previous input in Command Mode',
@@ -73,9 +74,11 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       config.preserveQuickSwitcherLastInput,
       'preserveQuickSwitcherLastInput',
     );
+
+    this.showResetFacetEachSession(containerEl, config);
   }
 
-  setPathDisplayFormat(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
+  showPathDisplayFormat(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
     const options: Record<string, string> = {};
     options[PathDisplayFormat.None.toString()] = 'Hide path';
     options[PathDisplayFormat.Full.toString()] = 'Full path';
@@ -98,7 +101,10 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     );
   }
 
-  setEnabledRibbonCommands(containerEl: HTMLElement, config: SwitcherPlusSettings) {
+  showEnabledRibbonCommands(
+    containerEl: HTMLElement,
+    config: SwitcherPlusSettings,
+  ): void {
     const modeNames = Object.values(Mode)
       .filter((v) => isNaN(Number(v)))
       .sort();
@@ -192,5 +198,22 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         }
       });
     }
+  }
+
+  showResetFacetEachSession(
+    containerEl: HTMLElement,
+    config: SwitcherPlusSettings,
+  ): void {
+    this.addToggleSetting(
+      containerEl,
+      'Reset active Quick Filters',
+      'When enabled, the switcher will reset all Quick Filters back to inactive for each session.',
+      config.quickFilters.shouldResetActiveFacets,
+      null,
+      (value, config) => {
+        config.quickFilters.shouldResetActiveFacets = value;
+        config.save();
+      },
+    );
   }
 }

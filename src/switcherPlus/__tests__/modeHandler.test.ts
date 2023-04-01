@@ -1,6 +1,15 @@
 import { mock, mockClear, mockFn, MockProxy, mockReset } from 'jest-mock-extended';
 import { SwitcherPlusSettings } from 'src/settings';
-import { AnySuggestion, Mode, SwitcherPlus, SymbolType } from 'src/types';
+import {
+  AnySuggestion,
+  Mode,
+  SwitcherPlus,
+  SymbolType,
+  KeymapConfig,
+  RelationType,
+  Facet,
+  FacetSettingsData,
+} from 'src/types';
 import { Chance } from 'chance';
 import {
   SwitcherPlusKeymap,
@@ -182,6 +191,19 @@ describe('modeHandler', () => {
       sut.onOpen();
 
       expect(mockKeymap.isOpen).toBe(true);
+    });
+
+    test('with shouldResetActiveFacets enabled, .onOpen() should set all facets to inactive', () => {
+      mockSettings.quickFilters = mock<FacetSettingsData>({
+        shouldResetActiveFacets: true,
+        facetList: [mock<Facet>({ isActive: true }), mock<Facet>({ isActive: true })],
+      });
+
+      sut.onOpen();
+
+      expect(mockSettings.quickFilters.facetList.every((v) => v.isActive === false)).toBe(
+        true,
+      );
     });
 
     test('onClose() should close the keymap', () => {
@@ -577,7 +599,7 @@ describe('modeHandler', () => {
     });
 
     it('should log errors from async handlers to the console', async () => {
-      const errorMsg = 'Unit test error';
+      const errorMsg = 'managing suggestions Unit test error';
       const rejectedPromise = Promise.reject(errorMsg);
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
@@ -1001,6 +1023,127 @@ describe('modeHandler', () => {
       editorSpy.mockRestore();
       starredSpy.mockRestore();
       recentSpy.mockRestore();
+    });
+  });
+
+  describe('updatedKeymapForMode', () => {
+    const mockKeymap = mock<SwitcherPlusKeymap>();
+    const mockModal = mock<SwitcherPlus>();
+    const mockChooser = mock<Chooser<AnySuggestion>>();
+    const mode = Mode.RelatedItemsList;
+    const inputInfo = new InputInfo('', mode);
+    let sut: ModeHandler;
+    let getSuggestionSpy: jest.SpyInstance;
+    const mockSettingsLocal = mock<SwitcherPlusSettings>({
+      quickFilters: {
+        facetList: [
+          {
+            id: RelationType.Backlink,
+            mode: mode,
+            label: 'backlinks',
+            isActive: false,
+            isAvailable: true,
+          },
+          {
+            id: RelationType.OutgoingLink,
+            mode: mode,
+            label: 'outgoing links',
+            isActive: false,
+            isAvailable: true,
+          },
+        ],
+      },
+    });
+
+    beforeAll(() => {
+      sut = new ModeHandler(mockApp, mockSettingsLocal, mockKeymap);
+      getSuggestionSpy = jest.spyOn(sut, 'getSuggestions').mockReturnValue();
+    });
+
+    afterEach(() => {
+      getSuggestionSpy.mockClear();
+      mockReset(mockKeymap);
+    });
+
+    afterAll(() => {
+      getSuggestionSpy.mockRestore();
+    });
+
+    test('on facet activation, it should toggle the facet to active (.isActive) and rerun getSuggestions', () => {
+      let keymapConfig: KeymapConfig;
+      mockKeymap.updateKeymapForMode.mockImplementationOnce((config) => {
+        keymapConfig = config;
+      });
+
+      sut.updatedKeymapForMode(
+        inputInfo,
+        mockChooser,
+        mockModal,
+        mockKeymap,
+        mockSettings,
+      );
+
+      // ensure the facet is not active to start with
+      const facet = keymapConfig.facets.facetList[0];
+      facet.isActive = false;
+
+      // trigger the callback
+      keymapConfig.facets.onToggleFacet([facet], false);
+
+      expect(facet.isActive).toBe(true);
+      expect(getSuggestionSpy).toHaveBeenCalledWith(inputInfo, mockChooser, mockModal);
+    });
+
+    test('on reset trigger, if at least 1 facet is active, it should toggle all facets to in-active and rerun getSuggestions', () => {
+      let keymapConfig: KeymapConfig;
+      mockKeymap.updateKeymapForMode.mockImplementationOnce((config) => {
+        keymapConfig = config;
+      });
+
+      sut.updatedKeymapForMode(
+        inputInfo,
+        mockChooser,
+        mockModal,
+        mockKeymap,
+        mockSettings,
+      );
+
+      // start with at least one facet being active
+      const { facetList } = keymapConfig.facets;
+      facetList[0].isActive = true;
+      facetList[1].isActive = false;
+
+      // trigger the callback
+      keymapConfig.facets.onToggleFacet(facetList, true);
+
+      expect(facetList.every((facet) => facet.isActive === false)).toBe(true);
+      expect(getSuggestionSpy).toHaveBeenCalledWith(inputInfo, mockChooser, mockModal);
+    });
+
+    test('on reset trigger, if all facets are in-active, it should toggle all facets to active and rerun getSuggestions', () => {
+      let keymapConfig: KeymapConfig;
+      mockKeymap.updateKeymapForMode.mockImplementationOnce((config) => {
+        keymapConfig = config;
+      });
+
+      sut.updatedKeymapForMode(
+        inputInfo,
+        mockChooser,
+        mockModal,
+        mockKeymap,
+        mockSettings,
+      );
+
+      // start with all facets being inactive
+      const { facetList } = keymapConfig.facets;
+      facetList[0].isActive = false;
+      facetList[1].isActive = false;
+
+      // trigger the callback
+      keymapConfig.facets.onToggleFacet(facetList, true);
+
+      expect(facetList.every((facet) => facet.isActive === true)).toBe(true);
+      expect(getSuggestionSpy).toHaveBeenCalledWith(inputInfo, mockChooser, mockModal);
     });
   });
 });

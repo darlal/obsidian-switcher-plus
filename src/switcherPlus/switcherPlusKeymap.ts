@@ -1,4 +1,11 @@
-import { AnySuggestion, Mode, SwitcherPlus } from 'src/types';
+import {
+  AnySuggestion,
+  Facet,
+  FacetSettingsData,
+  KeymapConfig,
+  Mode,
+  SwitcherPlus,
+} from 'src/types';
 import {
   Scope,
   KeymapContext,
@@ -10,7 +17,7 @@ import {
   Platform,
 } from 'obsidian';
 
-type CustomKeymapInfo = Omit<KeymapEventHandler, 'scope'> &
+export type CustomKeymapInfo = Omit<KeymapEventHandler, 'scope'> &
   Instruction & { isInstructionOnly?: boolean; modes?: Mode[] };
 
 export class SwitcherPlusKeymap {
@@ -23,7 +30,8 @@ export class SwitcherPlusKeymap {
 
   modKey: Modifier = 'Ctrl';
   modKeyText = 'ctrl';
-  shiftText = 'shift';
+  shiftKeyText = 'shift';
+  readonly facetKeysInfo: Array<CustomKeymapInfo & { facet: Facet }> = [];
 
   get isOpen(): boolean {
     return this._isOpen;
@@ -41,7 +49,7 @@ export class SwitcherPlusKeymap {
     if (Platform.isMacOS) {
       this.modKey = 'Meta';
       this.modKeyText = '⌘';
-      this.shiftText = '⇧';
+      this.shiftKeyText = '⇧';
     }
 
     this.initKeysInfo();
@@ -96,7 +104,7 @@ export class SwitcherPlusKeymap {
         modifiers: `${this.modKey},Shift`,
         key: '\\',
         func: null,
-        command: `${this.modKeyText} ${this.shiftText} \\`,
+        command: `${this.modKeyText} ${this.shiftKeyText} \\`,
         purpose: 'open below',
       },
       {
@@ -145,6 +153,65 @@ export class SwitcherPlusKeymap {
     });
   }
 
+  registerFacetBinding(scope: Scope, keymapConfig: KeymapConfig): void {
+    const { mode, facets } = keymapConfig;
+
+    if (facets?.facetList?.length) {
+      const { facetList, facetSettings, onToggleFacet } = facets;
+      const { keyList, modifiers, resetKey, resetModifiers } = facetSettings;
+      let currKeyListIndex = 0;
+      let keyHandler: KeymapEventHandler;
+
+      const registerFn = (
+        modKeys: Modifier[],
+        key: string,
+        facetListLocal: Facet[],
+        isReset: boolean,
+      ) => {
+        return scope.register(modKeys, key, () => onToggleFacet(facetListLocal, isReset));
+      };
+
+      // register each of the facets to a corresponding key
+      for (let i = 0; i < facetList.length; i++) {
+        const facet = facetList[i];
+        const facetModifiers = facet.modifiers ?? modifiers;
+        let key: string;
+
+        if (facet.key?.length) {
+          // has override key defined so use it instead of the default
+          key = facet.key;
+        } else if (currKeyListIndex < keyList.length) {
+          // use up one of the default keys
+          key = keyList[currKeyListIndex];
+          ++currKeyListIndex;
+        } else {
+          // override key is not defined and no default keys left
+          console.log(
+            `Switcher++: unable to register hotkey for facet: ${facet.label} in mode: ${Mode[mode]} because a trigger key is not specified`,
+          );
+          continue;
+        }
+
+        keyHandler = registerFn(facetModifiers, key, [facet], false);
+        this.facetKeysInfo.push({
+          facet,
+          command: key,
+          purpose: facet.label,
+          ...keyHandler,
+        });
+      }
+
+      // register the toggle key
+      keyHandler = registerFn(resetModifiers ?? modifiers, resetKey, facetList, true);
+      this.facetKeysInfo.push({
+        facet: null,
+        command: resetKey,
+        purpose: 'toggle all',
+        ...keyHandler,
+      });
+    }
+  }
+
   registerTabBindings(scope: Scope): void {
     const keys: [Modifier[], string][] = [
       [[this.modKey], '\\'],
@@ -157,15 +224,25 @@ export class SwitcherPlusKeymap {
     });
   }
 
-  updateKeymapForMode(mode: Mode): void {
-    const isStandardMode = mode === Mode.Standard;
-    const { modal, scope, savedStandardKeysInfo, standardKeysInfo, customKeysInfo } =
-      this;
+  updateKeymapForMode(keymapConfig: KeymapConfig): void {
+    const { mode } = keymapConfig;
+    const {
+      modal,
+      scope,
+      savedStandardKeysInfo,
+      standardKeysInfo,
+      customKeysInfo,
+      facetKeysInfo,
+    } = this;
 
     const customKeymaps = customKeysInfo.filter((v) => !v.isInstructionOnly);
     this.unregisterKeys(scope, customKeymaps);
 
-    if (isStandardMode) {
+    // remove facet keys and reset storage array
+    this.unregisterKeys(scope, facetKeysInfo);
+    facetKeysInfo.length = 0;
+
+    if (mode === Mode.Standard) {
       this.registerKeys(scope, savedStandardKeysInfo);
       savedStandardKeysInfo.length = 0;
 
@@ -178,8 +255,9 @@ export class SwitcherPlusKeymap {
 
       const customKeysToAdd = customKeymaps.filter((v) => v.modes?.includes(mode));
       this.registerKeys(scope, customKeysToAdd);
+      this.registerFacetBinding(scope, keymapConfig);
 
-      this.showCustomInstructions(modal, customKeysInfo, mode);
+      this.showCustomInstructions(modal, keymapConfig, customKeysInfo, facetKeysInfo);
     }
   }
 
@@ -247,15 +325,79 @@ export class SwitcherPlusKeymap {
 
   showCustomInstructions(
     modal: SwitcherPlus,
+    keymapConfig: KeymapConfig,
     keymapInfo: CustomKeymapInfo[],
-    mode: Mode,
+    facetKeysInfo: Array<CustomKeymapInfo & { facet: Facet }>,
   ): void {
+    const { mode, facets } = keymapConfig;
     const { containerEl } = modal;
     const keymaps = keymapInfo.filter((keymap) => keymap.modes?.includes(mode));
 
     this.toggleStandardInstructions(containerEl, false);
     this.clearCustomInstructions(containerEl);
+
+    this.renderFacetInstructions(modal, facets?.facetSettings, facetKeysInfo);
     modal.setInstructions(keymaps);
+  }
+
+  renderFacetInstructions(
+    modal: SwitcherPlus,
+    facetSettings: FacetSettingsData,
+    facetKeysInfo: Array<CustomKeymapInfo & { facet: Facet }>,
+  ): void {
+    if (facetKeysInfo?.length && facetSettings.shouldShowFacetInstructions) {
+      const modifiersToString = (modifiers: Modifier[]) => {
+        return modifiers?.toString().replace(',', ' ');
+      };
+
+      const containerEl = modal.modalEl.createDiv('prompt-instructions');
+
+      // render the preamble
+      let instructionEl = containerEl.createDiv();
+      instructionEl.createSpan({
+        cls: 'prompt-instruction-command',
+        text: `filters | ${modifiersToString(facetSettings.modifiers)}`,
+      });
+
+      // render each key instruction
+      facetKeysInfo.forEach((facetKeyInfo) => {
+        const { facet, command, purpose } = facetKeyInfo;
+        let modifiers: Modifier[];
+        let key: string;
+        let activeCls: string[] = null;
+
+        if (facet) {
+          // Note: the command only contain the key, the modifiers has to be derived
+          key = command;
+          modifiers = facet.modifiers;
+
+          if (facet.isActive) {
+            activeCls = ['qsp-filter-active'];
+          }
+        } else {
+          // Note: only the reset key is expected to not have an associated facet
+          key = facetSettings.resetKey;
+          modifiers = facetSettings.resetModifiers;
+        }
+
+        // if a modifier is specified for this specific facet, it overrides the
+        // default modifier so display that too. Otherwise, just show the key alone
+        const commandDisplayText = modifiers
+          ? `(${modifiersToString(modifiers)}) ${key}`
+          : `${key}`;
+
+        instructionEl = containerEl.createDiv();
+        instructionEl.createSpan({
+          cls: 'prompt-instruction-command',
+          text: commandDisplayText,
+        });
+
+        instructionEl.createSpan({
+          cls: activeCls,
+          text: purpose,
+        });
+      });
+    }
   }
 
   useSelectedItem(evt: KeyboardEvent, _ctx: KeymapContext): boolean | void {

@@ -13,6 +13,7 @@ import {
   Command,
   SearchResult,
   SectionCache,
+  Modifier,
 } from 'obsidian';
 import type { SuggestModal, StarredPluginItem } from 'obsidian';
 import { PickKeys, WritableKeys } from 'ts-essentials';
@@ -234,6 +235,46 @@ export interface SourceInfo {
   cursor?: EditorPosition;
 }
 
+export interface Facet {
+  id: string;
+  mode: Mode;
+  label: string;
+  isActive: boolean;
+  isAvailable: boolean;
+  key?: string;
+  modifiers?: Modifier[];
+}
+
+export interface FacetSettingsData {
+  resetKey: string;
+  resetModifiers?: Modifier[];
+  keyList: string[];
+  modifiers: Modifier[];
+  facetList: Facet[];
+  shouldResetActiveFacets: boolean;
+  shouldShowFacetInstructions: boolean;
+}
+
+export interface SearchQuery {
+  hasSearchTerm: boolean;
+  prepQuery: PreparedQuery;
+}
+
+export interface SearchResultWithFallback {
+  matchType: MatchType;
+  match: SearchResult;
+  matchText?: string;
+}
+
+export type KeymapConfig = {
+  mode: Mode;
+  facets?: {
+    facetSettings: FacetSettingsData;
+    facetList: Facet[];
+    onToggleFacet: (facets: Facet[], isReset: boolean) => boolean;
+  };
+};
+
 export interface SettingsData {
   onOpenPreferNewTab: boolean;
   alwaysNewTabForSymbols: boolean;
@@ -272,15 +313,5 @@ export interface SettingsData {
   matchPriorityAdjustments: Record<string, number>;
   preserveCommandPaletteLastInput: boolean;
   preserveQuickSwitcherLastInput: boolean;
-}
-
-export interface SearchQuery {
-  hasSearchTerm: boolean;
-  prepQuery: PreparedQuery;
-}
-
-export interface SearchResultWithFallback {
-  matchType: MatchType;
-  match: SearchResult;
-  matchText?: string;
+  quickFilters: FacetSettingsData;
 }

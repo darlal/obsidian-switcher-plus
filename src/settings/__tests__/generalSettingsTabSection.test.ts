@@ -79,15 +79,15 @@ describe('generalSettingsTabSection', () => {
     });
 
     it('should show path settings', () => {
-      const setPathDisplayFormatSpy = jest
-        .spyOn(sut, 'setPathDisplayFormat')
+      const showPathDisplayFormatSpy = jest
+        .spyOn(sut, 'showPathDisplayFormat')
         .mockReturnValueOnce();
 
       sut.display(mockContainerEl);
 
-      expect(setPathDisplayFormatSpy).toHaveBeenCalled();
+      expect(showPathDisplayFormatSpy).toHaveBeenCalled();
 
-      setPathDisplayFormatSpy.mockRestore();
+      showPathDisplayFormatSpy.mockRestore();
     });
 
     it('should show the hidePathIfRoot setting', () => {
@@ -115,15 +115,15 @@ describe('generalSettingsTabSection', () => {
     });
 
     it('should show setting to change ribbon commands', () => {
-      const setEnabledRibbonCommandsSpy = jest
-        .spyOn(sut, 'setEnabledRibbonCommands')
+      const showEnabledRibbonCommandsSpy = jest
+        .spyOn(sut, 'showEnabledRibbonCommands')
         .mockReturnValueOnce();
 
       sut.display(mockContainerEl);
 
-      expect(setEnabledRibbonCommandsSpy).toHaveBeenCalled();
+      expect(showEnabledRibbonCommandsSpy).toHaveBeenCalled();
 
-      setEnabledRibbonCommandsSpy.mockRestore();
+      showEnabledRibbonCommandsSpy.mockRestore();
     });
 
     it('should show setting to change match priority adjustments', () => {
@@ -139,22 +139,22 @@ describe('generalSettingsTabSection', () => {
     });
   });
 
-  describe('setPathDisplayFormat', () => {
+  describe('showPathDisplayFormat', () => {
     it('should show the pathDisplayFormat setting', () => {
       const addDropdownSettingSpy = jest.spyOn(
         SettingsTabSection.prototype,
         'addDropdownSetting',
       );
 
-      const setPathDisplayFormatSpy = jest.spyOn(sut, 'setPathDisplayFormat');
+      const showPathDisplayFormatSpy = jest.spyOn(sut, 'showPathDisplayFormat');
 
       sut.display(mockContainerEl);
 
-      expect(setPathDisplayFormatSpy).toHaveBeenCalledWith(mockContainerEl, config);
+      expect(showPathDisplayFormatSpy).toHaveBeenCalledWith(mockContainerEl, config);
       expect(addDropdownSettingSpy).toHaveBeenCalled();
 
-      setPathDisplayFormatSpy.mockRestore();
-      setPathDisplayFormatSpy.mockRestore();
+      showPathDisplayFormatSpy.mockRestore();
+      showPathDisplayFormatSpy.mockRestore();
     });
 
     it('should save modified setting', () => {
@@ -171,7 +171,7 @@ describe('generalSettingsTabSection', () => {
 
       const configSaveSpy = jest.spyOn(config, 'save');
 
-      sut.setPathDisplayFormat(mockContainerEl, config);
+      sut.showPathDisplayFormat(mockContainerEl, config);
       // trigger the save
       onChangeFn(finalValue.toString(), config);
 
@@ -183,7 +183,7 @@ describe('generalSettingsTabSection', () => {
     });
   });
 
-  describe('setEnabledRibbonCommands', () => {
+  describe('showEnabledRibbonCommands', () => {
     let mockSetting: MockProxy<Setting>;
     let mockTextComp: MockProxy<TextAreaComponent>;
     let mockInputEl: MockProxy<HTMLInputElement>;
@@ -218,7 +218,7 @@ describe('generalSettingsTabSection', () => {
     it('should show the enabledRibbonCommands setting', () => {
       const { enabledRibbonCommands } = config;
 
-      sut.setEnabledRibbonCommands(mockContainerEl, config);
+      sut.showEnabledRibbonCommands(mockContainerEl, config);
 
       expect(mockTextComp.setValue).toHaveBeenCalledWith(
         enabledRibbonCommands.join('\n'),
@@ -237,7 +237,7 @@ describe('generalSettingsTabSection', () => {
       config.enabledRibbonCommands = []; // start with no values set
       mockTextComp.getValue.mockReturnValue(enabledCommands);
 
-      sut.setEnabledRibbonCommands(mockContainerEl, config);
+      sut.showEnabledRibbonCommands(mockContainerEl, config);
       focusoutFn(null); // trigger the callback to save
 
       expect(mockTextComp.getValue).toHaveBeenCalled();
@@ -262,7 +262,7 @@ describe('generalSettingsTabSection', () => {
       config.enabledRibbonCommands = initialCommands;
       mockTextComp.getValue.mockReturnValue(enabledCommands);
 
-      sut.setEnabledRibbonCommands(mockContainerEl, config);
+      sut.showEnabledRibbonCommands(mockContainerEl, config);
       focusoutFn(null); // trigger the callback to save
 
       expect(mockTextComp.getValue).toHaveBeenCalled();
@@ -322,7 +322,7 @@ describe('generalSettingsTabSection', () => {
     });
 
     it('should log error to the console when setting cannot be saved', async () => {
-      const errorMsg = 'Unit test error';
+      const errorMsg = 'showMatchPriorityAdjustments Unit test error';
       const rejectedPromise = Promise.reject(errorMsg);
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
@@ -391,6 +391,46 @@ describe('generalSettingsTabSection', () => {
       config.matchPriorityAdjustments[fieldToAdjustKey] = 0;
       addSliderSettingSpy.mockRestore();
       saveSpy.mockRestore();
+    });
+  });
+
+  describe('showResetFacetEachSession', () => {
+    type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
+    let toggleSettingOnChangeFn: addToggleSettingArgs[5];
+    let saveSettingsSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      saveSettingsSpy = jest.spyOn(config, 'saveSettings');
+    });
+
+    afterAll(() => {
+      saveSettingsSpy.mockRestore();
+    });
+
+    it('should save changes to the shouldResetActiveFacets setting', () => {
+      const initialValue = false;
+      const finalValue = true;
+
+      config.quickFilters.shouldResetActiveFacets = initialValue;
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+        if (args[1] === 'Reset active Quick Filters') {
+          toggleSettingOnChangeFn = args[5];
+        }
+
+        return mock<Setting>();
+      });
+
+      sut.showResetFacetEachSession(mockContainerEl, config);
+
+      // trigger the change/save
+      toggleSettingOnChangeFn(finalValue, config);
+
+      expect(saveSettingsSpy).toHaveBeenCalled();
+      expect(config.quickFilters.shouldResetActiveFacets).toBe(finalValue);
+
+      config.quickFilters.shouldResetActiveFacets = false;
+      addToggleSettingSpy.mockReset();
+      mockPluginSettingTab.display.mockClear();
     });
   });
 });

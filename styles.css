@@ -3,6 +3,10 @@
   --symbol-indent-padding: 12px;
 }
 
+.qsp-filter-active {
+  color: var(--text-accent);
+}
+
 /* suggestion file path icon */
 .qsp-path-indicator {
   margin-right: 4px;

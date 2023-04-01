@@ -302,7 +302,7 @@ describe('symbolSettingsTabSection', () => {
     it('should log error to the console when setting cannot be saved', async () => {
       const initialEnabledValue = false;
       const finalEnabledValue = true;
-      const errorMsg = 'Unit test error';
+      const errorMsg = 'showEnableLinksToggle Unit test error';
       const rejectedPromise = Promise.reject(errorMsg);
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 

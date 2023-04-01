@@ -1,3 +1,4 @@
+import { Facet, FacetSettingsData } from './../../types/sharedTypes';
 import {
   App,
   Editor,
@@ -2071,7 +2072,7 @@ describe('Handler', () => {
 
     it('should log any errors to the console while trying to create a new file', async () => {
       const filename = chance.word();
-      const errorMsg = 'Unit test error';
+      const errorMsg = 'createFile Unit test error';
       const rejectedPromise = Promise.reject(errorMsg);
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
@@ -2099,6 +2100,21 @@ describe('Handler', () => {
 
       mockWorkspace.openLinkText.mockReset();
       consoleLogSpy.mockRestore();
+    });
+  });
+
+  describe('activateFacet', () => {
+    test('withshouldResetActiveFacets disabled, it should save changes to active facet status', () => {
+      const finalValue = true;
+      const mockFacet = mock<Facet>({ isActive: false });
+      mockSettings.quickFilters = mock<FacetSettingsData>({
+        shouldResetActiveFacets: false,
+      });
+
+      sut.activateFacet([mockFacet], finalValue);
+
+      expect(mockFacet.isActive).toBe(finalValue);
+      expect(mockSettings.save).toHaveBeenCalledWith();
     });
   });
 });

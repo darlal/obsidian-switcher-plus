@@ -9,19 +9,13 @@ Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](ht
 ## Features
 
 * [Find files by headings instead of filename](#search-headings-instead-of-filename)
-  * [Configuration](#search-headings-configuration)
 * [Navigate to symbols (Canvas Nodes, Headings, Hashtags, Links, Embeddings) in your notes](#symbol-navigation-canvas-nodes-headings-hashtags-links-embeddings)
-  * [Configuration](#symbol-navigation-configuration)
 * [Navigate between open editors, and side panels](#navigate-between-open-editors)
-  * [Configuration](#editor-navigation-configuration)
 * [Switch between configured Workspaces quickly](#switch-workspaces)
-  * [Configuration](#workspace-configuration)
 * [Navigate between your Starred notes](#navigate-starred-notes)
-  * [Configuration](#starred-configuration)
-* [Run commands](#run-commands)
-  * [Configuration](#command-configuration)
-* [Navigate to related items](#related-items)
-  * [Configuration](#related-items-configuration)
+* [Run Obsidian commands](#run-commands)
+* [Navigate to related files](#related-items)
+* [Quick Filters to narrow down your search results](#quick-filters)
 * [General Settings](#general-settings)
 * [Global Commands for Hotkeys/Shortcuts](#global-commands-for-hotkeys)
 
@@ -182,6 +176,15 @@ When the Related Items command is triggered for a selected input suggestion/file
 | Related items list mode trigger | Character that will trigger related items list mode in the switcher. | `~` |
 | Show related item types         | Specify which relation types are enabled to be displayed in the result list. | `backlink`<br />`disk-location`<br />`outgoing-link` |
 | Exclude open files              | **Enabled**: related files which are already open in an editor will not be displayed in the list.<br />**Disabled**: All related files will be displayed in the list. | disabled |
+
+## Quick Filters
+
+Quick Filters enable you to quickly narrow down the types of items that appear in your search results without having to change your query. Each type of results will have a hotkey assigned that can be used to toggle (show/hide) that type from the result list. When active, only results that match the Quick Filter type will be displayed, multiple Quick Filters can be active at the same time.
+
+In the demo below, `Quick Switcher++: Open Symbols for the active editor` global command is triggered for the active file. Notice towards the bottom of the Switcher the hotkeys assigned to each result type. The `headings` Quick Filter is triggered using the `Ctrl+Alt+1` hotkey, this restricts the result list to only display Heading results. Multiple Quick Filters are activated using their corresponding hotkeys, and all Quick Filters can be quickly toggle off using `Ctrl+Alt+0`.
+
+![quick filters gif](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/quick-filters.gif)
+
 
 ## General Settings
 

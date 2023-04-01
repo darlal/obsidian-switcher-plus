@@ -7,7 +7,7 @@ import {
   SymbolType,
 } from 'src/types';
 import SwitcherPlusPlugin from 'src/main';
-import { SwitcherPlusSettings } from 'src/settings';
+import { FACETS_ALL, SwitcherPlusSettings } from 'src/settings';
 import { Chance } from 'chance';
 import {
   App,
@@ -19,10 +19,9 @@ import {
 import { mock, MockProxy } from 'jest-mock-extended';
 
 const chance = new Chance();
+const sidePanelOptions = ['backlink', 'image', 'markdown', 'pdf'];
 
-function transientSettingsData(useDefault: boolean): SettingsData {
-  const sidePanelOptions = ['backlink', 'image', 'markdown', 'pdf'];
-
+function getDefaultSettingsData(): SettingsData {
   const enabledSymbolTypes = {} as Record<SymbolType, boolean>;
   enabledSymbolTypes[SymbolType.Link] = true;
   enabledSymbolTypes[SymbolType.Embed] = true;
@@ -76,66 +75,88 @@ function transientSettingsData(useDefault: boolean): SettingsData {
       alias: 0,
       h1: 0,
     },
+    quickFilters: {
+      resetKey: '0',
+      keyList: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+      modifiers: ['Ctrl', 'Alt'],
+      facetList: FACETS_ALL.map((v) => Object.assign({}, v)),
+      shouldResetActiveFacets: false,
+      shouldShowFacetInstructions: true,
+    },
     preserveCommandPaletteLastInput: false,
     preserveQuickSwitcherLastInput: false,
   };
 
-  if (!useDefault) {
-    data.onOpenPreferNewTab = chance.bool();
-    data.alwaysNewTabForSymbols = chance.bool();
-    data.useActiveTabForSymbolsOnMobile = chance.bool();
-    data.symbolsInLineOrder = chance.bool();
-    data.editorListCommand = chance.word();
-    data.symbolListCommand = chance.word();
-    data.workspaceListCommand = chance.word();
-    data.headingsListCommand = chance.word();
-    data.starredListCommand = chance.word();
-    data.commandListCommand = chance.word();
-    data.strictHeadingsOnly = chance.bool();
-    data.searchAllHeadings = chance.bool();
-    data.headingsSearchDebounceMilli = chance.millisecond();
-    data.limit = chance.integer();
-    data.selectNearestHeading = chance.bool();
-    data.starredListCommand = chance.word();
-    data.relatedItemsListCommand = chance.word();
-    data.excludeLinkSubTypes = LinkType.Block;
-    data.excludeOpenRelatedFiles = chance.bool();
-    data.excludeObsidianIgnoredFiles = chance.bool();
-    data.shouldSearchFilenames = chance.bool();
-    data.pathDisplayFormat = PathDisplayFormat.Full;
-    data.hidePathIfRoot = chance.bool();
-    data.enabledRelatedItems = chance.pickset(Object.values(RelationType), 2);
-    data.showOptionalIndicatorIcons = chance.bool();
-    data.overrideStandardModeBehaviors = chance.bool();
-    data.fileExtAllowList = [];
-    data.enableMatchPriorityAdjustments = chance.bool();
-    data.matchPriorityAdjustments = { h2: 0.5, isOpenInEditor: 0.5 };
+  return data;
+}
 
-    const ribbonCommands = Object.values(Mode).filter((v) => isNaN(Number(v))) as Array<
-      keyof typeof Mode
-    >;
-    data.enabledRibbonCommands = chance.pickset(ribbonCommands, 3);
+function getTransientSettingsData(): SettingsData {
+  const enabledSymbolTypes = {} as Record<SymbolType, boolean>;
+  enabledSymbolTypes[SymbolType.Link] = chance.bool();
+  enabledSymbolTypes[SymbolType.Embed] = chance.bool();
+  enabledSymbolTypes[SymbolType.Tag] = chance.bool();
+  enabledSymbolTypes[SymbolType.Heading] = chance.bool();
+  enabledSymbolTypes[SymbolType.Callout] = chance.bool();
 
-    data.includeSidePanelViewTypes = [
+  const ribbonCommands = Object.values(Mode).filter((v) => isNaN(Number(v))) as Array<
+    keyof typeof Mode
+  >;
+  const enabledRibbonCommands = chance.pickset(ribbonCommands, 3);
+
+  const data: SettingsData = {
+    enabledSymbolTypes,
+
+    excludeViewTypes: [chance.word(), chance.word()],
+    referenceViews: [chance.word(), chance.word()],
+
+    onOpenPreferNewTab: chance.bool(),
+    alwaysNewTabForSymbols: chance.bool(),
+    useActiveTabForSymbolsOnMobile: chance.bool(),
+    symbolsInLineOrder: chance.bool(),
+    editorListCommand: chance.word(),
+    symbolListCommand: chance.word(),
+    workspaceListCommand: chance.word(),
+    headingsListCommand: chance.word(),
+    starredListCommand: chance.word(),
+    commandListCommand: chance.word(),
+    strictHeadingsOnly: chance.bool(),
+    searchAllHeadings: chance.bool(),
+    headingsSearchDebounceMilli: chance.millisecond(),
+    limit: chance.integer(),
+    selectNearestHeading: chance.bool(),
+    relatedItemsListCommand: chance.word(),
+    excludeLinkSubTypes: LinkType.Block,
+    includeSidePanelViewTypes: [
       chance.word(),
       chance.word(),
       chance.pickone(sidePanelOptions),
-    ];
-
-    data.excludeFolders = [
-      `path/to/${chance.word()}`,
-      `${chance.word()}`,
-      `/${chance.word()}`,
-    ];
-
-    data.excludeRelatedFolders = [`path/to/${chance.word()}`];
-
-    enabledSymbolTypes[SymbolType.Link] = chance.bool();
-    enabledSymbolTypes[SymbolType.Embed] = chance.bool();
-    enabledSymbolTypes[SymbolType.Tag] = chance.bool();
-    enabledSymbolTypes[SymbolType.Heading] = chance.bool();
-    enabledSymbolTypes[SymbolType.Callout] = chance.bool();
-  }
+    ],
+    excludeFolders: [`path/to/${chance.word()}`, `${chance.word()}`, `/${chance.word()}`],
+    excludeRelatedFolders: [`path/to/${chance.word()}`],
+    excludeOpenRelatedFiles: chance.bool(),
+    excludeObsidianIgnoredFiles: chance.bool(),
+    shouldSearchFilenames: chance.bool(),
+    pathDisplayFormat: PathDisplayFormat.Full,
+    hidePathIfRoot: chance.bool(),
+    enabledRelatedItems: chance.pickset(Object.values(RelationType), 2),
+    showOptionalIndicatorIcons: chance.bool(),
+    overrideStandardModeBehaviors: chance.bool(),
+    enabledRibbonCommands,
+    fileExtAllowList: [],
+    enableMatchPriorityAdjustments: chance.bool(),
+    matchPriorityAdjustments: { h2: 0.5, isOpenInEditor: 0.5 },
+    quickFilters: {
+      resetKey: chance.letter(),
+      resetModifiers: chance.pickset(['Alt', 'Ctrl', 'Meta', 'Shift'], 2),
+      keyList: [chance.letter()],
+      modifiers: [chance.pickone(['Alt', 'Ctrl', 'Meta'])],
+      facetList: [],
+      shouldResetActiveFacets: chance.bool(),
+      shouldShowFacetInstructions: chance.bool(),
+    },
+    preserveCommandPaletteLastInput: chance.bool(),
+    preserveQuickSwitcherLastInput: chance.bool(),
+  };
 
   return data;
 }
@@ -157,7 +178,7 @@ describe('SwitcherPlusSettings', () => {
   it('should return default settings', () => {
     // extract enabledSymbolTypes to handle separately, because it's not exposed
     // on SwitcherPlusSettings directly
-    const { enabledSymbolTypes, ...defaults } = transientSettingsData(true);
+    const { enabledSymbolTypes, ...defaults } = getDefaultSettingsData();
 
     expect(sut).toEqual(expect.objectContaining(defaults));
     expect(sut.editorListPlaceholderText).toBe(defaults.editorListCommand);
@@ -189,40 +210,20 @@ describe('SwitcherPlusSettings', () => {
   });
 
   it('should save modified settings', async () => {
-    const settings = transientSettingsData(false);
+    const settings = getTransientSettingsData();
 
-    sut.onOpenPreferNewTab = settings.onOpenPreferNewTab;
-    sut.alwaysNewTabForSymbols = settings.alwaysNewTabForSymbols;
-    sut.useActiveTabForSymbolsOnMobile = settings.useActiveTabForSymbolsOnMobile;
-    sut.symbolsInLineOrder = settings.symbolsInLineOrder;
-    sut.editorListCommand = settings.editorListCommand;
-    sut.symbolListCommand = settings.symbolListCommand;
-    sut.workspaceListCommand = settings.workspaceListCommand;
-    sut.headingsListCommand = settings.headingsListCommand;
-    sut.starredListCommand = settings.starredListCommand;
-    sut.commandListCommand = settings.commandListCommand;
-    sut.relatedItemsListCommand = settings.relatedItemsListCommand;
-    sut.strictHeadingsOnly = settings.strictHeadingsOnly;
-    sut.searchAllHeadings = settings.searchAllHeadings;
-    sut.headingsSearchDebounceMilli = settings.headingsSearchDebounceMilli;
-    sut.includeSidePanelViewTypes = settings.includeSidePanelViewTypes;
-    sut.limit = settings.limit;
-    sut.selectNearestHeading = settings.selectNearestHeading;
-    sut.excludeFolders = settings.excludeFolders;
-    sut.excludeLinkSubTypes = settings.excludeLinkSubTypes;
-    sut.excludeRelatedFolders = settings.excludeRelatedFolders;
-    sut.excludeOpenRelatedFiles = settings.excludeOpenRelatedFiles;
-    sut.excludeObsidianIgnoredFiles = settings.excludeObsidianIgnoredFiles;
-    sut.shouldSearchFilenames = settings.shouldSearchFilenames;
-    sut.pathDisplayFormat = settings.pathDisplayFormat;
-    sut.hidePathIfRoot = settings.hidePathIfRoot;
-    sut.enabledRelatedItems = settings.enabledRelatedItems;
-    sut.showOptionalIndicatorIcons = settings.showOptionalIndicatorIcons;
-    sut.overrideStandardModeBehaviors = settings.overrideStandardModeBehaviors;
-    sut.enabledRibbonCommands = settings.enabledRibbonCommands;
-    sut.fileExtAllowList = settings.fileExtAllowList;
-    sut.enableMatchPriorityAdjustments = settings.enableMatchPriorityAdjustments;
-    sut.matchPriorityAdjustments = settings.matchPriorityAdjustments;
+    const props = Object.getOwnPropertyDescriptors(Object.getPrototypeOf(sut));
+    Object.keys(settings).forEach((key) => {
+      // check if a setter is defined on sut for this key
+      if (props[key]?.set) {
+        type IndexedType = { [key: string]: unknown };
+
+        // copy value to sut since a setter exists
+        (sut as SwitcherPlusSettings & IndexedType)[key] = (
+          settings as SettingsData & IndexedType
+        )[key];
+      }
+    });
 
     sut.setSymbolTypeEnabled(
       SymbolType.Heading,
@@ -261,7 +262,7 @@ describe('SwitcherPlusSettings', () => {
   });
 
   it('should load saved settings', async () => {
-    const settings = transientSettingsData(false);
+    const settings = getTransientSettingsData();
     const { enabledSymbolTypes, ...prunedSettings } = settings;
     mockPlugin.loadData.mockResolvedValueOnce(settings);
 
@@ -290,8 +291,8 @@ describe('SwitcherPlusSettings', () => {
   });
 
   it('should load saved settings, even with missing data keys', async () => {
-    const defaults = transientSettingsData(true);
-    const settings = transientSettingsData(false);
+    const defaults = getDefaultSettingsData();
+    const settings = getTransientSettingsData();
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { enabledSymbolTypes, ...prunedSettings } = settings;
@@ -322,7 +323,7 @@ describe('SwitcherPlusSettings', () => {
   });
 
   it('should use default data if settings cannot be loaded', async () => {
-    const { enabledSymbolTypes, ...defaults } = transientSettingsData(true);
+    const { enabledSymbolTypes, ...defaults } = getDefaultSettingsData();
     mockPlugin.loadData.mockResolvedValueOnce(null);
 
     await sut.loadSettings();
@@ -385,42 +386,42 @@ describe('SwitcherPlusSettings', () => {
     mockInternalPlugins.getPluginById.mockReset();
   });
 
+  test('.loadSettings() should log errors to the console', async () => {
+    const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+    const error = new Error('loadSettings unit test error');
+    mockPlugin.loadData.mockRejectedValueOnce(error);
+
+    await sut.loadSettings();
+
+    expect(consoleLogSpy).toHaveBeenCalledWith(
+      'Switcher++: error loading settings, using defaults. ',
+      error,
+    );
+
+    consoleLogSpy.mockRestore();
+  });
+
   it('should log errors to console on fire and forget save operation', () => {
-    // Promise used to trigger the error condition
-    const saveDataPromise = Promise.resolve();
+    const consoleLogSpy = jest.spyOn(console, 'log');
 
-    mockPlugin.saveData.mockImplementationOnce((_data: SettingsData) => {
-      // throw to simulate saveData() failing. This happens first
-      return saveDataPromise.then(() => {
-        throw new Error('saveData() unit test mock error');
+    const error = new Error('saveData() unit test mock error');
+    mockPlugin.saveData.mockRejectedValueOnce(error);
+
+    const logPromise = new Promise<void>((resolve, _r) => {
+      consoleLogSpy.mockImplementationOnce(() => {
+        resolve();
       });
     });
-
-    // Promise used to track the call to console.log
-    let consoleLogPromiseResolveFn: (value: void | PromiseLike<void>) => void;
-    const consoleLogPromise = new Promise<void>((resolve, _reject) => {
-      consoleLogPromiseResolveFn = resolve;
-    });
-
-    const consoleLogSpy = jest
-      .spyOn(console, 'log')
-      .mockImplementation((message: string) => {
-        if (message.startsWith('Switcher++: error saving changes to settings')) {
-          // resolve the consoleLogPromise. This happens second and will allow
-          // allPromises to resolve itself
-          consoleLogPromiseResolveFn();
-        }
-      });
-
-    // wait for the other promises to resolve before this promise can resolve
-    const allPromises = Promise.all([saveDataPromise, consoleLogPromise]);
 
     sut.save();
 
-    // when all the promises are resolved check expectations and clean up
-    return allPromises.finally(() => {
+    return logPromise.finally(() => {
       expect(mockPlugin.saveData).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalled();
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Switcher++: error saving changes to settings',
+        error,
+      );
 
       consoleLogSpy.mockRestore();
     });

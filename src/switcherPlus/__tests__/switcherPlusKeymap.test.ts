@@ -1,4 +1,5 @@
-import { mock, mockClear, mockReset } from 'jest-mock-extended';
+import { Chance } from 'chance';
+import { anyFunction, mock, mockClear, mockFn, mockReset } from 'jest-mock-extended';
 import {
   Chooser,
   KeymapContext,
@@ -8,8 +9,17 @@ import {
   Platform,
   Scope,
 } from 'obsidian';
-import { SwitcherPlusKeymap } from 'src/switcherPlus';
-import { AnySuggestion, Mode, SwitcherPlus } from 'src/types';
+import { CustomKeymapInfo, SwitcherPlusKeymap } from 'src/switcherPlus';
+import {
+  AnySuggestion,
+  KeymapConfig,
+  Mode,
+  SwitcherPlus,
+  Facet,
+  FacetSettingsData,
+} from 'src/types';
+
+const chance = new Chance();
 
 describe('SwitcherPlusKeymap', () => {
   const selector = '.prompt-instructions';
@@ -200,13 +210,13 @@ describe('SwitcherPlusKeymap', () => {
     });
 
     it('should hide the default prompt instructions in custom modes', () => {
-      sut.updateKeymapForMode(Mode.EditorList);
+      sut.updateKeymapForMode({ mode: Mode.EditorList });
 
       expect(mockInstructionsEl.style.display).toBe('none');
     });
 
     it('should show the default prompt instructions in standard modes', () => {
-      sut.updateKeymapForMode(Mode.Standard);
+      sut.updateKeymapForMode({ mode: Mode.Standard });
 
       expect(mockInstructionsEl.style.display).toBe('');
     });
@@ -215,7 +225,7 @@ describe('SwitcherPlusKeymap', () => {
       const mode = Mode.EditorList;
       const keymaps = sut.customKeysInfo.filter((keymap) => keymap.modes?.includes(mode));
 
-      sut.updateKeymapForMode(mode);
+      sut.updateKeymapForMode({ mode });
 
       expect(mockModal.setInstructions).toHaveBeenCalledWith(keymaps);
     });
@@ -227,7 +237,7 @@ describe('SwitcherPlusKeymap', () => {
 
       mockScope.keys = [mockEnter];
 
-      sut.updateKeymapForMode(Mode.EditorList);
+      sut.updateKeymapForMode({ mode: Mode.EditorList });
 
       expect(mockScope.unregister).not.toHaveBeenCalled();
     });
@@ -236,11 +246,11 @@ describe('SwitcherPlusKeymap', () => {
       mockScope.keys = [mockMetaShiftEnter, mockShiftEnter];
 
       // should first update for a custom mode
-      sut.updateKeymapForMode(Mode.HeadingsList);
+      sut.updateKeymapForMode({ mode: Mode.HeadingsList });
       mockScope.register.mockReset();
 
       // should restore all standard hotkeys
-      sut.updateKeymapForMode(Mode.Standard);
+      sut.updateKeymapForMode({ mode: Mode.Standard });
 
       // convert to [][] so each call can be checked separately
       const expected = sut.standardKeysInfo.map((v) => {
@@ -263,7 +273,7 @@ describe('SwitcherPlusKeymap', () => {
         .spyOn(sut, 'unregisterKeys')
         .mockReturnValue([mock<KeymapEventHandler>()]);
 
-      sut.updateKeymapForMode(mode);
+      sut.updateKeymapForMode({ mode });
 
       // convert to [][] so each call can be checked separately
       const expected = customKeymaps.map((v) => {
@@ -320,6 +330,286 @@ describe('SwitcherPlusKeymap', () => {
       sut.useSelectedItem(mockEvt, null);
 
       expect(mockChooser.useSelectedItem).toHaveBeenCalledWith(mockEvt);
+    });
+  });
+
+  describe('registerFacetBinding', () => {
+    let sut: SwitcherPlusKeymap;
+
+    beforeAll(() => {
+      sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal);
+    });
+
+    beforeEach(() => {
+      mockClear(mockScope);
+    });
+
+    test('should register a facet binding using default shortcut keys', () => {
+      const key = chance.letter();
+      const modifiers = chance.pickset<Modifier>(['Alt', 'Ctrl', 'Shift', 'Meta'], 3);
+      const facet = mock<Facet>({
+        modifiers: undefined,
+        key: null,
+      });
+      const mockKeymapConfig = mock<KeymapConfig>({
+        facets: {
+          facetList: [facet],
+          facetSettings: {
+            modifiers,
+            keyList: [key],
+          },
+        },
+      });
+
+      sut.registerFacetBinding(mockScope, mockKeymapConfig);
+
+      expect(mockScope.register).toHaveBeenCalledWith(
+        modifiers,
+        key,
+        expect.any(Function),
+      );
+    });
+
+    test('should register a facet binding using custom shortcut keys', () => {
+      const facet = mock<Facet>({
+        modifiers: [chance.pickone<Modifier>(['Alt', 'Ctrl', 'Shift'])],
+        key: chance.letter(),
+      });
+      const mockKeymapConfig = mock<KeymapConfig>({
+        facets: {
+          facetList: [facet],
+        },
+      });
+
+      sut.registerFacetBinding(mockScope, mockKeymapConfig);
+
+      expect(mockScope.register).toHaveBeenCalledWith(
+        facet.modifiers,
+        facet.key,
+        expect.any(Function),
+      );
+    });
+
+    test('should log error to the console when the list of default shortcut keys is used up', () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const facet = mock<Facet>({
+        modifiers: null,
+        key: null,
+      });
+      const mockKeymapConfig = mock<KeymapConfig>({
+        facets: {
+          facetList: [facet],
+          facetSettings: {
+            keyList: [],
+          },
+        },
+      });
+
+      sut.registerFacetBinding(mockScope, mockKeymapConfig);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Switcher++: unable to register hotkey for facet:'),
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+
+    test('should toggle all facets using resetModifiers shortcut key', () => {
+      const resetKey = chance.letter();
+      const mockKeymapConfig = mock<KeymapConfig>({
+        facets: {
+          facetList: [mock<Facet>()],
+          facetSettings: {
+            resetKey,
+            keyList: [chance.letter()],
+            resetModifiers: chance.pickset<Modifier>(['Alt', 'Ctrl', 'Shift'], 2),
+          },
+          onToggleFacet: mockFn(),
+        },
+      });
+      const { resetModifiers } = mockKeymapConfig.facets.facetSettings;
+
+      let keymapFn: KeymapEventListener;
+      mockScope.register
+        .calledWith(resetModifiers, resetKey, anyFunction())
+        .mockImplementationOnce((_m, _k, evtListener) => {
+          keymapFn = evtListener;
+          return null;
+        });
+
+      // perform registration
+      sut.registerFacetBinding(mockScope, mockKeymapConfig);
+
+      //execute callback
+      keymapFn(null, null);
+
+      expect(mockScope.register).toHaveBeenCalledWith(
+        resetModifiers,
+        resetKey,
+        expect.any(Function),
+      );
+
+      expect(mockKeymapConfig.facets.onToggleFacet).toHaveBeenCalledWith(
+        mockKeymapConfig.facets.facetList,
+        true,
+      );
+    });
+
+    test('should register the toggle all shortcut key using modifiers if resetModifiers is falsy', () => {
+      const resetKey = chance.letter();
+      const modifiers = chance.pickset<Modifier>(['Alt', 'Ctrl', 'Shift'], 2);
+      const mockKeymapConfig = mock<KeymapConfig>({
+        facets: {
+          facetList: [mock<Facet>()],
+          facetSettings: {
+            resetKey,
+            modifiers,
+            resetModifiers: null,
+            keyList: [chance.letter()],
+          },
+        },
+      });
+
+      sut.registerFacetBinding(mockScope, mockKeymapConfig);
+
+      expect(mockScope.register).toHaveBeenCalledWith(
+        modifiers,
+        resetKey,
+        expect.any(Function),
+      );
+    });
+  });
+
+  describe('renderFacetInstructions', () => {
+    let sut: SwitcherPlusKeymap;
+    let mockInstructionEl: HTMLSpanElement;
+
+    beforeAll(() => {
+      sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal);
+
+      mockInstructionEl = mock<HTMLDivElement>();
+      mockModal.modalEl = mock<HTMLElement>({
+        // return the filters container element
+        createDiv: mockFn().mockReturnValue({
+          // return the instructions wrapper element
+          createDiv: mockFn().mockReturnValue(mockInstructionEl),
+        }),
+      });
+    });
+
+    beforeEach(() => {
+      mockClear(mockModal);
+      mockClear(mockInstructionEl);
+    });
+
+    afterAll(() => {
+      mockReset(mockModal);
+    });
+
+    it('should render a facet indicator using default modifiers', () => {
+      const key = chance.letter();
+      const modifiers = chance.pickset<Modifier>(['Alt', 'Ctrl', 'Shift', 'Meta'], 3);
+
+      const facetSettings = mock<FacetSettingsData>({
+        modifiers,
+        keyList: [key],
+      });
+
+      const facetKeyInfo = mock<CustomKeymapInfo & { facet: Facet }>({
+        command: key,
+        facet: mock<Facet>({
+          modifiers: undefined,
+          isActive: false,
+        }),
+      });
+
+      sut.renderFacetInstructions(mockModal, facetSettings, [facetKeyInfo]);
+
+      expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: 'prompt-instruction-command',
+          text: key,
+        }),
+      );
+    });
+
+    it('should render a facet indicator using custom modifiers', () => {
+      const key = chance.letter();
+      const modifiers = chance.pickset<Modifier>(['Alt', 'Ctrl'], 1);
+
+      const facetSettings = mock<FacetSettingsData>({
+        keyList: [key],
+      });
+
+      const facetKeyInfo = mock<CustomKeymapInfo & { facet: Facet }>({
+        command: key,
+        facet: mock<Facet>({
+          modifiers,
+          isActive: false,
+        }),
+      });
+
+      sut.renderFacetInstructions(mockModal, facetSettings, [facetKeyInfo]);
+
+      const modifierStr = modifiers.toString().replace(',', ' ');
+      expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: 'prompt-instruction-command',
+          text: `(${modifierStr}) ${key}`,
+        }),
+      );
+    });
+
+    it('should add an additional css class to indicate a facet is active', () => {
+      const key = chance.letter();
+      const modifiers = chance.pickset<Modifier>(['Alt', 'Ctrl'], 1);
+
+      const facetSettings = mock<FacetSettingsData>({
+        modifiers,
+        keyList: [key],
+      });
+
+      const facetKeyInfo = mock<CustomKeymapInfo & { facet: Facet }>({
+        command: key,
+        purpose: chance.sentence(),
+        facet: mock<Facet>({
+          modifiers: undefined,
+          isActive: true,
+        }),
+      });
+
+      sut.renderFacetInstructions(mockModal, facetSettings, [facetKeyInfo]);
+
+      expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: ['qsp-filter-active'],
+          text: facetKeyInfo.purpose,
+        }),
+      );
+    });
+
+    it('should render the reset toggle indicator', () => {
+      const key = chance.letter();
+      const modifiers = chance.pickset<Modifier>(['Alt', 'Ctrl'], 1);
+
+      const facetSettings = mock<FacetSettingsData>({
+        resetKey: key,
+        resetModifiers: modifiers,
+      });
+
+      const facetKeyInfo = mock<CustomKeymapInfo & { facet: Facet }>({
+        facet: null,
+      });
+
+      sut.renderFacetInstructions(mockModal, facetSettings, [facetKeyInfo]);
+
+      const modifierStr = modifiers.toString().replace(',', ' ');
+      expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: 'prompt-instruction-command',
+          text: `(${modifierStr}) ${key}`,
+        }),
+      );
     });
   });
 });

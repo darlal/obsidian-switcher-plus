@@ -25,6 +25,8 @@ import {
   SymbolSuggestion,
   SuggestionType,
   SwitcherPlus,
+  Facet,
+  KeymapConfig,
 } from 'src/types';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
@@ -85,7 +87,12 @@ export class ModeHandler {
   }
 
   onOpen(): void {
-    this.exKeymap.isOpen = true;
+    const { exKeymap, settings } = this;
+    exKeymap.isOpen = true;
+
+    if (settings.quickFilters?.shouldResetActiveFacets) {
+      settings.quickFilters.facetList?.forEach((f) => (f.isActive = false));
+    }
   }
 
   onClose() {
@@ -137,10 +144,10 @@ export class ModeHandler {
     chooser: Chooser<AnySuggestion>,
     modal: SwitcherPlus,
   ): boolean {
+    const { exKeymap, settings } = this;
     let handled = false;
-    const { exKeymap } = this;
 
-    // cancel any potentially previously running debounced getsuggestions call
+    // cancel any potentially previously running debounced getSuggestions call
     this.debouncedGetSuggestions.cancel();
 
     // get the currently active leaf across all rootSplits
@@ -148,10 +155,11 @@ export class ModeHandler {
     const activeSugg = ModeHandler.getActiveSuggestion(chooser);
     const inputInfo = this.determineRunMode(query, activeSugg, activeLeaf);
     this.inputInfo = inputInfo;
-    const { mode } = inputInfo;
 
-    exKeymap.updateKeymapForMode(mode);
+    const { mode } = inputInfo;
     lastInputInfoByMode[mode] = inputInfo;
+
+    this.updatedKeymapForMode(inputInfo, chooser, modal, exKeymap, settings);
 
     if (mode !== Mode.Standard) {
       if (mode === Mode.HeadingsList && inputInfo.parsedCommand().parsedInput?.length) {
@@ -165,6 +173,47 @@ export class ModeHandler {
     }
 
     return handled;
+  }
+
+  updatedKeymapForMode(
+    inputInfo: InputInfo,
+    chooser: Chooser<AnySuggestion>,
+    modal: SwitcherPlus,
+    exKeymap: SwitcherPlusKeymap,
+    settings: SwitcherPlusSettings,
+  ): void {
+    const { mode } = inputInfo;
+    const handler = this.getHandler(mode);
+    const facetList = handler?.getAvailableFacets(inputInfo) ?? [];
+
+    const handleFacetKeyEvent = (facets: Facet[], isReset: boolean) => {
+      if (isReset) {
+        // cycle between making all facets active/inactive
+        const hasActive = facets.some((v) => v.isActive === true);
+        handler.activateFacet(facets, !hasActive);
+      } else {
+        // expect facets to contain only one item that needs to be toggled
+        handler.activateFacet(facets, !facets[0].isActive);
+      }
+
+      // refresh the suggestion list after changing the list of active facets
+      this.updatedKeymapForMode(inputInfo, chooser, modal, exKeymap, settings);
+      this.getSuggestions(inputInfo, chooser, modal);
+
+      // prevent default handling of key press afterwards
+      return false;
+    };
+
+    const keymapConfig: KeymapConfig = {
+      mode,
+      facets: {
+        facetList,
+        facetSettings: settings.quickFilters,
+        onToggleFacet: handleFacetKeyEvent.bind(this),
+      },
+    };
+
+    exKeymap.updateKeymapForMode(keymapConfig);
   }
 
   renderSuggestion(sugg: AnySuggestion, parentEl: HTMLElement): boolean {

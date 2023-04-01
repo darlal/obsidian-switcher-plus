@@ -33,10 +33,12 @@ import {
   SymbolIndicators,
   SuggestionType,
   CalloutCache,
+  Facet,
 } from 'src/types';
 import { getLinkType, isCalloutCache, isHeadingCache, isTagCache } from 'src/utils';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler } from './handler';
+import { CANVAS_NODE_FACET_ID_MAP } from 'src/settings';
 
 export type SymbolInfoExcludingCanvasNodes = Omit<SymbolInfo, 'symbol'> & {
   symbol: Exclude<AnySymbolInfoPayload, AllCanvasNodeData>;
@@ -50,7 +52,7 @@ const CANVAS_ICON_MAP: Record<string, string> = {
 };
 
 export class SymbolHandler extends Handler<SymbolSuggestion> {
-  private inputInfo: InputInfo;
+  inputInfo: InputInfo;
 
   override get commandString(): string {
     return this.settings?.symbolListCommand;
@@ -175,6 +177,23 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
   override reset(): void {
     this.inputInfo = null;
+  }
+
+  override getAvailableFacets(inputInfo: InputInfo): Facet[] {
+    const cmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
+    const isCanvasFile = SymbolHandler.isCanvasFile(cmd?.source?.file);
+    const facets = this.getFacets(inputInfo.mode);
+    const canvasFacetIds = new Set(Object.values(CANVAS_NODE_FACET_ID_MAP));
+
+    // get only the string values of SymbolType as they are used as the face ids
+    const mdFacetIds = new Set(Object.values(SymbolType).filter((v) => isNaN(Number(v))));
+
+    facets.forEach((facet) => {
+      const { id } = facet;
+      facet.isAvailable = isCanvasFile ? canvasFacetIds.has(id) : mdFacetIds.has(id);
+    });
+
+    return facets.filter((v) => v.isAvailable);
   }
 
   zoomToCanvasNode(view: View, nodeData: CanvasNodeData): void {
@@ -302,21 +321,22 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
   ): Promise<SymbolInfo[]> {
     const {
       app: { metadataCache },
-      settings,
+      inputInfo,
     } = this;
     const ret: SymbolInfo[] = [];
 
     if (sourceInfo?.file) {
       const { file } = sourceInfo;
+      const activeFacetIds = this.getActiveFacetIds(inputInfo);
 
       if (SymbolHandler.isCanvasFile(file)) {
-        await this.addCanvasSymbolsFromSource(file, ret);
+        await this.addCanvasSymbolsFromSource(file, ret, activeFacetIds);
       } else {
         const symbolData = metadataCache.getFileCache(file);
 
         if (symbolData) {
           const push = (symbols: AnySymbolInfoPayload[] = [], symbolType: SymbolType) => {
-            if (settings.isSymbolTypeEnabled(symbolType)) {
+            if (this.shouldIncludeSymbol(symbolType, activeFacetIds)) {
               symbols.forEach((symbol) =>
                 ret.push({ type: 'symbolInfo', symbol, symbolType }),
               );
@@ -325,13 +345,14 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
           push(symbolData.headings, SymbolType.Heading);
           push(symbolData.tags, SymbolType.Tag);
-          this.addLinksFromSource(symbolData.links, ret);
+          this.addLinksFromSource(symbolData.links, ret, activeFacetIds);
           push(symbolData.embeds, SymbolType.Embed);
 
           await this.addCalloutsFromSource(
             file,
             symbolData.sections?.filter((v) => v.type === 'callout'),
             ret,
+            activeFacetIds,
           );
 
           if (orderByLineNumber) {
@@ -346,7 +367,28 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     return ret;
   }
 
-  async addCanvasSymbolsFromSource(file: TFile, symbolList: SymbolInfo[]): Promise<void> {
+  shouldIncludeSymbol(
+    symbolType: SymbolType | string,
+    activeFacetIds: Set<string>,
+  ): boolean {
+    let shouldInclude = false;
+
+    if (typeof symbolType === 'string') {
+      shouldInclude = this.isFacetedWith(activeFacetIds, symbolType);
+    } else {
+      shouldInclude =
+        this.settings.isSymbolTypeEnabled(symbolType) &&
+        this.isFacetedWith(activeFacetIds, SymbolType[symbolType]);
+    }
+
+    return shouldInclude;
+  }
+
+  async addCanvasSymbolsFromSource(
+    file: TFile,
+    symbolList: SymbolInfo[],
+    activeFacetIds: Set<string>,
+  ): Promise<void> {
     let canvasNodes: AllCanvasNodeData[];
 
     try {
@@ -361,11 +403,15 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
     if (Array.isArray(canvasNodes)) {
       canvasNodes.forEach((node) => {
-        symbolList.push({
-          type: 'symbolInfo',
-          symbolType: SymbolType.CanvasNode,
-          symbol: { ...node },
-        });
+        if (
+          this.shouldIncludeSymbol(CANVAS_NODE_FACET_ID_MAP[node.type], activeFacetIds)
+        ) {
+          symbolList.push({
+            type: 'symbolInfo',
+            symbolType: SymbolType.CanvasNode,
+            symbol: { ...node },
+          });
+        }
       });
     }
   }
@@ -374,15 +420,15 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     file: TFile,
     sectionCache: SectionCache[],
     symbolList: SymbolInfo[],
+    activeFacetIds: Set<string>,
   ): Promise<void> {
     const {
       app: { vault },
-      settings,
     } = this;
 
-    const isCalloutEnabled = settings.isSymbolTypeEnabled(SymbolType.Callout);
+    const shouldInclude = this.shouldIncludeSymbol(SymbolType.Callout, activeFacetIds);
 
-    if (isCalloutEnabled && sectionCache?.length && file) {
+    if (shouldInclude && sectionCache?.length && file) {
       let fileContent: string = null;
 
       try {
@@ -420,11 +466,15 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     }
   }
 
-  private addLinksFromSource(linkData: LinkCache[], symbolList: SymbolInfo[]): void {
+  private addLinksFromSource(
+    linkData: LinkCache[],
+    symbolList: SymbolInfo[],
+    activeFacetIds: Set<string>,
+  ): void {
     const { settings } = this;
     linkData = linkData ?? [];
 
-    if (settings.isSymbolTypeEnabled(SymbolType.Link)) {
+    if (this.shouldIncludeSymbol(SymbolType.Link, activeFacetIds)) {
       for (const link of linkData) {
         const type = getLinkType(link);
         const isExcluded = (settings.excludeLinkSubTypes & type) === type;
@@ -550,7 +600,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
   }
 
   static isCanvasFile(sourceFile: TFile): boolean {
-    return sourceFile.extension === 'canvas';
+    return sourceFile?.extension === 'canvas';
   }
 
   static isCanvasView(view: View): view is CanvasFileView {

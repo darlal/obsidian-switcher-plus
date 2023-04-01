@@ -63,7 +63,7 @@ export class RelatedItemsHandler extends Handler<
 
       const { hasSearchTerm } = inputInfo.searchQuery;
       const cmd = inputInfo.parsedCommand(Mode.RelatedItemsList) as SourcedParsedCommand;
-      const items = this.getItems(cmd.source);
+      const items = this.getItems(cmd.source, inputInfo);
 
       items.forEach((item) => {
         const sugg = this.searchAndCreateSuggestion(inputInfo, item);
@@ -169,29 +169,39 @@ export class RelatedItemsHandler extends Handler<
       : this.createSuggestion(currentWorkspaceEnvList, item, result);
   }
 
-  getItems(sourceInfo: SourceInfo): RelatedItemsInfo[] {
+  getItems(sourceInfo: SourceInfo, inputInfo: InputInfo): RelatedItemsInfo[] {
     const relatedItems: RelatedItemsInfo[] = [];
     const { metadataCache } = this.app;
-    const { enabledRelatedItems } = this.settings;
     const { file, suggestion } = sourceInfo;
+    const enabledRelatedItems = new Set(this.settings.enabledRelatedItems);
+    const activeFacetIds = this.getActiveFacetIds(inputInfo);
 
-    enabledRelatedItems.forEach((relationType) => {
-      if (relationType === RelationType.Backlink) {
-        let targetPath = file?.path;
-        let linkMap = metadataCache.resolvedLinks;
+    const shouldIncludeRelation = (relationType: RelationType) => {
+      return (
+        enabledRelatedItems.has(relationType) &&
+        this.isFacetedWith(activeFacetIds, relationType)
+      );
+    };
 
-        if (isUnresolvedSuggestion(suggestion)) {
-          targetPath = suggestion.linktext;
-          linkMap = metadataCache.unresolvedLinks;
-        }
+    if (shouldIncludeRelation(RelationType.Backlink)) {
+      let targetPath = file?.path;
+      let linkMap = metadataCache.resolvedLinks;
 
-        this.addBacklinks(targetPath, linkMap, relatedItems);
-      } else if (relationType === RelationType.DiskLocation) {
-        this.addRelatedDiskFiles(file, relatedItems);
-      } else {
-        this.addOutgoingLinks(file, relatedItems);
+      if (isUnresolvedSuggestion(suggestion)) {
+        targetPath = suggestion.linktext;
+        linkMap = metadataCache.unresolvedLinks;
       }
-    });
+
+      this.addBacklinks(targetPath, linkMap, relatedItems);
+    }
+
+    if (shouldIncludeRelation(RelationType.DiskLocation)) {
+      this.addRelatedDiskFiles(file, relatedItems);
+    }
+
+    if (shouldIncludeRelation(RelationType.OutgoingLink)) {
+      this.addOutgoingLinks(file, relatedItems);
+    }
 
     return relatedItems;
   }

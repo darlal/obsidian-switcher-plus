@@ -24,6 +24,7 @@ import {
 } from 'obsidian';
 import {
   AnySuggestion,
+  Facet,
   MatchType,
   Mode,
   PathDisplayFormat,
@@ -46,6 +47,7 @@ import {
 } from 'src/utils';
 
 export abstract class Handler<T> {
+  facets: Facet[];
   get commandString(): string {
     return null;
   }
@@ -66,6 +68,38 @@ export abstract class Handler<T> {
 
   reset(): void {
     /* noop */
+  }
+
+  getFacets(mode: Mode): Facet[] {
+    if (!this.facets) {
+      this.facets = this.settings.quickFilters.facetList?.filter((v) => v.mode === mode);
+    }
+
+    return this.facets ?? [];
+  }
+  getAvailableFacets(inputInfo: InputInfo): Facet[] {
+    return this.getFacets(inputInfo.mode).filter((v) => v.isAvailable);
+  }
+
+  activateFacet(facets: Facet[], isActive: boolean): void {
+    facets.forEach((v) => (v.isActive = isActive));
+
+    if (!this.settings.quickFilters.shouldResetActiveFacets) {
+      this.settings.save();
+    }
+  }
+
+  getActiveFacetIds(inputInfo: InputInfo): Set<string> {
+    const facetIds = this.getAvailableFacets(inputInfo)
+      .filter((v) => v.isActive)
+      .map((v) => v.id);
+
+    return new Set(facetIds);
+  }
+
+  isFacetedWith(activeFacetIds: Set<string>, facetId: string): boolean {
+    const hasActiveFacets = !!activeFacetIds.size;
+    return (hasActiveFacets && activeFacetIds.has(facetId)) || !hasActiveFacets;
   }
 
   getEditorInfo(leaf: WorkspaceLeaf): SourceInfo {

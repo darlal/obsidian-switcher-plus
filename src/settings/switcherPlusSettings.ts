@@ -1,7 +1,9 @@
 import { getSystemSwitcherInstance } from 'src/utils';
 import type SwitcherPlusPlugin from 'src/main';
 import { QuickSwitcherOptions } from 'obsidian';
+import { FACETS_ALL } from './facetConstants';
 import {
+  FacetSettingsData,
   Mode,
   PathDisplayFormat,
   RelationType,
@@ -65,6 +67,14 @@ export class SwitcherPlusSettings {
         file: 0,
         alias: 0,
         h1: 0,
+      },
+      quickFilters: {
+        resetKey: '0',
+        keyList: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+        modifiers: ['Ctrl', 'Alt'],
+        facetList: FACETS_ALL.map((v) => Object.assign({}, v)),
+        shouldResetActiveFacets: false,
+        shouldShowFacetInstructions: true,
       },
       preserveCommandPaletteLastInput: false,
       preserveQuickSwitcherLastInput: false,
@@ -239,8 +249,16 @@ export class SwitcherPlusSettings {
     return this.data.excludeViewTypes;
   }
 
+  set excludeViewTypes(value: Array<string>) {
+    this.data.excludeViewTypes = value;
+  }
+
   get referenceViews(): Array<string> {
     return this.data.referenceViews;
+  }
+
+  set referenceViews(value: Array<string>) {
+    this.data.referenceViews = value;
   }
 
   get limit(): number {
@@ -394,7 +412,15 @@ export class SwitcherPlusSettings {
     this.data.matchPriorityAdjustments = value;
   }
 
-  get preserveCommandPaletteLastInput() {
+  get quickFilters(): FacetSettingsData {
+    return this.data.quickFilters;
+  }
+
+  set quickFilters(value: FacetSettingsData) {
+    this.data.quickFilters = value;
+  }
+
+  get preserveCommandPaletteLastInput(): boolean {
     return this.data.preserveCommandPaletteLastInput;
   }
 
@@ -402,7 +428,7 @@ export class SwitcherPlusSettings {
     this.data.preserveCommandPaletteLastInput = value;
   }
 
-  get preserveQuickSwitcherLastInput() {
+  get preserveQuickSwitcherLastInput(): boolean {
     return this.data.preserveQuickSwitcherLastInput;
   }
 

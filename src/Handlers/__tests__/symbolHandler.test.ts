@@ -973,7 +973,12 @@ describe('symbolHandler', () => {
       const results: SymbolInfo[] = [];
       mockVault.cachedRead.mockResolvedValueOnce(fileContentWithCallout);
 
-      await sut.addCalloutsFromSource(mockFile, calloutSectionCache, results);
+      await sut.addCalloutsFromSource(
+        mockFile,
+        calloutSectionCache,
+        results,
+        new Set<string>(),
+      );
 
       expect(mockVault.cachedRead).toHaveBeenCalledWith(mockFile);
       expect(results).toHaveLength(calloutSectionCache.length);
@@ -986,7 +991,12 @@ describe('symbolHandler', () => {
 
       mockVault.cachedRead.mockRejectedValueOnce(errorMsg);
 
-      await sut.addCalloutsFromSource(mockFile, calloutSectionCache, []);
+      await sut.addCalloutsFromSource(
+        mockFile,
+        calloutSectionCache,
+        [],
+        new Set<string>(),
+      );
 
       expect(consoleLogSpy).toHaveBeenCalledWith(expectedMsg, errorMsg);
       expect(mockVault.cachedRead).toHaveBeenCalledWith(mockFile);
@@ -1004,7 +1014,7 @@ describe('symbolHandler', () => {
       const canvasNodes = (JSON.parse(fileContent) as CanvasData).nodes;
       mockVault.cachedRead.mockResolvedValueOnce(fileContent);
 
-      await sut.addCanvasSymbolsFromSource(mockFile, results);
+      await sut.addCanvasSymbolsFromSource(mockFile, results, new Set<string>());
 
       expect(mockVault.cachedRead).toHaveBeenCalledWith(mockFile);
       expect(results).toHaveLength(canvasNodes.length);
@@ -1017,7 +1027,7 @@ describe('symbolHandler', () => {
 
       mockVault.cachedRead.mockRejectedValueOnce(errorMsg);
 
-      await sut.addCanvasSymbolsFromSource(mockFile, []);
+      await sut.addCanvasSymbolsFromSource(mockFile, [], new Set<string>());
 
       expect(consoleLogSpy).toHaveBeenCalledWith(expectedMsg, errorMsg);
       expect(mockVault.cachedRead).toHaveBeenCalledWith(mockFile);

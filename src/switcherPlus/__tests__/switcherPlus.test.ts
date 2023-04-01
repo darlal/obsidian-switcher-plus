@@ -62,14 +62,7 @@ describe('switcherPlus', () => {
 
   describe('createSwitcherPlus', () => {
     it('should log error to the console if the builtin QuickSwitcherModal is not accessible', () => {
-      let wasLogged = false;
-      const consoleLogSpy = jest
-        .spyOn(console, 'log')
-        .mockImplementation((message: string) => {
-          if (message.startsWith('Switcher++: unable to extend system switcher.')) {
-            wasLogged = true;
-          }
-        });
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
       mockGetSystemSwitcherInstance.mockReturnValueOnce(null);
 
@@ -77,8 +70,11 @@ describe('switcherPlus', () => {
 
       expect(result).toBeNull();
       expect(mockGetSystemSwitcherInstance).toHaveBeenCalledWith(mockApp);
-      expect(consoleLogSpy).toHaveBeenCalled();
-      expect(wasLogged).toBe(true);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Switcher++: unable to extend system switcher. Plugin UI will not be loaded.',
+        ),
+      );
 
       consoleLogSpy.mockRestore();
     });

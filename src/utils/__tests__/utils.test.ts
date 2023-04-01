@@ -98,19 +98,14 @@ describe('utils', () => {
     });
 
     it('should log invalid regex strings to the console', () => {
-      let wasLogged = false;
-      const consoleLogSpy = jest
-        .spyOn(console, 'log')
-        .mockImplementation((message: string) => {
-          if (message.startsWith('Switcher++: error creating RegExp from string')) {
-            wasLogged = true;
-          }
-        });
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
       matcherFnForRegExList(['*']); // invalid regex
 
-      expect(consoleLogSpy).toHaveBeenCalled();
-      expect(wasLogged).toBe(true);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Switcher++: error creating RegExp from string:'),
+        expect.any(Error),
+      );
 
       consoleLogSpy.mockRestore();
     });
