@@ -191,17 +191,19 @@ export class ModeHandler {
         // handle rendering for FileSuggestion and Alias suggestion
         const handler = this.getHandler(sugg);
 
-        if (mode === Mode.Standard) {
-          // suggestions in standard mode are created by core Obsidian and are
-          // missing some properties, try to add them
-          (handler as StandardExHandler)?.addPropertiesToStandardSuggestions(
-            inputInfo,
-            sugg as SupportedSystemSuggestions,
-          );
-        }
+        if (handler) {
+          if (mode === Mode.Standard) {
+            // suggestions in standard mode are created by core Obsidian and are
+            // missing some properties, try to add them
+            (handler as StandardExHandler).addPropertiesToStandardSuggestions(
+              inputInfo,
+              sugg as SupportedSystemSuggestions,
+            );
+          }
 
-        handler.renderSuggestion(sugg, parentEl);
-        handled = true;
+          handler.renderSuggestion(sugg, parentEl);
+          handled = true;
+        }
       }
     }
 
@@ -232,8 +234,11 @@ export class ModeHandler {
         // handle the onChoose action for File and Alias suggestion so that
         // the preferOpenInNewPane setting can be handled properly
         const handler = this.getHandler(sugg);
-        handler.onChooseSuggestion(sugg, evt);
-        handled = true;
+
+        if (handler) {
+          handler.onChooseSuggestion(sugg, evt);
+          handled = true;
+        }
       }
     }
 
