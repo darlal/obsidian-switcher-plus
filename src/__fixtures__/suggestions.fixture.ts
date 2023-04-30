@@ -1,18 +1,22 @@
-import { makeCommandItem, makeFileStarredItem, makeFuzzyMatch } from './fixtureUtils';
 import {
+  makeBookmarksPluginFileItem,
+  makeCommandItem,
+  makeFuzzyMatch,
+} from './fixtureUtils';
+import {
+  BookmarksPluginFileItem,
   Command,
   HeadingCache,
   SearchMatches,
-  StarredPluginItem,
   TFile,
   WorkspaceLeaf,
 } from 'obsidian';
+import { filenameFromPath, stripMDExtensionFromPath } from 'src/utils';
 import {
   AliasSuggestion,
   CommandSuggestion,
   EditorSuggestion,
   FileSuggestion,
-  StarredSuggestion,
   SuggestionType,
   UnresolvedSuggestion,
   WorkspaceSuggestion,
@@ -25,6 +29,7 @@ import {
   SearchResultWithFallback,
   RelationType,
   RelatedItemsInfo,
+  BookmarksSuggestion,
 } from 'src/types';
 
 export function makeFileSuggestion(
@@ -85,21 +90,26 @@ export function makeEditorSuggestion(
   };
 }
 
-export function makeStarredSuggestion(
-  item?: StarredPluginItem,
-  file: TFile = null,
-  matches?: SearchMatches,
-  score?: number,
-  matchType?: MatchType,
-  matchText?: string,
-): StarredSuggestion {
-  item = item ?? makeFileStarredItem();
+export function makeBookmarkedFileSuggestion(
+  options?: Partial<BookmarksSuggestion>,
+): BookmarksSuggestion {
+  const item = options?.item ?? makeBookmarksPluginFileItem();
+
+  let file = options?.file;
+  if (!file) {
+    file = new TFile();
+    file.path = (item as BookmarksPluginFileItem).path;
+    file.basename = filenameFromPath(stripMDExtensionFromPath(file));
+  }
 
   return {
-    type: SuggestionType.StarredList,
-    ...makeSearchResultWithFallback(matches, matchType, matchText, score),
-    file,
+    type: SuggestionType.Bookmark,
+    match: options?.match,
+    matchText: options?.matchText,
+    matchType: options?.matchType,
+    bookmarkPath: options?.bookmarkPath ?? file.path,
     item,
+    file,
   };
 }
 

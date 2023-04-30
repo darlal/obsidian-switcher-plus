@@ -5,7 +5,7 @@ import {
   EditorHandler,
   RelatedItemsHandler,
   SymbolHandler,
-  StarredHandler,
+  BookmarksHandler,
   CommandHandler,
   StandardExHandler,
   SupportedSystemSuggestions,
@@ -15,8 +15,6 @@ import {
   escapeRegExp,
   isExSuggestion,
   isOfType,
-  isUnresolvedSuggestion,
-  isFileStarredItem,
   isTFile,
 } from 'src/utils';
 import {
@@ -59,7 +57,7 @@ export class ModeHandler {
       [Mode.WorkspaceList, new WorkspaceHandler(app, settings)],
       [Mode.HeadingsList, new HeadingsHandler(app, settings)],
       [Mode.EditorList, new EditorHandler(app, settings)],
-      [Mode.StarredList, new StarredHandler(app, settings)],
+      [Mode.BookmarksList, new BookmarksHandler(app, settings)],
       [Mode.CommandList, new CommandHandler(app, settings)],
       [Mode.RelatedItemsList, new RelatedItemsHandler(app, settings)],
     ]);
@@ -70,7 +68,7 @@ export class ModeHandler {
       [SuggestionType.EditorList, handlersByMode.get(Mode.EditorList)],
       [SuggestionType.HeadingsList, handlersByMode.get(Mode.HeadingsList)],
       [SuggestionType.RelatedItemsList, handlersByMode.get(Mode.RelatedItemsList)],
-      [SuggestionType.StarredList, handlersByMode.get(Mode.StarredList)],
+      [SuggestionType.Bookmark, handlersByMode.get(Mode.BookmarksList)],
       [SuggestionType.SymbolList, handlersByMode.get(Mode.SymbolList)],
       [SuggestionType.WorkspaceList, handlersByMode.get(Mode.WorkspaceList)],
       [SuggestionType.File, standardExHandler],
@@ -224,6 +222,10 @@ export class ModeHandler {
     const { mode } = inputInfo;
     const isHeadingMode = mode === Mode.HeadingsList;
     let handled = false;
+    const systemBehaviorPreferred = new Set<SuggestionType>([
+      SuggestionType.Unresolved,
+      SuggestionType.Bookmark,
+    ]);
 
     if (sugg === null) {
       if (isHeadingMode) {
@@ -234,7 +236,7 @@ export class ModeHandler {
         headingHandler.renderFileCreationSuggestion(parentEl, searchText);
         handled = true;
       }
-    } else if (!isUnresolvedSuggestion(sugg)) {
+    } else if (!systemBehaviorPreferred.has(sugg.type)) {
       if (overrideStandardModeBehaviors || isHeadingMode || isExSuggestion(sugg)) {
         // when overriding standard mode, or, in Headings mode, StandardExHandler should
         // handle rendering for FileSuggestion and Alias suggestion
@@ -267,6 +269,10 @@ export class ModeHandler {
     const { mode } = inputInfo;
     const isHeadingMode = mode === Mode.HeadingsList;
     let handled = false;
+    const systemBehaviorPreferred = new Set<SuggestionType>([
+      SuggestionType.Unresolved,
+      SuggestionType.Bookmark,
+    ]);
 
     if (sugg === null) {
       if (isHeadingMode) {
@@ -277,7 +283,7 @@ export class ModeHandler {
         headingHandler.createFile(filename, evt);
         handled = true;
       }
-    } else if (!isUnresolvedSuggestion(sugg)) {
+    } else if (!systemBehaviorPreferred.has(sugg.type)) {
       if (overrideStandardModeBehaviors || isHeadingMode || isExSuggestion(sugg)) {
         // when overriding standard mode, or, in Headings mode, StandardExHandler should
         // handle the onChoose action for File and Alias suggestion so that
@@ -394,12 +400,12 @@ export class ModeHandler {
     const { mode, inputText } = inputInfo;
     const unmatchedHandlers: Handler<AnySuggestion>[] = [];
 
-    // Standard, Headings, Starred, and EditorList mode can have an embedded command
+    // Standard, Headings, Bookmarks, and EditorList mode can have an embedded command
     const supportedModes = [
       Mode.Standard,
       Mode.EditorList,
       Mode.HeadingsList,
-      Mode.StarredList,
+      Mode.BookmarksList,
     ];
 
     if (supportedModes.includes(mode)) {
@@ -480,15 +486,15 @@ export class ModeHandler {
     if (inputInfo) {
       const openEditors = (this.getHandler(Mode.EditorList) as EditorHandler).getItems();
       const openEditorFiles = openEditors.map((v) => v?.view?.file);
-      const starredFiles = (this.getHandler(Mode.StarredList) as StarredHandler)
+      const bookmarkedFiles = (this.getHandler(Mode.BookmarksList) as BookmarksHandler)
         .getItems()
-        .filter((v) => isFileStarredItem(v.item) && v.file)
+        .filter((v) => BookmarksHandler.isBookmarksPluginFileItem(v.item) && v.file)
         .map((v) => v.file);
 
       const lists = inputInfo.currentWorkspaceEnvList;
       lists.openWorkspaceLeaves = new Set(openEditors);
       lists.openWorkspaceFiles = new Set(openEditorFiles);
-      lists.starredFiles = new Set(starredFiles);
+      lists.bookmarkedFiles = new Set(bookmarkedFiles);
       lists.mostRecentFiles = this.getRecentFiles(new Set(openEditorFiles));
     }
 
@@ -528,7 +534,7 @@ export class ModeHandler {
         [settings.editorListCommand, handlersByMode.get(Mode.EditorList)],
         [settings.workspaceListCommand, handlersByMode.get(Mode.WorkspaceList)],
         [settings.headingsListCommand, handlersByMode.get(Mode.HeadingsList)],
-        [settings.starredListCommand, handlersByMode.get(Mode.StarredList)],
+        [settings.starredListCommand, handlersByMode.get(Mode.BookmarksList)],
         [settings.commandListCommand, handlersByMode.get(Mode.CommandList)],
         [settings.symbolListCommand, handlersByMode.get(Mode.SymbolList)],
         [settings.relatedItemsListCommand, handlersByMode.get(Mode.RelatedItemsList)],

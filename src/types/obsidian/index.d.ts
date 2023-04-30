@@ -8,23 +8,35 @@ declare module 'obsidian' {
     id: string;
   }
 
-  export interface StarredPluginItem {
-    type: 'file' | 'search';
-    title: string;
+  export interface BookmarksPluginItem {
+    type: string;
+    title?: string;
   }
 
-  export interface SearchStarredItem extends StarredPluginItem {
+  export interface BookmarksPluginFileItem extends BookmarksPluginItem {
+    type: 'file';
+    path: string;
+    subpath: string;
+  }
+
+  export interface BookmarksPluginFolderItem extends BookmarksPluginItem {
+    type: 'folder';
+    path: string;
+  }
+
+  export interface BookmarksPluginSearchItem extends BookmarksPluginItem {
     type: 'search';
     query: string;
   }
 
-  export interface FileStarredItem extends StarredPluginItem {
-    type: 'file';
-    path: string;
+  export interface BookmarksPluginGroupItem extends BookmarksPluginItem {
+    type: 'group';
+    items: Array<BookmarksPluginItem>;
   }
 
-  export interface StarredPluginInstance extends PluginInstance {
-    items: Array<StarredPluginItem>;
+  export interface BookmarksPluginInstance extends PluginInstance {
+    items: Array<BookmarksPluginItem>;
+    getItemTitle(item: BookmarksPluginItem): string;
   }
 
   export interface CommandPalettePluginInstance extends PluginInstance {
@@ -57,6 +69,7 @@ declare module 'obsidian' {
   export interface InternalPlugins {
     plugins: Record<string, InstalledPlugin>;
     getPluginById(id: string): InstalledPlugin;
+    getEnabledPluginById(id: string): PluginInstance;
   }
 
   export interface ViewRegistry {

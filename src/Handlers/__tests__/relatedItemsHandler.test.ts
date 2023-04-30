@@ -1,9 +1,14 @@
 import { isUnresolvedSuggestion } from 'src/utils';
-import { RelatedItemsSuggestion } from './../../types/sharedTypes';
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler, RelatedItemsHandler } from 'src/Handlers';
-import { Mode, RelatedItemsInfo, RelationType, SuggestionType } from 'src/types';
+import {
+  Mode,
+  RelatedItemsInfo,
+  RelatedItemsSuggestion,
+  RelationType,
+  SuggestionType,
+} from 'src/types';
 import {
   WorkspaceLeaf,
   App,
@@ -21,16 +26,15 @@ import {
 import {
   rootSplitEditorFixtures,
   relatedItemsTrigger,
-  makeFileStarredItem,
   makeAliasSuggestion,
   makeLeaf,
   makeFuzzyMatch,
   makePreparedQuery,
   makeEditorSuggestion,
   makeRelatedItemsSuggestion,
-  makeStarredSuggestion,
   makeUnresolvedSuggestion,
   makeLink,
+  makeBookmarkedFileSuggestion,
 } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
 
@@ -187,11 +191,10 @@ describe('relatedItemsHandler', () => {
       );
     });
 
-    it('should validate parsed input for starred file suggestion', () => {
+    it('should validate parsed input for Bookmarks file suggestion', () => {
       const targetFile = new TFile();
-      const inputInfo = new InputInfo('', Mode.StarredList);
-      const item = makeFileStarredItem(targetFile.basename);
-      const sugg = makeStarredSuggestion(item, targetFile);
+      const inputInfo = new InputInfo('', Mode.BookmarksList);
+      const sugg = makeBookmarkedFileSuggestion({ file: targetFile });
 
       (mockApp.vault as MockProxy<Vault>).getAbstractFileByPath
         .calledWith(targetFile.path)

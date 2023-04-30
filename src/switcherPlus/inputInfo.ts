@@ -4,7 +4,7 @@ import { Mode, SourceInfo, SearchQuery } from 'src/types';
 export interface WorkspaceEnvList {
   openWorkspaceLeaves: Set<WorkspaceLeaf>;
   openWorkspaceFiles: Set<TFile>;
-  starredFiles: Set<TFile>;
+  bookmarkedFiles: Set<TFile>;
   mostRecentFiles: Set<TFile>;
 }
 
@@ -33,7 +33,7 @@ export class InputInfo {
   readonly currentWorkspaceEnvList: WorkspaceEnvList = {
     openWorkspaceLeaves: new Set<WorkspaceLeaf>(),
     openWorkspaceFiles: new Set<TFile>(),
-    starredFiles: new Set<TFile>(),
+    bookmarkedFiles: new Set<TFile>(),
     mostRecentFiles: new Set<TFile>(),
   };
 
@@ -53,15 +53,20 @@ export class InputInfo {
     };
 
     const parsedCmds = {} as Record<Mode, ParsedCommand>;
-    parsedCmds[Mode.SymbolList] = symbolListCmd;
-    parsedCmds[Mode.Standard] = InputInfo.defaultParsedCommand;
-    parsedCmds[Mode.EditorList] = InputInfo.defaultParsedCommand;
-    parsedCmds[Mode.WorkspaceList] = InputInfo.defaultParsedCommand;
-    parsedCmds[Mode.HeadingsList] = InputInfo.defaultParsedCommand;
-    parsedCmds[Mode.StarredList] = InputInfo.defaultParsedCommand;
-    parsedCmds[Mode.CommandList] = InputInfo.defaultParsedCommand;
-    parsedCmds[Mode.RelatedItemsList] = relatedItemsListCmd;
     this.parsedCommands = parsedCmds;
+    parsedCmds[Mode.SymbolList] = symbolListCmd;
+    parsedCmds[Mode.RelatedItemsList] = relatedItemsListCmd;
+
+    [
+      Mode.Standard,
+      Mode.EditorList,
+      Mode.WorkspaceList,
+      Mode.HeadingsList,
+      Mode.BookmarksList,
+      Mode.CommandList,
+    ].forEach((mode) => {
+      parsedCmds[mode] = InputInfo.defaultParsedCommand;
+    });
   }
 
   buildSearchQuery(): void {

@@ -14,8 +14,9 @@ import {
   SearchResult,
   SectionCache,
   Modifier,
+  BookmarksPluginItem,
 } from 'obsidian';
-import type { SuggestModal, StarredPluginItem } from 'obsidian';
+import type { SuggestModal } from 'obsidian';
 import { PickKeys, WritableKeys } from 'ts-essentials';
 import { AllCanvasNodeData } from 'obsidian/canvas';
 
@@ -36,7 +37,7 @@ export enum Mode {
   SymbolList = 4,
   WorkspaceList = 8,
   HeadingsList = 16,
-  StarredList = 32,
+  BookmarksList = 32,
   CommandList = 64,
   RelatedItemsList = 128,
 }
@@ -126,7 +127,7 @@ export enum SuggestionType {
   SymbolList = 'symbolList',
   WorkspaceList = 'workspaceList',
   HeadingsList = 'headingsList',
-  StarredList = 'starredList',
+  Bookmark = 'bookmark',
   CommandList = 'commandList',
   RelatedItemsList = 'relatedItemsList',
   File = 'file',
@@ -150,7 +151,7 @@ export interface Suggestion<T> extends FuzzyMatch<T> {
   matchType?: MatchType;
   matchText?: string;
   isOpenInEditor?: boolean;
-  isStarred?: boolean;
+  isBookmarked?: boolean;
   isRecent?: boolean;
 }
 
@@ -170,8 +171,9 @@ export interface HeadingSuggestion extends Suggestion<HeadingCache> {
   type: SuggestionType.HeadingsList;
 }
 
-export interface StarredSuggestion extends Suggestion<StarredPluginItem> {
-  type: SuggestionType.StarredList;
+export interface BookmarksSuggestion extends Suggestion<BookmarksPluginItem> {
+  type: SuggestionType.Bookmark;
+  bookmarkPath: string;
 }
 
 export enum RelationType {
@@ -219,7 +221,7 @@ export type AnyExSuggestion =
   | EditorSuggestion
   | WorkspaceSuggestion
   | HeadingSuggestion
-  | StarredSuggestion
+  | BookmarksSuggestion
   | CommandSuggestion
   | RelatedItemsSuggestion;
 

@@ -67,7 +67,7 @@ export class SwitcherPlusKeymap {
       Mode.EditorList,
       Mode.HeadingsList,
       Mode.RelatedItemsList,
-      Mode.StarredList,
+      Mode.BookmarksList,
       Mode.SymbolList,
     ];
 

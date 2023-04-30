@@ -1,14 +1,16 @@
 import { mock, MockProxy } from 'jest-mock-extended';
 import { Chance } from 'chance';
 import {
+  BookmarksPluginFileItem,
+  BookmarksPluginFolderItem,
+  BookmarksPluginGroupItem,
+  BookmarksPluginSearchItem,
   Command,
   Editor,
-  FileStarredItem,
   MarkdownView,
   PreparedQuery,
   SearchMatches,
   SearchResult,
-  SearchStarredItem,
   TFile,
   WorkspaceLeaf,
 } from 'obsidian';
@@ -64,23 +66,45 @@ export function makeLeaf(sourceFile?: TFile): MockProxy<WorkspaceLeaf> {
   });
 }
 
-export function makeFileStarredItem(title?: string, path?: string): FileStarredItem {
-  const item = {} as FileStarredItem;
-
-  item.type = 'file';
-  item.title = title ?? chance.word({ length: 4 });
-  item.path = path ?? `path/to/${item.title}.md`;
-
-  return item;
+export function makeBookmarksPluginFileItem(
+  options?: Partial<BookmarksPluginFileItem>,
+): BookmarksPluginFileItem {
+  return {
+    type: 'file',
+    title: options?.title ?? '',
+    path: options?.path ?? `path/to/${chance.word()}.md`,
+    subpath: options?.subpath,
+  };
 }
 
-export function makeSearchStarredItem(): SearchStarredItem {
-  const item = {} as SearchStarredItem;
-  item.type = 'search';
-  item.title = chance.word({ length: 4 });
-  item.query = chance.word({ length: 4 });
+export function makeBookmarksPluginFolderItem(
+  options?: Partial<BookmarksPluginFolderItem>,
+): BookmarksPluginFolderItem {
+  return {
+    type: 'folder',
+    title: options?.title ?? '',
+    path: options?.path ?? `path/to/${chance.word()}.md`,
+  };
+}
 
-  return item;
+export function makeBookmarksPluginSearchItem(
+  options?: Partial<BookmarksPluginSearchItem>,
+): BookmarksPluginSearchItem {
+  return {
+    type: 'search',
+    title: options?.title ?? '',
+    query: options?.query ?? `file:(${chance.word()}) ${chance.word()}`,
+  };
+}
+
+export function makeBookmarksPluginGroupItem(
+  options?: Partial<BookmarksPluginGroupItem>,
+): BookmarksPluginGroupItem {
+  return {
+    type: 'group',
+    title: options?.title ?? `BOOKMARK_GROUP_${chance.word()}`,
+    items: options?.items ?? [makeBookmarksPluginFileItem()],
+  };
 }
 
 export function makeCommandItem(options?: { id?: string; name?: string }): Command {

@@ -48,11 +48,10 @@ import {
   makeLeaf,
   makeAliasSuggestion,
   makeEditorSuggestion,
-  makeStarredSuggestion,
   makeHeadingSuggestion,
-  makeSearchStarredItem,
   getCallouts,
   makeCanvasFileContentString,
+  makeBookmarkedFileSuggestion,
 } from '@fixtures';
 import { mock, MockProxy, mockClear, mockFn } from 'jest-mock-extended';
 import { Chance } from 'chance';
@@ -188,15 +187,15 @@ describe('symbolHandler', () => {
       );
     });
 
-    it('should validate parsed input for starred file suggestion', () => {
+    it('should validate parsed input for Bookmarks file suggestion', () => {
       const targetFile = new TFile();
-      const sugg = makeStarredSuggestion(null, targetFile);
+      const sugg = makeBookmarkedFileSuggestion({ file: targetFile });
 
       mockVault.getAbstractFileByPath
         .calledWith(targetFile.path)
         .mockReturnValueOnce(targetFile);
 
-      const inputInfo = new InputInfo('', Mode.StarredList);
+      const inputInfo = new InputInfo('', Mode.BookmarksList);
       sut.validateCommand(inputInfo, 0, '', sugg, null);
 
       expect(inputInfo.mode).toBe(Mode.SymbolList);
@@ -211,20 +210,6 @@ describe('symbolHandler', () => {
           isValidSource: true,
         }),
       );
-    });
-
-    it('should not validate parsed input for starred search suggestion', () => {
-      const item = makeSearchStarredItem();
-      const sugg = makeStarredSuggestion(item);
-
-      const inputInfo = new InputInfo('', Mode.StarredList);
-      sut.validateCommand(inputInfo, 0, '', sugg, null);
-
-      expect(inputInfo.mode).toBe(Mode.StarredList);
-
-      const symbolCmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
-      expect(symbolCmd.isValidated).toBe(false);
-      expect(symbolCmd.source).toBeNull();
     });
 
     it('should validate and identify active editor as matching the file suggestion target', () => {

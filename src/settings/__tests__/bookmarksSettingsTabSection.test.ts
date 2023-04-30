@@ -1,18 +1,18 @@
 import {
   SettingsTabSection,
-  StarredSettingsTabSection,
+  BookmarksSettingsTabSection,
   SwitcherPlusSettings,
   SwitcherPlusSettingTab,
 } from 'src/settings';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { App } from 'obsidian';
 
-describe('starredSettingsTabSection', () => {
+describe('bookmarksSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
   let mockPluginSettingTab: MockProxy<SwitcherPlusSettingTab>;
   let config: SwitcherPlusSettings;
   let mockContainerEl: MockProxy<HTMLElement>;
-  let sut: StarredSettingsTabSection;
+  let sut: BookmarksSettingsTabSection;
 
   beforeAll(() => {
     mockApp = mock<App>();
@@ -20,7 +20,7 @@ describe('starredSettingsTabSection', () => {
     mockPluginSettingTab = mock<SwitcherPlusSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
 
-    sut = new StarredSettingsTabSection(mockApp, mockPluginSettingTab, config);
+    sut = new BookmarksSettingsTabSection(mockApp, mockPluginSettingTab, config);
   });
 
   it('should display a header for the section', () => {
@@ -33,7 +33,7 @@ describe('starredSettingsTabSection', () => {
 
     expect(addSectionTitleSpy).toHaveBeenCalledWith(
       mockContainerEl,
-      'Starred List Mode Settings',
+      'Bookmarks List Mode Settings',
     );
 
     addSectionTitleSpy.mockRestore();
@@ -46,7 +46,7 @@ describe('starredSettingsTabSection', () => {
 
     expect(addTextSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
-      'Starred list mode trigger',
+      'Bookmarks list mode trigger',
       expect.any(String),
       config.starredListCommand,
       'starredListCommand',

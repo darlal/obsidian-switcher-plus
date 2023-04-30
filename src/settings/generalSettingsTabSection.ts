@@ -5,7 +5,7 @@ import { SettingsTabSection } from './settingsTabSection';
 
 const PRIORITY_ADJUSTMENTS = [
   { key: 'isOpenInEditor', name: 'Open items', desc: '' },
-  { key: 'isStarred', name: 'Starred items', desc: '' },
+  { key: 'isBookmarked', name: 'Bookmarked items', desc: '' },
   { key: 'isRecent', name: 'Recent items', desc: '' },
   { key: 'file', name: 'Filenames', desc: '' },
   { key: 'alias', name: 'Aliases', desc: '' },
@@ -53,7 +53,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     this.addToggleSetting(
       containerEl,
       'Show indicator icons',
-      'Display icons to indicate that an item is recent, starred, etc..',
+      'Display icons to indicate that an item is recent, bookmarked, etc..',
       config.showOptionalIndicatorIcons,
       'showOptionalIndicatorIcons',
     );

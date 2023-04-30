@@ -12,7 +12,7 @@ Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](ht
 * [Navigate to symbols (Canvas Nodes, Headings, Hashtags, Links, Embeddings) in your notes](#symbol-navigation-canvas-nodes-headings-hashtags-links-embeddings)
 * [Navigate between open editors, and side panels](#navigate-between-open-editors)
 * [Switch between configured Workspaces quickly](#switch-workspaces)
-* [Navigate between your Starred notes](#navigate-starred-notes)
+* [Search Obsidian Bookmarks](#search-obsidian-bookmarks)
 * [Run Obsidian commands](#run-commands)
 * [Navigate to related files](#related-items)
 * [Quick Filters to narrow down your search results](#quick-filters)
@@ -117,17 +117,17 @@ Note: the built-in system [Workspaces](https://help.obsidian.md/Plugins/Workspac
 |--------------------------|-------------|---------|
 | Workspace list mode trigger | Character that will trigger workspace list mode in the switcher. | `+` |
 
-## Navigate Starred notes
+## Search Obsidian Bookmarks
 
-View, filter, and switch between [Starred notes](https://help.obsidian.md/Plugins/Starred+notes) quickly using the default `'` command.
+View, filter, and switch between Obsidian [Bookmarks](https://help.obsidian.md/Plugins) quickly using the default `'` command.
 
-Note: the built-in system [Starred Notes](https://help.obsidian.md/Plugins/Starred+notes) plugin must be enabled for this mode to work.
+Note: the built-in system [Bookmarks](https://help.obsidian.md/Plugins) plugin must be enabled for this mode to work.
 
-### Starred configuration
+### Bookmarks configuration
 
 | Setting                  | Description | Default |
 |--------------------------|-------------|---------|
-| Starred list mode trigger | Character that will trigger starred list mode in the switcher. | `'` |
+| Bookmarks list mode trigger | Character that will trigger Bookmarks list mode in the switcher. | `'` |
 
 ## Run Commands
 
@@ -195,8 +195,8 @@ In the demo below, `Quick Switcher++: Open Symbols for the active editor` global
 | Hide path for root items | **Enabled**: path information will be hidden for items at the root of the vault. | enabled |
 | Default to open in new pane | **Enabled**: navigating to un-opened files will open a new editor pane whenever possible (as if cmd/ctrl were held). When the file is already open, the existing pane will be activated. This overrides all other pane settings. | enabled |
 | Override Standard mode behavior | **Enabled**: Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to inject custom behavior. Custom behavior includes features like enhance rendering of suggestion items to display additional information, special path display handling, and tab navigation features.<br />**Disabled**: No changes are made to the default Obsidian builtin functionality (Standard Mode). | enabled |
-| Show indicator icons | **Enabled**: Display icons to indicate that an item is recent, starred, etc... | enabled |
-| Result priority adjustments | **Enabled**: Artificially increase the match score of the specified item types by a fixed percentage so they appear higher in the results list. See the list of [result types](/src/settings/generalSettingsTabSection.ts#L6) that can be prioritized. Note that the adjustments are independent of each other, e.g. if adjustments are specified for both `Starred items` and `Open items` a result for a file that is open and starred will receive both adjustments.<br />**Disabled** result match scores are not adjusted. | disabled |
+| Show indicator icons | **Enabled**: Display icons to indicate that an item is recent, bookmarks, etc... | enabled |
+| Result priority adjustments | **Enabled**: Artificially increase the match score of the specified item types by a fixed percentage so they appear higher in the results list. See the list of [result types](/src/settings/generalSettingsTabSection.ts#L6) that can be prioritized. Note that the adjustments are independent of each other, e.g. if adjustments are specified for both `Bookmarked items` and `Open items` a result for a file that is open and bookmarked will receive both adjustments.<br />**Disabled** result match scores are not adjusted. | disabled |
 | Restore previous input in Command Mode | **Enabled**: restore previous command mode input when launched via global command hotkey | disabled |
 | Restore previous input | **Enabled**: restore previous switcher input when launched via global command hotkey | disabled |
 
@@ -209,7 +209,7 @@ The following Global Commands are registered by the plugin, which can be used fo
 * `Quick Switcher++: Open Symbols for the active editor`
 * `Quick Switcher++: Open in Workspaces Mode`
 * `Quick Switcher++: Open in Headings Mode`
-* `Quick Switcher++: Open in Starred Mode`
+* `Quick Switcher++: Open in Bookmarks Mode`
 * `Quick Switcher++: Open in Commands Mode`
 * `Quick Switcher++: Open Related Items for the active editor`
 

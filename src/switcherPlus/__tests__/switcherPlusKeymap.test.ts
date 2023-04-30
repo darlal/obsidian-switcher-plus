@@ -264,7 +264,7 @@ describe('SwitcherPlusKeymap', () => {
     });
 
     it('should register custom keymaps in custom modes', () => {
-      const mode = Mode.StarredList;
+      const mode = Mode.BookmarksList;
       const customKeymaps = sut.customKeysInfo.filter(
         (v) => v.modes?.includes(mode) && !v.isInstructionOnly,
       );

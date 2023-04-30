@@ -4,9 +4,9 @@ import {
   symbolTrigger,
   workspaceTrigger,
   headingsTrigger,
-  starredTrigger,
   commandTrigger,
   relatedItemsTrigger,
+  bookmarksTrigger,
 } from './modeTrigger.fixture';
 
 interface InputExpectation {
@@ -23,7 +23,7 @@ const triggerMap = new Map<Mode, string>([
   [Mode.EditorList, editorTrigger],
   [Mode.HeadingsList, headingsTrigger],
   [Mode.RelatedItemsList, relatedItemsTrigger],
-  [Mode.StarredList, starredTrigger],
+  [Mode.BookmarksList, bookmarksTrigger],
   [Mode.SymbolList, symbolTrigger],
   [Mode.WorkspaceList, workspaceTrigger],
 ]);
@@ -84,12 +84,12 @@ export const standardModeInputFixture = [
   standardExpectation(` ${headingsTrigger}test string`),
   standardExpectation(`test string ${headingsTrigger}`),
   standardExpectation(`     ${headingsTrigger}test string ${headingsTrigger}`),
-  standardExpectation(`test${starredTrigger}string`),
-  standardExpectation(`test${starredTrigger}$string`),
-  standardExpectation(`^${starredTrigger}string`),
-  standardExpectation(` ${starredTrigger}test string`),
-  standardExpectation(`test string ${starredTrigger}`),
-  standardExpectation(`     ${starredTrigger}test string ${starredTrigger}`),
+  standardExpectation(`test${bookmarksTrigger}string`),
+  standardExpectation(`test${bookmarksTrigger}$string`),
+  standardExpectation(`^${bookmarksTrigger}string`),
+  standardExpectation(` ${bookmarksTrigger}test string`),
+  standardExpectation(`test string ${bookmarksTrigger}`),
+  standardExpectation(`     ${bookmarksTrigger}test string ${bookmarksTrigger}`),
   standardExpectation(`test${relatedItemsTrigger}string`),
   standardExpectation(`test${relatedItemsTrigger}$string`),
   standardExpectation(`^${relatedItemsTrigger}string`),

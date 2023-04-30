@@ -49,9 +49,9 @@ const COMMAND_DATA: CommandInfo[] = [
   },
   {
     id: 'switcher-plus:open-starred',
-    name: 'Open in Starred Mode',
-    mode: Mode.StarredList,
-    iconId: 'star',
+    name: 'Open in Bookmarks Mode',
+    mode: Mode.BookmarksList,
+    iconId: 'lucide-bookmark',
     ribbonIconEl: null,
   },
   {

@@ -1,5 +1,5 @@
 import { SettingsTabSection } from './settingsTabSection';
-import { StarredSettingsTabSection } from './starredSettingsTabSection';
+import { BookmarksSettingsTabSection } from './bookmarksSettingsTabSection';
 import { CommandListSettingsTabSection } from './commandListSettingsTabSection';
 import { RelatedItemsSettingsTabSection } from './relatedItemsSettingsTabSection';
 import { GeneralSettingsTabSection } from './generalSettingsTabSection';
@@ -36,7 +36,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       HeadingsSettingsTabSection,
       EditorSettingsTabSection,
       RelatedItemsSettingsTabSection,
-      StarredSettingsTabSection,
+      BookmarksSettingsTabSection,
       CommandListSettingsTabSection,
       WorkspaceSettingsTabSection,
     ];

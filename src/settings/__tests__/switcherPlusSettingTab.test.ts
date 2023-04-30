@@ -6,7 +6,7 @@ import {
   HeadingsSettingsTabSection,
   EditorSettingsTabSection,
   RelatedItemsSettingsTabSection,
-  StarredSettingsTabSection,
+  BookmarksSettingsTabSection,
   CommandListSettingsTabSection,
   WorkspaceSettingsTabSection,
 } from 'src/settings';
@@ -57,7 +57,7 @@ describe('SwitcherPlusSettingTab', () => {
         [HeadingsSettingsTabSection],
         [EditorSettingsTabSection],
         [RelatedItemsSettingsTabSection],
-        [StarredSettingsTabSection],
+        [BookmarksSettingsTabSection],
         [CommandListSettingsTabSection],
         [WorkspaceSettingsTabSection],
       ];

@@ -22,12 +22,13 @@ import {
   HeadingsHandler,
   SymbolHandler,
   WorkspaceHandler,
-  StarredHandler,
   CommandHandler,
   RelatedItemsHandler,
   StandardExHandler,
-  StarredItemInfo,
   Handler,
+  BookmarksHandler,
+  BOOKMARKS_PLUGIN_ID,
+  BookmarksItemInfo,
 } from 'src/Handlers';
 import {
   App,
@@ -39,7 +40,7 @@ import {
   Debouncer,
   TFile,
   Vault,
-  StarredPluginItem,
+  BookmarksPluginItem,
 } from 'obsidian';
 import {
   editorTrigger,
@@ -50,12 +51,10 @@ import {
   headingsTrigger,
   makeHeading,
   getHeadings,
-  starredTrigger,
   commandTrigger,
   relatedItemsTrigger,
   makeFileSuggestion,
   makeEditorSuggestion,
-  makeStarredSuggestion,
   makeCommandSuggestion,
   makeRelatedItemsSuggestion,
   makeHeadingSuggestion,
@@ -65,6 +64,8 @@ import {
   makePrefixOnlyInputFixture,
   makeSourcedCmdEmbeddedInputFixture,
   makeAliasSuggestion,
+  bookmarksTrigger,
+  makeBookmarkedFileSuggestion,
 } from '@fixtures';
 
 const chance = new Chance();
@@ -79,11 +80,11 @@ const modeHandlingData = [
     suggestions: [makeEditorSuggestion(makeLeaf())],
   },
   {
-    title: 'STARRED MODE',
-    mode: Mode.StarredList,
-    handlerPrototype: StarredHandler.prototype,
-    trigger: starredTrigger,
-    suggestions: [makeStarredSuggestion()],
+    title: 'BOOKMARKED MODE',
+    mode: Mode.BookmarksList,
+    handlerPrototype: BookmarksHandler.prototype,
+    trigger: bookmarksTrigger,
+    suggestions: [makeBookmarkedFileSuggestion()],
   },
   {
     title: 'WORKSPACE MODE',
@@ -149,6 +150,12 @@ describe('modeHandler', () => {
       };
     });
 
+    mockInternalPlugins.getEnabledPluginById
+      .calledWith(BOOKMARKS_PLUGIN_ID)
+      .mockReturnValue({
+        id: BOOKMARKS_PLUGIN_ID,
+      });
+
     mockVault = mock<Vault>();
     mockWorkspace = mock<Workspace>();
     mockWorkspace.iterateAllLeaves.mockImplementation();
@@ -164,7 +171,7 @@ describe('modeHandler', () => {
       symbolListCommand: symbolTrigger,
       workspaceListCommand: workspaceTrigger,
       headingsListCommand: headingsTrigger,
-      starredListCommand: starredTrigger,
+      starredListCommand: bookmarksTrigger,
       commandListCommand: commandTrigger,
       relatedItemsListCommand: relatedItemsTrigger,
       excludeViewTypes: [excludedViewType],
@@ -893,7 +900,13 @@ describe('modeHandler', () => {
             mockSetSuggestion.mockReset();
           });
         });
+      },
+    );
 
+    // Note: BookmarksList mode does not render or action suggestions
+    describe.each(modeHandlingData.filter((v) => v.mode !== Mode.BookmarksList))(
+      '$title',
+      ({ handlerPrototype, suggestions }) => {
         it('should render suggestions', async () => {
           const expected = (
             Array.isArray(suggestions) ? suggestions : await suggestions
@@ -988,22 +1001,22 @@ describe('modeHandler', () => {
       const editorFiles = editors.map((v) => v.view.file);
       const recentFiles = new Set([new TFile(), new TFile(), ...editorFiles]);
 
-      const starred = [
-        mock<StarredItemInfo>({
+      const bookmarked = [
+        mock<BookmarksItemInfo>({
           file: new TFile(),
-          item: mock<StarredPluginItem>({ type: 'file' }),
+          item: mock<BookmarksPluginItem>({ type: 'file' }),
         }),
       ];
 
-      const starredFiles = starred.map((v) => v.file);
+      const bookmarkedFiles = bookmarked.map((v) => v.file);
 
       const editorSpy = jest
         .spyOn(EditorHandler.prototype, 'getItems')
         .mockReturnValueOnce(editors);
 
-      const starredSpy = jest
-        .spyOn(StarredHandler.prototype, 'getItems')
-        .mockReturnValueOnce(starred);
+      const bookmarksSpy = jest
+        .spyOn(BookmarksHandler.prototype, 'getItems')
+        .mockReturnValueOnce(bookmarked);
 
       const recentSpy = jest
         .spyOn(sut, 'getRecentFiles')
@@ -1015,13 +1028,13 @@ describe('modeHandler', () => {
         expect.objectContaining({
           openWorkspaceLeaves: new Set(editors),
           openWorkspaceFiles: new Set(editorFiles),
-          starredFiles: new Set(starredFiles),
+          bookmarkedFiles: new Set(bookmarkedFiles),
           mostRecentFiles: new Set(recentFiles),
         }),
       );
 
       editorSpy.mockRestore();
-      starredSpy.mockRestore();
+      bookmarksSpy.mockRestore();
       recentSpy.mockRestore();
     });
   });

@@ -936,10 +936,10 @@ export abstract class Handler<T> {
       indicatorElClass: 'qsp-editor-indicator',
     });
 
-    indicatorData.set('isStarred', {
-      iconName: 'lucide-star',
-      parentElClass: 'qsp-starred-file',
-      indicatorElClass: 'qsp-starred-indicator',
+    indicatorData.set('isBookmarked', {
+      iconName: 'lucide-bookmark',
+      parentElClass: 'qsp-bookmarked-file',
+      indicatorElClass: 'qsp-bookmarked-indicator',
     });
 
     if (!flairContainerEl) {
@@ -1061,6 +1061,13 @@ export abstract class Handler<T> {
         const getFactor = (key: string) => {
           let val = 0;
 
+          if (key === 'isBookmarked') {
+            // Remap isBookmarked to isStarred, because isStarred is the key that actually
+            // gets persisted to disk
+            // TODO: migrate this to isBookmarked when the settings key is migrated
+            key = 'isStarred';
+          }
+
           if (Object.prototype.hasOwnProperty.call(adjustments, key)) {
             val = Number(adjustments[key]);
           }
@@ -1078,7 +1085,7 @@ export abstract class Handler<T> {
           return val;
         };
 
-        factor += getFactorConstrained(SuggestionType.StarredList, 'isStarred');
+        factor += getFactorConstrained(SuggestionType.Bookmark, 'isBookmarked');
         factor += getFactorConstrained(SuggestionType.EditorList, 'isOpenInEditor');
         factor += getFactorConstrained(null, 'isRecent');
 
@@ -1104,7 +1111,7 @@ export abstract class Handler<T> {
   }
 
   /**
-   * Sets isOpenInEditor, isRecent, isStarred status of sugg based on currentWorkspaceEnvList
+   * Sets isOpenInEditor, isRecent, isBookmarked, status of sugg based on currentWorkspaceEnvList
    * @param  {WorkspaceEnvList} currentWorkspaceEnvList
    * @param  {V} sugg
    * @returns V
@@ -1118,7 +1125,7 @@ export abstract class Handler<T> {
 
       sugg.isOpenInEditor = currentWorkspaceEnvList.openWorkspaceFiles?.has(file);
       sugg.isRecent = currentWorkspaceEnvList.mostRecentFiles?.has(file);
-      sugg.isStarred = currentWorkspaceEnvList.starredFiles?.has(file);
+      sugg.isBookmarked = currentWorkspaceEnvList.bookmarkedFiles?.has(file);
     }
 
     return sugg;

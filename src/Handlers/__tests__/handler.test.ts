@@ -1,4 +1,3 @@
-import { Facet, FacetSettingsData } from './../../types/sharedTypes';
 import {
   App,
   Editor,
@@ -40,6 +39,8 @@ import {
   Mode,
   PathDisplayFormat,
   EditorSuggestion,
+  Facet,
+  FacetSettingsData,
 } from 'src/types';
 import { mock, mockClear, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
@@ -1788,7 +1789,7 @@ describe('Handler', () => {
       mockReset(mockVault);
     });
 
-    it('returns returns null if a TFile is not found', () => {
+    it('returns null if a TFile is not found', () => {
       const abstractFile: TAbstractFile = {
         vault: mockVault,
         path: 'path/to/itemname',
@@ -1850,7 +1851,7 @@ describe('Handler', () => {
 
     it('should not change score if setting is not a valid number', () => {
       const sugg = makeFileSuggestion(null, null, 0);
-      sugg.isStarred = true;
+      sugg.isBookmarked = true;
 
       // eslint-disable-next-line
       // @ts-ignore
@@ -1926,9 +1927,9 @@ describe('Handler', () => {
       mockReset(mockSettings);
     });
 
-    it('should update score for starred suggestions', () => {
+    it('should update score for bookmarked suggestions', () => {
       const sugg = makeFileSuggestion(null, null, -0.15);
-      sugg.isStarred = true;
+      sugg.isBookmarked = true;
 
       mockSettings.matchPriorityAdjustments = { isStarred: 0.5 };
 
@@ -1983,7 +1984,7 @@ describe('Handler', () => {
       const mockEnvList = mock<WorkspaceEnvList>();
       mockEnvList.openWorkspaceFiles = new Set<TFile>([file]);
       mockEnvList.mostRecentFiles = new Set<TFile>([file]);
-      mockEnvList.starredFiles = new Set<TFile>([file]);
+      mockEnvList.bookmarkedFiles = new Set<TFile>([file]);
 
       Handler.updateWorkspaceEnvListStatus(mockEnvList, sugg);
 
@@ -1991,7 +1992,7 @@ describe('Handler', () => {
         expect.objectContaining({
           isOpenInEditor: true,
           isRecent: true,
-          isStarred: true,
+          isBookmarked: true,
         }),
       );
     });

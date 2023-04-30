@@ -114,7 +114,7 @@ describe('standardExHandler', () => {
     const mockFile = new TFile();
     const inputInfo = new InputInfo();
     inputInfo.currentWorkspaceEnvList.openWorkspaceFiles = new Set([mockFile]);
-    inputInfo.currentWorkspaceEnvList.starredFiles = new Set([mockFile]);
+    inputInfo.currentWorkspaceEnvList.bookmarkedFiles = new Set([mockFile]);
     inputInfo.currentWorkspaceEnvList.mostRecentFiles = new Set([mockFile]);
 
     it('should set extra properties on alias suggestions', () => {
@@ -128,7 +128,7 @@ describe('standardExHandler', () => {
         matchText: sugg.alias,
         isOpenInEditor: true,
         isRecent: true,
-        isStarred: true,
+        isBookmarked: true,
       });
     });
 
@@ -143,7 +143,7 @@ describe('standardExHandler', () => {
         matchText: mockFile.path,
         isOpenInEditor: true,
         isRecent: true,
-        isStarred: true,
+        isBookmarked: true,
       });
     });
   });
