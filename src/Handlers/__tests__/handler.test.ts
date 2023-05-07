@@ -1855,7 +1855,7 @@ describe('Handler', () => {
 
       // eslint-disable-next-line
       // @ts-ignore
-      mockSettings.matchPriorityAdjustments = { isStarred: '0NAN' };
+      mockSettings.matchPriorityAdjustments = { isBookmarked: '0NAN' };
 
       const result = sut.applyMatchPriorityPreferences(sugg);
 
@@ -1931,7 +1931,7 @@ describe('Handler', () => {
       const sugg = makeFileSuggestion(null, null, -0.15);
       sugg.isBookmarked = true;
 
-      mockSettings.matchPriorityAdjustments = { isStarred: 0.5 };
+      mockSettings.matchPriorityAdjustments = { isBookmarked: 0.5 };
 
       const result = sut.applyMatchPriorityPreferences(sugg);
 

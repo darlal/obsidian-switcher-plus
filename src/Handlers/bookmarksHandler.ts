@@ -29,7 +29,7 @@ export interface BookmarksItemInfo {
 
 export class BookmarksHandler extends Handler<BookmarksSuggestion> {
   override get commandString(): string {
-    return this.settings?.starredListCommand;
+    return this.settings?.bookmarksListCommand;
   }
 
   validateCommand(

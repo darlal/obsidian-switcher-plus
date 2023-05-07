@@ -105,13 +105,13 @@ describe('bookmarksHandler', () => {
     });
 
     settings = new SwitcherPlusSettings(null);
-    jest.spyOn(settings, 'starredListCommand', 'get').mockReturnValue(bookmarksTrigger);
+    jest.spyOn(settings, 'bookmarksListCommand', 'get').mockReturnValue(bookmarksTrigger);
 
     sut = new BookmarksHandler(mockApp, settings);
   });
 
   describe('commandString', () => {
-    it('should return starredListCommand trigger for Bookmarks until the data.json file is updated', () => {
+    it('should return bookmarksListCommand trigger for Bookmarks', () => {
       expect(sut.commandString).toBe(bookmarksTrigger);
     });
   });

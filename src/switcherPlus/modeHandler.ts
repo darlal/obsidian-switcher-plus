@@ -365,7 +365,7 @@ export class ModeHandler {
       settings.editorListCommand,
       settings.workspaceListCommand,
       settings.headingsListCommand,
-      settings.starredListCommand,
+      settings.bookmarksListCommand,
       settings.commandListCommand,
     ]
       .map((v) => `(${escapeRegExp(v)})`)
@@ -534,7 +534,7 @@ export class ModeHandler {
         [settings.editorListCommand, handlersByMode.get(Mode.EditorList)],
         [settings.workspaceListCommand, handlersByMode.get(Mode.WorkspaceList)],
         [settings.headingsListCommand, handlersByMode.get(Mode.HeadingsList)],
-        [settings.starredListCommand, handlersByMode.get(Mode.BookmarksList)],
+        [settings.bookmarksListCommand, handlersByMode.get(Mode.BookmarksList)],
         [settings.commandListCommand, handlersByMode.get(Mode.CommandList)],
         [settings.symbolListCommand, handlersByMode.get(Mode.SymbolList)],
         [settings.relatedItemsListCommand, handlersByMode.get(Mode.RelatedItemsList)],

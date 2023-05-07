@@ -23,6 +23,7 @@ export class SwitcherPlusSettings {
     enabledSymbolTypes[SymbolType.Callout] = true;
 
     return {
+      version: '1.0.0',
       onOpenPreferNewTab: true,
       alwaysNewTabForSymbols: false,
       useActiveTabForSymbolsOnMobile: false,
@@ -31,7 +32,7 @@ export class SwitcherPlusSettings {
       symbolListCommand: '@',
       workspaceListCommand: '+',
       headingsListCommand: '#',
-      starredListCommand: "'",
+      bookmarksListCommand: "'",
       commandListCommand: '>',
       relatedItemsListCommand: '~',
       strictHeadingsOnly: false,
@@ -62,7 +63,7 @@ export class SwitcherPlusSettings {
       enableMatchPriorityAdjustments: false,
       matchPriorityAdjustments: {
         isOpenInEditor: 0,
-        isStarred: 0,
+        isBookmarked: 0,
         isRecent: 0,
         file: 0,
         alias: 0,
@@ -85,6 +86,14 @@ export class SwitcherPlusSettings {
   // in that it's not a user option. It doesn't live on the plugin instance, instead
   // it sourced from the switcher modal instance
   shouldShowAlias: boolean;
+
+  get version(): string {
+    return this.data.version;
+  }
+
+  set version(value: string) {
+    this.data.version = value;
+  }
 
   get builtInSystemOptions(): QuickSwitcherOptions {
     return getSystemSwitcherInstance(this.plugin.app)?.options;
@@ -185,16 +194,16 @@ export class SwitcherPlusSettings {
     return SwitcherPlusSettings.defaults.headingsListCommand;
   }
 
-  get starredListCommand(): string {
-    return this.data.starredListCommand;
+  get bookmarksListCommand(): string {
+    return this.data.bookmarksListCommand;
   }
 
-  set starredListCommand(value: string) {
-    this.data.starredListCommand = value;
+  set bookmarksListCommand(value: string) {
+    this.data.bookmarksListCommand = value;
   }
 
-  get starredListPlaceholderText(): string {
-    return SwitcherPlusSettings.defaults.starredListCommand;
+  get bookmarksListPlaceholderText(): string {
+    return SwitcherPlusSettings.defaults.bookmarksListCommand;
   }
 
   get commandListCommand(): string {
@@ -440,6 +449,11 @@ export class SwitcherPlusSettings {
     this.data = SwitcherPlusSettings.defaults;
   }
 
+  async updateDataAndLoadSettings(): Promise<void> {
+    await SwitcherPlusSettings.updateDataFile(this.plugin, SwitcherPlusSettings.defaults);
+    return await this.loadSettings();
+  }
+
   async loadSettings(): Promise<void> {
     const copy = <T extends object>(source: T, target: T, keys: Array<keyof T>): void => {
       for (const key of keys) {
@@ -486,5 +500,55 @@ export class SwitcherPlusSettings {
 
   setSymbolTypeEnabled(symbol: SymbolType, isEnabled: boolean): void {
     this.data.enabledSymbolTypes[symbol] = isEnabled;
+  }
+
+  static async updateDataFile(
+    plugin: SwitcherPlusPlugin,
+    defaults: SettingsData,
+  ): Promise<void> {
+    try {
+      const data = (await plugin?.loadData()) as Record<string, unknown>;
+      if (data && typeof data === 'object') {
+        const versionKey = 'version';
+        if (!Object.prototype.hasOwnProperty.call(data, versionKey)) {
+          // add version number
+          data[versionKey] = '1.0.0';
+
+          // rename from starred to bookmarks
+          const starredCommandKey = 'starredListCommand';
+          if (Object.prototype.hasOwnProperty.call(data, starredCommandKey)) {
+            data['bookmarksListCommand'] =
+              data[starredCommandKey] ?? defaults.bookmarksListCommand;
+            delete data[starredCommandKey];
+          }
+
+          // rename isStarred to isBookmarked
+          const isStarredKey = 'isStarred';
+          const adjustments = data['matchPriorityAdjustments'] as Record<string, number>;
+          if (
+            adjustments &&
+            Object.prototype.hasOwnProperty.call(adjustments, isStarredKey)
+          ) {
+            adjustments['isBookmarked'] = adjustments[isStarredKey];
+            delete adjustments[isStarredKey];
+          }
+
+          // add new facets
+          const facetList = (data['quickFilters'] as FacetSettingsData)?.facetList;
+          if (facetList) {
+            const existingSet = new Set<string>(facetList.map((v) => v.id));
+            defaults.quickFilters.facetList.forEach((facet) => {
+              if (!existingSet.has(facet.id)) {
+                facetList.push(facet);
+              }
+            });
+          }
+
+          await plugin?.saveData(data);
+        }
+      }
+    } catch (error) {
+      console.log('Switcher++: error updating data.json file', error);
+    }
   }
 }

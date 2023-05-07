@@ -278,6 +278,7 @@ export type KeymapConfig = {
 };
 
 export interface SettingsData {
+  version: string;
   onOpenPreferNewTab: boolean;
   alwaysNewTabForSymbols: boolean;
   useActiveTabForSymbolsOnMobile: boolean;
@@ -286,7 +287,7 @@ export interface SettingsData {
   symbolListCommand: string;
   workspaceListCommand: string;
   headingsListCommand: string;
-  starredListCommand: string;
+  bookmarksListCommand: string;
   commandListCommand: string;
   relatedItemsListCommand: string;
   strictHeadingsOnly: boolean;

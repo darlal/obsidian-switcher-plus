@@ -48,9 +48,9 @@ describe('bookmarksSettingsTabSection', () => {
       mockContainerEl,
       'Bookmarks list mode trigger',
       expect.any(String),
-      config.starredListCommand,
-      'starredListCommand',
-      config.starredListPlaceholderText,
+      config.bookmarksListCommand,
+      'bookmarksListCommand',
+      config.bookmarksListPlaceholderText,
     );
 
     addTextSettingSpy.mockRestore();

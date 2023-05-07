@@ -10,9 +10,9 @@ export class BookmarksSettingsTabSection extends SettingsTabSection {
       containerEl,
       'Bookmarks list mode trigger',
       'Character that will trigger bookmarks list mode in the switcher',
-      config.starredListCommand,
-      'starredListCommand',
-      config.starredListPlaceholderText,
+      config.bookmarksListCommand,
+      'bookmarksListCommand',
+      config.bookmarksListPlaceholderText,
     );
   }
 }

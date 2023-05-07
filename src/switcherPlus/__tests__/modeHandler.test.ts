@@ -171,7 +171,7 @@ describe('modeHandler', () => {
       symbolListCommand: symbolTrigger,
       workspaceListCommand: workspaceTrigger,
       headingsListCommand: headingsTrigger,
-      starredListCommand: bookmarksTrigger,
+      bookmarksListCommand: bookmarksTrigger,
       commandListCommand: commandTrigger,
       relatedItemsListCommand: relatedItemsTrigger,
       excludeViewTypes: [excludedViewType],

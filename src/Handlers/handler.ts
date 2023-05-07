@@ -1061,13 +1061,6 @@ export abstract class Handler<T> {
         const getFactor = (key: string) => {
           let val = 0;
 
-          if (key === 'isBookmarked') {
-            // Remap isBookmarked to isStarred, because isStarred is the key that actually
-            // gets persisted to disk
-            // TODO: migrate this to isBookmarked when the settings key is migrated
-            key = 'isStarred';
-          }
-
           if (Object.prototype.hasOwnProperty.call(adjustments, key)) {
             val = Number(adjustments[key]);
           }

@@ -1,4 +1,5 @@
 import {
+  Facet,
   LinkType,
   Mode,
   PathDisplayFormat,
@@ -30,6 +31,7 @@ function getDefaultSettingsData(): SettingsData {
   enabledSymbolTypes[SymbolType.Callout] = true;
 
   const data: SettingsData = {
+    version: '1.0.0',
     enabledSymbolTypes,
     excludeViewTypes: ['empty'],
     referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'],
@@ -41,7 +43,7 @@ function getDefaultSettingsData(): SettingsData {
     symbolListCommand: '@',
     workspaceListCommand: '+',
     headingsListCommand: '#',
-    starredListCommand: "'",
+    bookmarksListCommand: "'",
     commandListCommand: '>',
     relatedItemsListCommand: '~',
     strictHeadingsOnly: false,
@@ -69,7 +71,7 @@ function getDefaultSettingsData(): SettingsData {
     enableMatchPriorityAdjustments: false,
     matchPriorityAdjustments: {
       isOpenInEditor: 0,
-      isStarred: 0,
+      isBookmarked: 0,
       isRecent: 0,
       file: 0,
       alias: 0,
@@ -104,11 +106,10 @@ function getTransientSettingsData(): SettingsData {
   const enabledRibbonCommands = chance.pickset(ribbonCommands, 3);
 
   const data: SettingsData = {
+    version: '1.0.0',
     enabledSymbolTypes,
-
     excludeViewTypes: [chance.word(), chance.word()],
     referenceViews: [chance.word(), chance.word()],
-
     onOpenPreferNewTab: chance.bool(),
     alwaysNewTabForSymbols: chance.bool(),
     useActiveTabForSymbolsOnMobile: chance.bool(),
@@ -117,7 +118,7 @@ function getTransientSettingsData(): SettingsData {
     symbolListCommand: chance.word(),
     workspaceListCommand: chance.word(),
     headingsListCommand: chance.word(),
-    starredListCommand: chance.word(),
+    bookmarksListCommand: chance.word(),
     commandListCommand: chance.word(),
     strictHeadingsOnly: chance.bool(),
     searchAllHeadings: chance.bool(),
@@ -185,7 +186,7 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.symbolListPlaceholderText).toBe(defaults.symbolListCommand);
     expect(sut.workspaceListPlaceholderText).toBe(defaults.workspaceListCommand);
     expect(sut.headingsListPlaceholderText).toBe(defaults.headingsListCommand);
-    expect(sut.starredListPlaceholderText).toBe(defaults.starredListCommand);
+    expect(sut.bookmarksListPlaceholderText).toBe(defaults.bookmarksListCommand);
     expect(sut.commandListPlaceholderText).toBe(defaults.commandListCommand);
     expect(sut.relatedItemsListPlaceholderText).toBe(defaults.relatedItemsListCommand);
     expect(sut.includeSidePanelViewTypesPlaceholder).toBe(
@@ -424,6 +425,97 @@ describe('SwitcherPlusSettings', () => {
       );
 
       consoleLogSpy.mockRestore();
+    });
+  });
+
+  describe('updateDataFile v1.0.0', () => {
+    const mockDefaults = mock<SettingsData>({
+      quickFilters: { facetList: [mock<Facet>()] },
+    });
+
+    it('should log errors to the console', async () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      const error = 'updateDataFile v1.0.0 unit test error';
+      mockPlugin.loadData.mockRejectedValueOnce(error);
+
+      await SwitcherPlusSettings.updateDataFile(mockPlugin, mockDefaults);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Switcher++: error updating data.json file',
+        error,
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should set the version to 1.0.0', async () => {
+      const data = {};
+      mockPlugin.loadData.mockResolvedValueOnce(data);
+
+      let savedData: SettingsData;
+      mockPlugin.saveData.mockImplementationOnce((input) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        savedData = input;
+        return Promise.resolve();
+      });
+
+      await SwitcherPlusSettings.updateDataFile(mockPlugin, mockDefaults);
+
+      expect(savedData).toHaveProperty('version', '1.0.0');
+    });
+
+    it('should rename starredListCommand to bookmarksListCommand', async () => {
+      const value = chance.word();
+      const data = { starredListCommand: value };
+      mockPlugin.loadData.mockResolvedValueOnce(data);
+
+      let savedData: SettingsData;
+      mockPlugin.saveData.mockImplementationOnce((input) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        savedData = input;
+        return Promise.resolve();
+      });
+
+      await SwitcherPlusSettings.updateDataFile(mockPlugin, mockDefaults);
+
+      expect(savedData).not.toHaveProperty('starredListCommand');
+      expect(savedData).toHaveProperty('bookmarksListCommand', value);
+    });
+
+    it('should rename isStarred in matchPriorityAdjustments to isBookmarked', async () => {
+      const value = chance.word();
+      const data = { matchPriorityAdjustments: { isStarred: value } };
+      mockPlugin.loadData.mockResolvedValueOnce(data);
+
+      let savedData: SettingsData;
+      mockPlugin.saveData.mockImplementationOnce((input) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        savedData = input;
+        return Promise.resolve();
+      });
+
+      await SwitcherPlusSettings.updateDataFile(mockPlugin, mockDefaults);
+
+      expect(savedData.matchPriorityAdjustments).not.toHaveProperty('isStarred');
+      expect(savedData.matchPriorityAdjustments).toHaveProperty('isBookmarked', value);
+    });
+
+    it('should add new facets to the facetList property in quickFilters', async () => {
+      const facetList: Facet[] = [mock<Facet>()];
+      const data = { quickFilters: { facetList } };
+      mockPlugin.loadData.mockResolvedValueOnce(data);
+
+      let savedData: SettingsData;
+      mockPlugin.saveData.mockImplementationOnce((input) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        savedData = input;
+        return Promise.resolve();
+      });
+
+      await SwitcherPlusSettings.updateDataFile(mockPlugin, mockDefaults);
+
+      expect(savedData.quickFilters.facetList).toHaveLength(2);
     });
   });
 });

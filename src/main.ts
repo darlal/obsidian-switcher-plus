@@ -48,6 +48,8 @@ const COMMAND_DATA: CommandInfo[] = [
     ribbonIconEl: null,
   },
   {
+    // Note: leaving this id with the old starred plugin name so that user
+    // don't have to update their hotkey mappings when they upgrade
     id: 'switcher-plus:open-starred',
     name: 'Open in Bookmarks Mode',
     mode: Mode.BookmarksList,
@@ -75,7 +77,7 @@ export default class SwitcherPlusPlugin extends Plugin {
 
   async onload(): Promise<void> {
     const options = new SwitcherPlusSettings(this);
-    await options.loadSettings();
+    await options.updateDataAndLoadSettings();
     this.options = options;
 
     this.addSettingTab(new SwitcherPlusSettingTab(this.app, this, options));
