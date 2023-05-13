@@ -487,7 +487,7 @@ export class ModeHandler {
       const openEditors = (this.getHandler(Mode.EditorList) as EditorHandler).getItems();
       const openEditorFiles = openEditors.map((v) => v?.view?.file);
       const bookmarkedFiles = (this.getHandler(Mode.BookmarksList) as BookmarksHandler)
-        .getItems()
+        .getItems(null)
         .filter((v) => BookmarksHandler.isBookmarksPluginFileItem(v.item) && v.file)
         .map((v) => v.file);
 

@@ -98,4 +98,39 @@ export const RELATED_ITEMS_MODE_FACETS: Facet[] = [
   },
 ];
 
-export const FACETS_ALL: Facet[] = [...SYMBOL_MODE_FACETS, ...RELATED_ITEMS_MODE_FACETS];
+export const BOOKMARKS_FACET_ID_MAP: Record<string, string> = {
+  file: 'bookmarks-file',
+  folder: 'bookmarks-folder',
+  search: 'bookmarks-search',
+  group: 'bookmarks-group',
+};
+
+export const BOOKMARKS_MODE_FACETS: Facet[] = [
+  {
+    id: BOOKMARKS_FACET_ID_MAP.file,
+    mode: Mode.BookmarksList,
+    label: 'files',
+    isActive: false,
+    isAvailable: true,
+  },
+  {
+    id: BOOKMARKS_FACET_ID_MAP.folder,
+    mode: Mode.BookmarksList,
+    label: 'folders',
+    isActive: false,
+    isAvailable: true,
+  },
+  {
+    id: BOOKMARKS_FACET_ID_MAP.search,
+    mode: Mode.BookmarksList,
+    label: 'searches',
+    isActive: false,
+    isAvailable: true,
+  },
+];
+
+export const FACETS_ALL: Facet[] = [
+  ...SYMBOL_MODE_FACETS,
+  ...RELATED_ITEMS_MODE_FACETS,
+  ...BOOKMARKS_MODE_FACETS,
+];

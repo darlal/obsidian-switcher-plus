@@ -274,7 +274,7 @@ describe('bookmarksHandler', () => {
 
       mockPluginInstance.items = [parentGroup];
 
-      const results = sut.getItems();
+      const results = sut.getItems(null);
 
       expect(results).toHaveLength(1);
 
@@ -294,7 +294,7 @@ describe('bookmarksHandler', () => {
         .calledWith(leafBookmark.path)
         .mockReturnValueOnce(tFile);
 
-      const results = sut.getItems();
+      const results = sut.getItems(null);
 
       expect(results).toHaveLength(1);
       expect(results[0].file).toBe(tFile);

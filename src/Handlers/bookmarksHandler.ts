@@ -18,6 +18,7 @@ import {
   BookmarksPluginGroupItem,
 } from 'obsidian';
 import { Handler } from './handler';
+import { BOOKMARKS_FACET_ID_MAP } from 'src/settings';
 
 export const BOOKMARKS_PLUGIN_ID = 'bookmarks';
 
@@ -55,7 +56,7 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
     if (inputInfo) {
       inputInfo.buildSearchQuery();
       const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
-      const itemsInfo = this.getItems();
+      const itemsInfo = this.getItems(inputInfo);
 
       itemsInfo.forEach(({ item, bookmarkPath, file }) => {
         let shouldPush = true;
@@ -95,16 +96,24 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
     console.log('Switcher++: BookmarksHandler onChooseSuggestion() not supported.');
   }
 
-  getItems(): BookmarksItemInfo[] {
+  getItems(inputInfo: InputInfo | null): BookmarksItemInfo[] {
     const itemsInfo: BookmarksItemInfo[] = [];
     const pluginInstance = this.getEnabledBookmarksPluginInstance();
 
     if (pluginInstance) {
+      // if inputInfo is not supplied, then all items are expected (disregard facets), so use
+      // and empty facet list
+      const activeFacetIds = inputInfo
+        ? this.getActiveFacetIds(inputInfo)
+        : new Set<string>();
+
       const traverseBookmarks = (bookmarks: BookmarksPluginItem[], path: string) => {
         bookmarks?.forEach((bookmark) => {
           if (BookmarksHandler.isBookmarksPluginGroupItem(bookmark)) {
             traverseBookmarks(bookmark.items, `${path}${bookmark.title}/`);
-          } else {
+          } else if (
+            this.isFacetedWith(activeFacetIds, BOOKMARKS_FACET_ID_MAP[bookmark.type])
+          ) {
             let file: TFile = null;
 
             if (BookmarksHandler.isBookmarksPluginFileItem(bookmark)) {

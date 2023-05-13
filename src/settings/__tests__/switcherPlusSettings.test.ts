@@ -517,5 +517,17 @@ describe('SwitcherPlusSettings', () => {
 
       expect(savedData.quickFilters.facetList).toHaveLength(2);
     });
+
+    it('.updateDataAndLoadSettings() should update settings', async () => {
+      const updateDataSpy = jest.spyOn(sut, 'updateDataAndLoadSettings');
+      mockPlugin.loadData.mockResolvedValueOnce({});
+
+      await sut.updateDataAndLoadSettings();
+
+      expect(updateDataSpy).toHaveBeenCalled();
+      expect(mockPlugin.loadData).toHaveBeenCalled();
+
+      updateDataSpy.mockRestore();
+    });
   });
 });
