@@ -93,7 +93,6 @@ export default class SwitcherPlusPlugin extends Plugin {
       id,
       name,
       icon: iconId,
-      hotkeys: [],
       checkCallback: (checking) => {
         return this.createModalAndOpen(mode, checking);
       },
