@@ -124,9 +124,9 @@ describe('relatedItemsHandler', () => {
     sut = new RelatedItemsHandler(mockApp, settings);
   });
 
-  describe('commandString', () => {
+  describe('getCommandString', () => {
     it('should return relatedItemsListCommand trigger', () => {
-      expect(sut.commandString).toBe(relatedItemsTrigger);
+      expect(sut.getCommandString()).toBe(relatedItemsTrigger);
     });
   });
 

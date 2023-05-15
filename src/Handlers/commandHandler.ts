@@ -1,6 +1,12 @@
 import { getInternalPluginById } from 'src/utils';
 import { InputInfo } from 'src/switcherPlus';
-import { AnySuggestion, Mode, CommandSuggestion, SuggestionType } from 'src/types';
+import {
+  AnySuggestion,
+  Mode,
+  CommandSuggestion,
+  SuggestionType,
+  SessionOpts,
+} from 'src/types';
 import { Handler } from './handler';
 import {
   InstalledPlugin,
@@ -19,7 +25,7 @@ export type CommandInfo = { cmd: Command; isPinned: boolean; isRecent: boolean }
 const RECENTLY_USED_COMMAND_IDS: string[] = [];
 
 export class CommandHandler extends Handler<CommandSuggestion> {
-  get commandString(): string {
+  getCommandString(_sessionOpts?: SessionOpts): string {
     return this.settings?.commandListCommand;
   }
 
@@ -68,7 +74,8 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     return suggestions;
   }
 
-  renderSuggestion(sugg: CommandSuggestion, parentEl: HTMLElement): void {
+  renderSuggestion(sugg: CommandSuggestion, parentEl: HTMLElement): boolean {
+    let handled = false;
     if (sugg) {
       const { item, match, isPinned, isRecent } = sugg;
       this.addClassesToSuggestionContainer(parentEl, ['qsp-suggestion-command']);
@@ -86,7 +93,11 @@ export class CommandHandler extends Handler<CommandSuggestion> {
       } else if (isRecent) {
         this.renderOptionalIndicators(parentEl, sugg, flairContainerEl);
       }
+
+      handled = true;
     }
+
+    return handled;
   }
 
   renderHotkeyForCommand(id: string, app: App, flairContainerEl: HTMLElement): void {
@@ -103,12 +114,16 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     }
   }
 
-  onChooseSuggestion(sugg: CommandSuggestion): void {
+  onChooseSuggestion(sugg: CommandSuggestion): boolean {
+    let handled = false;
     if (sugg) {
       const { item } = sugg;
       this.app.commands.executeCommandById(item.id);
       this.saveUsageToList(item.id, RECENTLY_USED_COMMAND_IDS);
+      handled = true;
     }
+
+    return handled;
   }
 
   saveUsageToList(commandId: string, recentCommandIds: string[]): void {

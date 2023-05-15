@@ -119,10 +119,10 @@ describe('headingsHandler', () => {
     modeTriggerSpy.mockRestore();
   });
 
-  describe('commandString', () => {
+  describe('getCommandString', () => {
     it('should return headingsListCommand trigger', () => {
       const sut = new HeadingsHandler(mock<App>(), settings);
-      expect(sut.commandString).toBe(headingsTrigger);
+      expect(sut.getCommandString()).toBe(headingsTrigger);
     });
   });
 

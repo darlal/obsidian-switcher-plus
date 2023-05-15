@@ -5,6 +5,7 @@ import {
   MatchType,
   Mode,
   SearchResultWithFallback,
+  SessionOpts,
   SuggestionType,
 } from 'src/types';
 import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
@@ -12,7 +13,7 @@ import { MetadataCache, sortSearchResults, TFile, WorkspaceLeaf } from 'obsidian
 import { Handler } from './handler';
 
 export class EditorHandler extends Handler<EditorSuggestion> {
-  override get commandString(): string {
+  getCommandString(_sessionOpts?: SessionOpts): string {
     return this.settings?.editorListCommand;
   }
 
@@ -69,7 +70,8 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     return this.getOpenLeaves(excludeViewTypes, includeSidePanelViewTypes);
   }
 
-  renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): void {
+  renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): boolean {
+    let handled = false;
     if (sugg) {
       const { file, matchType, match, item } = sugg;
       const hideBasename = [MatchType.None, MatchType.Primary].includes(matchType);
@@ -85,10 +87,14 @@ export class EditorHandler extends Handler<EditorSuggestion> {
       );
 
       this.renderOptionalIndicators(parentEl, sugg);
+      handled = true;
     }
+
+    return handled;
   }
 
-  onChooseSuggestion(sugg: EditorSuggestion, evt: MouseEvent | KeyboardEvent): void {
+  onChooseSuggestion(sugg: EditorSuggestion, evt: MouseEvent | KeyboardEvent): boolean {
+    let handled = false;
     if (sugg) {
       this.navigateToLeafOrOpenFile(
         evt,
@@ -99,7 +105,10 @@ export class EditorHandler extends Handler<EditorSuggestion> {
         null,
         true,
       );
+      handled = true;
     }
+
+    return handled;
   }
 
   createSuggestion(

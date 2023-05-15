@@ -6,6 +6,7 @@ import {
   MatchType,
   Mode,
   SearchResultWithFallback,
+  SessionOpts,
   SuggestionType,
 } from 'src/types';
 import {
@@ -29,7 +30,7 @@ export interface BookmarksItemInfo {
 }
 
 export class BookmarksHandler extends Handler<BookmarksSuggestion> {
-  override get commandString(): string {
+  getCommandString(_sessionOpts?: SessionOpts): string {
     return this.settings?.bookmarksListCommand;
   }
 
@@ -88,12 +89,15 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
     return suggestions;
   }
 
-  renderSuggestion(_sugg: BookmarksSuggestion, _parentEl: HTMLElement): void {
-    console.log('Switcher++: BookmarksHandler renderSuggestion() not supported.');
+  renderSuggestion(_sugg: BookmarksSuggestion, _parentEl: HTMLElement): boolean {
+    return false;
   }
 
-  onChooseSuggestion(_sugg: BookmarksSuggestion, _evt: MouseEvent | KeyboardEvent): void {
-    console.log('Switcher++: BookmarksHandler onChooseSuggestion() not supported.');
+  onChooseSuggestion(
+    _sugg: BookmarksSuggestion,
+    _evt: MouseEvent | KeyboardEvent,
+  ): boolean {
+    return false;
   }
 
   getItems(inputInfo: InputInfo | null): BookmarksItemInfo[] {

@@ -110,9 +110,9 @@ describe('bookmarksHandler', () => {
     sut = new BookmarksHandler(mockApp, settings);
   });
 
-  describe('commandString', () => {
+  describe('getCommandString', () => {
     it('should return bookmarksListCommand trigger for Bookmarks', () => {
-      expect(sut.commandString).toBe(bookmarksTrigger);
+      expect(sut.getCommandString()).toBe(bookmarksTrigger);
     });
   });
 

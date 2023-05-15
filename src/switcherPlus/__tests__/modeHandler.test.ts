@@ -233,7 +233,7 @@ describe('modeHandler', () => {
     describe('setSessionOpenMode', () => {
       it('should save the command string for any Ex modes', () => {
         commandStringSpy = jest
-          .spyOn(EditorHandler.prototype, 'commandString', 'get')
+          .spyOn(EditorHandler.prototype, 'getCommandString')
           .mockReturnValueOnce(editorTrigger);
 
         sut.setSessionOpenMode(Mode.EditorList, null);
@@ -246,7 +246,7 @@ describe('modeHandler', () => {
       test.each(modeHandlingData)(
         '$title: should not save the command string for Ex mode: $mode',
         ({ handlerPrototype }) => {
-          const commandStringSpy = jest.spyOn(handlerPrototype, 'commandString', 'get');
+          const commandStringSpy = jest.spyOn(handlerPrototype, 'getCommandString');
 
           sut.setSessionOpenMode(Mode.Standard, null);
 
@@ -785,7 +785,7 @@ describe('modeHandler', () => {
 
       const renderSuggestionSpy = jest
         .spyOn(StandardExHandler.prototype, 'renderSuggestion')
-        .mockImplementation();
+        .mockReturnValue(true);
 
       sut.updateSuggestions(chance.word(), mockChooser, null);
 
@@ -811,7 +811,7 @@ describe('modeHandler', () => {
 
         const renderSuggestionSpy = jest
           .spyOn(StandardExHandler.prototype, 'renderSuggestion')
-          .mockImplementation();
+          .mockReturnValue(true);
 
         sut.updateSuggestions(`${headingsTrigger}`, mockChooser, null);
 
@@ -914,7 +914,7 @@ describe('modeHandler', () => {
 
           const renderSuggestionSpy = jest
             .spyOn(handlerPrototype, 'renderSuggestion')
-            .mockImplementation();
+            .mockReturnValue(true);
 
           const result = sut.renderSuggestion(expected, mockParentEl);
 
@@ -931,7 +931,7 @@ describe('modeHandler', () => {
 
           const onChooseSuggestionSpy = jest
             .spyOn(handlerPrototype, 'onChooseSuggestion')
-            .mockImplementation();
+            .mockReturnValue(true);
 
           const result = sut.onChooseSuggestion(expected, mockEvt);
 

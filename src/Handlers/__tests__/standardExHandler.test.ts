@@ -20,6 +20,12 @@ describe('standardExHandler', () => {
     sut = new StandardExHandler(mockApp, settings);
   });
 
+  describe('getCommandString', () => {
+    it('should return empty string', () => {
+      expect(sut.getCommandString()).toBe('');
+    });
+  });
+
   test('validateCommand should throw', () => {
     expect(() => sut.validateCommand(null, 0, '', null, null)).toThrow(
       'Method not implemented.',

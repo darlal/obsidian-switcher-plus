@@ -41,6 +41,7 @@ import {
   EditorSuggestion,
   Facet,
   FacetSettingsData,
+  SessionOpts,
 } from 'src/types';
 import { mock, mockClear, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
@@ -52,6 +53,9 @@ import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
 const chance = new Chance();
 
 class SUT extends Handler<AnySuggestion> {
+  getCommandString(_sessionOpts?: SessionOpts): string {
+    throw new Error('Method not implemented.');
+  }
   validateCommand(
     _inputInfo: InputInfo,
     _index: number,
@@ -64,10 +68,10 @@ class SUT extends Handler<AnySuggestion> {
   getSuggestions(_inputInfo: InputInfo): AnySuggestion[] {
     throw new Error('Method not implemented.');
   }
-  renderSuggestion(_sugg: AnySuggestion, _parentEl: HTMLElement): void {
+  renderSuggestion(_sugg: AnySuggestion, _parentEl: HTMLElement): boolean {
     throw new Error('Method not implemented.');
   }
-  onChooseSuggestion(_sugg: AnySuggestion, _evt: MouseEvent | KeyboardEvent): void {
+  onChooseSuggestion(_sugg: AnySuggestion, _evt: MouseEvent | KeyboardEvent): boolean {
     throw new Error('Method not implemented.');
   }
 }
@@ -102,12 +106,6 @@ describe('Handler', () => {
     });
 
     sut = new SUT(mockApp, mockSettings);
-  });
-
-  describe('commandString property', () => {
-    it('should return null', () => {
-      expect(sut.commandString).toBeNull();
-    });
   });
 
   describe('reset', () => {

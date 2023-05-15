@@ -23,6 +23,7 @@ import {
   MatchType,
   SearchResultWithFallback,
   EditorSuggestion,
+  SessionOpts,
 } from 'src/types';
 import { isTFile, FrontMatterParser, matcherFnForRegExList } from 'src/utils';
 import { Handler } from './handler';
@@ -35,7 +36,7 @@ type SupportedSuggestionTypes =
   | EditorSuggestion;
 
 export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
-  override get commandString(): string {
+  getCommandString(_sessionOpts?: SessionOpts): string {
     return this.settings?.headingsListCommand;
   }
 
@@ -54,7 +55,8 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     headingsCmd.isValidated = true;
   }
 
-  onChooseSuggestion(sugg: HeadingSuggestion, evt: MouseEvent | KeyboardEvent): void {
+  onChooseSuggestion(sugg: HeadingSuggestion, evt: MouseEvent | KeyboardEvent): boolean {
+    let handled = false;
     if (sugg) {
       const {
         start: { line, col },
@@ -80,10 +82,15 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
         'Unable to navigate to heading for file.',
         { active: true, eState },
       );
+
+      handled = true;
     }
+
+    return handled;
   }
 
-  renderSuggestion(sugg: HeadingSuggestion, parentEl: HTMLElement): void {
+  renderSuggestion(sugg: HeadingSuggestion, parentEl: HTMLElement): boolean {
+    let handled = false;
     if (sugg) {
       const { item } = sugg;
 
@@ -108,7 +115,11 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       if (sugg.downranked) {
         parentEl.addClass('mod-downranked');
       }
+
+      handled = true;
     }
+
+    return handled;
   }
 
   getSuggestions(inputInfo: InputInfo): SupportedSuggestionTypes[] {

@@ -2,6 +2,7 @@ import { getInternalPluginById } from 'src/utils';
 import {
   AnySuggestion,
   Mode,
+  SessionOpts,
   SuggestionType,
   WorkspaceInfo,
   WorkspaceSuggestion,
@@ -20,7 +21,7 @@ import { Handler } from './handler';
 export const WORKSPACE_PLUGIN_ID = 'workspaces';
 
 export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
-  override get commandString(): string {
+  getCommandString(_sessionOpts?: SessionOpts): string {
     return this.settings?.workspaceListCommand;
   }
 
@@ -71,14 +72,22 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
     return suggestions;
   }
 
-  renderSuggestion(sugg: WorkspaceSuggestion, parentEl: HTMLElement): void {
+  renderSuggestion(sugg: WorkspaceSuggestion, parentEl: HTMLElement): boolean {
+    let handled = false;
     if (sugg) {
       this.addClassesToSuggestionContainer(parentEl, ['qsp-suggestion-workspace']);
       this.renderContent(parentEl, sugg.item.id, sugg.match);
+      handled = true;
     }
+
+    return handled;
   }
 
-  onChooseSuggestion(sugg: WorkspaceSuggestion, _evt: MouseEvent | KeyboardEvent): void {
+  onChooseSuggestion(
+    sugg: WorkspaceSuggestion,
+    _evt: MouseEvent | KeyboardEvent,
+  ): boolean {
+    let handled = false;
     if (sugg) {
       const { id } = sugg.item;
       const pluginInstance = this.getSystemWorkspacesPluginInstance();
@@ -86,7 +95,11 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
       if (typeof pluginInstance['loadWorkspace'] === 'function') {
         pluginInstance.loadWorkspace(id);
       }
+
+      handled = true;
     }
+
+    return handled;
   }
 
   private getItems(): WorkspaceInfo[] {

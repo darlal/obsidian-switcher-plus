@@ -14,6 +14,7 @@ import {
   RelatedItemsSuggestion,
   RelationType,
   SearchResultWithFallback,
+  SessionOpts,
   SourceInfo,
   SuggestionType,
   UnresolvedSuggestion,
@@ -27,7 +28,7 @@ export class RelatedItemsHandler extends Handler<
 > {
   private inputInfo: InputInfo;
 
-  override get commandString(): string {
+  getCommandString(_sessionOpts?: SessionOpts): string {
     return this.settings?.relatedItemsListCommand;
   }
 
@@ -80,7 +81,8 @@ export class RelatedItemsHandler extends Handler<
     return suggestions;
   }
 
-  renderSuggestion(sugg: RelatedItemsSuggestion, parentEl: HTMLElement): void {
+  renderSuggestion(sugg: RelatedItemsSuggestion, parentEl: HTMLElement): boolean {
+    let handled = false;
     if (sugg) {
       const { file, matchType, match, item } = sugg;
       const iconMap = new Map<RelationType, string>([
@@ -112,13 +114,18 @@ export class RelatedItemsHandler extends Handler<
         ['qsp-related-indicator'],
         iconMap.get(item.relationType),
       );
+
+      handled = true;
     }
+
+    return handled;
   }
 
   onChooseSuggestion(
     sugg: RelatedItemsSuggestion,
     evt: MouseEvent | KeyboardEvent,
-  ): void {
+  ): boolean {
+    let handled = false;
     if (sugg) {
       const { file } = sugg;
 
@@ -127,7 +134,11 @@ export class RelatedItemsHandler extends Handler<
         file,
         `Unable to open related file ${file.path}`,
       );
+
+      handled = true;
     }
+
+    return handled;
   }
 
   searchAndCreateSuggestion(

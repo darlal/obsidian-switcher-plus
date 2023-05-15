@@ -29,6 +29,7 @@ import {
   Mode,
   PathDisplayFormat,
   SearchResultWithFallback,
+  SessionOpts,
   SourceInfo,
   Suggestion,
   SuggestionType,
@@ -48,15 +49,13 @@ import {
 
 export abstract class Handler<T> {
   facets: Facet[];
-  get commandString(): string {
-    return null;
-  }
 
   constructor(protected app: App, protected settings: SwitcherPlusSettings) {}
 
-  abstract renderSuggestion(sugg: T, parentEl: HTMLElement): void;
-  abstract onChooseSuggestion(sugg: T, evt: MouseEvent | KeyboardEvent): void;
+  abstract renderSuggestion(sugg: T, parentEl: HTMLElement): boolean;
+  abstract onChooseSuggestion(sugg: T, evt: MouseEvent | KeyboardEvent): boolean;
   abstract getSuggestions(inputInfo: InputInfo): T[] | Promise<T[]>;
+  abstract getCommandString(sessionOpts?: SessionOpts): string;
 
   abstract validateCommand(
     inputInfo: InputInfo,

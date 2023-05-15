@@ -102,7 +102,7 @@ export class ModeHandler {
     chooser?.setSuggestions([]);
 
     if (mode !== Mode.Standard) {
-      this.sessionOpenModeString = this.getHandler(mode).commandString;
+      this.sessionOpenModeString = this.getHandler(mode).getCommandString();
     }
 
     if (lastInputInfoByMode[mode]) {
@@ -252,8 +252,7 @@ export class ModeHandler {
             );
           }
 
-          handler.renderSuggestion(sugg, parentEl);
-          handled = true;
+          handled = handler.renderSuggestion(sugg, parentEl);
         }
       }
     }
@@ -291,8 +290,7 @@ export class ModeHandler {
         const handler = this.getHandler(sugg);
 
         if (handler) {
-          handler.onChooseSuggestion(sugg, evt);
-          handled = true;
+          handled = handler.onChooseSuggestion(sugg, evt);
         }
       }
     }

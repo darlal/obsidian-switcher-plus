@@ -318,3 +318,5 @@ export interface SettingsData {
   preserveQuickSwitcherLastInput: boolean;
   quickFilters: FacetSettingsData;
 }
+
+export type SessionOpts = Record<string, never>;

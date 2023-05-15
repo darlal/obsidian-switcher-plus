@@ -94,9 +94,9 @@ describe('commandHandler', () => {
     sut = new CommandHandler(mockApp, settings);
   });
 
-  describe('commandString', () => {
+  describe('getCommandString', () => {
     it('should return commandListCommand trigger', () => {
-      expect(sut.commandString).toBe(commandTrigger);
+      expect(sut.getCommandString()).toBe(commandTrigger);
     });
   });
 

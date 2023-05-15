@@ -76,9 +76,9 @@ describe('workspaceHandler', () => {
     sut = new WorkspaceHandler(mockApp, settings);
   });
 
-  describe('commandString', () => {
+  describe('getCommandString', () => {
     it('should return workspaceListCommand trigger', () => {
-      expect(sut.commandString).toBe(workspaceTrigger);
+      expect(sut.getCommandString()).toBe(workspaceTrigger);
     });
   });
 

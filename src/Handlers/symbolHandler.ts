@@ -34,6 +34,7 @@ import {
   SuggestionType,
   CalloutCache,
   Facet,
+  SessionOpts,
 } from 'src/types';
 import { getLinkType, isCalloutCache, isHeadingCache, isTagCache } from 'src/utils';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
@@ -54,7 +55,7 @@ const CANVAS_ICON_MAP: Record<string, string> = {
 export class SymbolHandler extends Handler<SymbolSuggestion> {
   inputInfo: InputInfo;
 
-  override get commandString(): string {
+  getCommandString(_sessionOpts?: SessionOpts): string {
     return this.settings?.symbolListCommand;
   }
 
@@ -117,7 +118,8 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     return suggestions;
   }
 
-  renderSuggestion(sugg: SymbolSuggestion, parentEl: HTMLElement): void {
+  renderSuggestion(sugg: SymbolSuggestion, parentEl: HTMLElement): boolean {
+    let handled = false;
     if (sugg) {
       const { item } = sugg;
       const parentElClasses = ['qsp-suggestion-symbol'];
@@ -135,10 +137,14 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       const text = SymbolHandler.getSuggestionTextForSymbol(item);
       this.renderContent(parentEl, text, sugg.match);
       this.addSymbolIndicator(item, parentEl);
+      handled = true;
     }
+
+    return handled;
   }
 
-  onChooseSuggestion(sugg: SymbolSuggestion, evt: MouseEvent | KeyboardEvent): void {
+  onChooseSuggestion(sugg: SymbolSuggestion, evt: MouseEvent | KeyboardEvent): boolean {
+    let handled = false;
     if (sugg) {
       const symbolCmd = this.inputInfo.parsedCommand() as SourcedParsedCommand;
       const { leaf, file } = symbolCmd.source;
@@ -172,7 +178,11 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
           );
         },
       );
+
+      handled = true;
     }
+
+    return handled;
   }
 
   override reset(): void {

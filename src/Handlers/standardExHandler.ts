@@ -11,11 +11,16 @@ import {
   SuggestionType,
   UnresolvedSuggestion,
   SearchResultWithFallback,
+  SessionOpts,
 } from 'src/types';
 
 export type SupportedSystemSuggestions = FileSuggestion | AliasSuggestion;
 
 export class StandardExHandler extends Handler<SupportedSystemSuggestions> {
+  getCommandString(_sessionOpts?: SessionOpts): string {
+    return '';
+  }
+
   validateCommand(
     _inputInfo: InputInfo,
     _index: number,
@@ -30,22 +35,26 @@ export class StandardExHandler extends Handler<SupportedSystemSuggestions> {
     throw new Error('Method not implemented.');
   }
 
-  renderSuggestion(sugg: SupportedSystemSuggestions, parentEl: HTMLElement): void {
+  renderSuggestion(sugg: SupportedSystemSuggestions, parentEl: HTMLElement): boolean {
+    let handled = false;
     if (isFileSuggestion(sugg)) {
-      this.renderFileSuggestion(sugg, parentEl);
+      handled = this.renderFileSuggestion(sugg, parentEl);
     } else {
-      this.renderAliasSuggestion(sugg, parentEl);
+      handled = this.renderAliasSuggestion(sugg, parentEl);
     }
 
     if (sugg?.downranked) {
       parentEl.addClass('mod-downranked');
     }
+
+    return handled;
   }
 
   onChooseSuggestion(
     sugg: SupportedSystemSuggestions,
     evt: MouseEvent | KeyboardEvent,
-  ): void {
+  ): boolean {
+    let handled = false;
     if (sugg) {
       const { file } = sugg;
 
@@ -54,10 +63,15 @@ export class StandardExHandler extends Handler<SupportedSystemSuggestions> {
         file,
         `Unable to open file from SystemSuggestion ${file.path}`,
       );
+
+      handled = true;
     }
+
+    return handled;
   }
 
-  renderFileSuggestion(sugg: FileSuggestion, parentEl: HTMLElement): void {
+  renderFileSuggestion(sugg: FileSuggestion, parentEl: HTMLElement): boolean {
+    let handled = false;
     if (sugg) {
       const { file, matchType, match } = sugg;
 
@@ -71,10 +85,14 @@ export class StandardExHandler extends Handler<SupportedSystemSuggestions> {
       );
 
       this.renderOptionalIndicators(parentEl, sugg);
+      handled = true;
     }
+
+    return handled;
   }
 
-  renderAliasSuggestion(sugg: AliasSuggestion, parentEl: HTMLElement): void {
+  renderAliasSuggestion(sugg: AliasSuggestion, parentEl: HTMLElement): boolean {
+    let handled = false;
     if (sugg) {
       const { file, matchType, match } = sugg;
 
@@ -90,7 +108,10 @@ export class StandardExHandler extends Handler<SupportedSystemSuggestions> {
 
       const flairContainerEl = this.renderOptionalIndicators(parentEl, sugg);
       this.renderIndicator(flairContainerEl, ['qsp-alias-indicator'], 'lucide-forward');
+      handled = true;
     }
+
+    return handled;
   }
 
   addPropertiesToStandardSuggestions(

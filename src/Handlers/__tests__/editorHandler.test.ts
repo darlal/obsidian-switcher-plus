@@ -57,9 +57,9 @@ describe('editorHandler', () => {
     sut = new EditorHandler(mockApp, settings);
   });
 
-  describe('commandString', () => {
+  describe('getCommandString', () => {
     it('should return editorListCommand trigger', () => {
-      expect(sut.commandString).toBe(editorTrigger);
+      expect(sut.getCommandString()).toBe(editorTrigger);
     });
   });
 

@@ -116,9 +116,9 @@ describe('symbolHandler', () => {
     sut = new SymbolHandler(mockApp, settings);
   });
 
-  describe('commandString', () => {
+  describe('getCommandString', () => {
     it('should return symbolListCommand trigger', () => {
-      expect(sut.commandString).toBe(symbolTrigger);
+      expect(sut.getCommandString()).toBe(symbolTrigger);
     });
   });
 
