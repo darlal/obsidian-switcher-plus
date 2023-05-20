@@ -25,6 +25,7 @@ import {
   SwitcherPlus,
   Facet,
   KeymapConfig,
+  SessionOpts,
 } from 'src/types';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
@@ -37,12 +38,14 @@ export class ModeHandler {
   private inputInfo: InputInfo;
   private handlersByMode: Map<Omit<Mode, 'Standard'>, Handler<AnySuggestion>>;
   private handlersByType: Map<SuggestionType, Handler<AnySuggestion>>;
-  private sessionOpenModeString: string;
+  private handlersByCommand: Map<string, Handler<AnySuggestion>>;
   private lastInput: string;
   private debouncedGetSuggestions: Debouncer<
     [InputInfo, Chooser<AnySuggestion>, SwitcherPlus],
     void
   >;
+
+  sessionOpts: SessionOpts = {};
 
   constructor(
     private app: App,
@@ -75,6 +78,21 @@ export class ModeHandler {
       [SuggestionType.Alias, standardExHandler],
     ]);
 
+    this.handlersByCommand = new Map<string, Handler<AnySuggestion>>([
+      [settings.editorListCommand, handlersByMode.get(Mode.EditorList)],
+      [settings.workspaceListCommand, handlersByMode.get(Mode.WorkspaceList)],
+      [settings.headingsListCommand, handlersByMode.get(Mode.HeadingsList)],
+      [settings.bookmarksListCommand, handlersByMode.get(Mode.BookmarksList)],
+      [settings.commandListCommand, handlersByMode.get(Mode.CommandList)],
+      [settings.symbolListCommand, handlersByMode.get(Mode.SymbolList)],
+      [settings.symbolListActiveEditorCommand, handlersByMode.get(Mode.SymbolList)],
+      [settings.relatedItemsListCommand, handlersByMode.get(Mode.RelatedItemsList)],
+      [
+        settings.relatedItemsListActiveEditorCommand,
+        handlersByMode.get(Mode.RelatedItemsList),
+      ],
+    ]);
+
     this.debouncedGetSuggestions = debounce(
       this.getSuggestions.bind(this),
       settings.headingsSearchDebounceMilli,
@@ -97,12 +115,17 @@ export class ModeHandler {
     this.exKeymap.isOpen = false;
   }
 
-  setSessionOpenMode(mode: Mode, chooser: Chooser<AnySuggestion>): void {
+  setSessionOpenMode(
+    mode: Mode,
+    chooser: Chooser<AnySuggestion>,
+    sessionOpts?: SessionOpts,
+  ): void {
     this.reset();
     chooser?.setSuggestions([]);
 
     if (mode !== Mode.Standard) {
-      this.sessionOpenModeString = this.getHandler(mode).getCommandString();
+      const openModeString = this.getHandler(mode).getCommandString(sessionOpts);
+      Object.assign(this.sessionOpts, sessionOpts, { openModeString });
     }
 
     if (lastInputInfoByMode[mode]) {
@@ -117,22 +140,24 @@ export class ModeHandler {
   }
 
   insertSessionOpenModeOrLastInputString(inputEl: HTMLInputElement): void {
-    const { sessionOpenModeString, lastInput } = this;
-    if (lastInput && lastInput !== sessionOpenModeString) {
+    const { sessionOpts, lastInput } = this;
+    const openModeString = sessionOpts.openModeString ?? null;
+
+    if (lastInput && lastInput !== openModeString) {
       inputEl.value = lastInput;
-      // `sessionOpenModeString` may `null` when in standard mode
-      // otherwise `lastInput` starts with `sessionOpenModeString`
-      const startsNumber = sessionOpenModeString ? sessionOpenModeString.length : 0;
+      // `openModeString` may `null` when in standard mode
+      // otherwise `lastInput` starts with `openModeString`
+      const startsNumber = openModeString ? openModeString.length : 0;
       inputEl.setSelectionRange(startsNumber, inputEl.value.length);
-    } else if (sessionOpenModeString !== null && sessionOpenModeString !== '') {
+    } else if (openModeString !== null && openModeString !== '') {
       // update UI with current command string in the case were openInMode was called
-      inputEl.value = sessionOpenModeString;
+      inputEl.value = openModeString;
 
       // reset to null so user input is not overridden the next time onInput is called
-      this.sessionOpenModeString = null;
+      sessionOpts.openModeString = null;
     }
 
-    // the same logic as `sessionOpenModeString`
+    // the same logic as `openModeString`
     // make sure it will not override user's normal input.
     this.lastInput = null;
   }
@@ -142,7 +167,7 @@ export class ModeHandler {
     chooser: Chooser<AnySuggestion>,
     modal: SwitcherPlus,
   ): boolean {
-    const { exKeymap, settings } = this;
+    const { exKeymap, settings, sessionOpts } = this;
     let handled = false;
 
     // cancel any potentially previously running debounced getSuggestions call
@@ -151,7 +176,7 @@ export class ModeHandler {
     // get the currently active leaf across all rootSplits
     const activeLeaf = Handler.getActiveLeaf(this.app.workspace);
     const activeSugg = ModeHandler.getActiveSuggestion(chooser);
-    const inputInfo = this.determineRunMode(query, activeSugg, activeLeaf);
+    const inputInfo = this.determineRunMode(query, activeSugg, activeLeaf, sessionOpts);
     this.inputInfo = inputInfo;
 
     const { mode } = inputInfo;
@@ -302,9 +327,11 @@ export class ModeHandler {
     query: string,
     activeSugg: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
+    sessionOpts?: SessionOpts,
   ): InputInfo {
     const input = query ?? '';
-    const info = this.addWorkspaceEnvLists(new InputInfo(input));
+    const info = new InputInfo(input, Mode.Standard, sessionOpts);
+    this.addWorkspaceEnvLists(info);
 
     if (input.length === 0) {
       this.reset();
@@ -359,6 +386,10 @@ export class ModeHandler {
     activeLeaf: WorkspaceLeaf,
   ): void {
     const { settings } = this;
+    const activeEditorCmds = [
+      settings.symbolListActiveEditorCommand,
+      settings.relatedItemsListActiveEditorCommand,
+    ];
     const prefixCmds = [
       settings.editorListCommand,
       settings.workspaceListCommand,
@@ -366,6 +397,7 @@ export class ModeHandler {
       settings.bookmarksListCommand,
       settings.commandListCommand,
     ]
+      .concat(activeEditorCmds)
       .map((v) => `(${escapeRegExp(v)})`)
       // account for potential overlapping command strings
       .sort((a, b) => b.length - a.length);
@@ -379,6 +411,7 @@ export class ModeHandler {
       const handler = this.getHandler(cmdStr);
 
       if (handler) {
+        inputInfo.sessionOpts.useActiveEditorAsSource = activeEditorCmds.includes(cmdStr);
         handler.validateCommand(
           inputInfo,
           match.index,
@@ -466,7 +499,7 @@ export class ModeHandler {
 
   reset(): void {
     this.inputInfo = new InputInfo();
-    this.sessionOpenModeString = null;
+    this.sessionOpts = {};
     this.resetSourcedHandlers();
   }
 
@@ -520,24 +553,13 @@ export class ModeHandler {
     kind: Omit<Mode, 'Standard'> | AnySuggestion | string,
   ): Handler<AnySuggestion> {
     let handler: Handler<AnySuggestion>;
-    const { handlersByMode, handlersByType } = this;
+    const { handlersByMode, handlersByType, handlersByCommand } = this;
 
     if (typeof kind === 'number') {
       handler = handlersByMode.get(kind);
     } else if (isOfType<AnySuggestion>(kind, 'type')) {
       handler = handlersByType.get(kind.type);
     } else if (typeof kind === 'string') {
-      const { settings } = this;
-      const handlersByCommand = new Map<string, Handler<AnySuggestion>>([
-        [settings.editorListCommand, handlersByMode.get(Mode.EditorList)],
-        [settings.workspaceListCommand, handlersByMode.get(Mode.WorkspaceList)],
-        [settings.headingsListCommand, handlersByMode.get(Mode.HeadingsList)],
-        [settings.bookmarksListCommand, handlersByMode.get(Mode.BookmarksList)],
-        [settings.commandListCommand, handlersByMode.get(Mode.CommandList)],
-        [settings.symbolListCommand, handlersByMode.get(Mode.SymbolList)],
-        [settings.relatedItemsListCommand, handlersByMode.get(Mode.RelatedItemsList)],
-      ]);
-
       handler = handlersByCommand.get(kind);
     }
 

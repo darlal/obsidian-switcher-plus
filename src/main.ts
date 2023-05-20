@@ -1,17 +1,19 @@
 import { Plugin } from 'obsidian';
 import { SwitcherPlusSettings, SwitcherPlusSettingTab } from 'src/settings';
 import { createSwitcherPlus } from 'src/switcherPlus';
-import { Mode } from 'src/types';
+import { Mode, SessionOpts } from 'src/types';
 
-type CommandInfo = {
+type CommandDefinitionOpts = Pick<SessionOpts, 'useActiveEditorAsSource'>;
+type CommandDefinition = {
   id: string;
   name: string;
   mode: Mode;
   iconId: string;
   ribbonIconEl: HTMLElement;
+  sessionOpts?: CommandDefinitionOpts;
 };
 
-const COMMAND_DATA: CommandInfo[] = [
+const COMMAND_DATA: CommandDefinition[] = [
   {
     id: 'switcher-plus:open',
     name: 'Open in Standard Mode',
@@ -28,10 +30,18 @@ const COMMAND_DATA: CommandInfo[] = [
   },
   {
     id: 'switcher-plus:open-symbols',
+    name: 'Open Symbols for selected suggestion or editor',
+    mode: Mode.SymbolList,
+    iconId: 'lucide-dollar-sign',
+    ribbonIconEl: null,
+  },
+  {
+    id: 'switcher-plus:open-symbols-active',
     name: 'Open Symbols for the active editor',
     mode: Mode.SymbolList,
     iconId: 'lucide-dollar-sign',
     ribbonIconEl: null,
+    sessionOpts: { useActiveEditorAsSource: true },
   },
   {
     id: 'switcher-plus:open-workspaces',
@@ -65,10 +75,18 @@ const COMMAND_DATA: CommandInfo[] = [
   },
   {
     id: 'switcher-plus:open-related-items',
+    name: 'Open Related Items for selected suggestion or editor',
+    mode: Mode.RelatedItemsList,
+    iconId: 'lucide-file-plus-2',
+    ribbonIconEl: null,
+  },
+  {
+    id: 'switcher-plus:open-related-items-active',
     name: 'Open Related Items for the active editor',
     mode: Mode.RelatedItemsList,
     iconId: 'lucide-file-plus-2',
     ribbonIconEl: null,
+    sessionOpts: { useActiveEditorAsSource: true },
   },
 ];
 
@@ -83,18 +101,24 @@ export default class SwitcherPlusPlugin extends Plugin {
     this.addSettingTab(new SwitcherPlusSettingTab(this.app, this, options));
     this.registerRibbonCommandIcons();
 
-    COMMAND_DATA.forEach(({ id, name, mode, iconId }) => {
-      this.registerCommand(id, name, mode, iconId);
+    COMMAND_DATA.forEach(({ id, name, mode, iconId, sessionOpts }) => {
+      this.registerCommand(id, name, mode, iconId, sessionOpts);
     });
   }
 
-  registerCommand(id: string, name: string, mode: Mode, iconId?: string): void {
+  registerCommand(
+    id: string,
+    name: string,
+    mode: Mode,
+    iconId?: string,
+    sessionOpts?: CommandDefinitionOpts,
+  ): void {
     this.addCommand({
       id,
       name,
       icon: iconId,
       checkCallback: (checking) => {
-        return this.createModalAndOpen(mode, checking);
+        return this.createModalAndOpen(mode, checking, sessionOpts);
       },
     });
   }
@@ -110,7 +134,7 @@ export default class SwitcherPlusPlugin extends Plugin {
     const commandDataByMode = COMMAND_DATA.reduce((acc, curr) => {
       acc[curr.mode] = curr;
       return acc;
-    }, {} as Record<Mode, CommandInfo>);
+    }, {} as Record<Mode, CommandDefinition>);
 
     this.options.enabledRibbonCommands.forEach((command) => {
       const data = commandDataByMode[Mode[command]];
@@ -123,7 +147,11 @@ export default class SwitcherPlusPlugin extends Plugin {
     });
   }
 
-  createModalAndOpen(mode: Mode, isChecking: boolean): boolean {
+  createModalAndOpen(
+    mode: Mode,
+    isChecking: boolean,
+    sessionOpts?: CommandDefinitionOpts,
+  ): boolean {
     // modal needs to be created dynamically (same as system switcher)
     // as system options are evaluated in the modal constructor
     const modal = createSwitcherPlus(this.app, this);
@@ -132,7 +160,7 @@ export default class SwitcherPlusPlugin extends Plugin {
     }
 
     if (!isChecking) {
-      modal.openInMode(mode);
+      modal.openInMode(mode, sessionOpts);
     }
 
     return true;

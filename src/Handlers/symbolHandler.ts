@@ -55,8 +55,11 @@ const CANVAS_ICON_MAP: Record<string, string> = {
 export class SymbolHandler extends Handler<SymbolSuggestion> {
   inputInfo: InputInfo;
 
-  getCommandString(_sessionOpts?: SessionOpts): string {
-    return this.settings?.symbolListCommand;
+  getCommandString(sessionOpts?: SessionOpts): string {
+    const { settings } = this;
+    return sessionOpts?.useActiveEditorAsSource
+      ? settings.symbolListActiveEditorCommand
+      : settings.symbolListCommand;
   }
 
   validateCommand(
@@ -70,6 +73,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       activeSuggestion,
       activeLeaf,
       index === 0,
+      inputInfo.sessionOpts,
     );
 
     if (sourceInfo) {
@@ -245,6 +249,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     activeSuggestion: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
     isSymbolCmdPrefix: boolean,
+    sessionOpts: SessionOpts,
   ): SourceInfo {
     const prevInputInfo = this.inputInfo;
     let prevSourceInfo: SourceInfo = null;
@@ -257,7 +262,6 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
     // figure out if the previous operation was a symbol operation
     const hasPrevSymbolSource = prevMode === Mode.SymbolList && !!prevSourceInfo;
-
     const activeEditorInfo = this.getEditorInfo(activeLeaf);
     const activeSuggInfo = this.getSuggestionInfo(activeSuggestion);
 
@@ -266,7 +270,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     let sourceInfo: SourceInfo = null;
     if (hasPrevSymbolSource) {
       sourceInfo = prevSourceInfo;
-    } else if (activeSuggInfo.isValidSource) {
+    } else if (activeSuggInfo.isValidSource && !sessionOpts.useActiveEditorAsSource) {
       sourceInfo = activeSuggInfo;
     } else if (activeEditorInfo.isValidSource && isSymbolCmdPrefix) {
       sourceInfo = activeEditorInfo;

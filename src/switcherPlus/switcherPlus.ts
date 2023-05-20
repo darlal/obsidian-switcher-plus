@@ -3,7 +3,13 @@ import { getSystemSwitcherInstance } from 'src/utils';
 import { ModeHandler } from './modeHandler';
 import SwitcherPlusPlugin from 'src/main';
 import { App, QuickSwitcherOptions } from 'obsidian';
-import { SystemSwitcher, SwitcherPlus, AnySuggestion, Mode } from 'src/types';
+import {
+  SystemSwitcher,
+  SwitcherPlus,
+  AnySuggestion,
+  Mode,
+  SessionOpts,
+} from 'src/types';
 
 interface SystemSwitcherConstructor extends SystemSwitcher {
   new (app: App, builtInOptions: QuickSwitcherOptions): SystemSwitcher;
@@ -31,8 +37,8 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       this.exMode = new ModeHandler(app, plugin.options, exKeymap);
     }
 
-    openInMode(mode: Mode): void {
-      this.exMode.setSessionOpenMode(mode, this.chooser);
+    openInMode(mode: Mode, sessionOpts?: SessionOpts): void {
+      this.exMode.setSessionOpenMode(mode, this.chooser, sessionOpts);
       super.open();
     }
 

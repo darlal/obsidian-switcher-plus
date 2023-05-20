@@ -78,7 +78,8 @@ For example: symbols can be viewed by opening Quick Switcher++, typing some char
 
 | Setting                          | Description | Default |
 |----------------------------------|-------------|---------|
-| Symbol list mode trigger         | Character that will trigger symbol list mode in the switcher. | `@` |
+| Symbol list mode trigger         | Character that will trigger symbol list mode in the switcher. This triggers a display of Symbols for the source file of the currently selected (highlighted) suggestion in the switcher. If there is not a suggestion, display results for the active editor. | `@` |
+| Symbol list mode trigger - Active editor only | Character that will trigger symbol list mode in the switcher. This always triggers a display of Symbols for the active editor only. Note this trigger should be different from `Symbol list mode trigger` | `$ ` (note the trailing space)|
 | List symbols as indented outline | **Enabled**: symbols will be displayed in the (line) order they appear in the source text, indented under any preceding heading.<br />**Disabled**: symbols will be grouped by type: Headings, Tags, Links, Embeds. | enabled |
 | Open Symbols in new pane         | **Enabled**: always open a new pane when navigating to Symbols.<br />**Disabled**: navigate in an already open pane (if one exists). | disabled |
 | Open Symbols in active pane on mobile devices | **Enabled**: navigate to the target file and symbol in the active editor pane, in other words, don't create a new editor pane.<br />**Disabled**: open a new pane when navigating to Symbols, even on mobile devices. | disabled |
@@ -173,7 +174,8 @@ When the Related Items command is triggered for a selected input suggestion/file
 
 | Setting                         | Description | Default |
 |---------------------------------|-------------|---------|
-| Related items list mode trigger | Character that will trigger related items list mode in the switcher. | `~` |
+| Related items list mode trigger | Character that will trigger related items list mode in the switcher. This triggers a display of Related Items for the source file of the currently selected (highlighted) suggestion in the switcher. If there is not a suggestion, display results for the active editor. | `~` |
+| Related Items list mode trigger - Active editor only | Character that will trigger related items list mode in the switcher. This always triggers a display of Related Items for the active editor only. Note this trigger should be different from `Related items list mode trigger` | `^ ` (note the trailing space)|
 | Show related item types         | Specify which relation types are enabled to be displayed in the result list. | `backlink`<br />`disk-location`<br />`outgoing-link` |
 | Exclude open files              | **Enabled**: related files which are already open in an editor will not be displayed in the list.<br />**Disabled**: All related files will be displayed in the list. | disabled |
 

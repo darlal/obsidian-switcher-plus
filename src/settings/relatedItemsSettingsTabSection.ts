@@ -12,10 +12,19 @@ export class RelatedItemsSettingsTabSection extends SettingsTabSection {
     this.addTextSetting(
       containerEl,
       'Related Items list mode trigger',
-      'Character that will trigger related items list mode in the switcher. This triggers a display of Related Items for the source file of the currently selected (highlighted) suggestion in the switcher',
+      'Character that will trigger related items list mode in the switcher. This triggers a display of Related Items for the source file of the currently selected (highlighted) suggestion in the switcher. If there is not a suggestion, display results for the active editor.',
       config.relatedItemsListCommand,
       'relatedItemsListCommand',
       config.relatedItemsListPlaceholderText,
+    );
+
+    this.addTextSetting(
+      containerEl,
+      'Related Items list mode trigger - Active editor only',
+      'Character that will trigger related items list mode in the switcher. This always triggers a display of Related Items for the active editor only.',
+      config.relatedItemsListActiveEditorCommand,
+      'relatedItemsListActiveEditorCommand',
+      config.relatedItemsListActiveEditorCommand,
     );
 
     this.showEnabledRelatedItems(containerEl, config);

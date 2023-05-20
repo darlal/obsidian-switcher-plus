@@ -93,7 +93,7 @@ export declare class SystemSwitcher extends SuggestModal<AnySuggestion> {
 }
 
 export interface SwitcherPlus extends SystemSwitcher {
-  openInMode(mode: Mode): void;
+  openInMode(mode: Mode, sessionOpts?: SessionOpts): void;
 }
 
 export type CalloutCache = SectionCache & {
@@ -285,11 +285,13 @@ export interface SettingsData {
   symbolsInLineOrder: boolean;
   editorListCommand: string;
   symbolListCommand: string;
+  symbolListActiveEditorCommand: string;
   workspaceListCommand: string;
   headingsListCommand: string;
   bookmarksListCommand: string;
   commandListCommand: string;
   relatedItemsListCommand: string;
+  relatedItemsListActiveEditorCommand: string;
   strictHeadingsOnly: boolean;
   searchAllHeadings: boolean;
   headingsSearchDebounceMilli: number;
@@ -319,4 +321,7 @@ export interface SettingsData {
   quickFilters: FacetSettingsData;
 }
 
-export type SessionOpts = Record<string, never>;
+export type SessionOpts = {
+  openModeString?: string;
+  useActiveEditorAsSource?: boolean;
+};

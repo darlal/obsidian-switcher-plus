@@ -11,10 +11,19 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
     this.addTextSetting(
       containerEl,
       'Symbol list mode trigger',
-      'Character that will trigger symbol list mode in the switcher. This triggers a display of Symbols for the source file of the currently selected (highlighted) suggestion in the switcher',
+      'Character that will trigger symbol list mode in the switcher. This triggers a display of Symbols for the source file of the currently selected (highlighted) suggestion in the switcher. If there is not a suggestion, display results for the active editor.',
       config.symbolListCommand,
       'symbolListCommand',
       config.symbolListPlaceholderText,
+    );
+
+    this.addTextSetting(
+      containerEl,
+      'Symbol list mode trigger - Active editor only',
+      'Character that will trigger symbol list mode in the switcher. This always triggers a display of Symbols for the active editor only.',
+      config.symbolListActiveEditorCommand,
+      'symbolListActiveEditorCommand',
+      config.symbolListActiveEditorCommand,
     );
 
     this.addToggleSetting(
@@ -28,7 +37,7 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
     this.addToggleSetting(
       containerEl,
       'Open Symbols in new tab',
-      'Enabled, always open a new tab when navigating to Symbols. Disabled, navigate in an already open tab (if one exists)',
+      'Enabled, always open a new tab when navigating to Symbols. Disabled, navigate in an already open tab (if one exists).',
       config.alwaysNewTabForSymbols,
       'alwaysNewTabForSymbols',
     );

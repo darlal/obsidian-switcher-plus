@@ -3,7 +3,13 @@ import { createSwitcherPlus, ModeHandler } from 'src/switcherPlus';
 import { getSystemSwitcherInstance } from 'src/utils';
 import { mock, mockClear, MockProxy } from 'jest-mock-extended';
 import { App, Chooser, QuickSwitcherPluginInstance } from 'obsidian';
-import { AnySuggestion, Mode, SwitcherPlus, EditorSuggestion } from 'src/types';
+import {
+  AnySuggestion,
+  Mode,
+  SwitcherPlus,
+  EditorSuggestion,
+  SessionOpts,
+} from 'src/types';
 
 jest.mock('src/switcherPlus/modeHandler');
 jest.mock('src/switcherPlus/switcherPlusKeymap');
@@ -96,6 +102,8 @@ describe('switcherPlus', () => {
     });
 
     test('openInMode() should forward to ModeHandler and  call super.Open()', () => {
+      const opts = mock<SessionOpts>();
+      const mode = Mode.EditorList;
       const setSessionOpenModeSpy = jest.spyOn(
         ModeHandler.prototype,
         'setSessionOpenMode',
@@ -103,14 +111,11 @@ describe('switcherPlus', () => {
 
       const superOpenSpy = jest
         .spyOn(MockSystemSwitcherModal.prototype, 'open')
-        .mockImplementation(() => {
-          /* noop */
-        });
+        .mockReturnValueOnce();
 
-      const mode = Mode.EditorList;
-      sut.openInMode(mode);
+      sut.openInMode(mode, opts);
 
-      expect(setSessionOpenModeSpy).toHaveBeenCalledWith(mode, mockChooser);
+      expect(setSessionOpenModeSpy).toHaveBeenCalledWith(mode, mockChooser, opts);
       expect(superOpenSpy).toHaveBeenCalled();
 
       setSessionOpenModeSpy.mockReset();

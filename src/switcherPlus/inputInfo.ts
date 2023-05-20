@@ -1,5 +1,5 @@
 import { prepareQuery, TFile, WorkspaceLeaf } from 'obsidian';
-import { Mode, SourceInfo, SearchQuery } from 'src/types';
+import { Mode, SourceInfo, SearchQuery, SessionOpts } from 'src/types';
 
 export interface WorkspaceEnvList {
   openWorkspaceLeaves: Set<WorkspaceLeaf>;
@@ -30,6 +30,7 @@ export class InputInfo {
     };
   }
 
+  sessionOpts: SessionOpts;
   readonly currentWorkspaceEnvList: WorkspaceEnvList = {
     openWorkspaceLeaves: new Set<WorkspaceLeaf>(),
     openWorkspaceFiles: new Set<TFile>(),
@@ -41,7 +42,12 @@ export class InputInfo {
     return this._searchQuery;
   }
 
-  constructor(public inputText = '', public mode = Mode.Standard) {
+  constructor(
+    public inputText = '',
+    public mode = Mode.Standard,
+    sessionOpts?: SessionOpts,
+  ) {
+    this.sessionOpts = sessionOpts ?? {};
     const symbolListCmd: SourcedParsedCommand = {
       ...InputInfo.defaultParsedCommand,
       source: null,

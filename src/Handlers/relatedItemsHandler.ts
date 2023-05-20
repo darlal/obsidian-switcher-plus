@@ -28,8 +28,11 @@ export class RelatedItemsHandler extends Handler<
 > {
   private inputInfo: InputInfo;
 
-  getCommandString(_sessionOpts?: SessionOpts): string {
-    return this.settings?.relatedItemsListCommand;
+  getCommandString(sessionOpts?: SessionOpts): string {
+    const { settings } = this;
+    return sessionOpts?.useActiveEditorAsSource
+      ? settings.relatedItemsListActiveEditorCommand
+      : settings.relatedItemsListCommand;
   }
 
   validateCommand(
@@ -39,7 +42,12 @@ export class RelatedItemsHandler extends Handler<
     activeSuggestion: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
   ): void {
-    const sourceInfo = this.getSourceInfo(activeSuggestion, activeLeaf, index === 0);
+    const sourceInfo = this.getSourceInfo(
+      activeSuggestion,
+      activeLeaf,
+      index === 0,
+      inputInfo.sessionOpts,
+    );
 
     if (sourceInfo) {
       inputInfo.mode = Mode.RelatedItemsList;
@@ -312,6 +320,7 @@ export class RelatedItemsHandler extends Handler<
     activeSuggestion: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
     isPrefixCmd: boolean,
+    sessionOpts: SessionOpts,
   ): SourceInfo {
     const prevInputInfo = this.inputInfo;
     let prevSourceInfo: SourceInfo = null;
@@ -324,7 +333,6 @@ export class RelatedItemsHandler extends Handler<
 
     // figure out if the previous operation was a symbol operation
     const hasPrevSource = prevMode === Mode.RelatedItemsList && !!prevSourceInfo;
-
     const activeEditorInfo = this.getEditorInfo(activeLeaf);
     const activeSuggInfo = this.getSuggestionInfo(activeSuggestion);
 
@@ -339,7 +347,7 @@ export class RelatedItemsHandler extends Handler<
     let sourceInfo: SourceInfo = null;
     if (hasPrevSource) {
       sourceInfo = prevSourceInfo;
-    } else if (activeSuggInfo.isValidSource) {
+    } else if (activeSuggInfo.isValidSource && !sessionOpts.useActiveEditorAsSource) {
       sourceInfo = activeSuggInfo;
     } else if (activeEditorInfo.isValidSource && isPrefixCmd) {
       sourceInfo = activeEditorInfo;

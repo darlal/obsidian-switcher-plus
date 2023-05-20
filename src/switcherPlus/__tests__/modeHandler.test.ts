@@ -66,6 +66,8 @@ import {
   makeAliasSuggestion,
   bookmarksTrigger,
   makeBookmarkedFileSuggestion,
+  symbolActiveTrigger,
+  relatedItemsActiveTrigger,
 } from '@fixtures';
 
 const chance = new Chance();
@@ -169,11 +171,13 @@ describe('modeHandler', () => {
     mockSettings = mock<SwitcherPlusSettings>({
       editorListCommand: editorTrigger,
       symbolListCommand: symbolTrigger,
+      symbolListActiveEditorCommand: symbolActiveTrigger,
       workspaceListCommand: workspaceTrigger,
       headingsListCommand: headingsTrigger,
       bookmarksListCommand: bookmarksTrigger,
       commandListCommand: commandTrigger,
       relatedItemsListCommand: relatedItemsTrigger,
+      relatedItemsListActiveEditorCommand: relatedItemsActiveTrigger,
       excludeViewTypes: [excludedViewType],
       referenceViews: [],
       overrideStandardModeBehaviors: false,
@@ -416,7 +420,6 @@ describe('modeHandler', () => {
         'for input: "$input" (array data index: $#)',
         ({ editorTrigger, symbolTrigger, input, expected: { mode, parsedInput } }) => {
           const s = new SwitcherPlusSettings(null);
-          const mh = new ModeHandler(mockApp, s, null);
           let cmdSpy: jest.SpyInstance;
 
           if (editorTrigger) {
@@ -431,6 +434,7 @@ describe('modeHandler', () => {
               .mockReturnValue(symbolTrigger);
           }
 
+          const mh = new ModeHandler(mockApp, s, null);
           const leaf = makeLeaf();
           const es = makeEditorSuggestion(leaf, leaf.view.file);
 
@@ -440,6 +444,8 @@ describe('modeHandler', () => {
           expect(cmdSpy).toHaveBeenCalled();
           expect(inputInfo.mode).toBe(mode);
           expect(parsed).toBe(parsedInput);
+
+          cmdSpy.mockRestore();
         },
       );
     });

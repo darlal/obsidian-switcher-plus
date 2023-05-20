@@ -30,11 +30,13 @@ export class SwitcherPlusSettings {
       symbolsInLineOrder: true,
       editorListCommand: 'edt ',
       symbolListCommand: '@',
+      symbolListActiveEditorCommand: '$ ',
       workspaceListCommand: '+',
       headingsListCommand: '#',
       bookmarksListCommand: "'",
       commandListCommand: '>',
       relatedItemsListCommand: '~',
+      relatedItemsListActiveEditorCommand: '^ ',
       strictHeadingsOnly: false,
       searchAllHeadings: true,
       headingsSearchDebounceMilli: 250,
@@ -170,6 +172,14 @@ export class SwitcherPlusSettings {
     this.data.symbolListCommand = value;
   }
 
+  get symbolListActiveEditorCommand(): string {
+    return this.data.symbolListActiveEditorCommand;
+  }
+
+  set symbolListActiveEditorCommand(value: string) {
+    this.data.symbolListActiveEditorCommand = value;
+  }
+
   get workspaceListCommand(): string {
     return this.data.workspaceListCommand;
   }
@@ -228,6 +238,14 @@ export class SwitcherPlusSettings {
 
   get relatedItemsListPlaceholderText(): string {
     return SwitcherPlusSettings.defaults.relatedItemsListCommand;
+  }
+
+  get relatedItemsListActiveEditorCommand(): string {
+    return this.data.relatedItemsListActiveEditorCommand;
+  }
+
+  set relatedItemsListActiveEditorCommand(value: string) {
+    this.data.relatedItemsListActiveEditorCommand = value;
   }
 
   get strictHeadingsOnly(): boolean {

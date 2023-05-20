@@ -52,6 +52,7 @@ import {
   getCallouts,
   makeCanvasFileContentString,
   makeBookmarkedFileSuggestion,
+  symbolActiveTrigger,
 } from '@fixtures';
 import { mock, MockProxy, mockClear, mockFn } from 'jest-mock-extended';
 import { Chance } from 'chance';
@@ -104,6 +105,9 @@ describe('symbolHandler', () => {
 
     settings = new SwitcherPlusSettings(null);
     jest.spyOn(settings, 'symbolListCommand', 'get').mockReturnValue(symbolTrigger);
+    jest
+      .spyOn(settings, 'symbolListActiveEditorCommand', 'get')
+      .mockReturnValue(symbolActiveTrigger);
 
     mockRootSplitLeaf = makeLeaf();
     mockLeftSplitLeaf = makeLeaf();
@@ -120,6 +124,12 @@ describe('symbolHandler', () => {
     it('should return symbolListCommand trigger', () => {
       expect(sut.getCommandString()).toBe(symbolTrigger);
     });
+
+    test('with useActiveEditorAsSource enabled, it should return symbolListActiveEditorCommand trigger', () => {
+      expect(sut.getCommandString({ useActiveEditorAsSource: true })).toBe(
+        symbolActiveTrigger,
+      );
+    });
   });
 
   describe('validateCommand', () => {
@@ -130,10 +140,22 @@ describe('symbolHandler', () => {
       startIndex = 0;
     });
 
-    it('should validate parsed input in symbol prefix (active editor) mode', () => {
+    it('should validate parsed input in symbol prefix (active editor) mode when using symbolListCommand', () => {
       const inputInfo = new InputInfo(inputText);
 
       sut.validateCommand(inputInfo, startIndex, filterText, null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      const symbolCmd = inputInfo.parsedCommand();
+      expect(symbolCmd.parsedInput).toBe(filterText);
+      expect(symbolCmd.isValidated).toBe(true);
+    });
+
+    it('should validate parsed input in prefix mode (active editor only) using symbolListActiveEditorCommand', () => {
+      const sugg = makeAliasSuggestion(new TFile(), 'foo');
+      const inputInfo = new InputInfo(`${symbolActiveTrigger}${filterText}`);
+
+      sut.validateCommand(inputInfo, startIndex, filterText, sugg, mockRootSplitLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       const symbolCmd = inputInfo.parsedCommand();
@@ -287,7 +309,27 @@ describe('symbolHandler', () => {
       expect(results.every((v) => v.file !== null)).toBe(true);
     });
 
-    test('with default settings, it should return symbol suggestions', async () => {
+    test('with default settings, it should return symbol suggestions when using symbolListActiveEditorCommand', async () => {
+      const inputInfo = new InputInfo(symbolActiveTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+
+      // needed for callout symbols
+      mockVault.cachedRead.mockResolvedValueOnce(fileContentWithCallout);
+
+      const results = await sut.getSuggestions(inputInfo);
+
+      expect(results.every((sugg) => sugg.type === SuggestionType.SymbolList)).toBe(true);
+
+      const cached = Object.values(rootFixture.cachedMetadata).flat();
+
+      expect(results).toHaveLength(cached.length);
+      expect(mockVault.cachedRead).toHaveBeenCalledWith(mockRootSplitLeaf.view.file);
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
+        mockRootSplitLeaf.view.file,
+      );
+    });
+
+    test('with default settings, it should return symbol suggestions when using symbolListCommand', async () => {
       const inputInfo = new InputInfo(symbolTrigger);
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
       const initialMode = inputInfo.mode;

@@ -35,6 +35,7 @@ import {
   makeUnresolvedSuggestion,
   makeLink,
   makeBookmarkedFileSuggestion,
+  relatedItemsActiveTrigger,
 } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
 
@@ -111,6 +112,9 @@ describe('relatedItemsHandler', () => {
     jest
       .spyOn(settings, 'relatedItemsListCommand', 'get')
       .mockReturnValue(relatedItemsTrigger);
+    jest
+      .spyOn(settings, 'relatedItemsListActiveEditorCommand', 'get')
+      .mockReturnValue(relatedItemsActiveTrigger);
 
     const rootSplitSourceFile = new TFile();
     rootSplitSourceFile.parent = makeFileTree(rootSplitSourceFile);
@@ -128,15 +132,34 @@ describe('relatedItemsHandler', () => {
     it('should return relatedItemsListCommand trigger', () => {
       expect(sut.getCommandString()).toBe(relatedItemsTrigger);
     });
+
+    test('with useActiveEditorAsSource enabled, it should return relatedItemsListActiveEditorCommand trigger', () => {
+      expect(sut.getCommandString({ useActiveEditorAsSource: true })).toBe(
+        relatedItemsActiveTrigger,
+      );
+    });
   });
 
   describe('validateCommand', () => {
     filterText = 'foo';
 
-    it('should validate parsed input in prefix (active editor) mode', () => {
+    it('should validate parsed input in prefix (active editor) mode using relatedItemsListCommand', () => {
       const inputInfo = new InputInfo(`${relatedItemsTrigger}${filterText}`);
 
       sut.validateCommand(inputInfo, 0, filterText, null, mockRootSplitLeaf);
+
+      expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
+
+      const cmd = inputInfo.parsedCommand();
+      expect(cmd.parsedInput).toBe(filterText);
+      expect(cmd.isValidated).toBe(true);
+    });
+
+    it('should validate parsed input in prefix mode (active editor only) using relatedItemsListActiveEditorCommand', () => {
+      const inputInfo = new InputInfo(`${relatedItemsActiveTrigger}${filterText}`);
+      const sugg = makeAliasSuggestion(new TFile(), 'foo');
+
+      sut.validateCommand(inputInfo, 0, filterText, sugg, mockRootSplitLeaf);
 
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
 
@@ -318,6 +341,29 @@ describe('relatedItemsHandler', () => {
         .filter((v): v is RelatedItemsSuggestion => !isUnresolvedSuggestion(v));
 
       expect(results.every((v) => v.file !== null)).toBe(true);
+    });
+
+    test('with default settings, it should return results when using relatedItemsListActiveEditorCommand', () => {
+      const inputInfo = new InputInfo(relatedItemsActiveTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      mockMetadataCache.resolvedLinks = makeBacklink(file1, mockRootSplitLeaf.view.file);
+
+      const results = sut
+        .getSuggestions(inputInfo)
+        .filter((v): v is RelatedItemsSuggestion => !isUnresolvedSuggestion(v));
+
+      const backlinkFiles = results
+        .filter((v) => v.item.relationType === RelationType.Backlink)
+        .map((v) => v.file);
+
+      expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
+      expect(backlinkFiles).toHaveLength(1);
+      expect(backlinkFiles[0]).toBe(file1);
+      expect(results.every((sugg) => sugg.type === SuggestionType.RelatedItemsList)).toBe(
+        true,
+      );
+
+      mockMetadataCache.resolvedLinks = {};
     });
 
     test('with default settings, it should return diskfile, and backlink suggestions', () => {
