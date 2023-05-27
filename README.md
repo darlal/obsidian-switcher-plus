@@ -25,25 +25,25 @@ Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](ht
 
 Launch Switcher++ using a shortcut, trigger Headings mode using the default `#` command, then enter the search text. Notice, different heading level matches are returned, along with Alias, Unresolved and regular filename matches.
 
-![Heading Mode gif](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/headings-mode.gif)
+![Heading Mode gif](/demo/headings-mode.gif)
 
 ### Symbol Navigation:
 
 Launch Switcher++ using a shortcut, filter all files to find the `Format your notes` file, then trigger the symbol command (default `@`) to open the file directly to the `External links` section.
 
-![Symbol Mode gif](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/symbol-mode.gif)
+![Symbol Mode gif](/demo/symbol-mode.gif)
 
 ### Editor Navigation:
 
 Launch Switcher++ directly into editor mode using a shortcut, filter the currently open editors to find the `Format your notes` editor and make it active. Then use Switcher++ again to open the `backlinks` side panel.
 
-![Symbol Mode gif](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/editor-mode.gif)
+![Symbol Mode gif](/demo/editor-mode.gif)
 
 ## Search headings instead of filename
 
 Find the file you're looking for by searching through the headings contained in the file, instead of only searching the filename. This mode can be configured to search a) strictly through only the first H1 header, fallback to filename search if there's no match with the H1, b) through all headers, and c) respect the builtin Quick Switcher settings `Show existing only`, `Show attachments`, and `Show all file types`. By default, this mode will display the first top 50 results.
 
-![headings mode preview](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/headings-command.png)
+![headings mode preview](/demo/headings-command.png)
 
 
 ### Search headings configuration
@@ -64,15 +64,15 @@ View, filter, and navigate to any symbol (Canvas Nodes, Headings, Hashtags, Link
 
 ### For active file in the active editor pane
 
-The `Quick Switcher++: Open Symbols for the active editor` command will always trigger Symbol mode for the current **active file in the active editor pane** (the file actively being edited). Meaning, when this command is triggered (either via a hotkey or via the command palette), the list of symbol suggestions will always be symbols from **the active file in the active editor pane** when the command was triggered.
+The `Quick Switcher++: Open Symbols for the active editor` command will always trigger Symbol mode for the current **active file in the active editor pane** (the file actively being edited). Meaning, when this command is triggered (either via a hotkey, command palette, or trigger character), the list of symbol suggestions will always be symbols from **the active file in the active editor pane** when the command was triggered.
 
 ### Embedded Symbol mode: For any other file in the vault, open or not
 
-The Symbol mode trigger character (default `@`) will always trigger Symbol mode for the currently **highlighted suggestion in the switcher**. Meaning, when you open up the switcher and it's displaying a list of your recent files (or a list of file search results), the source file for whichever suggestion is highlighted when you type `@` is the file whose symbols will be displayed. The resulting list of symbol suggestions will be from the file suggestion that was highlighted when the `@` was typed. You can use the navigation keys to select (highlight) which file will be used as the source file before typing `@`.
+The Symbol mode trigger character (default `@`) will trigger Symbol mode for the currently **highlighted suggestion in the switcher**. Meaning, when you open up the switcher and it's displaying a list of your recent files (or a list of file search results), the source file for whichever suggestion is highlighted when you type `@` is the file whose symbols will be displayed. The resulting list of symbol suggestions will be from the file suggestion that was highlighted when the `@` was typed. You can use the navigation keys to select (highlight) which file will be used as the source file before typing `@`.
 
 For example: symbols can be viewed by opening Quick Switcher++, typing some characters to filter and/or using the arrow keys to select (highlight) the file of interest. Then, once the file of interest is selected/highlighted, type the trigger character (default `@`) to view the symbols for the file of interest.
 
-![symbol outline preview](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/symbol-outline.png)
+![symbol outline preview](/demo/symbol-outline.png)
 
 ### Symbol Navigation Configuration
 
@@ -97,7 +97,7 @@ View, and filter all of the currently open editors, and navigate to any of them 
 
 Editors/views from the side panels can be configured to be displayed in the list as well. For example, you could use this to navigate to the `backlinks`, `file explorer`, `tag pane`, etc.. system views/panes directly from the Quick Switcher.
 
-![editor search preview](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/edt-command.png)
+![editor search preview](/demo/edt-command.png)
 
 ### Editor Navigation Configuration
 
@@ -146,11 +146,11 @@ View, filter, and navigate to files that are "related" to the selected input fil
 
 ### For active file in the active editor pane:
 
-The `Quick Switcher++: Open Related Items for the active editor` command will always trigger Related Items mode for the current **active file in the active editor pane** (the file actively being edited). Meaning, when this command is triggered (either via a hotkey or via the command palette), the list of related item suggestions will always be related to **the active file in the active editor pane** when the command was triggered.
+The `Quick Switcher++: Open Related Items for the active editor` command will always trigger Related Items mode for the current **active file in the active editor pane** (the file actively being edited). Meaning, when this command is triggered (either via a hotkey, command palette, or trigger character), the list of related item suggestions will always be related to **the active file in the active editor pane** when the command was triggered.
 
 ### For any other file in the vault, open or not:
 
-The Related Items mode trigger character (default `~`) will always trigger Related Items mode for the currently **highlighted suggestion in the switcher**. Meaning, when you open up the switcher and it's displaying a list of your recent files (or a list of file search results), the source file for whichever suggestion is highlighted when you type `~` is the file whose relations will be displayed. The resulting list of related item suggestions will be for the file suggestion that was highlighted when the `~` was typed. You can use the navigation keys to select (highlight) which file will be used as the source file before typing `~`.
+The Related Items mode trigger character (default `~`) will trigger Related Items mode for the currently **highlighted suggestion in the switcher**. Meaning, when you open up the switcher and it's displaying a list of your recent files (or a list of file search results), the source file for whichever suggestion is highlighted when you type `~` is the file whose relations will be displayed. The resulting list of related item suggestions will be for the file suggestion that was highlighted when the `~` was typed. You can use the navigation keys to select (highlight) which file will be used as the source file before typing `~`.
 
 For example: related items can be viewed by opening Quick Switcher++, typing some characters to filter and/or using the arrow keys to select (highlight) the file of interest. Then, once the file of interest is selected/highlighted, type the trigger character (default `~`) to view the related items for the file of interest.
 
@@ -185,8 +185,7 @@ Quick Filters enable you to quickly narrow down the types of items that appear i
 
 In the demo below, `Quick Switcher++: Open Symbols for the active editor` global command is triggered for the active file. Notice towards the bottom of the Switcher the hotkeys assigned to each result type. The `headings` Quick Filter is triggered using the `Ctrl+Alt+1` hotkey, this restricts the result list to only display Heading results. Multiple Quick Filters are activated using their corresponding hotkeys, and all Quick Filters can be quickly toggle off using `Ctrl+Alt+0`.
 
-![quick filters gif](https://raw.githubusercontent.com/darlal/obsidian-switcher-plus/master/demo/quick-filters.gif)
-
+![quick filters gif](/demo/quick-filters.gif)
 
 ## General Settings
 
@@ -206,13 +205,15 @@ In the demo below, `Quick Switcher++: Open Symbols for the active editor` global
 
 The following Global Commands are registered by the plugin, which can be used for global hotkeys/shortcuts.
 
-* `Quick Switcher++: Open`
+* `Quick Switcher++: Open in Standard Mode`
 * `Quick Switcher++: Open in Editor Mode`
+* `Quick Switcher++: Open Symbols for selected suggestion or editor`
 * `Quick Switcher++: Open Symbols for the active editor`
 * `Quick Switcher++: Open in Workspaces Mode`
 * `Quick Switcher++: Open in Headings Mode`
 * `Quick Switcher++: Open in Bookmarks Mode`
 * `Quick Switcher++: Open in Commands Mode`
+* `Quick Switcher++: Open Related Items for selected suggestion or editor`
 * `Quick Switcher++: Open Related Items for the active editor`
 
 ## Installation
