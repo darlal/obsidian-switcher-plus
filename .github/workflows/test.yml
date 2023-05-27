@@ -62,3 +62,12 @@ jobs:
 
       - name: Test
         run: npm run test
+
+      - name: Diff PR test coverage vs default branch
+        id: testCoverageDiff
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: anuraag016/Jest-Coverage-Diff@V1.4
+        with:
+          fullCoverageDiff: false
+          afterSwitchCommand: "npm ci"
+          delta: 0.5
