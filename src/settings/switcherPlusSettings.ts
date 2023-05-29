@@ -81,6 +81,7 @@ export class SwitcherPlusSettings {
       },
       preserveCommandPaletteLastInput: false,
       preserveQuickSwitcherLastInput: false,
+      shouldCloseModalOnBackspace: false,
     };
   }
 
@@ -461,6 +462,14 @@ export class SwitcherPlusSettings {
 
   set preserveQuickSwitcherLastInput(value: boolean) {
     this.data.preserveQuickSwitcherLastInput = value;
+  }
+
+  get shouldCloseModalOnBackspace(): boolean {
+    return this.data.shouldCloseModalOnBackspace;
+  }
+
+  set shouldCloseModalOnBackspace(value: boolean) {
+    this.data.shouldCloseModalOnBackspace = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

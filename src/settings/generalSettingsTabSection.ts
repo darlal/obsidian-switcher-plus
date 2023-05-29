@@ -58,6 +58,14 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       'showOptionalIndicatorIcons',
     );
 
+    this.addToggleSetting(
+      containerEl,
+      'Allow Backspace key to close the Switcher',
+      'When the search box is empty, pressing the backspace key will close Switcher++.',
+      config.shouldCloseModalOnBackspace,
+      'shouldCloseModalOnBackspace',
+    );
+
     this.showMatchPriorityAdjustments(containerEl, config);
 
     this.addToggleSetting(

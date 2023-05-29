@@ -89,6 +89,7 @@ function getDefaultSettingsData(): SettingsData {
     },
     preserveCommandPaletteLastInput: false,
     preserveQuickSwitcherLastInput: false,
+    shouldCloseModalOnBackspace: false,
   };
 
   return data;
@@ -161,6 +162,7 @@ function getTransientSettingsData(): SettingsData {
     },
     preserveCommandPaletteLastInput: chance.bool(),
     preserveQuickSwitcherLastInput: chance.bool(),
+    shouldCloseModalOnBackspace: chance.bool(),
   };
 
   return data;

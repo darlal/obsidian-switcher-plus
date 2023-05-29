@@ -1,3 +1,4 @@
+import { SwitcherPlusSettings } from 'src/settings';
 import {
   AnySuggestion,
   Facet,
@@ -45,6 +46,7 @@ export class SwitcherPlusKeymap {
     public readonly scope: Scope,
     private chooser: Chooser<AnySuggestion>,
     private modal: SwitcherPlus,
+    private config: SwitcherPlusSettings,
   ) {
     if (Platform.isMacOS) {
       this.modKey = 'Meta';
@@ -55,6 +57,7 @@ export class SwitcherPlusKeymap {
     this.initKeysInfo();
     this.registerNavigationBindings(scope);
     this.registerTabBindings(scope);
+    this.registerBackspaceClose(scope);
     this.addDataAttrToInstructionsEl(
       modal.containerEl,
       this.standardInstructionsElSelector,
@@ -222,6 +225,10 @@ export class SwitcherPlusKeymap {
     keys.forEach((v) => {
       scope.register(v[0], v[1], this.useSelectedItem.bind(this));
     });
+  }
+
+  registerBackspaceClose(scope: Scope): void {
+    scope.register([], 'Backspace', this.closeModal.bind(this));
   }
 
   updateKeymapForMode(keymapConfig: KeymapConfig): void {
@@ -397,6 +404,15 @@ export class SwitcherPlusKeymap {
           text: purpose,
         });
       });
+    }
+  }
+
+  closeModal(evt: KeyboardEvent, _ctx: KeymapContext): boolean | void {
+    const { modal, config } = this;
+
+    if (config.shouldCloseModalOnBackspace && !modal?.inputEl.value) {
+      modal.close();
+      evt.preventDefault();
     }
   }
 

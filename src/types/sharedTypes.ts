@@ -319,6 +319,7 @@ export interface SettingsData {
   preserveCommandPaletteLastInput: boolean;
   preserveQuickSwitcherLastInput: boolean;
   quickFilters: FacetSettingsData;
+  shouldCloseModalOnBackspace: boolean;
 }
 
 export type SessionOpts = {

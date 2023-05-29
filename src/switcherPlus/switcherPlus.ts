@@ -32,8 +32,9 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
     constructor(app: App, public plugin: SwitcherPlusPlugin) {
       super(app, plugin.options.builtInSystemOptions);
 
-      plugin.options.shouldShowAlias = this.shouldShowAlias;
-      const exKeymap = new SwitcherPlusKeymap(this.scope, this.chooser, this);
+      const { options } = plugin;
+      options.shouldShowAlias = this.shouldShowAlias;
+      const exKeymap = new SwitcherPlusKeymap(this.scope, this.chooser, this, options);
       this.exMode = new ModeHandler(app, plugin.options, exKeymap);
     }
 
