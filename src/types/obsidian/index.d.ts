@@ -121,6 +121,13 @@ declare module 'obsidian' {
 
   export interface Workspace {
     floatingSplit: WorkspaceRoot;
+    getRecentFiles(options: {
+      showMarkdown: boolean;
+      showCanvas: boolean;
+      showNonImageAttachments: boolean;
+      showImages: boolean;
+      maxCount: number;
+    }): string[];
   }
 
   export interface CanvasNodeElement extends CanvasNodeData {

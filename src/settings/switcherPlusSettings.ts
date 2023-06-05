@@ -82,6 +82,7 @@ export class SwitcherPlusSettings {
       preserveCommandPaletteLastInput: false,
       preserveQuickSwitcherLastInput: false,
       shouldCloseModalOnBackspace: false,
+      maxRecentFileSuggestionsOnInit: 25,
     };
   }
 
@@ -470,6 +471,14 @@ export class SwitcherPlusSettings {
 
   set shouldCloseModalOnBackspace(value: boolean) {
     this.data.shouldCloseModalOnBackspace = value;
+  }
+
+  get maxRecentFileSuggestionsOnInit(): number {
+    return this.data.maxRecentFileSuggestionsOnInit;
+  }
+
+  set maxRecentFileSuggestionsOnInit(value: number) {
+    this.data.maxRecentFileSuggestionsOnInit = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

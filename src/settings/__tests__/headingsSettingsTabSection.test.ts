@@ -13,6 +13,7 @@ describe('headingsSettingsTabSection', () => {
   let config: SwitcherPlusSettings;
   let mockContainerEl: MockProxy<HTMLElement>;
   let addToggleSettingSpy: jest.SpyInstance;
+  let addSliderSettingSpy: jest.SpyInstance;
   let sut: HeadingsSettingsTabSection;
 
   beforeAll(() => {
@@ -23,11 +24,16 @@ describe('headingsSettingsTabSection', () => {
 
     addToggleSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'addToggleSetting');
 
+    addSliderSettingSpy = jest
+      .spyOn(SettingsTabSection.prototype, 'addSliderSetting')
+      .mockReturnValue(mock<Setting>());
+
     sut = new HeadingsSettingsTabSection(mockApp, mockPluginSettingTab, config);
   });
 
   afterAll(() => {
     addToggleSettingSpy.mockRestore();
+    addSliderSettingSpy.mockRestore();
   });
 
   it('should display a header for the section', () => {
@@ -100,6 +106,21 @@ describe('headingsSettingsTabSection', () => {
       expect.any(String),
       config.shouldSearchFilenames,
       'shouldSearchFilenames',
+    );
+
+    addToggleSettingSpy.mockReset();
+  });
+
+  it('should show the maxRecentFileSuggestionsOnInit setting', () => {
+    sut.display(mockContainerEl);
+
+    expect(addSliderSettingSpy).toHaveBeenCalledWith(
+      mockContainerEl,
+      'Max recent files to show',
+      expect.any(String),
+      config.maxRecentFileSuggestionsOnInit,
+      [0, 75, 1],
+      'maxRecentFileSuggestionsOnInit',
     );
 
     addToggleSettingSpy.mockReset();

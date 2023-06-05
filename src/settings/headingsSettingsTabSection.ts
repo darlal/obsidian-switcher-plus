@@ -41,6 +41,15 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
       'shouldSearchFilenames',
     );
 
+    this.addSliderSetting(
+      containerEl,
+      'Max recent files to show',
+      'The maximum number of recent files to show when there is no search term',
+      config.maxRecentFileSuggestionsOnInit,
+      [0, 75, 1],
+      'maxRecentFileSuggestionsOnInit',
+    );
+
     this.showExcludeFolders(containerEl, config);
 
     this.addToggleSetting(

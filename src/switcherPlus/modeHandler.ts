@@ -516,7 +516,12 @@ export class ModeHandler {
   addWorkspaceEnvLists(inputInfo: InputInfo): InputInfo {
     if (inputInfo) {
       const openEditors = (this.getHandler(Mode.EditorList) as EditorHandler).getItems();
-      const openEditorFiles = openEditors.map((v) => v?.view?.file);
+      const openEditorFiles = openEditors
+        .map((v) => v?.view?.file)
+        .filter((file) => !!file);
+
+      const openEditorFilesSet = new Set(openEditorFiles);
+
       const bookmarkedFiles = (this.getHandler(Mode.BookmarksList) as BookmarksHandler)
         .getItems(null)
         .filter((v) => BookmarksHandler.isBookmarksPluginFileItem(v.item) && v.file)
@@ -526,25 +531,37 @@ export class ModeHandler {
       lists.openWorkspaceLeaves = new Set(openEditors);
       lists.openWorkspaceFiles = new Set(openEditorFiles);
       lists.bookmarkedFiles = new Set(bookmarkedFiles);
-      lists.mostRecentFiles = this.getRecentFiles(new Set(openEditorFiles));
+
+      const maxCount =
+        openEditorFilesSet.size + this.settings.maxRecentFileSuggestionsOnInit;
+      lists.mostRecentFiles = this.getRecentFiles(openEditorFilesSet, maxCount);
     }
 
     return inputInfo;
   }
 
-  getRecentFiles(ignoreFiles: Set<TFile>): Set<TFile> {
-    const recentFiles = new Set<TFile>();
-    const { workspace, vault } = this.app;
-    const recentFilePaths = workspace.getLastOpenFiles();
+  getRecentFiles(ignoreFiles: Set<TFile>, maxCount = 75): Set<TFile> {
     ignoreFiles = ignoreFiles ?? new Set<TFile>();
+    const recentFiles = new Set<TFile>();
 
-    recentFilePaths?.forEach((path) => {
-      const file = vault.getAbstractFileByPath(path);
+    if (maxCount > 0) {
+      const { workspace, vault } = this.app;
+      const recentFilePaths = workspace.getRecentFiles({
+        showMarkdown: true,
+        showCanvas: true,
+        showNonImageAttachments: true,
+        showImages: true,
+        maxCount,
+      });
 
-      if (isTFile(file) && !ignoreFiles.has(file)) {
-        recentFiles.add(file);
-      }
-    });
+      recentFilePaths?.forEach((path) => {
+        const file = vault.getAbstractFileByPath(path);
+
+        if (isTFile(file) && !ignoreFiles.has(file)) {
+          recentFiles.add(file);
+        }
+      });
+    }
 
     return recentFiles;
   }

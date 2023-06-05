@@ -967,14 +967,14 @@ describe('modeHandler', () => {
     beforeAll(() => {
       sut = new ModeHandler(mockApp, mockSettings, null);
 
-      mockWorkspace.getLastOpenFiles.mockReturnValue(fileDataKeys);
+      mockWorkspace.getRecentFiles.mockReturnValue(fileDataKeys);
       mockVault.getAbstractFileByPath.mockImplementation(
         (path: string) => fileData[path],
       );
     });
 
     afterAll(() => {
-      mockWorkspace.getLastOpenFiles.mockReset();
+      mockWorkspace.getRecentFiles.mockReset();
       mockVault.getAbstractFileByPath.mockReset();
     });
 

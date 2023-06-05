@@ -90,6 +90,7 @@ function getDefaultSettingsData(): SettingsData {
     preserveCommandPaletteLastInput: false,
     preserveQuickSwitcherLastInput: false,
     shouldCloseModalOnBackspace: false,
+    maxRecentFileSuggestionsOnInit: 25,
   };
 
   return data;
@@ -163,6 +164,7 @@ function getTransientSettingsData(): SettingsData {
     preserveCommandPaletteLastInput: chance.bool(),
     preserveQuickSwitcherLastInput: chance.bool(),
     shouldCloseModalOnBackspace: chance.bool(),
+    maxRecentFileSuggestionsOnInit: chance.integer(),
   };
 
   return data;
