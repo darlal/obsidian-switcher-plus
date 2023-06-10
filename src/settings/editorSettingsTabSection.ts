@@ -17,6 +17,14 @@ export class EditorSettingsTabSection extends SettingsTabSection {
     );
 
     this.setIncludeSidePanelViews(containerEl, config);
+
+    this.addToggleSetting(
+      containerEl,
+      'Order default editor list by most recently accessed',
+      'When there is no search term, order the list of editors by most recent access time.',
+      config.orderEditorListByAccessTime,
+      'orderEditorListByAccessTime',
+    );
   }
 
   setIncludeSidePanelViews(containerEl: HTMLElement, config: SwitcherPlusSettings) {

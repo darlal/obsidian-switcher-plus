@@ -639,23 +639,34 @@ describe('Handler', () => {
   });
 
   describe('getOpenLeaves', () => {
+    let mockLeaf1: MockProxy<WorkspaceLeaf>;
+    let mockLeaf2: MockProxy<WorkspaceLeaf>;
+    let mockLeaf3: MockProxy<WorkspaceLeaf>;
+
+    beforeAll(() => {
+      mockLeaf1 = makeLeaf();
+      mockLeaf2 = makeLeaf();
+      mockLeaf3 = makeLeaf();
+    });
+
     it('should return all leaves', () => {
       const excludeMainViewTypes = ['exclude'];
       const includeSideViewTypes = ['include'];
 
-      const l1 = makeLeaf();
-      l1.getRoot.mockReturnValue(mockWorkspace.rootSplit);
+      mockLeaf1.getRoot.mockReturnValueOnce(mockWorkspace.rootSplit);
 
-      const l2 = makeLeaf();
-      l2.getRoot.mockReturnValue(mockWorkspace.rootSplit);
-      (l2.view as MockProxy<View>).getViewType.mockReturnValue(excludeMainViewTypes[0]);
+      mockLeaf2.getRoot.mockReturnValueOnce(mockWorkspace.rootSplit);
+      (mockLeaf2.view as MockProxy<View>).getViewType.mockReturnValueOnce(
+        excludeMainViewTypes[0],
+      );
 
-      const l3 = makeLeaf();
-      l3.getRoot.mockReturnValue(mockWorkspace.rightSplit);
-      (l3.view as MockProxy<View>).getViewType.mockReturnValue(includeSideViewTypes[0]);
+      mockLeaf3.getRoot.mockReturnValueOnce(mockWorkspace.rightSplit);
+      (mockLeaf3.view as MockProxy<View>).getViewType.mockReturnValueOnce(
+        includeSideViewTypes[0],
+      );
 
-      mockWorkspace.iterateAllLeaves.mockImplementation((callback) => {
-        const leaves = [l1, l2, l3];
+      mockWorkspace.iterateAllLeaves.mockImplementationOnce((callback) => {
+        const leaves = [mockLeaf1, mockLeaf2, mockLeaf3];
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         leaves.forEach((l) => callback(l));
       });
@@ -663,10 +674,56 @@ describe('Handler', () => {
       const results = sut.getOpenLeaves(excludeMainViewTypes, includeSideViewTypes);
 
       expect(results).toHaveLength(2);
-      expect(results).toContain(l1);
-      expect(results).not.toContain(l2);
-      expect(results).toContain(l3);
+      expect(results).toContain(mockLeaf1);
+      expect(results).not.toContain(mockLeaf2);
+      expect(results).toContain(mockLeaf3);
       expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
+    });
+
+    test('with orderByAccessTime enabled, it should return leaves in reverse activeTime order', () => {
+      mockLeaf1.activeTime = 1;
+      mockLeaf2.activeTime = 2;
+      mockLeaf3.activeTime = 3;
+
+      mockLeaf1.getRoot.mockReturnValueOnce(mockWorkspace.rootSplit);
+      mockLeaf2.getRoot.mockReturnValueOnce(mockWorkspace.rootSplit);
+      mockLeaf3.getRoot.mockReturnValueOnce(mockWorkspace.rootSplit);
+
+      mockWorkspace.iterateAllLeaves.mockImplementationOnce((callback) => {
+        const leaves = [mockLeaf2, mockLeaf3, mockLeaf1];
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        leaves.forEach((leaf) => callback(leaf));
+      });
+
+      const results = sut.getOpenLeaves([], [], { orderByAccessTime: true });
+
+      expect(results).toHaveLength(3);
+      expect(results[0]).toBe(mockLeaf3);
+      expect(results[1]).toBe(mockLeaf2);
+      expect(results[2]).toBe(mockLeaf1);
+    });
+
+    test('with orderByAccessTime enabled, it should rank null or undefined times lowest', () => {
+      mockLeaf1.activeTime = 1;
+      mockLeaf2.activeTime = 2;
+      mockLeaf3.activeTime = undefined;
+
+      mockLeaf1.getRoot.mockReturnValueOnce(mockWorkspace.rootSplit);
+      mockLeaf2.getRoot.mockReturnValueOnce(mockWorkspace.rootSplit);
+      mockLeaf3.getRoot.mockReturnValueOnce(mockWorkspace.rootSplit);
+
+      mockWorkspace.iterateAllLeaves.mockImplementationOnce((callback) => {
+        const leaves = [mockLeaf1, mockLeaf3, mockLeaf2];
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        leaves.forEach((leaf) => callback(leaf));
+      });
+
+      const results = sut.getOpenLeaves([], [], { orderByAccessTime: true });
+
+      expect(results).toHaveLength(3);
+      expect(results[0]).toBe(mockLeaf2);
+      expect(results[1]).toBe(mockLeaf1);
+      expect(results[2]).toBe(mockLeaf3);
     });
   });
 

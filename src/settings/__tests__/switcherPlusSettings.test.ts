@@ -91,6 +91,7 @@ function getDefaultSettingsData(): SettingsData {
     preserveQuickSwitcherLastInput: false,
     shouldCloseModalOnBackspace: false,
     maxRecentFileSuggestionsOnInit: 25,
+    orderEditorListByAccessTime: true,
   };
 
   return data;
@@ -165,6 +166,7 @@ function getTransientSettingsData(): SettingsData {
     preserveQuickSwitcherLastInput: chance.bool(),
     shouldCloseModalOnBackspace: chance.bool(),
     maxRecentFileSuggestionsOnInit: chance.integer(),
+    orderEditorListByAccessTime: chance.bool(),
   };
 
   return data;

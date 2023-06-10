@@ -387,11 +387,12 @@ export abstract class Handler<T> {
   getOpenLeaves(
     excludeMainPanelViewTypes?: string[],
     includeSidePanelViewTypes?: string[],
+    options?: { orderByAccessTime?: boolean },
   ): WorkspaceLeaf[] {
     const leaves: WorkspaceLeaf[] = [];
 
     const saveLeaf = (l: WorkspaceLeaf) => {
-      const viewType = l.view?.getViewType();
+      const viewType = l?.view?.getViewType();
 
       if (this.isMainPanelLeaf(l)) {
         if (!excludeMainPanelViewTypes?.includes(viewType)) {
@@ -403,6 +404,15 @@ export abstract class Handler<T> {
     };
 
     this.app.workspace.iterateAllLeaves(saveLeaf);
+
+    if (options?.orderByAccessTime) {
+      leaves.sort((a, b) => {
+        const t1 = a?.activeTime ?? 0;
+        const t2 = b?.activeTime ?? 0;
+        return t2 - t1;
+      });
+    }
+
     return leaves;
   }
 

@@ -83,6 +83,7 @@ export class SwitcherPlusSettings {
       preserveQuickSwitcherLastInput: false,
       shouldCloseModalOnBackspace: false,
       maxRecentFileSuggestionsOnInit: 25,
+      orderEditorListByAccessTime: true,
     };
   }
 
@@ -479,6 +480,14 @@ export class SwitcherPlusSettings {
 
   set maxRecentFileSuggestionsOnInit(value: number) {
     this.data.maxRecentFileSuggestionsOnInit = value;
+  }
+
+  get orderEditorListByAccessTime(): boolean {
+    return this.data.orderEditorListByAccessTime;
+  }
+
+  set orderEditorListByAccessTime(value: boolean) {
+    this.data.orderEditorListByAccessTime = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

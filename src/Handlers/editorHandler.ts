@@ -66,8 +66,15 @@ export class EditorHandler extends Handler<EditorSuggestion> {
   }
 
   getItems(): WorkspaceLeaf[] {
-    const { excludeViewTypes, includeSidePanelViewTypes } = this.settings;
-    return this.getOpenLeaves(excludeViewTypes, includeSidePanelViewTypes);
+    const {
+      excludeViewTypes,
+      includeSidePanelViewTypes,
+      orderEditorListByAccessTime: orderByAccessTime,
+    } = this.settings;
+
+    return this.getOpenLeaves(excludeViewTypes, includeSidePanelViewTypes, {
+      orderByAccessTime,
+    });
   }
 
   renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): boolean {

@@ -106,6 +106,7 @@ Editors/views from the side panels can be configured to be displayed in the list
 |--------------------------|-------------|---------|
 | Editor list mode trigger | Character that will trigger editor list mode in the switcher. | `edt ` |
 | Include side panel views | Show the specified view types from the side panels in the switcher. Add one view type per line. Leave empty to never display side panel editors in the switcher. | `backlink`<br />`image`<br />`markdown`<br />`pdf` |
+| Order default editor list by most recently accessed | **Enabled**: When there is no search term, order the list of open editors by most recent access time. | enabled |
 
 ## Switch Workspaces
 

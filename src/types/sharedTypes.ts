@@ -321,6 +321,7 @@ export interface SettingsData {
   quickFilters: FacetSettingsData;
   shouldCloseModalOnBackspace: boolean;
   maxRecentFileSuggestionsOnInit: number;
+  orderEditorListByAccessTime: boolean;
 }
 
 export type SessionOpts = {
