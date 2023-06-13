@@ -2,6 +2,7 @@ import { Chance } from 'chance';
 import { anyFunction, mock, mockClear, mockFn, mockReset } from 'jest-mock-extended';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
+  App,
   Chooser,
   KeymapContext,
   KeymapEventHandler,
@@ -30,11 +31,12 @@ describe('SwitcherPlusKeymap', () => {
   const mockModalContainer = mock<HTMLElement>();
   const mockModal = mock<SwitcherPlus>({ containerEl: mockModalContainer });
   const mockConfig = mock<SwitcherPlusSettings>();
+  const mockApp = mock<App>({});
 
   it('should add a data-mode attribute to the standard instructions element', () => {
     const mockEl = mock<HTMLElement>();
     mockModalContainer.querySelector.mockReturnValueOnce(mockEl);
-    new SwitcherPlusKeymap(mockScope, mockChooser, mockModal, mockConfig);
+    new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, mockConfig);
 
     expect(mockEl.setAttribute).toHaveBeenCalledWith('data-mode', 'standard');
   });
@@ -43,7 +45,13 @@ describe('SwitcherPlusKeymap', () => {
     let sut: SwitcherPlusKeymap;
 
     beforeAll(() => {
-      sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal, mockConfig);
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        mockModal,
+        mockConfig,
+      );
     });
 
     it('should save the value provided for isOpen', () => {
@@ -67,7 +75,7 @@ describe('SwitcherPlusKeymap', () => {
     it.each(navKeys)(
       'should register Next/Previous navigation keys: ctrl-%s/%s',
       (nextKey, previousKey) => {
-        new SwitcherPlusKeymap(mockScope, mockChooser, mockModal, mockConfig);
+        new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, mockConfig);
 
         expect(mockScope.register).toHaveBeenCalledWith(
           expect.arrayContaining(['Ctrl']),
@@ -97,7 +105,13 @@ describe('SwitcherPlusKeymap', () => {
 
         mockChooser.selectedItem = selectedIndex;
 
-        const sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal, mockConfig);
+        const sut = new SwitcherPlusKeymap(
+          mockApp,
+          mockScope,
+          mockChooser,
+          mockModal,
+          mockConfig,
+        );
         sut.isOpen = true; // here
 
         evtHandlers[nextKey](mockKeyboardEvent, mock<KeymapContext>({ key: nextKey }));
@@ -131,7 +145,13 @@ describe('SwitcherPlusKeymap', () => {
 
         mockChooser.selectedItem = selectedIndex;
 
-        const sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal, mockConfig);
+        const sut = new SwitcherPlusKeymap(
+          mockApp,
+          mockScope,
+          mockChooser,
+          mockModal,
+          mockConfig,
+        );
         sut.isOpen = false; // here
 
         evtHandlers[nextKey](
@@ -161,7 +181,7 @@ describe('SwitcherPlusKeymap', () => {
         [[modKey], 'o'],
       ];
 
-      new SwitcherPlusKeymap(mockScope, mockChooser, mockModal, mockConfig);
+      new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, mockConfig);
 
       // convert to [][] so each call can be checked separately
       const expected = keys.map(([modifiers, key]) => {
@@ -179,7 +199,7 @@ describe('SwitcherPlusKeymap', () => {
     });
 
     it('should register backspace key to close the modal', () => {
-      new SwitcherPlusKeymap(mockScope, mockChooser, mockModal, mockConfig);
+      new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, mockConfig);
 
       expect(mockScope.register).toHaveBeenCalledWith(
         [],
@@ -195,7 +215,13 @@ describe('SwitcherPlusKeymap', () => {
         inputEl: mock<HTMLInputElement>({ value: '' }),
       });
 
-      const sut = new SwitcherPlusKeymap(mockScope, mockChooser, emptyModal, mockConfig);
+      const sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        emptyModal,
+        mockConfig,
+      );
 
       sut.closeModal(mock<KeyboardEvent>(), null);
 
@@ -211,7 +237,13 @@ describe('SwitcherPlusKeymap', () => {
         inputEl: mock<HTMLInputElement>({ value: chance.word() }),
       });
 
-      const sut = new SwitcherPlusKeymap(mockScope, mockChooser, emptyModal, mockConfig);
+      const sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        emptyModal,
+        mockConfig,
+      );
 
       sut.closeModal(mock<KeyboardEvent>(), null);
 
@@ -249,7 +281,13 @@ describe('SwitcherPlusKeymap', () => {
       // use a new one for each test since it's stateful
       // Note: the new instance should be created before clearing the other objects
       // because it's constructor makes calls to scope.register()
-      sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal, mockConfig);
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        mockModal,
+        mockConfig,
+      );
 
       mockReset(mockInstructionsEl);
       mockReset(mockScope);
@@ -351,7 +389,13 @@ describe('SwitcherPlusKeymap', () => {
     let sut: SwitcherPlusKeymap;
 
     beforeAll(() => {
-      sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal, mockConfig);
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        mockModal,
+        mockConfig,
+      );
     });
 
     beforeEach(() => {
@@ -375,7 +419,13 @@ describe('SwitcherPlusKeymap', () => {
   describe('useSelectedItem', () => {
     it('should forward the keyboard event to the modal chooser', () => {
       const mockEvt = mock<KeyboardEvent>();
-      const sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal, mockConfig);
+      const sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        mockModal,
+        mockConfig,
+      );
 
       sut.useSelectedItem(mockEvt, null);
 
@@ -387,7 +437,13 @@ describe('SwitcherPlusKeymap', () => {
     let sut: SwitcherPlusKeymap;
 
     beforeAll(() => {
-      sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal, mockConfig);
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        mockModal,
+        mockConfig,
+      );
     });
 
     beforeEach(() => {
@@ -535,7 +591,13 @@ describe('SwitcherPlusKeymap', () => {
     let mockInstructionEl: HTMLSpanElement;
 
     beforeAll(() => {
-      sut = new SwitcherPlusKeymap(mockScope, mockChooser, mockModal, mockConfig);
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        mockModal,
+        mockConfig,
+      );
 
       mockInstructionEl = mock<HTMLDivElement>();
       mockModal.modalEl = mock<HTMLElement>({

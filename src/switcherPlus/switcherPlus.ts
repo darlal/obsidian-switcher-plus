@@ -34,8 +34,14 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
 
       const { options } = plugin;
       options.shouldShowAlias = this.shouldShowAlias;
-      const exKeymap = new SwitcherPlusKeymap(this.scope, this.chooser, this, options);
-      this.exMode = new ModeHandler(app, plugin.options, exKeymap);
+      const exKeymap = new SwitcherPlusKeymap(
+        app,
+        this.scope,
+        this.chooser,
+        this,
+        options,
+      );
+      this.exMode = new ModeHandler(app, options, exKeymap);
     }
 
     openInMode(mode: Mode, sessionOpts?: SessionOpts): void {

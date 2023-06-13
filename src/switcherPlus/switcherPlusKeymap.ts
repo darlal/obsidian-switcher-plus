@@ -16,6 +16,7 @@ import {
   KeymapInfo,
   Instruction,
   Platform,
+  App,
 } from 'obsidian';
 
 export type CustomKeymapInfo = Omit<KeymapEventHandler, 'scope'> &
@@ -43,6 +44,7 @@ export class SwitcherPlusKeymap {
   }
 
   constructor(
+    public app: App,
     public readonly scope: Scope,
     private chooser: Chooser<AnySuggestion>,
     private modal: SwitcherPlus,
