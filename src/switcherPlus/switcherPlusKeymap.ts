@@ -1,8 +1,10 @@
 import { SwitcherPlusSettings } from 'src/settings';
+import { generateMarkdownLink } from 'src/utils';
 import {
   AnySuggestion,
   Facet,
   FacetSettingsData,
+  InsertLinkConfig,
   KeymapConfig,
   Mode,
   SwitcherPlus,
@@ -17,6 +19,8 @@ import {
   Instruction,
   Platform,
   App,
+  WorkspaceLeaf,
+  MarkdownView,
 } from 'obsidian';
 
 export type CustomKeymapInfo = Omit<KeymapEventHandler, 'scope'> &
@@ -30,10 +34,16 @@ export class SwitcherPlusKeymap {
   private standardInstructionsElSelector = '.prompt-instructions';
   private standardInstructionsElDataValue = 'standard';
 
-  modKey: Modifier = 'Ctrl';
-  modKeyText = 'ctrl';
-  shiftKeyText = 'shift';
   readonly facetKeysInfo: Array<CustomKeymapInfo & { facet: Facet }> = [];
+  readonly insertIntoEditorKeysInfo: CustomKeymapInfo[] = [];
+  modKey: Modifier = 'Ctrl';
+  modifierToPlatformStrMap: Record<Modifier, string> = {
+    Mod: 'Ctrl',
+    Ctrl: 'Ctrl',
+    Meta: 'Win',
+    Alt: 'Alt',
+    Shift: 'Shift',
+  };
 
   get isOpen(): boolean {
     return this._isOpen;
@@ -52,8 +62,13 @@ export class SwitcherPlusKeymap {
   ) {
     if (Platform.isMacOS) {
       this.modKey = 'Meta';
-      this.modKeyText = '⌘';
-      this.shiftKeyText = '⇧';
+      this.modifierToPlatformStrMap = {
+        Mod: '⌘',
+        Ctrl: '⌃',
+        Meta: '⌘',
+        Alt: '⌥',
+        Shift: '⇧',
+      };
     }
 
     this.initKeysInfo();
@@ -91,7 +106,7 @@ export class SwitcherPlusKeymap {
         modifiers: null,
         key: null,
         func: null,
-        command: `${this.modKeyText} ↵`,
+        command: this.commandDisplayStr(['Mod'], '↵'),
         purpose: 'open in new tab',
       },
       {
@@ -100,7 +115,7 @@ export class SwitcherPlusKeymap {
         modifiers: this.modKey,
         key: '\\',
         func: null,
-        command: `${this.modKeyText} \\`,
+        command: this.commandDisplayStr(['Mod'], '\\'),
         purpose: 'open to the right',
       },
       {
@@ -109,7 +124,7 @@ export class SwitcherPlusKeymap {
         modifiers: `${this.modKey},Shift`,
         key: '\\',
         func: null,
-        command: `${this.modKeyText} ${this.shiftKeyText} \\`,
+        command: this.commandDisplayStr(['Mod', 'Shift'], '\\'),
         purpose: 'open below',
       },
       {
@@ -118,7 +133,7 @@ export class SwitcherPlusKeymap {
         modifiers: this.modKey,
         key: 'o',
         func: null,
-        command: `${this.modKeyText} o`,
+        command: this.commandDisplayStr(['Mod'], 'o'),
         purpose: 'open in new window',
       },
       {
@@ -233,8 +248,59 @@ export class SwitcherPlusKeymap {
     scope.register([], 'Backspace', this.closeModal.bind(this));
   }
 
+  updateInsertIntoEditorCommand(
+    mode: Mode,
+    activeEditor: WorkspaceLeaf,
+    customKeysInfo: CustomKeymapInfo[],
+    insertConfig: InsertLinkConfig,
+  ): CustomKeymapInfo {
+    const { isEnabled, keymap, insertableEditorTypes } = insertConfig;
+    let keyInfo: CustomKeymapInfo = null;
+
+    if (isEnabled) {
+      const excludedModes = [Mode.CommandList, Mode.WorkspaceList];
+      const activeViewType = activeEditor?.view?.getViewType();
+
+      const isExcluded =
+        (activeViewType && !insertableEditorTypes.includes(activeViewType)) ||
+        excludedModes.includes(mode);
+
+      if (!isExcluded) {
+        keyInfo = customKeysInfo.find((v) => v.purpose === keymap.purpose);
+
+        if (!keyInfo) {
+          const { modifiers, key, purpose } = keymap;
+          keyInfo = {
+            isInstructionOnly: false,
+            modes: [],
+            func: null,
+            command: this.commandDisplayStr(modifiers, key),
+            modifiers: modifiers.join(','),
+            key,
+            purpose,
+          };
+
+          customKeysInfo.push(keyInfo);
+        }
+
+        // update the handler to capture the active editor
+        keyInfo.func = () => {
+          const { modal, chooser } = this;
+          modal.close();
+          const item = chooser.values?.[chooser.selectedItem];
+          this.insertIntoEditorAsLink(item, activeEditor, insertConfig);
+          return false;
+        };
+
+        keyInfo.modes = [mode];
+      }
+    }
+
+    return keyInfo;
+  }
+
   updateKeymapForMode(keymapConfig: KeymapConfig): void {
-    const { mode } = keymapConfig;
+    const { mode, activeLeaf } = keymapConfig;
     const {
       modal,
       scope,
@@ -242,7 +308,15 @@ export class SwitcherPlusKeymap {
       standardKeysInfo,
       customKeysInfo,
       facetKeysInfo,
+      config: { insertLinkInEditor },
     } = this;
+
+    this.updateInsertIntoEditorCommand(
+      mode,
+      activeLeaf,
+      customKeysInfo,
+      insertLinkInEditor,
+    );
 
     const customKeymaps = customKeysInfo.filter((v) => !v.isInstructionOnly);
     this.unregisterKeys(scope, customKeymaps);
@@ -251,9 +325,15 @@ export class SwitcherPlusKeymap {
     this.unregisterKeys(scope, facetKeysInfo);
     facetKeysInfo.length = 0;
 
+    const customKeysToAdd = customKeymaps.filter((v) => v.modes?.includes(mode));
+
     if (mode === Mode.Standard) {
       this.registerKeys(scope, savedStandardKeysInfo);
       savedStandardKeysInfo.length = 0;
+
+      // after (re)registering the standard keys, register any custom keys that
+      // should also work in standard mode
+      this.registerKeys(scope, customKeysToAdd);
 
       this.toggleStandardInstructions(modal.containerEl, true);
     } else {
@@ -262,7 +342,6 @@ export class SwitcherPlusKeymap {
         savedStandardKeysInfo.push(...standardKeysRemoved);
       }
 
-      const customKeysToAdd = customKeymaps.filter((v) => v.modes?.includes(mode));
       this.registerKeys(scope, customKeysToAdd);
       this.registerFacetBinding(scope, keymapConfig);
 
@@ -284,9 +363,17 @@ export class SwitcherPlusKeymap {
     let i = scope.keys.length;
     while (i--) {
       const keymap = scope.keys[i];
-      const foundIndex = keysToRemove.findIndex(
-        (kInfo) => kInfo.modifiers === keymap.modifiers && kInfo.key === keymap.key,
-      );
+      const foundIndex = keysToRemove.findIndex((kRemove) => {
+        // when the 'Mod' modifier is registered, it gets translated to the platform
+        // specific version 'Meta' on MacOS or Ctrl on others, so when unregistering
+        // account for this conversion
+        const kRemoveModifiers = kRemove.modifiers
+          .split(',')
+          .map((modifier) => (modifier === 'Mod' ? this.modKey : modifier))
+          .join(',');
+
+        return kRemoveModifiers === keymap.modifiers && kRemove.key === keymap.key;
+      });
 
       if (foundIndex >= 0) {
         scope.unregister(keymap);
@@ -422,7 +509,34 @@ export class SwitcherPlusKeymap {
     this.chooser.useSelectedItem(evt);
   }
 
-  private navigateItems(evt: KeyboardEvent, ctx: KeymapContext): boolean | void {
+  insertIntoEditorAsLink(
+    sugg: AnySuggestion,
+    activeLeaf: WorkspaceLeaf,
+    insertConfig: InsertLinkConfig,
+  ): void {
+    const {
+      app: { workspace, fileManager },
+    } = this;
+
+    const activeMarkdownView = workspace.getActiveViewOfType(MarkdownView);
+    const isActiveMarkdown = activeMarkdownView?.leaf === activeLeaf;
+    const activeFile = activeMarkdownView?.file;
+
+    if (isActiveMarkdown && activeFile) {
+      const linkStr = generateMarkdownLink(
+        fileManager,
+        sugg,
+        activeFile.path,
+        insertConfig,
+      );
+
+      if (linkStr) {
+        activeMarkdownView.editor?.replaceSelection(linkStr);
+      }
+    }
+  }
+
+  navigateItems(evt: KeyboardEvent, ctx: KeymapContext): boolean | void {
     const { isOpen, chooser } = this;
 
     if (isOpen) {
@@ -434,5 +548,19 @@ export class SwitcherPlusKeymap {
     }
 
     return false;
+  }
+
+  commandDisplayStr(modifiers: Modifier[], key: string): string {
+    modifiers = modifiers ?? [];
+    key = key ?? '';
+    const { modifierToPlatformStrMap } = this;
+
+    const modifierStr = modifiers
+      .map((modifier) => {
+        return modifierToPlatformStrMap[modifier]?.toLocaleLowerCase();
+      })
+      .join(' ');
+
+    return `${modifierStr} ${key}`;
   }
 }

@@ -4,6 +4,7 @@ import { QuickSwitcherOptions } from 'obsidian';
 import { FACETS_ALL } from './facetConstants';
 import {
   FacetSettingsData,
+  InsertLinkConfig,
   Mode,
   PathDisplayFormat,
   RelationType,
@@ -84,6 +85,17 @@ export class SwitcherPlusSettings {
       shouldCloseModalOnBackspace: false,
       maxRecentFileSuggestionsOnInit: 25,
       orderEditorListByAccessTime: true,
+      insertLinkInEditor: {
+        isEnabled: true,
+        keymap: {
+          modifiers: ['Mod'],
+          key: 'i',
+          purpose: 'insert in editor',
+        },
+        insertableEditorTypes: ['markdown'],
+        useBasenameAsAlias: true,
+        useHeadingAsAlias: true,
+      },
     };
   }
 
@@ -488,6 +500,14 @@ export class SwitcherPlusSettings {
 
   set orderEditorListByAccessTime(value: boolean) {
     this.data.orderEditorListByAccessTime = value;
+  }
+
+  get insertLinkInEditor(): InsertLinkConfig {
+    return this.data.insertLinkInEditor;
+  }
+
+  set insertLinkInEditor(value: InsertLinkConfig) {
+    this.data.insertLinkInEditor = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

@@ -1,17 +1,31 @@
 import { Chance } from 'chance';
-import { anyFunction, mock, mockClear, mockFn, mockReset } from 'jest-mock-extended';
 import { SwitcherPlusSettings } from 'src/settings';
+import { CustomKeymapInfo, SwitcherPlusKeymap } from 'src/switcherPlus';
+import { generateMarkdownLink } from 'src/utils';
+import {
+  MockProxy,
+  anyFunction,
+  mock,
+  mockClear,
+  mockFn,
+  mockReset,
+} from 'jest-mock-extended';
 import {
   App,
   Chooser,
   KeymapContext,
   KeymapEventHandler,
   KeymapEventListener,
+  MarkdownView,
   Modifier,
   Platform,
   Scope,
+  View,
+  Workspace,
+  WorkspaceLeaf,
+  TFile,
+  Editor,
 } from 'obsidian';
-import { CustomKeymapInfo, SwitcherPlusKeymap } from 'src/switcherPlus';
 import {
   AnySuggestion,
   KeymapConfig,
@@ -19,7 +33,10 @@ import {
   SwitcherPlus,
   Facet,
   FacetSettingsData,
+  InsertLinkConfig,
 } from 'src/types';
+
+jest.mock('src/utils/utils');
 
 const chance = new Chance();
 
@@ -31,7 +48,10 @@ describe('SwitcherPlusKeymap', () => {
   const mockModalContainer = mock<HTMLElement>();
   const mockModal = mock<SwitcherPlus>({ containerEl: mockModalContainer });
   const mockConfig = mock<SwitcherPlusSettings>();
-  const mockApp = mock<App>({});
+  const mockWorkspace = mock<Workspace>();
+  const mockApp = mock<App>({
+    workspace: mockWorkspace,
+  });
 
   it('should add a data-mode attribute to the standard instructions element', () => {
     const mockEl = mock<HTMLElement>();
@@ -250,6 +270,162 @@ describe('SwitcherPlusKeymap', () => {
       expect(emptyModal.close).not.toHaveBeenCalled();
 
       mockConfig.shouldCloseModalOnBackspace = false;
+    });
+  });
+
+  describe('updateInsertIntoEditorCommand', () => {
+    let sut: SwitcherPlusKeymap;
+    let customKeysInfo: CustomKeymapInfo[];
+    const mode = Mode.Standard;
+    const insertableViewType = 'supportedViewType';
+    const mockInsertConfig = mock<InsertLinkConfig>();
+    const mockEditor = mock<WorkspaceLeaf>({
+      view: mock<View>(),
+    });
+
+    beforeAll(() => {
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        mockModal,
+        mockConfig,
+      );
+    });
+
+    afterEach(() => {
+      mockReset(mockEditor);
+      mockReset(mockInsertConfig);
+      mockReset(mockModal);
+
+      mockInsertConfig.isEnabled = true;
+      mockInsertConfig.insertableEditorTypes = [insertableViewType];
+
+      (mockEditor.view as MockProxy<View>).getViewType.mockReturnValue(
+        insertableViewType,
+      );
+    });
+
+    test('with isEnabled set to false, it should return null', () => {
+      customKeysInfo = [];
+      mockInsertConfig.isEnabled = false;
+
+      const result = sut.updateInsertIntoEditorCommand(
+        mode,
+        mockEditor,
+        customKeysInfo,
+        mockInsertConfig,
+      );
+
+      expect(customKeysInfo).toHaveLength(0);
+      expect(result).toBeNull();
+    });
+
+    test('when the active editor type is excluded, it should return null', () => {
+      // exclude supportedViewType from the allowed view types
+      mockInsertConfig.insertableEditorTypes = [];
+      customKeysInfo = [];
+
+      const result = sut.updateInsertIntoEditorCommand(
+        mode,
+        mockEditor,
+        customKeysInfo,
+        mockInsertConfig,
+      );
+
+      expect(customKeysInfo).toHaveLength(0);
+      expect(result).toBeNull();
+    });
+
+    it("should create a keymap if it doesn't exist", () => {
+      customKeysInfo = [];
+      const { keymap } = mockInsertConfig;
+      keymap.key = 'x';
+      keymap.modifiers = ['Alt', 'Ctrl'];
+      keymap.purpose = chance.word();
+
+      const result = sut.updateInsertIntoEditorCommand(
+        mode,
+        mockEditor,
+        customKeysInfo,
+        mockInsertConfig,
+      );
+
+      expect(customKeysInfo).toHaveLength(1);
+      expect(customKeysInfo[0]).toBe(result);
+      expect(result.key).toBe(keymap.key);
+      expect(result.purpose).toBe(keymap.purpose);
+      expect(result.modifiers).toBe(keymap.modifiers.join(','));
+      expect(result.isInstructionOnly).toBeFalsy();
+    });
+
+    test('when the keymap already exists, it should update the keymap handler function', () => {
+      customKeysInfo = [
+        {
+          isInstructionOnly: false,
+          modes: [Mode.HeadingsList],
+          func: null,
+          command: null,
+          modifiers: null,
+          key: null,
+          purpose: null,
+        },
+      ];
+
+      const result = sut.updateInsertIntoEditorCommand(
+        mode,
+        mockEditor,
+        customKeysInfo,
+        mockInsertConfig,
+      );
+
+      expect(result.func).not.toBeNull();
+      expect(result.modes[0]).toBe(Mode.Standard);
+    });
+
+    test('the keymap handler should close the modal when executed', () => {
+      customKeysInfo = [];
+
+      const insertSpy = jest.spyOn(sut, 'insertIntoEditorAsLink').mockReturnValueOnce();
+
+      const result = sut.updateInsertIntoEditorCommand(
+        mode,
+        mockEditor,
+        customKeysInfo,
+        mockInsertConfig,
+      );
+
+      // simulate the keymap being triggered
+      result.func(mock<KeyboardEvent>(), mock<KeymapContext>());
+
+      expect(mockModal.close).toHaveBeenCalled();
+      expect(insertSpy).toHaveBeenCalled();
+
+      insertSpy.mockRestore();
+    });
+
+    test('the keymap handler should insert a link into the editor', () => {
+      customKeysInfo = [];
+
+      const linkText = chance.word();
+      const mockView = mock<MarkdownView>({ editor: mock<Editor>() });
+      mockView.leaf = mockEditor;
+      mockView.file = new TFile();
+
+      mockWorkspace.getActiveViewOfType.mockReturnValueOnce(mockView);
+      jest.mocked(generateMarkdownLink).mockReturnValueOnce(linkText);
+
+      const result = sut.updateInsertIntoEditorCommand(
+        mode,
+        mockEditor,
+        customKeysInfo,
+        mockInsertConfig,
+      );
+
+      // simulate the keymap being triggered
+      result.func(mock<KeyboardEvent>(), mock<KeymapContext>());
+
+      expect(mockView.editor.replaceSelection).toHaveBeenCalledWith(linkText);
     });
   });
 

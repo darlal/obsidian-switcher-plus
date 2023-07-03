@@ -182,7 +182,7 @@ export class ModeHandler {
     const { mode } = inputInfo;
     lastInputInfoByMode[mode] = inputInfo;
 
-    this.updatedKeymapForMode(inputInfo, chooser, modal, exKeymap, settings);
+    this.updatedKeymapForMode(inputInfo, chooser, modal, exKeymap, settings, activeLeaf);
 
     if (mode !== Mode.Standard) {
       if (mode === Mode.HeadingsList && inputInfo.parsedCommand().parsedInput?.length) {
@@ -204,6 +204,7 @@ export class ModeHandler {
     modal: SwitcherPlus,
     exKeymap: SwitcherPlusKeymap,
     settings: SwitcherPlusSettings,
+    activeLeaf: WorkspaceLeaf,
   ): void {
     const { mode } = inputInfo;
     const handler = this.getHandler(mode);
@@ -220,7 +221,15 @@ export class ModeHandler {
       }
 
       // refresh the suggestion list after changing the list of active facets
-      this.updatedKeymapForMode(inputInfo, chooser, modal, exKeymap, settings);
+      this.updatedKeymapForMode(
+        inputInfo,
+        chooser,
+        modal,
+        exKeymap,
+        settings,
+        activeLeaf,
+      );
+
       this.getSuggestions(inputInfo, chooser, modal);
 
       // prevent default handling of key press afterwards
@@ -229,6 +238,7 @@ export class ModeHandler {
 
     const keymapConfig: KeymapConfig = {
       mode,
+      activeLeaf,
       facets: {
         facetList,
         facetSettings: settings.quickFilters,

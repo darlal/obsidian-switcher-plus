@@ -1,18 +1,37 @@
-import { TFile } from 'obsidian';
-import { LinkType } from 'src/types';
+import { FileManager, TFile } from 'obsidian';
+import {
+  BookmarksSuggestion,
+  LinkType,
+  RelationType,
+  SuggestionType,
+  SymbolType,
+} from 'src/types';
 import {
   filenameFromPath,
   stripMDExtensionFromPath,
   isSystemSuggestion,
   matcherFnForRegExList,
   getLinkType,
+  generateMarkdownLink,
 } from 'src/utils';
 import {
+  getTags,
   makeAliasSuggestion,
+  makeBookmarkedFileSuggestion,
+  makeBookmarksPluginFileItem,
+  makeBookmarksPluginFolderItem,
   makeFileSuggestion,
+  makeHeading,
+  makeHeadingSuggestion,
   makeLink,
+  makeRelatedItemsSuggestion,
+  makeSymbolSuggestion,
   makeUnresolvedSuggestion,
 } from '@fixtures';
+import { mock, mockReset } from 'jest-mock-extended';
+import { Chance } from 'chance';
+
+const chance = new Chance();
 
 describe('utils', () => {
   describe('isSystemSuggestion', () => {
@@ -154,6 +173,182 @@ describe('utils', () => {
     it('should parse as header link', () => {
       const link = makeLink('foo#bar', '[[foo#bar]]');
       expect(getLinkType(link)).toBe(LinkType.Heading);
+    });
+  });
+
+  describe('generateMarkdownLink', () => {
+    const activeFile = new TFile();
+    const activeFilePath = activeFile.path;
+    const destFile = new TFile();
+    let mockFileManager: FileManager;
+
+    beforeAll(() => {
+      mockFileManager = mock<FileManager>();
+    });
+
+    afterEach(() => {
+      mockReset(mockFileManager);
+    });
+
+    it('should generate a link for Unresolved suggestions', () => {
+      const dest = chance.word();
+      const sugg = makeUnresolvedSuggestion(dest);
+
+      const result = generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+
+      expect(result).toBe(`[[${dest}]]`);
+    });
+
+    it('should generate a link for Alias suggestions', () => {
+      const alias = chance.word();
+      const sugg = makeAliasSuggestion(destFile, alias);
+
+      generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+
+      expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
+        destFile,
+        activeFilePath,
+        null,
+        alias,
+      );
+    });
+
+    it('should generate a link for File Bookmark suggestions', () => {
+      const sugg = makeBookmarkedFileSuggestion({
+        file: destFile,
+        item: makeBookmarksPluginFileItem({ path: destFile.path }),
+      });
+
+      generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+
+      expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
+        destFile,
+        activeFilePath,
+        null,
+        destFile.basename,
+      );
+    });
+
+    it('should generate a link for File Bookmark suggestions with the bookmark title as the link alias', () => {
+      const title = chance.word();
+      const sugg = makeBookmarkedFileSuggestion({
+        file: destFile,
+        item: makeBookmarksPluginFileItem({ path: destFile.path, title }),
+      });
+
+      generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+
+      expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
+        destFile,
+        activeFilePath,
+        null,
+        title,
+      );
+    });
+
+    it('should not generate a link for non-file Bookmark suggestions', () => {
+      const item = makeBookmarksPluginFolderItem();
+      const sugg: BookmarksSuggestion = {
+        type: SuggestionType.Bookmark,
+        item,
+        bookmarkPath: item.path,
+        file: null,
+        match: null,
+      };
+
+      const result = generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+
+      expect(result).toBeNull();
+      expect(mockFileManager.generateMarkdownLink).not.toHaveBeenCalled();
+    });
+
+    it('should generate a link for Heading suggestions', () => {
+      const heading = chance.sentence();
+      const sugg = makeHeadingSuggestion(makeHeading(heading, 1), destFile);
+
+      generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+
+      expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
+        destFile,
+        activeFilePath,
+        `#${heading}`,
+        heading,
+      );
+    });
+
+    test('with useHeadingAsAlias disabled, it should generate a link for Heading suggestions with file basename as alias', () => {
+      const heading = chance.sentence();
+      const sugg = makeHeadingSuggestion(makeHeading(heading, 1), destFile);
+
+      generateMarkdownLink(mockFileManager, sugg, activeFilePath, {
+        useHeadingAsAlias: false,
+      });
+
+      expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
+        destFile,
+        activeFilePath,
+        `#${heading}`,
+        destFile.basename,
+      );
+    });
+
+    test('with useBasenameAsAlias disabled, it should generate a link without an alias', () => {
+      const sugg = makeFileSuggestion(destFile);
+
+      generateMarkdownLink(mockFileManager, sugg, activeFilePath, {
+        useBasenameAsAlias: false,
+      });
+
+      expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
+        destFile,
+        activeFilePath,
+        null,
+        null,
+      );
+    });
+
+    it('should generate a link for heading Symbol suggestions that points directly to the heading in the destination file', () => {
+      const heading = chance.sentence();
+      const sugg = makeSymbolSuggestion(
+        makeHeading(heading, 1),
+        SymbolType.Heading,
+        destFile,
+      );
+
+      generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+
+      expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
+        destFile,
+        activeFilePath,
+        `#${heading}`,
+        heading,
+      );
+    });
+
+    it('should generate a link for non-heading Symbol suggestions that points the destination file', () => {
+      const sugg = makeSymbolSuggestion(getTags()[0], SymbolType.Tag, destFile);
+
+      generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+
+      expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
+        destFile,
+        activeFilePath,
+        null,
+        destFile.basename,
+      );
+    });
+
+    it('should generate a link for unresolved RelatedItems suggestions', () => {
+      const dest = chance.word();
+      const sugg = makeRelatedItemsSuggestion({
+        relationType: RelationType.OutgoingLink,
+        unresolvedText: dest,
+        file: null,
+      });
+
+      const result = generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+
+      expect(result).toBe(`[[${dest}]]`);
     });
   });
 });

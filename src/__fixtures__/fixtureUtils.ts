@@ -83,7 +83,7 @@ export function makeBookmarksPluginFolderItem(
   return {
     type: 'folder',
     title: options?.title ?? '',
-    path: options?.path ?? `path/to/${chance.word()}.md`,
+    path: options?.path ?? `path/to/${chance.word()}`,
   };
 }
 

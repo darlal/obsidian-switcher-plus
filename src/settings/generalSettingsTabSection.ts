@@ -67,6 +67,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     );
 
     this.showMatchPriorityAdjustments(containerEl, config);
+    this.showInsertLinkInEditor(containerEl, config);
 
     this.addToggleSetting(
       containerEl,
@@ -223,5 +224,35 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         config.save();
       },
     );
+  }
+
+  showInsertLinkInEditor(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
+    this.createSetting(containerEl, 'Insert link in editor', '');
+
+    let setting = this.addToggleSetting(
+      containerEl,
+      'Use filename as alias',
+      'When enabled, the file basename will be set as the link alias.',
+      config.insertLinkInEditor.useBasenameAsAlias,
+      null,
+      (value, config) => {
+        config.insertLinkInEditor.useBasenameAsAlias = value;
+        config.save();
+      },
+    );
+    setting.setClass('qsp-setting-item-indent');
+
+    setting = this.addToggleSetting(
+      containerEl,
+      'Use heading as alias',
+      'When enabled, the file heading will be set as the link alias. This overrides the "use filename as alias" setting.',
+      config.insertLinkInEditor.useHeadingAsAlias,
+      null,
+      (value, config) => {
+        config.insertLinkInEditor.useHeadingAsAlias = value;
+        config.save();
+      },
+    );
+    setting.setClass('qsp-setting-item-indent');
   }
 }

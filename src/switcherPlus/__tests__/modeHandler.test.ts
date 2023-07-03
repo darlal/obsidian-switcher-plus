@@ -1100,6 +1100,7 @@ describe('modeHandler', () => {
         mockModal,
         mockKeymap,
         mockSettings,
+        null,
       );
 
       // ensure the facet is not active to start with
@@ -1125,6 +1126,7 @@ describe('modeHandler', () => {
         mockModal,
         mockKeymap,
         mockSettings,
+        null,
       );
 
       // start with at least one facet being active
@@ -1151,6 +1153,7 @@ describe('modeHandler', () => {
         mockModal,
         mockKeymap,
         mockSettings,
+        null,
       );
 
       // start with all facets being inactive

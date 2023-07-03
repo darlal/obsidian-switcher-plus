@@ -7,6 +7,7 @@ import {
   TagCache,
   TFile,
   PluginInstance,
+  FileManager,
 } from 'obsidian';
 import {
   SymbolSuggestion,
@@ -190,4 +191,92 @@ export function getLinkType(linkCache: LinkCache): LinkType {
   }
 
   return type;
+}
+
+export function generateMarkdownLink(
+  fileManager: FileManager,
+  sugg: AnySuggestion,
+  sourcePath: string,
+  options?: { useBasenameAsAlias?: boolean; useHeadingAsAlias?: boolean },
+): string {
+  let linkStr: string = null;
+  options = Object.assign({ useBasenameAsAlias: true, useHeadingAsAlias: true }, options);
+
+  if (sugg) {
+    let destFile: TFile = null;
+    let alias = null;
+    let subpath = null;
+    const fileSuggTypes = [
+      SuggestionType.Alias,
+      SuggestionType.Bookmark,
+      SuggestionType.HeadingsList,
+      SuggestionType.SymbolList,
+      SuggestionType.RelatedItemsList,
+      SuggestionType.EditorList,
+      SuggestionType.File,
+    ];
+
+    const linkStrForUnresolved = (unresolvedStr: string) => `[[${unresolvedStr}]]`;
+
+    const linkSubPathForHeading = (heading: string) => {
+      return {
+        subpath: `#${heading}`,
+        alias: options.useHeadingAsAlias ? heading : null,
+      };
+    };
+
+    switch (sugg.type) {
+      case SuggestionType.Unresolved:
+        linkStr = linkStrForUnresolved(sugg.linktext);
+        break;
+      case SuggestionType.Alias:
+        alias = sugg.alias;
+        break;
+      case SuggestionType.Bookmark: {
+        const { item } = sugg;
+        if (item.type === 'file' && item.title) {
+          alias = item.title;
+        }
+        break;
+      }
+      case SuggestionType.HeadingsList: {
+        const { heading } = sugg.item;
+        ({ subpath, alias } = linkSubPathForHeading(heading));
+        break;
+      }
+      case SuggestionType.SymbolList: {
+        const {
+          item: { symbol },
+        } = sugg;
+
+        if (isHeadingCache(symbol)) {
+          ({ subpath, alias } = linkSubPathForHeading(symbol.heading));
+        }
+        break;
+      }
+      case SuggestionType.RelatedItemsList: {
+        const { item } = sugg;
+        if (item.unresolvedText) {
+          linkStr = linkStrForUnresolved(item.unresolvedText);
+        }
+        break;
+      }
+    }
+
+    // for file based suggestions, get the destination file
+    if (fileSuggTypes.includes(sugg.type)) {
+      destFile = (sugg as { file: TFile }).file;
+    }
+
+    if (destFile && !linkStr) {
+      // if an alias has be not identified use the filename as alias
+      if (!alias && options.useBasenameAsAlias) {
+        alias = destFile.basename;
+      }
+
+      linkStr = fileManager.generateMarkdownLink(destFile, sourcePath, subpath, alias);
+    }
+  }
+
+  return linkStr;
 }

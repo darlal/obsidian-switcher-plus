@@ -433,4 +433,54 @@ describe('generalSettingsTabSection', () => {
       mockPluginSettingTab.display.mockClear();
     });
   });
+
+  describe('showInsertLinkInEditor', () => {
+    type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
+    let toggleSettingOnChangeFn: addToggleSettingArgs[5];
+    let saveSettingsSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      saveSettingsSpy = jest.spyOn(config, 'saveSettings');
+    });
+
+    afterAll(() => {
+      saveSettingsSpy.mockRestore();
+    });
+
+    it.each([
+      {
+        settingKey: 'useBasenameAsAlias',
+        settingName: 'Use filename as alias',
+      },
+      {
+        settingKey: 'useHeadingAsAlias',
+        settingName: 'Use heading as alias',
+      },
+    ])('should save changes to $settingKey setting', ({ settingKey, settingName }) => {
+      const initialValue = false;
+      const finalValue = true;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const insertConfig = config.insertLinkInEditor as Record<string, any>;
+      insertConfig[settingKey] = initialValue;
+
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+        if (args[1] === settingName) {
+          toggleSettingOnChangeFn = args[5];
+        }
+
+        return mock<Setting>();
+      });
+
+      sut.showInsertLinkInEditor(mockContainerEl, config);
+
+      // trigger the change/save
+      toggleSettingOnChangeFn(finalValue, config);
+
+      expect(saveSettingsSpy).toHaveBeenCalled();
+      expect(insertConfig[settingKey]).toBe(finalValue);
+
+      addToggleSettingSpy.mockReset();
+    });
+  });
 });

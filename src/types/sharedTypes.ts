@@ -16,7 +16,7 @@ import {
   Modifier,
   BookmarksPluginItem,
 } from 'obsidian';
-import type { SuggestModal } from 'obsidian';
+import type { Hotkey, SuggestModal } from 'obsidian';
 import { PickKeys, WritableKeys } from 'ts-essentials';
 import { AllCanvasNodeData } from 'obsidian/canvas';
 
@@ -270,11 +270,20 @@ export interface SearchResultWithFallback {
 
 export type KeymapConfig = {
   mode: Mode;
+  activeLeaf?: WorkspaceLeaf;
   facets?: {
     facetSettings: FacetSettingsData;
     facetList: Facet[];
     onToggleFacet: (facets: Facet[], isReset: boolean) => boolean;
   };
+};
+
+export type InsertLinkConfig = {
+  isEnabled: boolean;
+  insertableEditorTypes: string[];
+  useBasenameAsAlias: boolean;
+  useHeadingAsAlias: boolean;
+  keymap: Hotkey & { purpose: string };
 };
 
 export interface SettingsData {
@@ -322,6 +331,7 @@ export interface SettingsData {
   shouldCloseModalOnBackspace: boolean;
   maxRecentFileSuggestionsOnInit: number;
   orderEditorListByAccessTime: boolean;
+  insertLinkInEditor: InsertLinkConfig;
 }
 
 export type SessionOpts = {

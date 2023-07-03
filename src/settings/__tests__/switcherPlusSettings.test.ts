@@ -92,6 +92,17 @@ function getDefaultSettingsData(): SettingsData {
     shouldCloseModalOnBackspace: false,
     maxRecentFileSuggestionsOnInit: 25,
     orderEditorListByAccessTime: true,
+    insertLinkInEditor: {
+      isEnabled: true,
+      keymap: {
+        modifiers: ['Mod'],
+        key: 'i',
+        purpose: 'insert in editor',
+      },
+      insertableEditorTypes: ['markdown'],
+      useBasenameAsAlias: true,
+      useHeadingAsAlias: true,
+    },
   };
 
   return data;
@@ -167,6 +178,17 @@ function getTransientSettingsData(): SettingsData {
     shouldCloseModalOnBackspace: chance.bool(),
     maxRecentFileSuggestionsOnInit: chance.integer(),
     orderEditorListByAccessTime: chance.bool(),
+    insertLinkInEditor: {
+      isEnabled: chance.bool(),
+      keymap: {
+        modifiers: chance.pickset(['Meta', 'Shift'], 1),
+        key: chance.letter(),
+        purpose: chance.sentence(),
+      },
+      insertableEditorTypes: ['markdown'],
+      useBasenameAsAlias: chance.bool(),
+      useHeadingAsAlias: chance.bool(),
+    },
   };
 
   return data;
