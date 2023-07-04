@@ -47,7 +47,7 @@ describe('SwitcherPlusKeymap', () => {
   const mockChooser = mock<Chooser<AnySuggestion>>();
   const mockModalContainer = mock<HTMLElement>();
   const mockModal = mock<SwitcherPlus>({ containerEl: mockModalContainer });
-  const mockConfig = mock<SwitcherPlusSettings>();
+  const mockConfig = mock<SwitcherPlusSettings>({ closeWhenEmptyKeys: [] });
   const mockWorkspace = mock<Workspace>();
   const mockApp = mock<App>({
     workspace: mockWorkspace,
@@ -59,6 +59,17 @@ describe('SwitcherPlusKeymap', () => {
     new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, mockConfig);
 
     expect(mockEl.setAttribute).toHaveBeenCalledWith('data-mode', 'standard');
+  });
+
+  it('should remove the builtin Tab hotkey binding', () => {
+    mockConfig.removeDefaultTabBinding = true;
+
+    const mockKeymap = mock<KeymapEventHandler>({ modifiers: null, key: 'Tab' });
+    mockScope.keys.push(mockKeymap);
+
+    new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, mockConfig);
+
+    expect(mockScope.unregister).toHaveBeenCalledWith(mockKeymap);
   });
 
   describe('isOpen property', () => {
@@ -82,6 +93,7 @@ describe('SwitcherPlusKeymap', () => {
   });
 
   describe('registerNavigationBindings', () => {
+    const config = new SwitcherPlusSettings(null);
     const navKeys = [
       ['n', 'p'],
       ['j', 'k'],
@@ -95,18 +107,18 @@ describe('SwitcherPlusKeymap', () => {
     it.each(navKeys)(
       'should register Next/Previous navigation keys: ctrl-%s/%s',
       (nextKey, previousKey) => {
-        new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, mockConfig);
+        new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, config);
 
         expect(mockScope.register).toHaveBeenCalledWith(
           expect.arrayContaining(['Ctrl']),
           nextKey,
-          expect.anything(),
+          expect.any(Function),
         );
 
         expect(mockScope.register).toHaveBeenCalledWith(
           expect.arrayContaining(['Ctrl']),
           previousKey,
-          expect.anything(),
+          expect.any(Function),
         );
       },
     );
@@ -130,7 +142,7 @@ describe('SwitcherPlusKeymap', () => {
           mockScope,
           mockChooser,
           mockModal,
-          mockConfig,
+          config,
         );
         sut.isOpen = true; // here
 
@@ -170,7 +182,7 @@ describe('SwitcherPlusKeymap', () => {
           mockScope,
           mockChooser,
           mockModal,
-          mockConfig,
+          config,
         );
         sut.isOpen = false; // here
 
@@ -188,7 +200,7 @@ describe('SwitcherPlusKeymap', () => {
     );
   });
 
-  describe('registerTabBindings', () => {
+  describe('registerEditorTabBindings', () => {
     beforeEach(() => {
       mockReset(mockScope);
     });
@@ -213,23 +225,25 @@ describe('SwitcherPlusKeymap', () => {
     });
   });
 
-  describe('registerBackspaceClose', () => {
+  describe('registerCloseWhenEmptyBindings', () => {
+    const config = new SwitcherPlusSettings(null);
+
     beforeEach(() => {
       mockReset(mockScope);
     });
 
     it('should register backspace key to close the modal', () => {
-      new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, mockConfig);
+      new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, config);
 
       expect(mockScope.register).toHaveBeenCalledWith(
-        [],
+        null,
         'Backspace',
         expect.any(Function),
       );
     });
 
     test('with shouldCloseModalOnBackspace enabled it should close the modal when the search box is empty', () => {
-      mockConfig.shouldCloseModalOnBackspace = true;
+      config.shouldCloseModalOnBackspace = true;
       const emptyModal = mock<SwitcherPlus>({
         containerEl: mockModalContainer,
         inputEl: mock<HTMLInputElement>({ value: '' }),
@@ -240,10 +254,10 @@ describe('SwitcherPlusKeymap', () => {
         mockScope,
         mockChooser,
         emptyModal,
-        mockConfig,
+        config,
       );
 
-      sut.closeModal(mock<KeyboardEvent>(), null);
+      sut.closeModalIfEmpty(mock<KeyboardEvent>(), null);
 
       expect(emptyModal.close).toHaveBeenCalled();
 
@@ -251,7 +265,7 @@ describe('SwitcherPlusKeymap', () => {
     });
 
     test('with shouldCloseModalOnBackspace enabled it should not close the modal when the search box has text', () => {
-      mockConfig.shouldCloseModalOnBackspace = true;
+      config.shouldCloseModalOnBackspace = true;
       const emptyModal = mock<SwitcherPlus>({
         containerEl: mockModalContainer,
         inputEl: mock<HTMLInputElement>({ value: chance.word() }),
@@ -262,10 +276,10 @@ describe('SwitcherPlusKeymap', () => {
         mockScope,
         mockChooser,
         emptyModal,
-        mockConfig,
+        config,
       );
 
-      sut.closeModal(mock<KeyboardEvent>(), null);
+      sut.closeModalIfEmpty(mock<KeyboardEvent>(), null);
 
       expect(emptyModal.close).not.toHaveBeenCalled();
 

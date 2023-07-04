@@ -103,6 +103,18 @@ function getDefaultSettingsData(): SettingsData {
       useBasenameAsAlias: true,
       useHeadingAsAlias: true,
     },
+    removeDefaultTabBinding: true,
+    navigationKeys: {
+      nextKeys: [
+        { modifiers: ['Ctrl'], key: 'n' },
+        { modifiers: ['Ctrl'], key: 'j' },
+      ],
+      prevKeys: [
+        { modifiers: ['Ctrl'], key: 'p' },
+        { modifiers: ['Ctrl'], key: 'k' },
+      ],
+    },
+    closeWhenEmptyKeys: [{ modifiers: null, key: 'Backspace' }],
   };
 
   return data;
@@ -189,6 +201,27 @@ function getTransientSettingsData(): SettingsData {
       useBasenameAsAlias: chance.bool(),
       useHeadingAsAlias: chance.bool(),
     },
+    removeDefaultTabBinding: chance.bool(),
+    navigationKeys: {
+      nextKeys: [
+        {
+          modifiers: chance.pickset(['Alt', 'Ctrl', 'Meta', 'Shift'], 2),
+          key: chance.letter(),
+        },
+      ],
+      prevKeys: [
+        {
+          modifiers: chance.pickset(['Alt', 'Ctrl', 'Meta', 'Shift'], 2),
+          key: chance.letter(),
+        },
+      ],
+    },
+    closeWhenEmptyKeys: [
+      {
+        modifiers: chance.pickset(['Alt', 'Ctrl'], 1),
+        key: chance.letter(),
+      },
+    ],
   };
 
   return data;

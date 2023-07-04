@@ -1,11 +1,12 @@
 import { getSystemSwitcherInstance } from 'src/utils';
 import type SwitcherPlusPlugin from 'src/main';
-import { QuickSwitcherOptions } from 'obsidian';
+import { Hotkey, QuickSwitcherOptions } from 'obsidian';
 import { FACETS_ALL } from './facetConstants';
 import {
   FacetSettingsData,
   InsertLinkConfig,
   Mode,
+  NavigationKeysConfig,
   PathDisplayFormat,
   RelationType,
   SettingsData,
@@ -96,6 +97,18 @@ export class SwitcherPlusSettings {
         useBasenameAsAlias: true,
         useHeadingAsAlias: true,
       },
+      removeDefaultTabBinding: true,
+      navigationKeys: {
+        nextKeys: [
+          { modifiers: ['Ctrl'], key: 'n' },
+          { modifiers: ['Ctrl'], key: 'j' },
+        ],
+        prevKeys: [
+          { modifiers: ['Ctrl'], key: 'p' },
+          { modifiers: ['Ctrl'], key: 'k' },
+        ],
+      },
+      closeWhenEmptyKeys: [{ modifiers: null, key: 'Backspace' }],
     };
   }
 
@@ -508,6 +521,30 @@ export class SwitcherPlusSettings {
 
   set insertLinkInEditor(value: InsertLinkConfig) {
     this.data.insertLinkInEditor = value;
+  }
+
+  get removeDefaultTabBinding(): boolean {
+    return this.data.removeDefaultTabBinding;
+  }
+
+  set removeDefaultTabBinding(value: boolean) {
+    this.data.removeDefaultTabBinding = value;
+  }
+
+  get navigationKeys(): NavigationKeysConfig {
+    return this.data.navigationKeys;
+  }
+
+  set navigationKeys(value: NavigationKeysConfig) {
+    this.data.navigationKeys = value;
+  }
+
+  get closeWhenEmptyKeys(): Hotkey[] {
+    return this.data.closeWhenEmptyKeys;
+  }
+
+  set closeWhenEmptyKeys(value: Hotkey[]) {
+    this.data.closeWhenEmptyKeys = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

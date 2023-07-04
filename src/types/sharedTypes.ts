@@ -15,8 +15,9 @@ import {
   SectionCache,
   Modifier,
   BookmarksPluginItem,
+  Hotkey,
 } from 'obsidian';
-import type { Hotkey, SuggestModal } from 'obsidian';
+import type { SuggestModal } from 'obsidian';
 import { PickKeys, WritableKeys } from 'ts-essentials';
 import { AllCanvasNodeData } from 'obsidian/canvas';
 
@@ -286,6 +287,11 @@ export type InsertLinkConfig = {
   keymap: Hotkey & { purpose: string };
 };
 
+export type NavigationKeysConfig = {
+  nextKeys: Hotkey[];
+  prevKeys: Hotkey[];
+};
+
 export interface SettingsData {
   version: string;
   onOpenPreferNewTab: boolean;
@@ -332,6 +338,9 @@ export interface SettingsData {
   maxRecentFileSuggestionsOnInit: number;
   orderEditorListByAccessTime: boolean;
   insertLinkInEditor: InsertLinkConfig;
+  removeDefaultTabBinding: boolean;
+  navigationKeys: NavigationKeysConfig;
+  closeWhenEmptyKeys: Hotkey[];
 }
 
 export type SessionOpts = {

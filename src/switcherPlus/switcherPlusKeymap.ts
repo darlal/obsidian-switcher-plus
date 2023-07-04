@@ -7,6 +7,7 @@ import {
   InsertLinkConfig,
   KeymapConfig,
   Mode,
+  NavigationKeysConfig,
   SwitcherPlus,
 } from 'src/types';
 import {
@@ -21,6 +22,7 @@ import {
   App,
   WorkspaceLeaf,
   MarkdownView,
+  Hotkey,
 } from 'obsidian';
 
 export type CustomKeymapInfo = Omit<KeymapEventHandler, 'scope'> &
@@ -72,9 +74,10 @@ export class SwitcherPlusKeymap {
     }
 
     this.initKeysInfo();
-    this.registerNavigationBindings(scope);
-    this.registerTabBindings(scope);
-    this.registerBackspaceClose(scope);
+    this.removeDefaultTabKeyBinding(scope, config);
+    this.registerNavigationBindings(scope, config.navigationKeys);
+    this.registerEditorTabBindings(scope);
+    this.registerCloseWhenEmptyBindings(scope, config);
     this.addDataAttrToInstructionsEl(
       modal.containerEl,
       this.standardInstructionsElSelector,
@@ -160,17 +163,30 @@ export class SwitcherPlusKeymap {
     this.customKeysInfo.push(...customKeysInfo);
   }
 
-  registerNavigationBindings(scope: Scope): void {
-    const keys: [Modifier[], string][] = [
-      [['Ctrl'], 'n'],
-      [['Ctrl'], 'p'],
-      [['Ctrl'], 'j'],
-      [['Ctrl'], 'k'],
-    ];
+  removeDefaultTabKeyBinding(scope: Scope, config: SwitcherPlusSettings): void {
+    if (config?.removeDefaultTabBinding) {
+      // 07/04/2023: Obsidian registers a binding for Tab key that only returns false
+      // remove this binding so Tab can be remapped
+      const keymap = scope.keys.find(
+        ({ modifiers, key }) => modifiers === null && key === 'Tab',
+      );
 
-    keys.forEach((v) => {
-      scope.register(v[0], v[1], this.navigateItems.bind(this));
-    });
+      scope.unregister(keymap);
+    }
+  }
+
+  registerNavigationBindings(scope: Scope, navConfig: NavigationKeysConfig): void {
+    const regKeys = (keys: Hotkey[], isNext: boolean) => {
+      keys.forEach(({ modifiers, key }) => {
+        scope.register(modifiers, key, (evt, _ctx) => {
+          this.navigateItems(evt, isNext);
+          return false;
+        });
+      });
+    };
+
+    regKeys(navConfig?.nextKeys ?? [], true);
+    regKeys(navConfig?.prevKeys ?? [], false);
   }
 
   registerFacetBinding(scope: Scope, keymapConfig: KeymapConfig): void {
@@ -232,7 +248,7 @@ export class SwitcherPlusKeymap {
     }
   }
 
-  registerTabBindings(scope: Scope): void {
+  registerEditorTabBindings(scope: Scope): void {
     const keys: [Modifier[], string][] = [
       [[this.modKey], '\\'],
       [[this.modKey, 'Shift'], '\\'],
@@ -244,8 +260,12 @@ export class SwitcherPlusKeymap {
     });
   }
 
-  registerBackspaceClose(scope: Scope): void {
-    scope.register([], 'Backspace', this.closeModal.bind(this));
+  registerCloseWhenEmptyBindings(scope: Scope, config: SwitcherPlusSettings): void {
+    const keymaps = config.closeWhenEmptyKeys ?? [];
+
+    keymaps.forEach(({ modifiers, key }) => {
+      scope.register(modifiers, key, this.closeModalIfEmpty.bind(this));
+    });
   }
 
   updateInsertIntoEditorCommand(
@@ -496,7 +516,7 @@ export class SwitcherPlusKeymap {
     }
   }
 
-  closeModal(evt: KeyboardEvent, _ctx: KeymapContext): boolean | void {
+  closeModalIfEmpty(evt: KeyboardEvent, _ctx: KeymapContext): boolean | void {
     const { modal, config } = this;
 
     if (config.shouldCloseModalOnBackspace && !modal?.inputEl.value) {
@@ -536,18 +556,14 @@ export class SwitcherPlusKeymap {
     }
   }
 
-  navigateItems(evt: KeyboardEvent, ctx: KeymapContext): boolean | void {
+  navigateItems(evt: KeyboardEvent, isNext: boolean): void {
     const { isOpen, chooser } = this;
 
     if (isOpen) {
-      const nextKeys = ['n', 'j'];
-
       let index = chooser.selectedItem;
-      index = nextKeys.includes(ctx.key) ? ++index : --index;
+      index = isNext ? ++index : --index;
       chooser.setSelectedItem(index, evt);
     }
-
-    return false;
   }
 
   commandDisplayStr(modifiers: Modifier[], key: string): string {
