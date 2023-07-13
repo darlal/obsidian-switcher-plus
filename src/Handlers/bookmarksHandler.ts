@@ -1,5 +1,5 @@
 import { getInternalEnabledPluginById, isOfType } from 'src/utils';
-import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
+import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 import {
   AnySuggestion,
   BookmarksItemInfo,
@@ -37,15 +37,18 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
     filterText: string,
     _activeSuggestion: AnySuggestion,
     _activeLeaf: WorkspaceLeaf,
-  ): void {
+  ): ParsedCommand {
+    const cmd = inputInfo.parsedCommand(Mode.BookmarksList);
+
     if (this.getEnabledBookmarksPluginInstance()) {
       inputInfo.mode = Mode.BookmarksList;
 
-      const cmd = inputInfo.parsedCommand(Mode.BookmarksList);
       cmd.index = index;
       cmd.parsedInput = filterText;
       cmd.isValidated = true;
     }
+
+    return cmd;
   }
 
   getSuggestions(inputInfo: InputInfo): BookmarksSuggestion[] {

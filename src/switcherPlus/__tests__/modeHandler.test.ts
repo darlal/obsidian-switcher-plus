@@ -648,6 +648,7 @@ describe('modeHandler', () => {
           inputInfo.mode = Mode.HeadingsList;
           const cmd = inputInfo.parsedCommand(Mode.HeadingsList);
           cmd.parsedInput = 'foo';
+          return cmd;
         });
 
       sut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
@@ -678,6 +679,7 @@ describe('modeHandler', () => {
         .spyOn(SymbolHandler.prototype, 'validateCommand')
         .mockImplementation((inputInfo) => {
           inputInfo.mode = Mode.SymbolList;
+          return inputInfo.parsedCommand(Mode.SymbolList);
         });
 
       mockSetSuggestion.calledWith(expectedSuggs).mockImplementationOnce(() => {

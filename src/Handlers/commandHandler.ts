@@ -1,5 +1,5 @@
 import { getInternalPluginById } from 'src/utils';
-import { InputInfo } from 'src/switcherPlus';
+import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import {
   AnySuggestion,
   Mode,
@@ -35,13 +35,15 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     filterText: string,
     _activeSuggestion: AnySuggestion,
     _activeLeaf: WorkspaceLeaf,
-  ): void {
+  ): ParsedCommand {
     inputInfo.mode = Mode.CommandList;
 
-    const commandCmd = inputInfo.parsedCommand(Mode.CommandList);
-    commandCmd.index = index;
-    commandCmd.parsedInput = filterText;
-    commandCmd.isValidated = true;
+    const cmd = inputInfo.parsedCommand(Mode.CommandList);
+    cmd.index = index;
+    cmd.parsedInput = filterText;
+    cmd.isValidated = true;
+
+    return cmd;
   }
 
   getSuggestions(inputInfo: InputInfo): CommandSuggestion[] {

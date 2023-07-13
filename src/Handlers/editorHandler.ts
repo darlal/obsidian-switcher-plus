@@ -9,7 +9,7 @@ import {
   SuggestionType,
   TitleSource,
 } from 'src/types';
-import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
+import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 import { MetadataCache, sortSearchResults, TFile, WorkspaceLeaf } from 'obsidian';
 import { Handler } from './handler';
 
@@ -24,13 +24,15 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     filterText: string,
     _activeSuggestion: AnySuggestion,
     _activeLeaf: WorkspaceLeaf,
-  ): void {
+  ): ParsedCommand {
     inputInfo.mode = Mode.EditorList;
 
-    const editorCmd = inputInfo.parsedCommand(Mode.EditorList);
-    editorCmd.index = index;
-    editorCmd.parsedInput = filterText;
-    editorCmd.isValidated = true;
+    const cmd = inputInfo.parsedCommand(Mode.EditorList);
+    cmd.index = index;
+    cmd.parsedInput = filterText;
+    cmd.isValidated = true;
+
+    return cmd;
   }
 
   getSuggestions(inputInfo: InputInfo): EditorSuggestion[] {

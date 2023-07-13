@@ -37,7 +37,7 @@ import {
   SessionOpts,
 } from 'src/types';
 import { getLinkType, isCalloutCache, isHeadingCache, isTagCache } from 'src/utils';
-import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
+import { InputInfo, ParsedCommand, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler } from './handler';
 import { CANVAS_NODE_FACET_ID_MAP } from 'src/settings';
 
@@ -68,7 +68,8 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     filterText: string,
     activeSuggestion: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
-  ): void {
+  ): ParsedCommand {
+    const cmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
     const sourceInfo = this.getSourceInfoForSymbolOperation(
       activeSuggestion,
       activeLeaf,
@@ -79,13 +80,13 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     if (sourceInfo) {
       inputInfo.mode = Mode.SymbolList;
 
-      const symbolCmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
-
-      symbolCmd.source = sourceInfo;
-      symbolCmd.index = index;
-      symbolCmd.parsedInput = filterText;
-      symbolCmd.isValidated = true;
+      cmd.source = sourceInfo;
+      cmd.index = index;
+      cmd.parsedInput = filterText;
+      cmd.isValidated = true;
     }
+
+    return cmd;
   }
 
   override async getSuggestions(inputInfo: InputInfo): Promise<SymbolSuggestion[]> {

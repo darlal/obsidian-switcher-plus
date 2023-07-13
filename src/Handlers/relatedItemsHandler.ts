@@ -20,7 +20,12 @@ import {
   TitleSource,
   UnresolvedSuggestion,
 } from 'src/types';
-import { InputInfo, SourcedParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
+import {
+  InputInfo,
+  ParsedCommand,
+  SourcedParsedCommand,
+  WorkspaceEnvList,
+} from 'src/switcherPlus';
 import { Handler } from './handler';
 import { isTFile, isUnresolvedSuggestion, matcherFnForRegExList } from 'src/utils';
 
@@ -42,7 +47,8 @@ export class RelatedItemsHandler extends Handler<
     filterText: string,
     activeSuggestion: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
-  ): void {
+  ): ParsedCommand {
+    const cmd = inputInfo.parsedCommand(Mode.RelatedItemsList) as SourcedParsedCommand;
     const sourceInfo = this.getSourceInfo(
       activeSuggestion,
       activeLeaf,
@@ -53,13 +59,13 @@ export class RelatedItemsHandler extends Handler<
     if (sourceInfo) {
       inputInfo.mode = Mode.RelatedItemsList;
 
-      const cmd = inputInfo.parsedCommand(Mode.RelatedItemsList) as SourcedParsedCommand;
-
       cmd.source = sourceInfo;
       cmd.index = index;
       cmd.parsedInput = filterText;
       cmd.isValidated = true;
     }
+
+    return cmd;
   }
 
   getSuggestions(

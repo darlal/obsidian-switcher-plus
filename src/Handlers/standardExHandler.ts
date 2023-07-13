@@ -1,6 +1,6 @@
 import { Handler } from './handler';
 import { MetadataCache, WorkspaceLeaf } from 'obsidian';
-import { InputInfo } from 'src/switcherPlus';
+import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import { isAliasSuggestion, isFileSuggestion } from 'src/utils';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
@@ -27,7 +27,7 @@ export class StandardExHandler extends Handler<SupportedSystemSuggestions> {
     _filterText: string,
     _activeSuggestion: AnySuggestion,
     _activeLeaf: WorkspaceLeaf,
-  ): void {
+  ): ParsedCommand {
     throw new Error('Method not implemented.');
   }
 

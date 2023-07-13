@@ -49,7 +49,7 @@ import { Handler } from '../handler';
 import { SwitcherPlusSettings } from 'src/settings';
 import { stripMDExtensionFromPath } from 'src/utils';
 import { Chance } from 'chance';
-import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
+import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 
 const chance = new Chance();
 
@@ -63,7 +63,7 @@ class SUT extends Handler<AnySuggestion> {
     _filterText: string,
     _activeSuggestion: AnySuggestion,
     _activeLeaf: WorkspaceLeaf,
-  ): void {
+  ): ParsedCommand {
     throw new Error('Method not implemented.');
   }
   getSuggestions(_inputInfo: InputInfo): AnySuggestion[] {

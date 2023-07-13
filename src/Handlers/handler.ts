@@ -34,7 +34,7 @@ import {
   Suggestion,
   SuggestionType,
 } from 'src/types';
-import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
+import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
   getTFileByPath,
@@ -63,7 +63,7 @@ export abstract class Handler<T> {
     filterText: string,
     activeSuggestion: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
-  ): void;
+  ): ParsedCommand;
 
   reset(): void {
     /* noop */

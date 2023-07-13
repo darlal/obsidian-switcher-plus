@@ -7,7 +7,7 @@ import {
   WorkspaceInfo,
   WorkspaceSuggestion,
 } from 'src/types';
-import { InputInfo } from 'src/switcherPlus/inputInfo';
+import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import {
   fuzzySearch,
   InstalledPlugin,
@@ -31,15 +31,18 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
     filterText: string,
     _activeSuggestion: AnySuggestion,
     _activeLeaf: WorkspaceLeaf,
-  ): void {
+  ): ParsedCommand {
+    const cmd = inputInfo.parsedCommand(Mode.WorkspaceList);
+
     if (this.isWorkspacesPluginEnabled()) {
       inputInfo.mode = Mode.WorkspaceList;
 
-      const workspaceCmd = inputInfo.parsedCommand(Mode.WorkspaceList);
-      workspaceCmd.index = index;
-      workspaceCmd.parsedInput = filterText;
-      workspaceCmd.isValidated = true;
+      cmd.index = index;
+      cmd.parsedInput = filterText;
+      cmd.isValidated = true;
     }
+
+    return cmd;
   }
 
   getSuggestions(inputInfo: InputInfo): WorkspaceSuggestion[] {

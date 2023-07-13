@@ -12,7 +12,7 @@ import {
   WorkspaceLeaf,
   TFolder,
 } from 'obsidian';
-import { InputInfo } from 'src/switcherPlus';
+import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import {
   Mode,
   HeadingSuggestion,
@@ -50,13 +50,15 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     filterText: string,
     _activeSuggestion: AnySuggestion,
     _activeLeaf: WorkspaceLeaf,
-  ): void {
+  ): ParsedCommand {
     inputInfo.mode = Mode.HeadingsList;
 
-    const headingsCmd = inputInfo.parsedCommand(Mode.HeadingsList);
-    headingsCmd.index = index;
-    headingsCmd.parsedInput = filterText;
-    headingsCmd.isValidated = true;
+    const cmd = inputInfo.parsedCommand(Mode.HeadingsList);
+    cmd.index = index;
+    cmd.parsedInput = filterText;
+    cmd.isValidated = true;
+
+    return cmd;
   }
 
   onChooseSuggestion(sugg: HeadingSuggestion, evt: MouseEvent | KeyboardEvent): boolean {
