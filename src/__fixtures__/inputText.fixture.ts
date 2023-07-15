@@ -7,6 +7,7 @@ import {
   commandTrigger,
   relatedItemsTrigger,
   bookmarksTrigger,
+  escapeCmdCharTrigger,
 } from './modeTrigger.fixture';
 
 interface InputExpectation {
@@ -28,7 +29,7 @@ const triggerMap = new Map<Mode, string>([
   [Mode.WorkspaceList, workspaceTrigger],
 ]);
 
-function makeInputExpectation(
+export function makeInputExpectation(
   input: string,
   mode: Mode,
   expectedParsedInput?: string,
@@ -262,4 +263,109 @@ export function makeSourcedCmdEmbeddedInputFixture(
       ' ^[]foo    ',
     ),
   ]);
+}
+
+/**
+ * Creates an array of standard mode expectations with command escape characters
+ * @returns InputExpectation[]
+ */
+export function makeEscapedStandardModeInputFixture(): InputExpectation[] {
+  return [
+    makeInputExpectation(
+      `${escapeCmdCharTrigger}${editorTrigger}foo`,
+      Mode.Standard,
+      `${editorTrigger}foo`,
+      false,
+    ),
+    makeInputExpectation(
+      `${escapeCmdCharTrigger}${commandTrigger}foo${escapeCmdCharTrigger}${symbolTrigger}bar`,
+      Mode.Standard,
+      `${commandTrigger}foo${symbolTrigger}bar`,
+      false,
+    ),
+    makeInputExpectation(
+      `1깍2💩3👨‍👩‍👧‍👦4${escapeCmdCharTrigger}${symbolTrigger}bar`,
+      Mode.Standard,
+      `1깍2💩3👨‍👩‍👧‍👦4${symbolTrigger}bar`,
+      false,
+    ),
+    makeInputExpectation(
+      `${escapeCmdCharTrigger}${headingsTrigger} ${escapeCmdCharTrigger}${symbolTrigger}bar${escapeCmdCharTrigger}${symbolTrigger}`,
+      Mode.Standard,
+      `${headingsTrigger} ${symbolTrigger}bar${symbolTrigger}`,
+      false,
+    ),
+  ];
+}
+
+/**
+ * Creates an array of sourced command expectations with command escape characters
+ * @returns InputExpectation[]
+ */
+export function makeEscapedSourcedCommandInputFixture(): InputExpectation[] {
+  return [
+    makeInputExpectation(
+      `${escapeCmdCharTrigger}${bookmarksTrigger}foo ${relatedItemsTrigger} bar`,
+      Mode.RelatedItemsList,
+      ` bar`,
+      true,
+    ),
+    makeInputExpectation(
+      `${headingsTrigger}1깍${escapeCmdCharTrigger}${relatedItemsTrigger}💩${symbolTrigger}3👨‍👩‍👧‍👦4`,
+      Mode.SymbolList,
+      `3👨‍👩‍👧‍👦4`,
+      false,
+    ),
+    makeInputExpectation(
+      `${relatedItemsTrigger}foo ${escapeCmdCharTrigger}${symbolTrigger} bar`,
+      Mode.RelatedItemsList,
+      `foo ${escapeCmdCharTrigger}${symbolTrigger} bar`,
+      true,
+    ),
+    makeInputExpectation(
+      `${escapeCmdCharTrigger}${headingsTrigger}${editorTrigger} foo ${symbolTrigger}${escapeCmdCharTrigger}bar`,
+      Mode.SymbolList,
+      `${escapeCmdCharTrigger}bar`,
+      true,
+    ),
+    makeInputExpectation(
+      `${escapeCmdCharTrigger}${symbolTrigger}${symbolTrigger} bar`,
+      Mode.SymbolList,
+      ` bar`,
+      true,
+    ),
+    makeInputExpectation(
+      `${escapeCmdCharTrigger}${symbolTrigger}foo${relatedItemsTrigger} ${escapeCmdCharTrigger}${escapeCmdCharTrigger}bar`,
+      Mode.RelatedItemsList,
+      ` ${escapeCmdCharTrigger}${escapeCmdCharTrigger}bar`,
+      true,
+    ),
+  ];
+}
+
+/**
+ * Creates an array of prefix command expectations with command escape characters
+ * @returns InputExpectation[]
+ */
+export function makeEscapedPrefixCommandInputFixture(): InputExpectation[] {
+  return [
+    makeInputExpectation(
+      `${editorTrigger}foo${escapeCmdCharTrigger}${relatedItemsTrigger}`,
+      Mode.EditorList,
+      `foo${relatedItemsTrigger}`,
+      true,
+    ),
+    makeInputExpectation(
+      `${headingsTrigger}깍2💩${escapeCmdCharTrigger}${symbolTrigger}3👨‍👩‍👧‍👦`,
+      Mode.HeadingsList,
+      `깍2💩${symbolTrigger}3👨‍👩‍👧‍👦`,
+      false,
+    ),
+    makeInputExpectation(
+      `${headingsTrigger}${escapeCmdCharTrigger}${relatedItemsTrigger}${escapeCmdCharTrigger}${symbolTrigger}`,
+      Mode.HeadingsList,
+      `${relatedItemsTrigger}${symbolTrigger}`,
+      true,
+    ),
+  ];
 }

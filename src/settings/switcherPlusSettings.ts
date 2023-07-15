@@ -112,6 +112,7 @@ export class SwitcherPlusSettings {
       },
       preferredSourceForTitle: 'H1',
       closeWhenEmptyKeys: [{ modifiers: null, key: 'Backspace' }],
+      escapeCmdChar: '!',
     };
   }
 
@@ -564,6 +565,14 @@ export class SwitcherPlusSettings {
 
   set closeWhenEmptyKeys(value: Hotkey[]) {
     this.data.closeWhenEmptyKeys = value;
+  }
+
+  get escapeCmdChar(): string {
+    return this.data.escapeCmdChar;
+  }
+
+  set escapeCmdChar(value: string) {
+    this.data.escapeCmdChar = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

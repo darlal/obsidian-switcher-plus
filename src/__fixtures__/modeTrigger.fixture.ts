@@ -6,4 +6,5 @@ export const headingsTrigger = '<headings-trigger>';
 export const bookmarksTrigger = '<bookmarks-trigger>';
 export const commandTrigger = '<command-trigger>';
 export const relatedItemsTrigger = '<related-trigger>';
-export const relatedItemsActiveTrigger = 'related-active-trigger>';
+export const relatedItemsActiveTrigger = '<related-active-trigger>';
+export const escapeCmdCharTrigger = '<esc-cmd-trigger>';

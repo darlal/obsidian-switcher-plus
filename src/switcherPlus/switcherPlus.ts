@@ -68,6 +68,11 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       }
     }
 
+    getSuggestions(input: string): AnySuggestion[] {
+      const query = this.exMode.inputTextForStandardMode(input);
+      return super.getSuggestions(query);
+    }
+
     onChooseSuggestion(item: AnySuggestion, evt: MouseEvent | KeyboardEvent) {
       if (!this.exMode.onChooseSuggestion(item, evt)) {
         super.onChooseSuggestion(item, evt);

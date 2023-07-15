@@ -352,6 +352,7 @@ export interface SettingsData {
   navigationKeys: NavigationKeysConfig;
   preferredSourceForTitle: TitleSource;
   closeWhenEmptyKeys: Hotkey[];
+  escapeCmdChar: string;
 }
 
 export type SessionOpts = {

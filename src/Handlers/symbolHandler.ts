@@ -274,6 +274,8 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     } else if (activeSuggInfo.isValidSource && !sessionOpts.useActiveEditorAsSource) {
       sourceInfo = activeSuggInfo;
     } else if (activeEditorInfo.isValidSource && isSymbolCmdPrefix) {
+      // Check isSymbolCmdPrefix to prevent the case where an embedded command would
+      // trigger this mode for the active editor.
       sourceInfo = activeEditorInfo;
     }
 

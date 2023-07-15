@@ -288,6 +288,24 @@ describe('symbolHandler', () => {
         }),
       );
     });
+
+    it('should not validate embedded command using active editor as valid source', () => {
+      const expectedMode = Mode.Standard;
+      const input = `${filterText}${symbolTrigger}`;
+      const inputInfo = new InputInfo(input);
+      inputInfo.mode = expectedMode;
+
+      const cmd = sut.validateCommand(
+        inputInfo,
+        input.indexOf(symbolTrigger),
+        '',
+        null,
+        mockRootSplitLeaf,
+      );
+
+      expect(inputInfo.mode).toBe(expectedMode);
+      expect(cmd.isValidated).toBe(false);
+    });
   });
 
   describe('getSuggestions', () => {

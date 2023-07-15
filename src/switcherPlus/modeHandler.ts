@@ -348,8 +348,7 @@ export class ModeHandler {
       this.reset();
     }
 
-    this.validatePrefixCommands(info, activeSugg, activeLeaf);
-    this.validateSourcedCommands(info, activeSugg, activeLeaf);
+    this.validatePrefixCommands(info, activeSugg, activeLeaf, this.settings);
 
     return info;
   }
@@ -391,97 +390,146 @@ export class ModeHandler {
     }
   }
 
-  private validatePrefixCommands(
+  removeEscapeCommandCharFromInput(
+    inputInfo: InputInfo,
+    escapeCmdChar: string,
+    cmdStr: string,
+  ): string {
+    const sansEscapeInput = inputInfo.inputTextSansEscapeChar.replace(
+      new RegExp(`(?:${escapeRegExp(escapeCmdChar)})(?:${escapeRegExp(cmdStr)})`),
+      cmdStr,
+    );
+
+    inputInfo.inputTextSansEscapeChar = sansEscapeInput;
+    return sansEscapeInput;
+  }
+
+  validatePrefixCommands(
     inputInfo: InputInfo,
     activeSugg: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
+    config: SwitcherPlusSettings,
   ): void {
-    const { settings } = this;
+    let cmdStr: string = null;
+    let handler: Handler<AnySuggestion> = null;
+
     const activeEditorCmds = [
-      settings.symbolListActiveEditorCommand,
-      settings.relatedItemsListActiveEditorCommand,
+      config.symbolListActiveEditorCommand,
+      config.relatedItemsListActiveEditorCommand,
     ];
+
     const prefixCmds = [
-      settings.editorListCommand,
-      settings.workspaceListCommand,
-      settings.headingsListCommand,
-      settings.bookmarksListCommand,
-      settings.commandListCommand,
+      config.editorListCommand,
+      config.workspaceListCommand,
+      config.headingsListCommand,
+      config.bookmarksListCommand,
+      config.commandListCommand,
     ]
       .concat(activeEditorCmds)
-      .map((v) => `(${escapeRegExp(v)})`)
+      .map((v) => `(?:${escapeRegExp(v)})`)
       // account for potential overlapping command strings
       .sort((a, b) => b.length - a.length);
 
-    // regex that matches any of the prefix commands, and extract filter text
-    const match = new RegExp(`^(${prefixCmds.join('|')})(.*)$`).exec(inputInfo.inputText);
+    // regex that matches any of the prefix commands
+    const match = new RegExp(
+      `^((?:${escapeRegExp(config.escapeCmdChar)})?)(${prefixCmds.join('|')})`,
+    ).exec(inputInfo.inputText);
 
     if (match) {
-      const cmdStr = match[1];
-      const filterText = match[match.length - 1];
-      const handler = this.getHandler(cmdStr);
+      const containsNegation = !!match[1].length;
+      cmdStr = match[2];
 
-      if (handler) {
-        inputInfo.sessionOpts.useActiveEditorAsSource = activeEditorCmds.includes(cmdStr);
-        handler.validateCommand(
-          inputInfo,
-          match.index,
-          filterText,
-          activeSugg,
-          activeLeaf,
-        );
+      if (containsNegation) {
+        this.removeEscapeCommandCharFromInput(inputInfo, config.escapeCmdChar, cmdStr);
+        cmdStr = null;
+      } else {
+        handler = this.getHandler(cmdStr);
       }
+    }
+
+    const isValidated = this.validateSourcedCommands(
+      inputInfo,
+      cmdStr,
+      activeSugg,
+      activeLeaf,
+      config,
+    );
+
+    if (!isValidated && handler) {
+      inputInfo.sessionOpts.useActiveEditorAsSource = activeEditorCmds.includes(cmdStr);
+
+      // const filterText = match[match.length - 1];
+      const filterText = inputInfo.inputTextSansEscapeChar.slice(cmdStr.length);
+      handler.validateCommand(inputInfo, match.index, filterText, activeSugg, activeLeaf);
     }
   }
 
-  private validateSourcedCommands(
+  validateSourcedCommands(
     inputInfo: InputInfo,
+    parsedPrefixCmd: string,
     activeSugg: AnySuggestion,
     activeLeaf: WorkspaceLeaf,
-  ): void {
-    const { mode, inputText } = inputInfo;
+    config: SwitcherPlusSettings,
+  ): boolean {
+    let isValidated = false;
     const unmatchedHandlers: Handler<AnySuggestion>[] = [];
+    const searchText = inputInfo.inputTextSansEscapeChar;
 
-    // Standard, Headings, Bookmarks, and EditorList mode can have an embedded command
+    // Headings, Bookmarks, and EditorList mode can have an embedded command
     const supportedModes = [
-      Mode.Standard,
-      Mode.EditorList,
-      Mode.HeadingsList,
-      Mode.BookmarksList,
+      config.editorListCommand,
+      config.headingsListCommand,
+      config.bookmarksListCommand,
     ];
 
-    if (supportedModes.includes(mode)) {
-      const { settings } = this;
-      const embeddedCmds = [settings.symbolListCommand, settings.relatedItemsListCommand]
-        .map((v) => `(${escapeRegExp(v)})`)
+    // A falsy parsedPrefixCmd indicates Standard mode since no prefix command was matched
+    if (!parsedPrefixCmd || supportedModes.includes(parsedPrefixCmd)) {
+      let match: RegExpExecArray = null;
+
+      const sourcedCmds = [config.symbolListCommand, config.relatedItemsListCommand]
+        .map((v) => `(?:${escapeRegExp(v)})`)
         .sort((a, b) => b.length - a.length);
 
-      // regex that matches any sourced command, and extract filter text
-      const match = new RegExp(`(${embeddedCmds.join('|')})(.*)$`).exec(inputText);
+      const re = new RegExp(
+        `((?:${escapeRegExp(config.escapeCmdChar)})?)(${sourcedCmds.join('|')})`,
+        'g',
+      );
 
-      if (match) {
-        const cmdStr = match[1];
-        const filterText = match[match.length - 1];
-        const handler = this.getHandler(cmdStr);
+      while ((match = re.exec(searchText)) !== null) {
+        const containsNegation = !!match[1].length;
+        const cmdStr = match[2];
 
-        if (handler) {
-          handler.validateCommand(
-            inputInfo,
-            match.index,
-            filterText,
-            activeSugg,
-            activeLeaf,
-          );
+        if (containsNegation) {
+          this.removeEscapeCommandCharFromInput(inputInfo, config.escapeCmdChar, cmdStr);
+        } else {
+          const filterText = searchText.slice(re.lastIndex);
+          const handler = this.getHandler(cmdStr);
+
+          if (handler) {
+            const cmd = handler.validateCommand(
+              inputInfo,
+              match.index,
+              filterText,
+              activeSugg,
+              activeLeaf,
+            );
+
+            isValidated = !!cmd?.isValidated;
+
+            // Find all sourced handlers that did not match
+            const unmatched = this.getSourcedHandlers().filter((v) => v !== handler);
+            unmatchedHandlers.push(...unmatched);
+          }
+
+          break;
         }
-
-        // find all sourced handlers that did not match
-        unmatchedHandlers.push(...this.getSourcedHandlers().filter((v) => v != handler));
       }
     }
 
     // if unmatchedHandlers has items then there was a match, so reset all others
     // otherwise reset all sourced handlers
     this.resetSourcedHandlers(unmatchedHandlers.length ? unmatchedHandlers : null);
+    return isValidated;
   }
 
   private static setActiveSuggestion(mode: Mode, chooser: Chooser<AnySuggestion>): void {
@@ -585,6 +633,17 @@ export class ModeHandler {
     }
 
     return recentFiles;
+  }
+
+  inputTextForStandardMode(input: string): string {
+    const { mode, inputTextSansEscapeChar } = this.inputInfo;
+    let searchText = input;
+
+    if (mode === Mode.Standard && inputTextSansEscapeChar?.length) {
+      searchText = inputTextSansEscapeChar;
+    }
+
+    return searchText;
   }
 
   private getHandler(

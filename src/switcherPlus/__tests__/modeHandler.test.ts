@@ -69,6 +69,10 @@ import {
   makeBookmarkedFileSuggestion,
   symbolActiveTrigger,
   relatedItemsActiveTrigger,
+  escapeCmdCharTrigger,
+  makeEscapedStandardModeInputFixture,
+  makeEscapedPrefixCommandInputFixture,
+  makeEscapedSourcedCommandInputFixture,
 } from '@fixtures';
 
 const chance = new Chance();
@@ -179,14 +183,29 @@ describe('modeHandler', () => {
       commandListCommand: commandTrigger,
       relatedItemsListCommand: relatedItemsTrigger,
       relatedItemsListActiveEditorCommand: relatedItemsActiveTrigger,
+      escapeCmdChar: escapeCmdCharTrigger,
       excludeViewTypes: [excludedViewType],
       referenceViews: [],
       overrideStandardModeBehaviors: false,
+      preserveCommandPaletteLastInput: false,
+      preserveQuickSwitcherLastInput: false,
     });
   });
 
   afterAll(() => {
     mockDebounce.mockReset();
+  });
+
+  test('inputTextForStandardMode() should return processed input with command escape characters removed in standard mode', () => {
+    const input = `${escapeCmdCharTrigger}${editorTrigger}${escapeCmdCharTrigger}${symbolTrigger}`;
+    const expectedInput = `${editorTrigger}${symbolTrigger}`;
+
+    const sut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
+    sut.updateSuggestions(input, null, null);
+
+    const result = sut.inputTextForStandardMode(input);
+
+    expect(result).toBe(expectedInput);
   });
 
   describe('opening and closing the modal', () => {
@@ -485,7 +504,7 @@ describe('modeHandler', () => {
       '$title: should parse as Mode: $mode using trigger: $trigger',
       ({ mode: triggerMode }) => {
         test.each(makePrefixOnlyInputFixture(triggerMode))(
-          'for input (array data index: $#): "$input"',
+          'with both activeSugg and activeLeaf null for input: "$input" (array data index: $#)',
           ({ input, expected: { mode, isValidated, parsedInput } }) => {
             const inputInfo = sut.determineRunMode(input, null, null);
 
@@ -575,6 +594,48 @@ describe('modeHandler', () => {
         );
       },
     );
+
+    describe('should ignore escaped commands triggers', () => {
+      const fileSuggestion = makeFileSuggestion(null, [[0, 0]], 0);
+      const mockLeaf = makeLeaf();
+
+      test.each(makeEscapedStandardModeInputFixture())(
+        'and parse to STANDARD mode for input: "$input" (array data index: $#)',
+        ({ input, expected: { mode, parsedInput } }) => {
+          const inputInfo = sut.determineRunMode(input, fileSuggestion, mockLeaf);
+
+          expect(inputInfo.mode).toBe(mode);
+          expect(inputInfo.inputText).toBe(input);
+          expect(inputInfo.inputTextSansEscapeChar).toBe(parsedInput);
+        },
+      );
+
+      test.each(makeEscapedPrefixCommandInputFixture())(
+        'and parse to PREFIX mode: "$expected.mode" for input: "$input" (array data index: $#)',
+        ({ input, expected: { mode, parsedInput } }) => {
+          const inputInfo = sut.determineRunMode(input, fileSuggestion, mockLeaf);
+
+          const cmd = inputInfo.parsedCommand(mode);
+          expect(inputInfo.mode).toBe(mode);
+          expect(inputInfo.inputText).toBe(input);
+          expect(cmd.parsedInput).toBe(parsedInput);
+          expect(cmd.isValidated).toBe(true);
+        },
+      );
+
+      test.each(makeEscapedSourcedCommandInputFixture())(
+        'and parse to SOURCED mode: "$expected.mode" for input: "$input" (array data index: $#)',
+        ({ input, expected: { mode, parsedInput } }) => {
+          const inputInfo = sut.determineRunMode(input, fileSuggestion, mockLeaf);
+
+          const cmd = inputInfo.parsedCommand(mode);
+          expect(inputInfo.mode).toBe(mode);
+          expect(inputInfo.inputText).toBe(input);
+          expect(cmd.parsedInput).toBe(parsedInput);
+          expect(cmd.isValidated).toBe(true);
+        },
+      );
+    });
   });
 
   describe('managing suggestions', () => {

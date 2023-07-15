@@ -3,6 +3,7 @@ import { createSwitcherPlus, ModeHandler } from 'src/switcherPlus';
 import { getSystemSwitcherInstance } from 'src/utils';
 import { mock, mockClear, MockProxy } from 'jest-mock-extended';
 import { App, Chooser, QuickSwitcherPluginInstance } from 'obsidian';
+import { Chance } from 'chance';
 import {
   AnySuggestion,
   Mode,
@@ -11,10 +12,10 @@ import {
   SessionOpts,
 } from 'src/types';
 
-jest.mock('src/switcherPlus/modeHandler');
 jest.mock('src/switcherPlus/switcherPlusKeymap');
 jest.mock('src/utils/utils');
 
+const chance = new Chance();
 const mockChooser = mock<Chooser<AnySuggestion>>();
 
 class MockSystemSwitcherModal {
@@ -29,6 +30,9 @@ class MockSystemSwitcherModal {
   }
   renderSuggestion(_value: AnySuggestion, _el: HTMLElement): void {
     /* noop */
+  }
+  getSuggestions(_input: string): AnySuggestion[] {
+    throw new Error('Not implemented');
   }
   onChooseSuggestion(_item: AnySuggestion, _evt: MouseEvent | KeyboardEvent): void {
     /* noop */
@@ -312,6 +316,19 @@ describe('switcherPlus', () => {
 
       mhRenderSuggestionSpy.mockReset();
       superRenderSuggestionSpy.mockRestore();
+    });
+
+    test('getSuggestions() should retrieve parsed input from ModeHandler in standard mode', () => {
+      const expectedInput = chance.word();
+      const superGetSuggestionSpy = jest
+        .spyOn(MockSystemSwitcherModal.prototype, 'getSuggestions')
+        .mockReturnValueOnce(null);
+
+      sut.getSuggestions(expectedInput);
+
+      expect(superGetSuggestionSpy).toHaveBeenCalledWith(expectedInput);
+
+      superGetSuggestionSpy.mockRestore();
     });
   });
 });

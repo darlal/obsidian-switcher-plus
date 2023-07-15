@@ -117,6 +117,7 @@ function getDefaultSettingsData(): SettingsData {
     },
     preferredSourceForTitle: 'H1',
     closeWhenEmptyKeys: [{ modifiers: null, key: 'Backspace' }],
+    escapeCmdChar: '!',
   };
 
   return data;
@@ -226,6 +227,7 @@ function getTransientSettingsData(): SettingsData {
         key: chance.letter(),
       },
     ],
+    escapeCmdChar: chance.letter(),
   };
 
   return data;

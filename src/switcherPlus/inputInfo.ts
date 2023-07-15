@@ -22,6 +22,7 @@ export interface SourcedParsedCommand extends ParsedCommand {
 export class InputInfo {
   private parsedCommands: Record<Mode, ParsedCommand>;
   private _searchQuery: SearchQuery;
+  private _inputTextSansEscapeChar: string = null;
 
   private static get defaultParsedCommand(): ParsedCommand {
     return {
@@ -42,6 +43,14 @@ export class InputInfo {
 
   get searchQuery(): SearchQuery {
     return this._searchQuery;
+  }
+
+  get inputTextSansEscapeChar(): string {
+    return this._inputTextSansEscapeChar ?? this.inputText;
+  }
+
+  set inputTextSansEscapeChar(value: string) {
+    this._inputTextSansEscapeChar = value;
   }
 
   constructor(

@@ -35,6 +35,14 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       'hidePathIfRoot',
     ).setClass('qsp-setting-item-indent');
 
+    this.addTextSetting(
+      containerEl,
+      'Mode trigger escape character',
+      'Character to indicate that a mode trigger character should be treated just as a normal text.',
+      config.escapeCmdChar,
+      'escapeCmdChar',
+    );
+
     this.addToggleSetting(
       containerEl,
       'Default to open in new tab',
