@@ -1127,7 +1127,7 @@ export abstract class Handler<T> {
 
       sugg.isOpenInEditor = currentWorkspaceEnvList.openWorkspaceFiles?.has(file);
       sugg.isRecent = currentWorkspaceEnvList.mostRecentFiles?.has(file);
-      sugg.isBookmarked = currentWorkspaceEnvList.bookmarkedFiles?.has(file);
+      sugg.isBookmarked = currentWorkspaceEnvList.fileBookmarks?.has(file);
     }
 
     return sugg;

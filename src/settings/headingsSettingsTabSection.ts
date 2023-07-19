@@ -41,6 +41,14 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
       'shouldSearchFilenames',
     );
 
+    this.addToggleSetting(
+      containerEl,
+      'Search Bookmarks',
+      "Enabled, search and show suggestions for Boomarks. Disabled, Don't search through Bookmarks",
+      config.shouldSearchBookmarks,
+      'shouldSearchBookmarks',
+    );
+
     this.addSliderSetting(
       containerEl,
       'Max recent files to show',

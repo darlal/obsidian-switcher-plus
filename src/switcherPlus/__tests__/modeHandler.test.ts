@@ -9,6 +9,7 @@ import {
   RelationType,
   Facet,
   FacetSettingsData,
+  BookmarksItemInfo,
 } from 'src/types';
 import { Chance } from 'chance';
 import {
@@ -28,7 +29,6 @@ import {
   Handler,
   BookmarksHandler,
   BOOKMARKS_PLUGIN_ID,
-  BookmarksItemInfo,
 } from 'src/Handlers';
 import {
   App,
@@ -41,6 +41,7 @@ import {
   TFile,
   Vault,
   BookmarksPluginItem,
+  BookmarksPluginSearchItem,
 } from 'obsidian';
 import {
   editorTrigger,
@@ -1007,14 +1008,15 @@ describe('modeHandler', () => {
       const editorFiles = editors.map((v) => v.view.file);
       const recentFiles = new Set([new TFile(), new TFile(), ...editorFiles]);
 
-      const bookmarked = [
-        mock<BookmarksItemInfo>({
-          file: new TFile(),
-          item: mock<BookmarksPluginItem>({ type: 'file' }),
-        }),
-      ];
+      const fileBookmark = mock<BookmarksItemInfo>({
+        file: new TFile(),
+        item: mock<BookmarksPluginItem>({ type: 'file' }),
+      });
 
-      const bookmarkedFiles = bookmarked.map((v) => v.file);
+      const searchBookmark = mock<BookmarksItemInfo>({
+        file: null,
+        item: mock<BookmarksPluginSearchItem>(),
+      });
 
       const editorSpy = jest
         .spyOn(EditorHandler.prototype, 'getItems')
@@ -1022,7 +1024,7 @@ describe('modeHandler', () => {
 
       const bookmarksSpy = jest
         .spyOn(BookmarksHandler.prototype, 'getItems')
-        .mockReturnValueOnce(bookmarked);
+        .mockReturnValueOnce([fileBookmark, searchBookmark]);
 
       const recentSpy = jest
         .spyOn(sut, 'getRecentFiles')
@@ -1030,14 +1032,15 @@ describe('modeHandler', () => {
 
       sut.addWorkspaceEnvLists(inputInfo);
 
-      expect(inputInfo.currentWorkspaceEnvList).toEqual(
-        expect.objectContaining({
-          openWorkspaceLeaves: new Set(editors),
-          openWorkspaceFiles: new Set(editorFiles),
-          bookmarkedFiles: new Set(bookmarkedFiles),
-          mostRecentFiles: new Set(recentFiles),
-        }),
-      );
+      expect(inputInfo.currentWorkspaceEnvList).toMatchObject({
+        openWorkspaceLeaves: new Set(editors),
+        openWorkspaceFiles: new Set(editorFiles),
+        mostRecentFiles: new Set(recentFiles),
+        fileBookmarks: new Map<TFile, BookmarksItemInfo>([
+          [fileBookmark.file, fileBookmark],
+        ]),
+        nonFileBookmarks: new Set([searchBookmark]),
+      });
 
       editorSpy.mockRestore();
       bookmarksSpy.mockRestore();

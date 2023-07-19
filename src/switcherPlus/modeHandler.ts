@@ -26,6 +26,7 @@ import {
   Facet,
   KeymapConfig,
   SessionOpts,
+  BookmarksItemInfo,
 } from 'src/types';
 import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
@@ -525,6 +526,8 @@ export class ModeHandler {
 
   addWorkspaceEnvLists(inputInfo: InputInfo): InputInfo {
     if (inputInfo) {
+      const fileBookmarks = new Map<TFile, BookmarksItemInfo>();
+      const nonFileBookmarks = new Set<BookmarksItemInfo>();
       const openEditors = (this.getHandler(Mode.EditorList) as EditorHandler).getItems();
       const openEditorFiles = openEditors
         .map((v) => v?.view?.file)
@@ -532,15 +535,23 @@ export class ModeHandler {
 
       const openEditorFilesSet = new Set(openEditorFiles);
 
-      const bookmarkedFiles = (this.getHandler(Mode.BookmarksList) as BookmarksHandler)
+      (this.getHandler(Mode.BookmarksList) as BookmarksHandler)
         .getItems(null)
-        .filter((v) => BookmarksHandler.isBookmarksPluginFileItem(v.item) && v.file)
-        .map((v) => v.file);
+        .forEach((bInfo) => {
+          if (BookmarksHandler.isBookmarksPluginFileItem(bInfo.item)) {
+            if (bInfo.file) {
+              fileBookmarks.set(bInfo.file, bInfo);
+            }
+          } else {
+            nonFileBookmarks.add(bInfo);
+          }
+        });
 
       const lists = inputInfo.currentWorkspaceEnvList;
       lists.openWorkspaceLeaves = new Set(openEditors);
       lists.openWorkspaceFiles = new Set(openEditorFiles);
-      lists.bookmarkedFiles = new Set(bookmarkedFiles);
+      lists.fileBookmarks = fileBookmarks;
+      lists.nonFileBookmarks = nonFileBookmarks;
 
       const maxCount =
         openEditorFilesSet.size + this.settings.maxRecentFileSuggestionsOnInit;

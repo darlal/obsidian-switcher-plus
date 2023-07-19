@@ -110,6 +110,14 @@ describe('bookmarksHandler', () => {
     sut = new BookmarksHandler(mockApp, settings);
   });
 
+  test('renderSuggestion() should return false', () => {
+    expect(sut.renderSuggestion(null, null)).toBe(false);
+  });
+
+  test('onChooseSuggestion() should return false', () => {
+    expect(sut.onChooseSuggestion(null, null)).toBe(false);
+  });
+
   describe('getCommandString', () => {
     it('should return bookmarksListCommand trigger for Bookmarks', () => {
       expect(sut.getCommandString()).toBe(bookmarksTrigger);

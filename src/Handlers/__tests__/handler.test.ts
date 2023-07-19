@@ -42,6 +42,7 @@ import {
   Facet,
   FacetSettingsData,
   SessionOpts,
+  BookmarksItemInfo,
 } from 'src/types';
 import { mock, mockClear, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
@@ -2039,7 +2040,7 @@ describe('Handler', () => {
       const mockEnvList = mock<WorkspaceEnvList>();
       mockEnvList.openWorkspaceFiles = new Set<TFile>([file]);
       mockEnvList.mostRecentFiles = new Set<TFile>([file]);
-      mockEnvList.bookmarkedFiles = new Set<TFile>([file]);
+      mockEnvList.fileBookmarks = new Map<TFile, BookmarksItemInfo>([[file, null]]);
 
       Handler.updateWorkspaceEnvListStatus(mockEnvList, sugg);
 

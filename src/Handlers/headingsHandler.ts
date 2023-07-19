@@ -1,5 +1,7 @@
+import { Handler } from './handler';
 import { StandardExHandler } from './standardExHandler';
 import { EditorHandler } from './editorHandler';
+import { BookmarksHandler } from './bookmarksHandler';
 import {
   HeadingCache,
   PreparedQuery,
@@ -24,16 +26,18 @@ import {
   SearchResultWithFallback,
   EditorSuggestion,
   SessionOpts,
+  BookmarksSuggestion,
+  BookmarksItemInfo,
 } from 'src/types';
 import { isTFile, FrontMatterParser, matcherFnForRegExList } from 'src/utils';
-import { Handler } from './handler';
 
 type SupportedSuggestionTypes =
   | HeadingSuggestion
   | FileSuggestion
   | AliasSuggestion
   | UnresolvedSuggestion
-  | EditorSuggestion;
+  | EditorSuggestion
+  | BookmarksSuggestion;
 
 export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   getCommandString(_sessionOpts?: SessionOpts): string {
@@ -150,7 +154,12 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     const { prepQuery } = inputInfo.searchQuery;
     const {
       app: { vault },
-      settings: { strictHeadingsOnly, showExistingOnly, excludeFolders },
+      settings: {
+        strictHeadingsOnly,
+        showExistingOnly,
+        shouldSearchBookmarks,
+        excludeFolders,
+      },
     } = this;
 
     const isExcludedFolder = matcherFnForRegExList(excludeFolders);
@@ -166,8 +175,21 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       }
     }
 
-    if (!strictHeadingsOnly && !showExistingOnly) {
-      this.addUnresolvedSuggestions(suggestions as UnresolvedSuggestion[], prepQuery);
+    if (!strictHeadingsOnly) {
+      if (shouldSearchBookmarks) {
+        inputInfo.currentWorkspaceEnvList.nonFileBookmarks?.forEach((bInfo) => {
+          this.addBookmarkSuggestion(
+            inputInfo,
+            suggestions as BookmarksSuggestion[],
+            prepQuery,
+            bInfo,
+          );
+        });
+      }
+
+      if (!showExistingOnly) {
+        this.addUnresolvedSuggestions(suggestions as UnresolvedSuggestion[], prepQuery);
+      }
     }
 
     return suggestions;
@@ -179,10 +201,12 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     file: TFile,
     prepQuery: PreparedQuery,
   ): void {
+    const { currentWorkspaceEnvList } = inputInfo;
     const {
       searchAllHeadings,
       strictHeadingsOnly,
       shouldSearchFilenames,
+      shouldSearchBookmarks,
       shouldShowAlias,
     } = this.settings;
 
@@ -216,6 +240,18 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
           );
         }
       }
+    }
+
+    const isBookmarked = currentWorkspaceEnvList.fileBookmarks?.has(file);
+    if (isBookmarked && shouldSearchBookmarks && !strictHeadingsOnly) {
+      const bookmarkInfo = currentWorkspaceEnvList.fileBookmarks.get(file);
+
+      this.addBookmarkSuggestion(
+        inputInfo,
+        suggestions as BookmarksSuggestion[],
+        prepQuery,
+        bookmarkInfo,
+      );
     }
   }
 
@@ -289,6 +325,27 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       suggestions.push(
         this.createFileSuggestion(inputInfo, file, match, matchType, matchText),
       );
+    }
+  }
+
+  addBookmarkSuggestion(
+    inputInfo: InputInfo,
+    suggestions: BookmarksSuggestion[],
+    prepQuery: PreparedQuery,
+    bookmarkInfo: BookmarksItemInfo,
+  ): void {
+    const result = this.fuzzySearchWithFallback(prepQuery, bookmarkInfo.bookmarkPath);
+
+    if (result.match) {
+      const sugg = BookmarksHandler.createSuggestion(
+        inputInfo.currentWorkspaceEnvList,
+        bookmarkInfo,
+        this.settings,
+        this.app.metadataCache,
+        result,
+      );
+
+      suggestions.push(sugg);
     }
   }
 

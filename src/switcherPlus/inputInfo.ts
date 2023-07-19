@@ -1,10 +1,11 @@
 import { prepareQuery, TFile, WorkspaceLeaf } from 'obsidian';
-import { Mode, SourceInfo, SearchQuery, SessionOpts } from 'src/types';
+import { Mode, SourceInfo, SearchQuery, SessionOpts, BookmarksItemInfo } from 'src/types';
 
 export interface WorkspaceEnvList {
   openWorkspaceLeaves: Set<WorkspaceLeaf>;
   openWorkspaceFiles: Set<TFile>;
-  bookmarkedFiles: Set<TFile>;
+  fileBookmarks: Map<TFile, BookmarksItemInfo>;
+  nonFileBookmarks: Set<BookmarksItemInfo>;
   mostRecentFiles: Set<TFile>;
 }
 
@@ -34,7 +35,8 @@ export class InputInfo {
   readonly currentWorkspaceEnvList: WorkspaceEnvList = {
     openWorkspaceLeaves: new Set<WorkspaceLeaf>(),
     openWorkspaceFiles: new Set<TFile>(),
-    bookmarkedFiles: new Set<TFile>(),
+    fileBookmarks: new Map<TFile, BookmarksItemInfo>(),
+    nonFileBookmarks: new Set<BookmarksItemInfo>(),
     mostRecentFiles: new Set<TFile>(),
   };
 

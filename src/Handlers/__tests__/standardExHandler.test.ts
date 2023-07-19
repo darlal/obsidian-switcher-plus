@@ -1,4 +1,4 @@
-import { MatchType } from 'src/types';
+import { BookmarksItemInfo, MatchType } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings';
 import { Handler, StandardExHandler } from 'src/Handlers';
@@ -120,8 +120,10 @@ describe('standardExHandler', () => {
     const mockFile = new TFile();
     const inputInfo = new InputInfo();
     inputInfo.currentWorkspaceEnvList.openWorkspaceFiles = new Set([mockFile]);
-    inputInfo.currentWorkspaceEnvList.bookmarkedFiles = new Set([mockFile]);
     inputInfo.currentWorkspaceEnvList.mostRecentFiles = new Set([mockFile]);
+    inputInfo.currentWorkspaceEnvList.fileBookmarks = new Map<TFile, BookmarksItemInfo>([
+      [mockFile, null],
+    ]);
 
     it('should set extra properties on alias suggestions', () => {
       const sugg = makeAliasSuggestion(mockFile);

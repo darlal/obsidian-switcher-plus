@@ -54,6 +54,7 @@ export class SwitcherPlusSettings {
       excludeOpenRelatedFiles: false,
       excludeObsidianIgnoredFiles: false,
       shouldSearchFilenames: false,
+      shouldSearchBookmarks: false,
       pathDisplayFormat: PathDisplayFormat.FolderWithFilename,
       hidePathIfRoot: true,
       enabledRelatedItems: Object.values(RelationType),
@@ -392,6 +393,14 @@ export class SwitcherPlusSettings {
 
   set shouldSearchFilenames(value: boolean) {
     this.data.shouldSearchFilenames = value;
+  }
+
+  get shouldSearchBookmarks(): boolean {
+    return this.data.shouldSearchBookmarks;
+  }
+
+  set shouldSearchBookmarks(value: boolean) {
+    this.data.shouldSearchBookmarks = value;
   }
 
   get pathDisplayFormat(): PathDisplayFormat {

@@ -1,5 +1,7 @@
 import {
   App,
+  BookmarksPluginFileItem,
+  BookmarksPluginSearchItem,
   CachedMetadata,
   fuzzySearch,
   MetadataCache,
@@ -33,6 +35,8 @@ import {
   Mode,
   AliasSuggestion,
   UnresolvedSuggestion,
+  BookmarksItemInfo,
+  BookmarksSuggestion,
 } from 'src/types';
 import {
   isAliasSuggestion,
@@ -351,6 +355,57 @@ describe('headingsHandler', () => {
 
       settings.shouldShowAlias = false;
       mockMetadataCache.getFileCache.mockReset();
+      mockFuzzySearch.mockReset();
+      mockPrepareQuery.mockReset();
+    });
+
+    test('with filter search term and shouldSearchBookmarks enabled, it should match against bookmarks', () => {
+      const expected = new TFile();
+      const filterText = 'foo';
+
+      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
+      mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
+      settings.shouldSearchBookmarks = true;
+
+      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
+        const match = makeFuzzyMatch();
+        return text.startsWith(filterText) ? match : null;
+      });
+
+      const fileBookmark = mock<BookmarksItemInfo>({
+        item: mock<BookmarksPluginFileItem>(),
+        bookmarkPath: filterText,
+      });
+
+      const searchBookmark = mock<BookmarksItemInfo>({
+        item: mock<BookmarksPluginSearchItem>(),
+        bookmarkPath: filterText,
+      });
+
+      const inputInfo = new InputInfo(`${headingsTrigger}${filterText}`);
+      inputInfo.currentWorkspaceEnvList.nonFileBookmarks = new Set([searchBookmark]);
+      inputInfo.currentWorkspaceEnvList.fileBookmarks = new Map([
+        [expected, fileBookmark],
+      ]);
+
+      sut.validateCommand(inputInfo, 0, filterText, null, null);
+
+      const results = sut.getSuggestions(inputInfo);
+
+      const fileResult = results.find(
+        (v: BookmarksSuggestion) => v.item === fileBookmark.item,
+      );
+
+      const searchResult = results.find(
+        (v: BookmarksSuggestion) => v.item === searchBookmark.item,
+      );
+
+      expect(results).toHaveLength(2);
+      expect(fileResult).not.toBeNull();
+      expect(searchResult).not.toBeNull();
+      expect(mockFuzzySearch).toHaveBeenCalled();
+      expect(mockPrepareQuery).toHaveBeenCalled();
+
       mockFuzzySearch.mockReset();
       mockPrepareQuery.mockReset();
     });

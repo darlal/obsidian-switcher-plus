@@ -2,6 +2,7 @@ import { getInternalEnabledPluginById, isOfType } from 'src/utils';
 import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
 import {
   AnySuggestion,
+  BookmarksItemInfo,
   BookmarksSuggestion,
   MatchType,
   Mode,
@@ -17,17 +18,12 @@ import {
   BookmarksPluginItem,
   BookmarksPluginFileItem,
   BookmarksPluginGroupItem,
+  MetadataCache,
 } from 'obsidian';
 import { Handler } from './handler';
-import { BOOKMARKS_FACET_ID_MAP } from 'src/settings';
+import { BOOKMARKS_FACET_ID_MAP, SwitcherPlusSettings } from 'src/settings';
 
 export const BOOKMARKS_PLUGIN_ID = 'bookmarks';
-
-export interface BookmarksItemInfo {
-  item: BookmarksPluginItem;
-  bookmarkPath: string;
-  file: TFile;
-}
 
 export class BookmarksHandler extends Handler<BookmarksSuggestion> {
   getCommandString(_sessionOpts?: SessionOpts): string {
@@ -59,24 +55,18 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
       const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
       const itemsInfo = this.getItems(inputInfo);
 
-      itemsInfo.forEach(({ item, bookmarkPath, file }) => {
+      itemsInfo.forEach((info) => {
         let shouldPush = true;
         let result: SearchResultWithFallback = { matchType: MatchType.None, match: null };
 
         if (hasSearchTerm) {
-          result = this.fuzzySearchWithFallback(prepQuery, bookmarkPath);
+          result = this.fuzzySearchWithFallback(prepQuery, info.bookmarkPath);
           shouldPush = result.matchType !== MatchType.None;
         }
 
         if (shouldPush) {
           suggestions.push(
-            this.createSuggestion(
-              inputInfo.currentWorkspaceEnvList,
-              item,
-              bookmarkPath,
-              file,
-              result,
-            ),
+            this.createSuggestion(inputInfo.currentWorkspaceEnvList, info, result),
           );
         }
       });
@@ -145,21 +135,35 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
 
   createSuggestion(
     currentWorkspaceEnvList: WorkspaceEnvList,
-    item: BookmarksPluginItem,
-    bookmarkPath: string,
-    file: TFile,
+    bookmarkInfo: BookmarksItemInfo,
+    result: SearchResultWithFallback,
+  ): BookmarksSuggestion {
+    return BookmarksHandler.createSuggestion(
+      currentWorkspaceEnvList,
+      bookmarkInfo,
+      this.settings,
+      this.app.metadataCache,
+      result,
+    );
+  }
+
+  static createSuggestion(
+    currentWorkspaceEnvList: WorkspaceEnvList,
+    bookmarkInfo: BookmarksItemInfo,
+    settings: SwitcherPlusSettings,
+    metadataCache: MetadataCache,
     result: SearchResultWithFallback,
   ): BookmarksSuggestion {
     let sugg: BookmarksSuggestion = {
-      item,
-      bookmarkPath,
-      file,
       type: SuggestionType.Bookmark,
+      item: bookmarkInfo.item,
+      bookmarkPath: bookmarkInfo.bookmarkPath,
+      file: bookmarkInfo.file,
       ...result,
     };
 
     sugg = Handler.updateWorkspaceEnvListStatus(currentWorkspaceEnvList, sugg);
-    return this.applyMatchPriorityPreferences(sugg);
+    return Handler.applyMatchPriorityPreferences(sugg, settings, metadataCache);
   }
 
   static isBookmarksPluginFileItem(obj: unknown): obj is BookmarksPluginFileItem {

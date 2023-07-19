@@ -238,6 +238,12 @@ export interface SourceInfo {
   cursor?: EditorPosition;
 }
 
+export interface BookmarksItemInfo {
+  item: BookmarksPluginItem;
+  bookmarkPath: string;
+  file: TFile;
+}
+
 export interface Facet {
   id: string;
   mode: Mode;
@@ -322,6 +328,7 @@ export interface SettingsData {
   excludeOpenRelatedFiles: boolean;
   excludeObsidianIgnoredFiles: boolean;
   shouldSearchFilenames: boolean;
+  shouldSearchBookmarks: boolean;
   pathDisplayFormat: PathDisplayFormat;
   hidePathIfRoot: boolean;
   enabledRelatedItems: RelationType[];

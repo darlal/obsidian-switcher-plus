@@ -111,6 +111,20 @@ describe('headingsSettingsTabSection', () => {
     addToggleSettingSpy.mockReset();
   });
 
+  it('should show the shouldSearchBookmarks setting', () => {
+    sut.display(mockContainerEl);
+
+    expect(addToggleSettingSpy).toHaveBeenCalledWith(
+      mockContainerEl,
+      'Search Bookmarks',
+      expect.any(String),
+      config.shouldSearchBookmarks,
+      'shouldSearchBookmarks',
+    );
+
+    addToggleSettingSpy.mockReset();
+  });
+
   it('should show the maxRecentFileSuggestionsOnInit setting', () => {
     sut.display(mockContainerEl);
 
