@@ -9,6 +9,7 @@ import {
   SearchResultWithFallback,
   SessionOpts,
   SuggestionType,
+  TitleSource,
 } from 'src/types';
 import {
   sortSearchResults,
@@ -90,6 +91,29 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
     return false;
   }
 
+  getPreferredTitle(
+    pluginInstance: BookmarksPluginInstance,
+    bookmark: BookmarksPluginItem,
+    file: TFile,
+    titleSource: TitleSource,
+  ): string {
+    let text = pluginInstance.getItemTitle(bookmark);
+
+    if (titleSource === 'H1' && file) {
+      const h1 = this.getFirstH1(file);
+
+      if (h1) {
+        // the "#" represents the start of a heading deep link,
+        // "#^" represents the the start of a deep block link,
+        // so everything before "#" should represent the filename that
+        // needs to be replaced with the file title
+        text = text.replace(/^[^#]*/, h1.heading);
+      }
+    }
+
+    return text;
+  }
+
   getItems(inputInfo: InputInfo | null): BookmarksItemInfo[] {
     const itemsInfo: BookmarksItemInfo[] = [];
     const pluginInstance = this.getEnabledBookmarksPluginInstance();
@@ -114,7 +138,15 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
               file = this.getTFileByPath(bookmark.path);
             }
 
-            const bookmarkPath = path + pluginInstance.getItemTitle(bookmark);
+            const title = this.getPreferredTitle(
+              pluginInstance,
+              bookmark,
+              file,
+              this.settings.preferredSourceForTitle,
+            );
+
+            const bookmarkPath = path + title;
+
             itemsInfo.push({ item: bookmark, bookmarkPath, file });
           }
         });

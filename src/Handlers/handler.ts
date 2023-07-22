@@ -207,8 +207,14 @@ export abstract class Handler<T> {
    * @returns HeadingCache
    */
   getFirstH1(sourceFile: TFile): HeadingCache | null {
+    return Handler.getFirstH1(sourceFile, this.app.metadataCache);
+  }
+
+  static getFirstH1(
+    sourceFile: TFile,
+    metadataCache: MetadataCache,
+  ): HeadingCache | null {
     let h1: HeadingCache = null;
-    const { metadataCache } = this.app;
     const headingList: HeadingCache[] =
       metadataCache.getFileCache(sourceFile)?.headings?.filter((v) => v.level === 1) ??
       [];

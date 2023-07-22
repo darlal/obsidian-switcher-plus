@@ -7,6 +7,7 @@ import {
   SearchResultWithFallback,
   SessionOpts,
   SuggestionType,
+  TitleSource,
 } from 'src/types';
 import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
 import { MetadataCache, sortSearchResults, TFile, WorkspaceLeaf } from 'obsidian';
@@ -45,14 +46,25 @@ export class EditorHandler extends Handler<EditorSuggestion> {
         let shouldPush = true;
         let result: SearchResultWithFallback = { matchType: MatchType.None, match: null };
 
+        const preferredTitle = this.getPreferredTitle(
+          item,
+          this.settings.preferredSourceForTitle,
+        );
+
         if (hasSearchTerm) {
-          result = this.fuzzySearchWithFallback(prepQuery, item.getDisplayText(), file);
+          result = this.fuzzySearchWithFallback(prepQuery, preferredTitle, file);
           shouldPush = result.matchType !== MatchType.None;
         }
 
         if (shouldPush) {
           suggestions.push(
-            this.createSuggestion(inputInfo.currentWorkspaceEnvList, item, file, result),
+            this.createSuggestion(
+              inputInfo.currentWorkspaceEnvList,
+              item,
+              file,
+              result,
+              preferredTitle,
+            ),
           );
         }
       });
@@ -63,6 +75,30 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     }
 
     return suggestions;
+  }
+
+  getPreferredTitle(leaf: WorkspaceLeaf, titleSource: TitleSource): string {
+    return EditorHandler.getPreferredTitle(leaf, titleSource, this.app.metadataCache);
+  }
+
+  static getPreferredTitle(
+    leaf: WorkspaceLeaf,
+    titleSource: TitleSource,
+    metadataCache: MetadataCache,
+  ): string {
+    const { view } = leaf;
+    const file = view?.file;
+    let text = leaf.getDisplayText();
+
+    if (titleSource === 'H1' && file) {
+      const h1 = EditorHandler.getFirstH1(file, metadataCache);
+
+      if (h1) {
+        text = text.replace(file.basename, h1.heading);
+      }
+    }
+
+    return text;
   }
 
   getItems(): WorkspaceLeaf[] {
@@ -80,13 +116,13 @@ export class EditorHandler extends Handler<EditorSuggestion> {
   renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): boolean {
     let handled = false;
     if (sugg) {
-      const { file, matchType, match, item } = sugg;
+      const { file, matchType, match } = sugg;
       const hideBasename = [MatchType.None, MatchType.Primary].includes(matchType);
 
       this.renderAsFileInfoPanel(
         parentEl,
         ['qsp-suggestion-editor'],
-        item.getDisplayText(),
+        sugg.preferredTitle,
         file,
         matchType,
         match,
@@ -123,6 +159,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     leaf: WorkspaceLeaf,
     file: TFile,
     result: SearchResultWithFallback,
+    preferredTitle?: string,
   ): EditorSuggestion {
     return EditorHandler.createSuggestion(
       currentWorkspaceEnvList,
@@ -130,6 +167,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
       file,
       this.settings,
       this.app.metadataCache,
+      preferredTitle,
       result,
     );
   }
@@ -140,13 +178,16 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     file: TFile,
     settings: SwitcherPlusSettings,
     metadataCache: MetadataCache,
+    preferredTitle?: string,
     result?: SearchResultWithFallback,
   ): EditorSuggestion {
     result = result ?? { matchType: MatchType.None, match: null, matchText: null };
+    preferredTitle = preferredTitle ?? null;
 
     let sugg: EditorSuggestion = {
       item: leaf,
       file,
+      preferredTitle,
       type: SuggestionType.EditorList,
       ...result,
     };

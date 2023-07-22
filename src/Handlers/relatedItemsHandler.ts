@@ -17,6 +17,7 @@ import {
   SessionOpts,
   SourceInfo,
   SuggestionType,
+  TitleSource,
   UnresolvedSuggestion,
 } from 'src/types';
 import { InputInfo, SourcedParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
@@ -93,6 +94,7 @@ export class RelatedItemsHandler extends Handler<
     let handled = false;
     if (sugg) {
       const { file, matchType, match, item } = sugg;
+
       const iconMap = new Map<RelationType, string>([
         [RelationType.Backlink, 'links-coming-in'],
         [RelationType.DiskLocation, 'folder-tree'],
@@ -100,10 +102,11 @@ export class RelatedItemsHandler extends Handler<
       ]);
 
       parentEl.setAttribute('data-relation-type', item.relationType);
+
       this.renderAsFileInfoPanel(
         parentEl,
         ['qsp-suggestion-related'],
-        null,
+        sugg.preferredTitle,
         file,
         matchType,
         match,
@@ -149,30 +152,47 @@ export class RelatedItemsHandler extends Handler<
     return handled;
   }
 
+  getPreferredTitle(item: RelatedItemsInfo, preferredSource: TitleSource): string {
+    let text: string = null;
+    const { file, unresolvedText } = item;
+
+    if (file) {
+      if (preferredSource === 'H1') {
+        text = this.getFirstH1(file)?.heading ?? null;
+      }
+    } else {
+      const isUnresolved = !!unresolvedText?.length;
+
+      if (isUnresolved) {
+        text = unresolvedText;
+      }
+    }
+
+    return text;
+  }
+
   searchAndCreateSuggestion(
     inputInfo: InputInfo,
     item: RelatedItemsInfo,
   ): RelatedItemsSuggestion | UnresolvedSuggestion | null {
-    let primaryString = null;
-    let file = item.file;
+    const { file, unresolvedText } = item;
     let result: SearchResultWithFallback = { matchType: MatchType.None, match: null };
-    const isUnresolved = file === null && item.unresolvedText?.length;
+    const isUnresolved = file === null && unresolvedText?.length;
+
     const {
       currentWorkspaceEnvList,
       searchQuery: { hasSearchTerm, prepQuery },
     } = inputInfo;
+
     const {
       settings,
       app: { metadataCache },
     } = this;
 
-    if (isUnresolved) {
-      primaryString = item.unresolvedText;
-      file = null;
-    }
+    const preferredTitle = this.getPreferredTitle(item, settings.preferredSourceForTitle);
 
     if (hasSearchTerm) {
-      result = this.fuzzySearchWithFallback(prepQuery, primaryString, file);
+      result = this.fuzzySearchWithFallback(prepQuery, preferredTitle, file);
       if (result.matchType === MatchType.None) {
         return null;
       }
@@ -180,12 +200,12 @@ export class RelatedItemsHandler extends Handler<
 
     return isUnresolved
       ? StandardExHandler.createUnresolvedSuggestion(
-          primaryString,
+          preferredTitle,
           result,
           settings,
           metadataCache,
         )
-      : this.createSuggestion(currentWorkspaceEnvList, item, result);
+      : this.createSuggestion(currentWorkspaceEnvList, item, result, preferredTitle);
   }
 
   getItems(sourceInfo: SourceInfo, inputInfo: InputInfo): RelatedItemsInfo[] {
@@ -360,11 +380,13 @@ export class RelatedItemsHandler extends Handler<
     currentWorkspaceEnvList: WorkspaceEnvList,
     item: RelatedItemsInfo,
     result: SearchResultWithFallback,
+    preferredTitle: string,
   ): RelatedItemsSuggestion {
     let sugg: RelatedItemsSuggestion = {
       item,
       file: item?.file,
       type: SuggestionType.RelatedItemsList,
+      preferredTitle,
       ...result,
     };
 

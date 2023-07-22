@@ -154,6 +154,7 @@ export interface Suggestion<T> extends FuzzyMatch<T> {
   isOpenInEditor?: boolean;
   isBookmarked?: boolean;
   isRecent?: boolean;
+  preferredTitle?: string;
 }
 
 export interface SymbolSuggestion extends Suggestion<SymbolInfo> {
@@ -298,6 +299,8 @@ export type NavigationKeysConfig = {
   prevKeys: Hotkey[];
 };
 
+export type TitleSource = 'Default' | 'H1';
+
 export interface SettingsData {
   version: string;
   onOpenPreferNewTab: boolean;
@@ -347,6 +350,7 @@ export interface SettingsData {
   insertLinkInEditor: InsertLinkConfig;
   removeDefaultTabBinding: boolean;
   navigationKeys: NavigationKeysConfig;
+  preferredSourceForTitle: TitleSource;
   closeWhenEmptyKeys: Hotkey[];
 }
 

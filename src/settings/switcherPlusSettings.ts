@@ -11,6 +11,7 @@ import {
   RelationType,
   SettingsData,
   SymbolType,
+  TitleSource,
 } from 'src/types';
 
 export class SwitcherPlusSettings {
@@ -109,6 +110,7 @@ export class SwitcherPlusSettings {
           { modifiers: ['Ctrl'], key: 'k' },
         ],
       },
+      preferredSourceForTitle: 'H1',
       closeWhenEmptyKeys: [{ modifiers: null, key: 'Backspace' }],
     };
   }
@@ -546,6 +548,14 @@ export class SwitcherPlusSettings {
 
   set navigationKeys(value: NavigationKeysConfig) {
     this.data.navigationKeys = value;
+  }
+
+  get preferredSourceForTitle(): TitleSource {
+    return this.data.preferredSourceForTitle;
+  }
+
+  set preferredSourceForTitle(value: TitleSource) {
+    this.data.preferredSourceForTitle = value;
   }
 
   get closeWhenEmptyKeys(): Hotkey[] {

@@ -1,6 +1,6 @@
 import { Modal } from 'obsidian';
 import { SwitcherPlusSettings } from 'src/settings';
-import { Mode, PathDisplayFormat } from 'src/types';
+import { Mode, PathDisplayFormat, TitleSource } from 'src/types';
 import { SettingsTabSection } from './settingsTabSection';
 
 const PRIORITY_ADJUSTMENTS = [
@@ -24,6 +24,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
 
     this.addSectionTitle(containerEl, 'General Settings');
     this.showEnabledRibbonCommands(containerEl, config);
+    this.showPreferredSourceForTitle(containerEl, config);
 
     this.showPathDisplayFormat(containerEl, config);
     this.addToggleSetting(
@@ -85,6 +86,25 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     );
 
     this.showResetFacetEachSession(containerEl, config);
+  }
+
+  showPreferredSourceForTitle(
+    containerEl: HTMLElement,
+    config: SwitcherPlusSettings,
+  ): void {
+    const options: Record<TitleSource, string> = {
+      H1: 'First H₁ heading',
+      Default: 'Default',
+    };
+
+    this.addDropdownSetting(
+      containerEl,
+      'Preferred suggestion title source',
+      'The preferred source to use for the "title" text that will be searched and displayed for file based suggestions',
+      config.preferredSourceForTitle,
+      options,
+      'preferredSourceForTitle',
+    );
   }
 
   showPathDisplayFormat(containerEl: HTMLElement, config: SwitcherPlusSettings): void {

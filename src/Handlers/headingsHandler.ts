@@ -553,14 +553,27 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     const suggestions: EditorSuggestion[] = [];
     const leaves = inputInfo?.currentWorkspaceEnvList?.openWorkspaceLeaves;
 
+    const {
+      settings,
+      app: { metadataCache },
+    } = this;
+
     leaves?.forEach((leaf) => {
       const file = leaf.view?.file;
+
+      const preferredTitle = EditorHandler.getPreferredTitle(
+        leaf,
+        settings.preferredSourceForTitle,
+        metadataCache,
+      );
+
       const sugg = EditorHandler.createSuggestion(
         inputInfo.currentWorkspaceEnvList,
         leaf,
         file,
-        this.settings,
+        settings,
         this.app.metadataCache,
+        preferredTitle,
       );
 
       suggestions.push(sugg);

@@ -12,6 +12,7 @@ import {
   WorkspaceItem,
   WorkspaceSplit,
   MetadataCache,
+  TFile,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -20,6 +21,7 @@ import {
   editorTrigger,
   makeLeaf,
   makeEditorSuggestion,
+  makeHeading,
 } from '@fixtures';
 import { EditorHandler, Handler } from 'src/Handlers';
 import { mock, MockProxy } from 'jest-mock-extended';
@@ -255,16 +257,54 @@ describe('editorHandler', () => {
     });
   });
 
+  describe('getPreferredTitle', () => {
+    test('with preferredSourceForTitle as H1, it should return the first heading', () => {
+      const file = new TFile();
+      const expectedText = 'expected';
+      const mockLeaf = mock<WorkspaceLeaf>({
+        getDisplayText: () => file.basename,
+        view: mock<View>({
+          file,
+        }),
+      });
+
+      const getFirstH1Spy = jest
+        .spyOn(EditorHandler, 'getFirstH1')
+        .mockReturnValueOnce(makeHeading(expectedText, 0));
+
+      const result = sut.getPreferredTitle(mockLeaf, 'H1');
+
+      expect(result).toBe(expectedText);
+
+      getFirstH1Spy.mockRestore();
+    });
+
+    test('with preferredSourceForTitle as Default, it should return the the leaf display text', () => {
+      const file = new TFile();
+      const mockLeaf = mock<WorkspaceLeaf>({
+        getDisplayText: () => file.basename,
+        view: mock<View>({
+          file,
+        }),
+      });
+
+      const result = sut.getPreferredTitle(mockLeaf, 'Default');
+
+      expect(result).toBe(file.basename);
+    });
+  });
+
   describe('renderSuggestion', () => {
     it('should not throw an error with a null suggestion', () => {
       expect(() => sut.renderSuggestion(null, null)).not.toThrow();
     });
 
     it('should render a suggestion with match offsets', () => {
-      const displayText = 'foo';
-      const mockLeaf = makeLeafWithRoot(displayText, null);
+      const preferredTitle = 'foo';
+      const mockLeaf = makeLeafWithRoot(preferredTitle, null);
       const mockParentEl = mock<HTMLElement>();
       const sugg = makeEditorSuggestion(mockLeaf);
+      sugg.preferredTitle = preferredTitle;
       const renderAsFileInfoPanelSpy = jest
         .spyOn(Handler.prototype, 'renderAsFileInfoPanel')
         .mockReturnValueOnce(null);
@@ -274,7 +314,7 @@ describe('editorHandler', () => {
       expect(renderAsFileInfoPanelSpy).toHaveBeenCalledWith(
         mockParentEl,
         ['qsp-suggestion-editor'],
-        displayText,
+        preferredTitle,
         sugg.file,
         sugg.matchType,
         sugg.match,

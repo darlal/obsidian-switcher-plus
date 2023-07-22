@@ -115,6 +115,7 @@ function getDefaultSettingsData(): SettingsData {
         { modifiers: ['Ctrl'], key: 'k' },
       ],
     },
+    preferredSourceForTitle: 'H1',
     closeWhenEmptyKeys: [{ modifiers: null, key: 'Backspace' }],
   };
 
@@ -218,6 +219,7 @@ function getTransientSettingsData(): SettingsData {
         },
       ],
     },
+    preferredSourceForTitle: chance.pickone(['Default', 'H1']),
     closeWhenEmptyKeys: [
       {
         modifiers: chance.pickset(['Alt', 'Ctrl'], 1),

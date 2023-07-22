@@ -11,6 +11,7 @@ import {
   makeBookmarksPluginFileItem,
   makeBookmarksPluginGroupItem,
   makeBookmarksPluginSearchItem,
+  makeHeading,
 } from '@fixtures';
 import {
   App,
@@ -82,7 +83,7 @@ function makeInternalPluginList(
 }
 
 describe('bookmarksHandler', () => {
-  let settings: SwitcherPlusSettings;
+  let settings: MockProxy<SwitcherPlusSettings>;
   let mockWorkspace: MockProxy<Workspace>;
   let mockVault: MockProxy<Vault>;
   let mockApp: MockProxy<App>;
@@ -104,8 +105,10 @@ describe('bookmarksHandler', () => {
       metadataCache: mock<MetadataCache>(),
     });
 
-    settings = new SwitcherPlusSettings(null);
-    jest.spyOn(settings, 'bookmarksListCommand', 'get').mockReturnValue(bookmarksTrigger);
+    settings = mock<SwitcherPlusSettings>({
+      preferredSourceForTitle: 'Default',
+      bookmarksListCommand: bookmarksTrigger,
+    });
 
     sut = new BookmarksHandler(mockApp, settings);
   });
@@ -308,6 +311,54 @@ describe('bookmarksHandler', () => {
       expect(results[0].file).toBe(tFile);
 
       mockReset(mockVault);
+    });
+  });
+
+  describe('getPreferredTitle', () => {
+    test('with preferredSourceForTitle as H1, it should return the first heading for file bookmarks', () => {
+      const file = new TFile();
+      const titleText = 'expected title';
+      const mockBookmarkItem = mock<BookmarksPluginItem>();
+      const mockPluginInstance = mock<BookmarksPluginInstance>({
+        getItemTitle: () => 'filename#heading',
+      });
+
+      const getFirstH1Spy = jest
+        .spyOn(sut, 'getFirstH1')
+        .mockReturnValueOnce(makeHeading(titleText, 0));
+
+      const result = sut.getPreferredTitle(
+        mockPluginInstance,
+        mockBookmarkItem,
+        file,
+        'H1',
+      );
+
+      expect(result).toBe(`${titleText}#heading`);
+
+      getFirstH1Spy.mockRestore();
+    });
+
+    test('with preferredSourceForTitle as H1, it should return item title for a bookmark containing a file without an H1', () => {
+      const file = new TFile();
+      const titleText = 'filename#heading';
+      const mockBookmarkItem = mock<BookmarksPluginItem>();
+      const mockPluginInstance = mock<BookmarksPluginInstance>({
+        getItemTitle: () => titleText,
+      });
+
+      const getFirstH1Spy = jest.spyOn(sut, 'getFirstH1').mockReturnValueOnce(null);
+
+      const result = sut.getPreferredTitle(
+        mockPluginInstance,
+        mockBookmarkItem,
+        file,
+        'H1',
+      );
+
+      expect(result).toBe(titleText);
+
+      getFirstH1Spy.mockRestore();
     });
   });
 });

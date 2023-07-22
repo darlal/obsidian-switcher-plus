@@ -1,3 +1,4 @@
+import { Chance } from 'chance';
 import { isUnresolvedSuggestion } from 'src/utils';
 import { SwitcherPlusSettings } from 'src/settings';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
@@ -36,9 +37,11 @@ import {
   makeLink,
   makeBookmarkedFileSuggestion,
   relatedItemsActiveTrigger,
+  makeHeading,
 } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
 
+const chance = new Chance();
 const file1 = new TFile();
 const file2 = new TFile();
 const file3 = new TFile();
@@ -554,15 +557,22 @@ describe('relatedItemsHandler', () => {
   });
 
   describe('renderSuggestion', () => {
-    const fileSugg = makeRelatedItemsSuggestion({
-      relationType: RelationType.DiskLocation,
-      file: file1,
-    });
-    const backlingSugg = makeRelatedItemsSuggestion({
-      relationType: RelationType.Backlink,
-      file: file1,
-      count: 2,
-    });
+    const fileSugg = makeRelatedItemsSuggestion(
+      {
+        relationType: RelationType.DiskLocation,
+        file: file1,
+      },
+      chance.word(),
+    );
+
+    const backlingSugg = makeRelatedItemsSuggestion(
+      {
+        relationType: RelationType.Backlink,
+        file: file1,
+        count: 2,
+      },
+      chance.word(),
+    );
 
     it('should not throw an error with a null suggestion', () => {
       expect(() => sut.renderSuggestion(null, null)).not.toThrow();
@@ -587,7 +597,7 @@ describe('relatedItemsHandler', () => {
         expect(renderAsFileInfoPanelSpy).toHaveBeenCalledWith(
           mockParentEl,
           ['qsp-suggestion-related'],
-          null,
+          sugg.preferredTitle,
           sugg.file,
           sugg.matchType,
           sugg.match,
@@ -637,6 +647,58 @@ describe('relatedItemsHandler', () => {
       );
 
       navigateToLeafOrOpenFileSpy.mockRestore();
+    });
+  });
+
+  describe('getPreferredTitle', () => {
+    test('with preferredSourceForTitle as H1, it should return the first heading', () => {
+      const file = new TFile();
+      const expectedText = 'expected';
+      const mockItemInfo = mock<RelatedItemsInfo>({ file });
+
+      const getFirstH1Spy = jest
+        .spyOn(sut, 'getFirstH1')
+        .mockReturnValueOnce(makeHeading(expectedText, 0));
+
+      const result = sut.getPreferredTitle(mockItemInfo, 'H1');
+
+      expect(result).toBe(expectedText);
+
+      getFirstH1Spy.mockRestore();
+    });
+
+    test('with preferredSourceForTitle as H1, it should return null for RelatedItemsInfo containing a file without an H1', () => {
+      const file = new TFile();
+      const mockItemInfo = mock<RelatedItemsInfo>({ file });
+
+      const getFirstH1Spy = jest.spyOn(sut, 'getFirstH1').mockReturnValueOnce(null);
+
+      const result = sut.getPreferredTitle(mockItemInfo, 'H1');
+
+      expect(result).toBe(null);
+
+      getFirstH1Spy.mockRestore();
+    });
+
+    test('with preferredSourceForTitle as Default, it should return null for RelatedItemsInfo containing a file', () => {
+      const file = new TFile();
+      const mockItemInfo = mock<RelatedItemsInfo>({ file });
+
+      const result = sut.getPreferredTitle(mockItemInfo, 'Default');
+
+      expect(result).toBe(null);
+    });
+
+    test('an unresolved RelatedItemsInfo should return the unresolved text as title regardless of preferredSource', () => {
+      const expected = 'expected';
+      const mockItemInfo = mock<RelatedItemsInfo>({
+        file: null,
+        unresolvedText: expected,
+      });
+
+      const result = sut.getPreferredTitle(mockItemInfo, 'Default');
+
+      expect(result).toBe(expected);
     });
   });
 

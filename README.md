@@ -195,6 +195,7 @@ In the demo below, `Quick Switcher++: Open Symbols for the active editor` global
 | Setting                         | Description | Default |
 |---------------------------------|-------------|---------|
 | Show ribbon icons | List of modes that should be accessible from the ribbon menu. | `HeadingsList`<br />`SymbolList` |
+| Preferred suggestion title source | The preferred source to use for the primary suggestion text that will be searched and displayed for file based suggestions. | `First H₁ heading` |
 | Preferred file path display format | The preferred way to display file paths in suggestions. Note: by default, path information will not be displayed for files at the root of the vault. | `Parent folder & filename` |
 | Hide path for root items | **Enabled**: path information will be hidden for items at the root of the vault. | enabled |
 | Default to open in new pane | **Enabled**: navigating to un-opened files will open a new editor pane whenever possible (as if cmd/ctrl were held). When the file is already open, the existing pane will be activated. This overrides all other pane settings. | enabled |

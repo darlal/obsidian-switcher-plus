@@ -16,7 +16,7 @@ export class EditorSettingsTabSection extends SettingsTabSection {
       config.editorListPlaceholderText,
     );
 
-    this.setIncludeSidePanelViews(containerEl, config);
+    this.showIncludeSidePanelViews(containerEl, config);
 
     this.addToggleSetting(
       containerEl,
@@ -27,7 +27,10 @@ export class EditorSettingsTabSection extends SettingsTabSection {
     );
   }
 
-  setIncludeSidePanelViews(containerEl: HTMLElement, config: SwitcherPlusSettings) {
+  showIncludeSidePanelViews(
+    containerEl: HTMLElement,
+    config: SwitcherPlusSettings,
+  ): void {
     const viewsListing = Object.keys(this.app.viewRegistry.viewByType).sort().join(' ');
     const desc = `When in Editor list mode, show the following view types from the side panels. Add one view type per line. Available view types: ${viewsListing}`;
 

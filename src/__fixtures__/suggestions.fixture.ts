@@ -144,6 +144,7 @@ export function makeCommandSuggestion(
 
 export function makeRelatedItemsSuggestion(
   item?: RelatedItemsInfo,
+  preferredTitle?: string,
   matches?: SearchMatches,
   score?: number,
   matchType?: MatchType,
@@ -158,6 +159,7 @@ export function makeRelatedItemsSuggestion(
 
   return {
     item,
+    preferredTitle: preferredTitle ?? null,
     type: SuggestionType.RelatedItemsList,
     ...makeSearchResultWithFallback(matches, matchType, matchText, score),
     file: item.file,
