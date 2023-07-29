@@ -498,6 +498,7 @@ describe('SwitcherPlusSettings', () => {
   describe('updateDataFile v1.0.0', () => {
     const mockDefaults = mock<SettingsData>({
       quickFilters: { facetList: [mock<Facet>()] },
+      bookmarksListCommand: chance.word(),
     });
 
     it('should log errors to the console', async () => {
@@ -550,6 +551,26 @@ describe('SwitcherPlusSettings', () => {
       expect(savedData).toHaveProperty('bookmarksListCommand', value);
     });
 
+    it("should use the default bookmarksListCommand if the starredListCommand doesn't exist", async () => {
+      const starredListCommand: string = null;
+      const data = { starredListCommand };
+      mockPlugin.loadData.mockResolvedValueOnce(data);
+
+      let savedData: SettingsData;
+      mockPlugin.saveData.mockImplementationOnce((input) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        savedData = input;
+        return Promise.resolve();
+      });
+
+      await SwitcherPlusSettings.updateDataFile(mockPlugin, mockDefaults);
+
+      expect(savedData).toHaveProperty(
+        'bookmarksListCommand',
+        mockDefaults.bookmarksListCommand,
+      );
+    });
+
     it('should rename isStarred in matchPriorityAdjustments to isBookmarked', async () => {
       const value = chance.word();
       const data = { matchPriorityAdjustments: { isStarred: value } };
@@ -585,7 +606,7 @@ describe('SwitcherPlusSettings', () => {
       expect(savedData.quickFilters.facetList).toHaveLength(2);
     });
 
-    it('.updateDataAndLoadSettings() should update settings', async () => {
+    it('updateDataAndLoadSettings() should update settings', async () => {
       const updateDataSpy = jest.spyOn(sut, 'updateDataAndLoadSettings');
       mockPlugin.loadData.mockResolvedValueOnce({});
 

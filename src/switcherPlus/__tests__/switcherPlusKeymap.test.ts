@@ -443,6 +443,34 @@ describe('SwitcherPlusKeymap', () => {
     });
   });
 
+  describe('registerKeys', () => {
+    beforeEach(() => {
+      mockReset(mockScope);
+    });
+
+    it('should register each keymap', () => {
+      const modifiers: Modifier[] = ['Alt', 'Mod'];
+      const key = 'x';
+      const func = () => false;
+
+      const sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        mockModal,
+        mockConfig,
+      );
+
+      sut.registerKeys(mockScope, [{ modifiers: modifiers.join(','), key, func }]);
+
+      expect(mockScope.register).toHaveBeenCalledWith(
+        expect.arrayContaining(modifiers),
+        key,
+        func,
+      );
+    });
+  });
+
   describe('updateKeymapForMode', () => {
     let sut: SwitcherPlusKeymap;
     const mockInstructionsEl = mock<HTMLElement>();

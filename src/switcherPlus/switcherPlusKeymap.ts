@@ -261,9 +261,9 @@ export class SwitcherPlusKeymap {
   }
 
   registerCloseWhenEmptyBindings(scope: Scope, config: SwitcherPlusSettings): void {
-    const keymaps = config.closeWhenEmptyKeys ?? [];
+    const keymaps = config.closeWhenEmptyKeys;
 
-    keymaps.forEach(({ modifiers, key }) => {
+    keymaps?.forEach(({ modifiers, key }) => {
       scope.register(modifiers, key, this.closeModalIfEmpty.bind(this));
     });
   }
@@ -567,16 +567,20 @@ export class SwitcherPlusKeymap {
   }
 
   commandDisplayStr(modifiers: Modifier[], key: string): string {
-    modifiers = modifiers ?? [];
-    key = key ?? '';
-    const { modifierToPlatformStrMap } = this;
+    let displayStr = '';
 
-    const modifierStr = modifiers
-      .map((modifier) => {
-        return modifierToPlatformStrMap[modifier]?.toLocaleLowerCase();
-      })
-      .join(' ');
+    if (modifiers && key) {
+      const { modifierToPlatformStrMap } = this;
 
-    return `${modifierStr} ${key}`;
+      const modifierStr = modifiers
+        .map((modifier) => {
+          return modifierToPlatformStrMap[modifier]?.toLocaleLowerCase();
+        })
+        .join(' ');
+
+      displayStr = `${modifierStr} ${key}`;
+    }
+
+    return displayStr;
   }
 }
