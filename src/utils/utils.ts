@@ -8,6 +8,9 @@ import {
   TFile,
   PluginInstance,
   FileManager,
+  ReferenceCache,
+  parseLinktext,
+  Vault,
 } from 'obsidian';
 import {
   SymbolSuggestion,
@@ -193,8 +196,27 @@ export function getLinkType(linkCache: LinkCache): LinkType {
   return type;
 }
 
+/**
+ * Retrieves a TFile object using path. Return null if path does not represent
+ * a TFile object.
+ * @param  {string} path
+ * @param  {Vault} vault
+ * @returns TFile
+ */
+export function getTFileByPath(path: string, vault: Vault): TFile | null {
+  let file: TFile = null;
+  const abstractItem = vault.getAbstractFileByPath(path);
+
+  if (isTFile(abstractItem)) {
+    file = abstractItem;
+  }
+
+  return file;
+}
+
 export function generateMarkdownLink(
   fileManager: FileManager,
+  vault: Vault,
   sugg: AnySuggestion,
   sourcePath: string,
   options?: { useBasenameAsAlias?: boolean; useHeadingAsAlias?: boolean },
@@ -216,7 +238,10 @@ export function generateMarkdownLink(
       SuggestionType.File,
     ];
 
-    const linkStrForUnresolved = (unresolvedStr: string) => `[[${unresolvedStr}]]`;
+    // for file based suggestions, get the destination file
+    if (fileSuggTypes.includes(sugg.type)) {
+      destFile = (sugg as { file: TFile }).file;
+    }
 
     const linkSubPathForHeading = (heading: string) => {
       return {
@@ -227,7 +252,7 @@ export function generateMarkdownLink(
 
     switch (sugg.type) {
       case SuggestionType.Unresolved:
-        linkStr = linkStrForUnresolved(sugg.linktext);
+        linkStr = generateMarkdownLinkForUnresolved(sugg.linktext);
         break;
       case SuggestionType.Alias:
         alias = sugg.alias;
@@ -251,21 +276,35 @@ export function generateMarkdownLink(
 
         if (isHeadingCache(symbol)) {
           ({ subpath, alias } = linkSubPathForHeading(symbol.heading));
+        } else if (isOfType<ReferenceCache>(symbol, 'link')) {
+          // Test if the link matches the external link format [text](url)
+          const isExternalLink = new RegExp(/^\[(.*?)\]\((.+?)\)/).test(symbol.original);
+
+          if (isExternalLink) {
+            linkStr = symbol.original;
+          } else {
+            linkStr = generateMarkdownLinkForReferenceCache(
+              fileManager,
+              vault,
+              sourcePath,
+              symbol,
+              destFile,
+              options.useBasenameAsAlias,
+            );
+          }
+        } else {
+          // Disable link generation for other symbol types by setting destFile to null
+          destFile = null;
         }
         break;
       }
       case SuggestionType.RelatedItemsList: {
         const { item } = sugg;
         if (item.unresolvedText) {
-          linkStr = linkStrForUnresolved(item.unresolvedText);
+          linkStr = generateMarkdownLinkForUnresolved(item.unresolvedText);
         }
         break;
       }
-    }
-
-    // for file based suggestions, get the destination file
-    if (fileSuggTypes.includes(sugg.type)) {
-      destFile = (sugg as { file: TFile }).file;
     }
 
     if (destFile && !linkStr) {
@@ -276,6 +315,46 @@ export function generateMarkdownLink(
 
       linkStr = fileManager.generateMarkdownLink(destFile, sourcePath, subpath, alias);
     }
+  }
+
+  return linkStr;
+}
+
+function generateMarkdownLinkForUnresolved(path: string, displayText?: string): string {
+  displayText = displayText?.length ? `|${displayText}` : '';
+  return `[[${path}${displayText}]]`;
+}
+
+function generateMarkdownLinkForReferenceCache(
+  fileManager: FileManager,
+  vault: Vault,
+  sourcePath: string,
+  refCache: ReferenceCache,
+  refCacheSourceFile: TFile,
+  useBasenameAsAlias: boolean,
+): string {
+  const { link, displayText } = refCache;
+  const { path, subpath } = parseLinktext(link);
+  let alias = displayText;
+  let destFile: TFile = null;
+  let linkStr: string = null;
+
+  if (!path?.length) {
+    // the path portion of the link is empty, meaning the destination path
+    // is the file that contains the ReferenceCache
+    destFile = refCacheSourceFile;
+  } else {
+    destFile = getTFileByPath(path, vault);
+  }
+
+  if (destFile) {
+    if (!alias?.length && useBasenameAsAlias) {
+      alias = destFile.basename;
+    }
+
+    linkStr = fileManager.generateMarkdownLink(destFile, sourcePath, subpath, alias);
+  } else {
+    linkStr = generateMarkdownLinkForUnresolved(path, alias);
   }
 
   return linkStr;

@@ -37,11 +37,11 @@ import {
 import { InputInfo, WorkspaceEnvList } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
+  getTFileByPath,
   isCommandSuggestion,
   isEditorSuggestion,
   isHeadingSuggestion,
   isSymbolSuggestion,
-  isTFile,
   isUnresolvedSuggestion,
   isWorkspaceSuggestion,
   stripMDExtensionFromPath,
@@ -1022,14 +1022,7 @@ export abstract class Handler<T> {
    * @returns TFile|null
    */
   getTFileByPath(path: string): TFile | null {
-    let file: TFile = null;
-    const abstractItem = this.app.vault.getAbstractFileByPath(path);
-
-    if (isTFile(abstractItem)) {
-      file = abstractItem;
-    }
-
-    return file;
+    return getTFileByPath(path, this.app.vault);
   }
 
   /**

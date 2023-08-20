@@ -1,4 +1,4 @@
-import { FileManager, TFile } from 'obsidian';
+import { FileManager, TFile, Vault, parseLinktext } from 'obsidian';
 import {
   BookmarksSuggestion,
   LinkType,
@@ -28,7 +28,7 @@ import {
   makeSymbolSuggestion,
   makeUnresolvedSuggestion,
 } from '@fixtures';
-import { mock, mockReset } from 'jest-mock-extended';
+import { MockProxy, mock, mockReset } from 'jest-mock-extended';
 import { Chance } from 'chance';
 
 const chance = new Chance();
@@ -180,22 +180,33 @@ describe('utils', () => {
     const activeFile = new TFile();
     const activeFilePath = activeFile.path;
     const destFile = new TFile();
-    let mockFileManager: FileManager;
+    const mockParseLinktext = jest.mocked<typeof parseLinktext>(parseLinktext);
+    let mockFileManager: MockProxy<FileManager>;
+    let mockVault: MockProxy<Vault>;
 
     beforeAll(() => {
       mockFileManager = mock<FileManager>();
+      mockVault = mock<Vault>();
     });
 
     afterEach(() => {
       mockReset(mockFileManager);
+      mockReset(mockVault);
+      mockParseLinktext.mockClear();
     });
 
     it('should generate a link for Unresolved suggestions', () => {
       const dest = chance.word();
       const sugg = makeUnresolvedSuggestion(dest);
 
-      const result = generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+      const result = generateMarkdownLink(
+        mockFileManager,
+        mockVault,
+        sugg,
+        activeFilePath,
+      );
 
+      expect(mockFileManager.generateMarkdownLink).not.toHaveBeenCalled();
       expect(result).toBe(`[[${dest}]]`);
     });
 
@@ -203,7 +214,7 @@ describe('utils', () => {
       const alias = chance.word();
       const sugg = makeAliasSuggestion(destFile, alias);
 
-      generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+      generateMarkdownLink(mockFileManager, mockVault, sugg, activeFilePath);
 
       expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
         destFile,
@@ -219,7 +230,7 @@ describe('utils', () => {
         item: makeBookmarksPluginFileItem({ path: destFile.path }),
       });
 
-      generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+      generateMarkdownLink(mockFileManager, mockVault, sugg, activeFilePath);
 
       expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
         destFile,
@@ -236,7 +247,7 @@ describe('utils', () => {
         item: makeBookmarksPluginFileItem({ path: destFile.path, title }),
       });
 
-      generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+      generateMarkdownLink(mockFileManager, mockVault, sugg, activeFilePath);
 
       expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
         destFile,
@@ -256,7 +267,12 @@ describe('utils', () => {
         match: null,
       };
 
-      const result = generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+      const result = generateMarkdownLink(
+        mockFileManager,
+        mockVault,
+        sugg,
+        activeFilePath,
+      );
 
       expect(result).toBeNull();
       expect(mockFileManager.generateMarkdownLink).not.toHaveBeenCalled();
@@ -266,7 +282,7 @@ describe('utils', () => {
       const heading = chance.sentence();
       const sugg = makeHeadingSuggestion(makeHeading(heading, 1), destFile);
 
-      generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+      generateMarkdownLink(mockFileManager, mockVault, sugg, activeFilePath);
 
       expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
         destFile,
@@ -280,7 +296,7 @@ describe('utils', () => {
       const heading = chance.sentence();
       const sugg = makeHeadingSuggestion(makeHeading(heading, 1), destFile);
 
-      generateMarkdownLink(mockFileManager, sugg, activeFilePath, {
+      generateMarkdownLink(mockFileManager, mockVault, sugg, activeFilePath, {
         useHeadingAsAlias: false,
       });
 
@@ -295,7 +311,7 @@ describe('utils', () => {
     test('with useBasenameAsAlias disabled, it should generate a link without an alias', () => {
       const sugg = makeFileSuggestion(destFile);
 
-      generateMarkdownLink(mockFileManager, sugg, activeFilePath, {
+      generateMarkdownLink(mockFileManager, mockVault, sugg, activeFilePath, {
         useBasenameAsAlias: false,
       });
 
@@ -315,7 +331,7 @@ describe('utils', () => {
         destFile,
       );
 
-      generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+      generateMarkdownLink(mockFileManager, mockVault, sugg, activeFilePath);
 
       expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
         destFile,
@@ -325,17 +341,18 @@ describe('utils', () => {
       );
     });
 
-    it('should generate a link for non-heading Symbol suggestions that points the destination file', () => {
+    it('should not generate a link for unsupported symbol types', () => {
       const sugg = makeSymbolSuggestion(getTags()[0], SymbolType.Tag, destFile);
 
-      generateMarkdownLink(mockFileManager, sugg, activeFilePath);
-
-      expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
-        destFile,
+      const result = generateMarkdownLink(
+        mockFileManager,
+        mockVault,
+        sugg,
         activeFilePath,
-        null,
-        destFile.basename,
       );
+
+      expect(result).toBeNull();
+      expect(mockFileManager.generateMarkdownLink).not.toHaveBeenCalled();
     });
 
     it('should generate a link for unresolved RelatedItems suggestions', () => {
@@ -346,9 +363,106 @@ describe('utils', () => {
         file: null,
       });
 
-      const result = generateMarkdownLink(mockFileManager, sugg, activeFilePath);
+      const result = generateMarkdownLink(
+        mockFileManager,
+        mockVault,
+        sugg,
+        activeFilePath,
+      );
 
       expect(result).toBe(`[[${dest}]]`);
+    });
+
+    it('should generate a link for block ReferenceCache that does not contain a file path', () => {
+      const subpath = '#^8b7e5b';
+
+      // link with no file path, in these cases, file path is assumed to be
+      // the source file that contains/defines the ReferenceCache
+      const refCache = makeLink(subpath, `[[${subpath}]]`);
+      const sugg = makeSymbolSuggestion(refCache, SymbolType.Link, destFile);
+
+      mockParseLinktext.mockReturnValueOnce({ path: '', subpath });
+
+      generateMarkdownLink(mockFileManager, mockVault, sugg, activeFilePath);
+
+      expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
+        destFile,
+        activeFilePath,
+        subpath,
+        destFile.basename,
+      );
+    });
+
+    it('should generate a link for heading ReferenceCache to another file', () => {
+      const refCacheDestFile = new TFile();
+      const { path: destFilePath } = refCacheDestFile;
+      const displayText = chance.word();
+      const subpath = `#${chance.word()}`;
+      const link = `${destFilePath}${subpath}|${displayText}`;
+
+      const refCache = makeLink(link, `[[${link}]]`, displayText);
+      const sugg = makeSymbolSuggestion(refCache, SymbolType.Link, destFile);
+
+      mockParseLinktext.mockReturnValueOnce({ path: destFilePath, subpath });
+
+      mockVault.getAbstractFileByPath
+        .calledWith(destFilePath)
+        .mockReturnValueOnce(refCacheDestFile);
+
+      generateMarkdownLink(mockFileManager, mockVault, sugg, activeFilePath);
+
+      expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
+        refCacheDestFile,
+        activeFilePath,
+        subpath,
+        displayText,
+      );
+    });
+
+    it('should generate a link for ReferenceCache that is unresolved', () => {
+      const displayText = chance.word();
+      const path = 'NOEXIST';
+      const link = `${path}|${displayText}`;
+
+      const refCache = makeLink(link, `[[${link}]]`, displayText);
+      const sugg = makeSymbolSuggestion(refCache, SymbolType.Link, destFile);
+
+      mockParseLinktext.mockReturnValueOnce({ path, subpath: '' });
+
+      mockVault.getAbstractFileByPath.calledWith(path).mockReturnValueOnce(null);
+
+      const result = generateMarkdownLink(
+        mockFileManager,
+        mockVault,
+        sugg,
+        activeFilePath,
+      );
+
+      expect(mockFileManager.generateMarkdownLink).not.toHaveBeenCalled();
+      expect(mockVault.getAbstractFileByPath).toHaveBeenCalledWith(path);
+      expect(result).toBe(`[[${link}]]`);
+    });
+
+    it('should generate a link for ReferenceCache that is an external link (Markdown Link)', () => {
+      const link = 'www.foo.com';
+      const original = `[displaytext](${link})`;
+
+      // link with no file path, in these cases, file path is assumed to be
+      // the source file that contains/defines the ReferenceCache
+      const refCache = makeLink(link, original);
+      const sugg = makeSymbolSuggestion(refCache, SymbolType.Link, destFile);
+
+      mockParseLinktext.mockReturnValueOnce({ path: link, subpath: '' });
+
+      const result = generateMarkdownLink(
+        mockFileManager,
+        mockVault,
+        sugg,
+        activeFilePath,
+      );
+
+      expect(result).toBe(original);
+      expect(mockFileManager.generateMarkdownLink).not.toHaveBeenCalled();
     });
   });
 });

@@ -535,7 +535,7 @@ export class SwitcherPlusKeymap {
     insertConfig: InsertLinkConfig,
   ): void {
     const {
-      app: { workspace, fileManager },
+      app: { workspace, fileManager, vault },
     } = this;
 
     const activeMarkdownView = workspace.getActiveViewOfType(MarkdownView);
@@ -545,6 +545,7 @@ export class SwitcherPlusKeymap {
     if (isActiveMarkdown && activeFile) {
       const linkStr = generateMarkdownLink(
         fileManager,
+        vault,
         sugg,
         activeFile.path,
         insertConfig,
