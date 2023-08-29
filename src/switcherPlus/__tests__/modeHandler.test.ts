@@ -227,14 +227,17 @@ describe('modeHandler', () => {
     test('with shouldResetActiveFacets enabled, .onOpen() should set all facets to inactive', () => {
       mockSettings.quickFilters = mock<FacetSettingsData>({
         shouldResetActiveFacets: true,
-        facetList: [mock<Facet>({ isActive: true }), mock<Facet>({ isActive: true })],
+        facetList: {
+          test1: mock<Facet>({ isActive: true }),
+          test2: mock<Facet>({ isActive: true }),
+        },
       });
 
       sut.onOpen();
 
-      expect(mockSettings.quickFilters.facetList.every((v) => v.isActive === false)).toBe(
-        true,
-      );
+      const { facetList } = mockSettings.quickFilters;
+      expect(facetList['test1'].isActive).toBeFalsy();
+      expect(facetList['test2'].isActive).toBeFalsy();
     });
 
     test('onClose() should close the keymap', () => {
@@ -1119,26 +1122,25 @@ describe('modeHandler', () => {
     const inputInfo = new InputInfo('', mode);
     let sut: ModeHandler;
     let getSuggestionSpy: jest.SpyInstance;
-    const mockSettingsLocal = mock<SwitcherPlusSettings>({
-      quickFilters: {
-        facetList: [
-          {
-            id: RelationType.Backlink,
-            mode: mode,
-            label: 'backlinks',
-            isActive: false,
-            isAvailable: true,
-          },
-          {
-            id: RelationType.OutgoingLink,
-            mode: mode,
-            label: 'outgoing links',
-            isActive: false,
-            isAvailable: true,
-          },
-        ],
-      },
-    });
+
+    const facetList: Record<string, Facet> = {};
+    facetList[RelationType.Backlink] = {
+      id: RelationType.Backlink,
+      mode: mode,
+      label: 'backlinks',
+      isActive: false,
+      isAvailable: true,
+    };
+
+    facetList[RelationType.OutgoingLink] = {
+      id: RelationType.OutgoingLink,
+      mode: mode,
+      label: 'outgoing links',
+      isActive: false,
+      isAvailable: true,
+    };
+
+    const mockSettingsLocal = mock<SwitcherPlusSettings>({ quickFilters: { facetList } });
 
     beforeAll(() => {
       sut = new ModeHandler(mockApp, mockSettingsLocal, mockKeymap);

@@ -1,10 +1,11 @@
 import { getSystemSwitcherInstance } from 'src/utils';
 import type SwitcherPlusPlugin from 'src/main';
 import { Hotkey, QuickSwitcherOptions } from 'obsidian';
-import { FACETS_ALL } from './facetConstants';
+import { getFacetMap } from './facetConstants';
 import {
   FacetSettingsData,
   InsertLinkConfig,
+  MatchPriorityData,
   Mode,
   NavigationKeysConfig,
   PathDisplayFormat,
@@ -13,6 +14,7 @@ import {
   SymbolType,
   TitleSource,
 } from 'src/types';
+import merge from 'ts-deepmerge';
 
 export class SwitcherPlusSettings {
   private readonly data: SettingsData;
@@ -26,7 +28,7 @@ export class SwitcherPlusSettings {
     enabledSymbolTypes[SymbolType.Callout] = true;
 
     return {
-      version: '1.0.0',
+      version: '2.0.0',
       onOpenPreferNewTab: true,
       alwaysNewTabForSymbols: false,
       useActiveTabForSymbolsOnMobile: false,
@@ -66,20 +68,26 @@ export class SwitcherPlusSettings {
         Mode[Mode.SymbolList] as keyof typeof Mode,
       ],
       fileExtAllowList: ['canvas'],
-      enableMatchPriorityAdjustments: false,
       matchPriorityAdjustments: {
-        isOpenInEditor: 0,
-        isBookmarked: 0,
-        isRecent: 0,
-        file: 0,
-        alias: 0,
-        h1: 0,
+        isEnabled: false,
+        adjustments: {
+          isOpenInEditor: { value: 0, label: 'Open items' },
+          isBookmarked: { value: 0, label: 'Bookmarked items' },
+          isRecent: { value: 0, label: 'Recent items' },
+          file: { value: 0, label: 'Filenames' },
+          alias: { value: 0, label: 'Aliases' },
+          unresolved: { value: 0, label: 'Unresolved filenames' },
+          h1: { value: 0, label: 'H₁ headings' },
+        },
+        fileExtAdjustments: {
+          canvas: { value: 0, label: 'Canvas files' },
+        },
       },
       quickFilters: {
         resetKey: '0',
         keyList: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
         modifiers: ['Ctrl', 'Alt'],
-        facetList: FACETS_ALL.map((v) => Object.assign({}, v)),
+        facetList: getFacetMap(),
         shouldResetActiveFacets: false,
         shouldShowFacetInstructions: true,
       },
@@ -463,19 +471,11 @@ export class SwitcherPlusSettings {
     this.data.fileExtAllowList = value;
   }
 
-  get enableMatchPriorityAdjustments(): boolean {
-    return this.data.enableMatchPriorityAdjustments;
-  }
-
-  set enableMatchPriorityAdjustments(value: boolean) {
-    this.data.enableMatchPriorityAdjustments = value;
-  }
-
-  get matchPriorityAdjustments(): Record<string, number> {
+  get matchPriorityAdjustments(): SettingsData['matchPriorityAdjustments'] {
     return this.data.matchPriorityAdjustments;
   }
 
-  set matchPriorityAdjustments(value: Record<string, number>) {
+  set matchPriorityAdjustments(value: SettingsData['matchPriorityAdjustments']) {
     this.data.matchPriorityAdjustments = value;
   }
 
@@ -580,15 +580,34 @@ export class SwitcherPlusSettings {
   }
 
   async updateDataAndLoadSettings(): Promise<void> {
-    await SwitcherPlusSettings.updateDataFile(this.plugin, SwitcherPlusSettings.defaults);
+    await SwitcherPlusSettings.transformDataFile(
+      this.plugin,
+      SwitcherPlusSettings.defaults,
+    );
     return await this.loadSettings();
   }
 
   async loadSettings(): Promise<void> {
-    const copy = <T extends object>(source: T, target: T, keys: Array<keyof T>): void => {
+    const copy = <T extends SettingsData>(
+      savedData: T,
+      defaultData: T,
+      keys: Array<keyof T>,
+    ): void => {
+      const keysToMerge = ['matchPriorityAdjustments', 'quickFilters'];
+
+      const deepMerge = (key: keyof T) => {
+        return merge.withOptions(
+          { mergeArrays: false },
+          defaultData[key],
+          savedData[key],
+        ) as T[keyof T];
+      };
+
       for (const key of keys) {
-        if (key in source) {
-          target[key] = source[key];
+        if (key in savedData) {
+          defaultData[key] = keysToMerge.includes(key as string)
+            ? deepMerge(key)
+            : savedData[key];
         }
       }
     };
@@ -632,18 +651,26 @@ export class SwitcherPlusSettings {
     this.data.enabledSymbolTypes[symbol] = isEnabled;
   }
 
-  static async updateDataFile(
+  static async transformDataFile(
     plugin: SwitcherPlusPlugin,
     defaults: SettingsData,
   ): Promise<void> {
+    await SwitcherPlusSettings.transformDataFileToV1(plugin, defaults);
+    await SwitcherPlusSettings.transformDataFileToV2(plugin, defaults);
+  }
+
+  static async transformDataFileToV1(
+    plugin: SwitcherPlusPlugin,
+    defaults: SettingsData,
+  ): Promise<boolean> {
+    let isTransformed = false;
+
     try {
       const data = (await plugin?.loadData()) as Record<string, unknown>;
       if (data && typeof data === 'object') {
         const versionKey = 'version';
-        if (!Object.prototype.hasOwnProperty.call(data, versionKey)) {
-          // add version number
-          data[versionKey] = '1.0.0';
 
+        if (!Object.prototype.hasOwnProperty.call(data, versionKey)) {
           // rename from starred to bookmarks
           const starredCommandKey = 'starredListCommand';
           if (Object.prototype.hasOwnProperty.call(data, starredCommandKey)) {
@@ -663,22 +690,80 @@ export class SwitcherPlusSettings {
             delete adjustments[isStarredKey];
           }
 
-          // add new facets
-          const facetList = (data['quickFilters'] as FacetSettingsData)?.facetList;
-          if (facetList) {
-            const existingSet = new Set<string>(facetList.map((v) => v.id));
-            defaults.quickFilters.facetList.forEach((facet) => {
-              if (!existingSet.has(facet.id)) {
-                facetList.push(facet);
-              }
-            });
-          }
-
+          data[versionKey] = '1.0.0';
           await plugin?.saveData(data);
+          isTransformed = true;
         }
       }
     } catch (error) {
-      console.log('Switcher++: error updating data.json file', error);
+      console.log('Switcher++: error transforming data.json to v1.0.0', error);
     }
+
+    return isTransformed;
+  }
+
+  static async transformDataFileToV2(
+    plugin: SwitcherPlusPlugin,
+    defaults: SettingsData,
+  ): Promise<boolean> {
+    let isTransformed = false;
+
+    try {
+      const data = (await plugin?.loadData()) as Record<string, unknown>;
+      if (data && typeof data === 'object') {
+        const versionKey = 'version';
+
+        if (data[versionKey] === '1.0.0') {
+          const matchPriorityAdjustmentsKey = 'matchPriorityAdjustments';
+          if (Object.prototype.hasOwnProperty.call(data, matchPriorityAdjustmentsKey)) {
+            // Convert matchPriorityAdjustments to key/object pairs
+            // Version <= 1.0.0 type was Record<string, number>
+            const oldAdjustments = data[matchPriorityAdjustmentsKey] as Record<
+              string,
+              number
+            >;
+
+            const adjustments: Record<string, MatchPriorityData> = {};
+            data[matchPriorityAdjustmentsKey] = {
+              isEnabled: !!data['enableMatchPriorityAdjustments'],
+              adjustments,
+            };
+
+            delete data['enableMatchPriorityAdjustments'];
+
+            Object.entries(oldAdjustments).forEach(([key, value]) => {
+              const label =
+                defaults.matchPriorityAdjustments.adjustments[key]?.label ?? '';
+              adjustments[key] = { value, label };
+            });
+          }
+
+          const quickFiltersKey = 'quickFilters';
+          if (Object.prototype.hasOwnProperty.call(data, quickFiltersKey)) {
+            // convert .facetList from Array<Object> to Record<string, Object>
+            const facetListKey = 'facetList';
+            type UnknownRecord = Record<string, unknown>;
+            const quickFiltersData = data[quickFiltersKey] as UnknownRecord;
+            const oldFacetList = quickFiltersData[facetListKey] as UnknownRecord[];
+
+            const facetList = oldFacetList?.reduce((facetMap, oldFacet) => {
+              const facetId = oldFacet['id'] as string;
+              facetMap[facetId] = oldFacet;
+              return facetMap;
+            }, {} as UnknownRecord);
+
+            quickFiltersData[facetListKey] = facetList;
+          }
+
+          data[versionKey] = '2.0.0';
+          await plugin?.saveData(data);
+          isTransformed = true;
+        }
+      }
+    } catch (error) {
+      console.log('Switcher++: error transforming data.json to v2.0.0', error);
+    }
+
+    return isTransformed;
   }
 }

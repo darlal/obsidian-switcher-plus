@@ -1,5 +1,4 @@
 import {
-  Facet,
   LinkType,
   Mode,
   PathDisplayFormat,
@@ -8,7 +7,7 @@ import {
   SymbolType,
 } from 'src/types';
 import SwitcherPlusPlugin from 'src/main';
-import { FACETS_ALL, SwitcherPlusSettings } from 'src/settings';
+import { SwitcherPlusSettings, getFacetMap } from 'src/settings';
 import { Chance } from 'chance';
 import {
   App,
@@ -17,7 +16,8 @@ import {
   QuickSwitcherPluginInstance,
   InternalPlugins,
 } from 'obsidian';
-import { mock, MockProxy } from 'jest-mock-extended';
+import { mock, mockClear, MockProxy, mockReset } from 'jest-mock-extended';
+import merge from 'ts-deepmerge';
 
 const chance = new Chance();
 const sidePanelOptions = ['backlink', 'image', 'markdown', 'pdf'];
@@ -31,7 +31,7 @@ function getDefaultSettingsData(): SettingsData {
   enabledSymbolTypes[SymbolType.Callout] = true;
 
   const data: SettingsData = {
-    version: '1.0.0',
+    version: '2.0.0',
     enabledSymbolTypes,
     excludeViewTypes: ['empty'],
     referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'],
@@ -71,20 +71,26 @@ function getDefaultSettingsData(): SettingsData {
       Mode[Mode.SymbolList] as keyof typeof Mode,
     ],
     fileExtAllowList: ['canvas'],
-    enableMatchPriorityAdjustments: false,
     matchPriorityAdjustments: {
-      isOpenInEditor: 0,
-      isBookmarked: 0,
-      isRecent: 0,
-      file: 0,
-      alias: 0,
-      h1: 0,
+      isEnabled: false,
+      adjustments: {
+        isOpenInEditor: { value: 0, label: 'Open items' },
+        isBookmarked: { value: 0, label: 'Bookmarked items' },
+        isRecent: { value: 0, label: 'Recent items' },
+        file: { value: 0, label: 'Filenames' },
+        alias: { value: 0, label: 'Aliases' },
+        unresolved: { value: 0, label: 'Unresolved filenames' },
+        h1: { value: 0, label: 'H₁ headings' },
+      },
+      fileExtAdjustments: {
+        canvas: { value: 0, label: 'Canvas files' },
+      },
     },
     quickFilters: {
       resetKey: '0',
       keyList: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
       modifiers: ['Ctrl', 'Alt'],
-      facetList: FACETS_ALL.map((v) => Object.assign({}, v)),
+      facetList: getFacetMap(),
       shouldResetActiveFacets: false,
       shouldShowFacetInstructions: true,
     },
@@ -137,7 +143,7 @@ function getTransientSettingsData(): SettingsData {
   const enabledRibbonCommands = chance.pickset(ribbonCommands, 3);
 
   const data: SettingsData = {
-    version: '1.0.0',
+    version: '2.0.0',
     enabledSymbolTypes,
     excludeViewTypes: [chance.word(), chance.word()],
     referenceViews: [chance.word(), chance.word()],
@@ -178,14 +184,22 @@ function getTransientSettingsData(): SettingsData {
     overrideStandardModeBehaviors: chance.bool(),
     enabledRibbonCommands,
     fileExtAllowList: [],
-    enableMatchPriorityAdjustments: chance.bool(),
-    matchPriorityAdjustments: { h2: 0.5, isOpenInEditor: 0.5 },
+    matchPriorityAdjustments: {
+      isEnabled: chance.bool(),
+      adjustments: {
+        h2: { value: 0.5, label: chance.sentence() },
+        isOpenInEditor: { value: 0.5, label: chance.sentence() },
+      },
+      fileExtAdjustments: {
+        canvas: { value: 0.5, label: chance.word() },
+      },
+    },
     quickFilters: {
       resetKey: chance.letter(),
       resetModifiers: chance.pickset(['Alt', 'Ctrl', 'Meta', 'Shift'], 2),
       keyList: [chance.letter()],
       modifiers: [chance.pickone(['Alt', 'Ctrl', 'Meta'])],
-      facetList: [],
+      facetList: {},
       shouldResetActiveFacets: chance.bool(),
       shouldShowFacetInstructions: chance.bool(),
     },
@@ -334,8 +348,16 @@ describe('SwitcherPlusSettings', () => {
   });
 
   it('should load saved settings', async () => {
+    const defaults = getDefaultSettingsData();
     const settings = getTransientSettingsData();
+
+    // these keys get merged
+    settings['matchPriorityAdjustments'] = defaults['matchPriorityAdjustments'];
+    settings['quickFilters'] = defaults['quickFilters'];
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { enabledSymbolTypes, ...prunedSettings } = settings;
+
     mockPlugin.loadData.mockResolvedValueOnce(settings);
 
     await sut.loadSettings();
@@ -366,8 +388,13 @@ describe('SwitcherPlusSettings', () => {
     const defaults = getDefaultSettingsData();
     const settings = getTransientSettingsData();
 
+    // these keys get merged
+    settings['matchPriorityAdjustments'] = defaults['matchPriorityAdjustments'];
+    settings['quickFilters'] = defaults['quickFilters'];
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { enabledSymbolTypes, ...prunedSettings } = settings;
+
     mockPlugin.loadData.mockResolvedValueOnce(prunedSettings);
 
     await sut.loadSettings();
@@ -474,6 +501,20 @@ describe('SwitcherPlusSettings', () => {
     consoleLogSpy.mockRestore();
   });
 
+  test('.loadSettings() should merge the "matchPriorityAdjustments" saved values with the default values', async () => {
+    const defaults = getDefaultSettingsData();
+    const settings = getTransientSettingsData();
+
+    mockPlugin.loadData.mockResolvedValueOnce(settings);
+
+    await sut.loadSettings();
+
+    const key = 'matchPriorityAdjustments';
+    const expected = merge(defaults[key], settings[key]);
+
+    expect(sut.matchPriorityAdjustments).toEqual(expected);
+  });
+
   it('should log errors to console on fire and forget save operation', () => {
     const consoleLogSpy = jest.spyOn(console, 'log');
 
@@ -499,22 +540,53 @@ describe('SwitcherPlusSettings', () => {
     });
   });
 
-  describe('updateDataFile v1.0.0', () => {
+  test('updateDataAndLoadSettings() should update settings', async () => {
+    mockPlugin.loadData.mockResolvedValueOnce({});
+    const transformDataFileSpy = jest.spyOn(SwitcherPlusSettings, 'transformDataFile');
+
+    await sut.updateDataAndLoadSettings();
+
+    expect(transformDataFileSpy).toHaveBeenCalled();
+    expect(mockPlugin.loadData).toHaveBeenCalled();
+
+    transformDataFileSpy.mockRestore();
+  });
+
+  test('data object versions should match', () => {
+    expect(getDefaultSettingsData().version).toEqual(sut.version);
+    expect(getTransientSettingsData().version).toEqual(sut.version);
+  });
+
+  describe('transformDataFileToV1', () => {
     const mockDefaults = mock<SettingsData>({
-      quickFilters: { facetList: [mock<Facet>()] },
       bookmarksListCommand: chance.word(),
+    });
+
+    beforeEach(() => {
+      mockReset(mockPlugin);
+    });
+
+    it('should return false if data is null', async () => {
+      mockClear(mockPlugin);
+      mockPlugin.loadData.mockResolvedValueOnce(null);
+
+      const result = await SwitcherPlusSettings.transformDataFileToV2(null, null);
+
+      expect(result).toBe(false);
+      expect(mockPlugin.saveData).not.toHaveBeenCalled();
     });
 
     it('should log errors to the console', async () => {
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
-      const error = 'updateDataFile v1.0.0 unit test error';
+      const error = 'transformDataFileToV1 unit test error';
       mockPlugin.loadData.mockRejectedValueOnce(error);
 
-      await SwitcherPlusSettings.updateDataFile(mockPlugin, mockDefaults);
+      const result = await SwitcherPlusSettings.transformDataFileToV1(mockPlugin, null);
 
+      expect(result).toBe(false);
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        'Switcher++: error updating data.json file',
+        'Switcher++: error transforming data.json to v1.0.0',
         error,
       );
 
@@ -532,9 +604,13 @@ describe('SwitcherPlusSettings', () => {
         return Promise.resolve();
       });
 
-      await SwitcherPlusSettings.updateDataFile(mockPlugin, mockDefaults);
+      const result = await SwitcherPlusSettings.transformDataFileToV1(
+        mockPlugin,
+        mockDefaults,
+      );
 
       expect(savedData).toHaveProperty('version', '1.0.0');
+      expect(result).toBe(true);
     });
 
     it('should rename starredListCommand to bookmarksListCommand', async () => {
@@ -549,10 +625,14 @@ describe('SwitcherPlusSettings', () => {
         return Promise.resolve();
       });
 
-      await SwitcherPlusSettings.updateDataFile(mockPlugin, mockDefaults);
+      const result = await SwitcherPlusSettings.transformDataFileToV1(
+        mockPlugin,
+        mockDefaults,
+      );
 
       expect(savedData).not.toHaveProperty('starredListCommand');
       expect(savedData).toHaveProperty('bookmarksListCommand', value);
+      expect(result).toBe(true);
     });
 
     it("should use the default bookmarksListCommand if the starredListCommand doesn't exist", async () => {
@@ -567,8 +647,12 @@ describe('SwitcherPlusSettings', () => {
         return Promise.resolve();
       });
 
-      await SwitcherPlusSettings.updateDataFile(mockPlugin, mockDefaults);
+      const result = await SwitcherPlusSettings.transformDataFileToV1(
+        mockPlugin,
+        mockDefaults,
+      );
 
+      expect(result).toBe(true);
       expect(savedData).toHaveProperty(
         'bookmarksListCommand',
         mockDefaults.bookmarksListCommand,
@@ -587,16 +671,65 @@ describe('SwitcherPlusSettings', () => {
         return Promise.resolve();
       });
 
-      await SwitcherPlusSettings.updateDataFile(mockPlugin, mockDefaults);
+      const result = await SwitcherPlusSettings.transformDataFileToV1(
+        mockPlugin,
+        mockDefaults,
+      );
 
+      expect(result).toBe(true);
       expect(savedData.matchPriorityAdjustments).not.toHaveProperty('isStarred');
       expect(savedData.matchPriorityAdjustments).toHaveProperty('isBookmarked', value);
     });
+  });
 
-    it('should add new facets to the facetList property in quickFilters', async () => {
-      const facetList: Facet[] = [mock<Facet>()];
-      const data = { quickFilters: { facetList } };
-      mockPlugin.loadData.mockResolvedValueOnce(data);
+  describe('transformDataFileToV2', () => {
+    beforeEach(() => {
+      mockReset(mockPlugin);
+    });
+
+    it('should return false if data is null', async () => {
+      mockClear(mockPlugin);
+      mockPlugin.loadData.mockResolvedValueOnce(null);
+
+      const result = await SwitcherPlusSettings.transformDataFileToV2(null, null);
+
+      expect(result).toBe(false);
+      expect(mockPlugin.saveData).not.toHaveBeenCalled();
+    });
+
+    it('should log errors to the console', async () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      const error = 'transformDataFileToV2 unit test error';
+      mockPlugin.loadData.mockRejectedValueOnce(error);
+
+      const result = await SwitcherPlusSettings.transformDataFileToV2(mockPlugin, null);
+
+      expect(result).toBe(false);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Switcher++: error transforming data.json to v2.0.0',
+        error,
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should transform matchPriorityAdjustments', async () => {
+      const isEnabled = true;
+      const v1Adjustments = {
+        isOpenInEditor: 0.2,
+        isRecent: 0.3,
+        alias: 0.4,
+        h1: 0.5,
+      };
+
+      const v1Data = {
+        version: '1.0.0',
+        enableMatchPriorityAdjustments: isEnabled,
+        matchPriorityAdjustments: v1Adjustments,
+      };
+
+      mockPlugin.loadData.mockResolvedValueOnce(v1Data);
 
       let savedData: SettingsData;
       mockPlugin.saveData.mockImplementationOnce((input) => {
@@ -605,21 +738,81 @@ describe('SwitcherPlusSettings', () => {
         return Promise.resolve();
       });
 
-      await SwitcherPlusSettings.updateDataFile(mockPlugin, mockDefaults);
+      const result = await SwitcherPlusSettings.transformDataFileToV2(
+        mockPlugin,
+        mock<SettingsData>({
+          matchPriorityAdjustments: {
+            adjustments: {
+              isOpenInEditor: { value: 0, label: 'Open items' },
+              isRecent: { value: 0, label: 'Recent items' },
+              alias: { value: 0, label: 'Aliases' },
+              h1: { value: 0, label: undefined },
+            },
+          },
+        }),
+      );
 
-      expect(savedData.quickFilters.facetList).toHaveLength(2);
+      const expected = {
+        isEnabled,
+        adjustments: {
+          isOpenInEditor: { value: v1Adjustments.isOpenInEditor, label: 'Open items' },
+          isRecent: { value: v1Adjustments.isRecent, label: 'Recent items' },
+          alias: { value: v1Adjustments.alias, label: 'Aliases' },
+          h1: { value: v1Adjustments.h1, label: '' },
+        },
+      };
+
+      expect(savedData.version).toBe('2.0.0');
+      expect(savedData).not.toHaveProperty('enableMatchPriorityAdjustments');
+      expect(savedData.matchPriorityAdjustments).toEqual(expected);
+      expect(result).toBe(true);
     });
 
-    it('updateDataAndLoadSettings() should update settings', async () => {
-      const updateDataSpy = jest.spyOn(sut, 'updateDataAndLoadSettings');
-      mockPlugin.loadData.mockResolvedValueOnce({});
+    it('should transform quickFilters', async () => {
+      const testFacet1 = {
+        id: 'testFacet1',
+        mode: Mode.BookmarksList,
+        label: chance.sentence(),
+        isActive: chance.bool(),
+        isAvailable: chance.bool(),
+      };
 
-      await sut.updateDataAndLoadSettings();
+      const testFacet2 = {
+        id: 'testFacet2',
+        mode: Mode.CommandList,
+        label: chance.sentence(),
+        isActive: chance.bool(),
+        isAvailable: chance.bool(),
+      };
 
-      expect(updateDataSpy).toHaveBeenCalled();
-      expect(mockPlugin.loadData).toHaveBeenCalled();
+      const v1Data = {
+        version: '1.0.0',
+        quickFilters: {
+          facetList: [testFacet1, testFacet2],
+        },
+      };
 
-      updateDataSpy.mockRestore();
+      mockPlugin.loadData.mockResolvedValueOnce(v1Data);
+
+      let savedData: SettingsData;
+      mockPlugin.saveData.mockImplementationOnce((input) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        savedData = input;
+        return Promise.resolve();
+      });
+
+      const result = await SwitcherPlusSettings.transformDataFileToV2(
+        mockPlugin,
+        mock<SettingsData>(),
+      );
+
+      const expected = {
+        facetList: { testFacet1, testFacet2 },
+      };
+
+      expect(savedData.version).toBe('2.0.0');
+      expect(savedData.quickFilters).toEqual(expected);
+      expect(result).toBe(true);
     });
   });
 });

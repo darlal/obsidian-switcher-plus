@@ -54,5 +54,8 @@
     "ts-jest": "^29.0.5",
     "tslib": "^2.5.0",
     "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "ts-deepmerge": "^6.2.0"
   }
 }

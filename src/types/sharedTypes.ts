@@ -260,7 +260,7 @@ export interface FacetSettingsData {
   resetModifiers?: Modifier[];
   keyList: string[];
   modifiers: Modifier[];
-  facetList: Facet[];
+  facetList: Record<string, Facet>;
   shouldResetActiveFacets: boolean;
   shouldShowFacetInstructions: boolean;
 }
@@ -300,6 +300,7 @@ export type NavigationKeysConfig = {
 };
 
 export type TitleSource = 'Default' | 'H1';
+export type MatchPriorityData = { value: number; label: string; desc?: string };
 
 export interface SettingsData {
   version: string;
@@ -339,8 +340,11 @@ export interface SettingsData {
   overrideStandardModeBehaviors: boolean;
   enabledRibbonCommands: Array<keyof typeof Mode>;
   fileExtAllowList: Array<string>;
-  enableMatchPriorityAdjustments: boolean;
-  matchPriorityAdjustments: Record<string, number>;
+  matchPriorityAdjustments: {
+    isEnabled: boolean;
+    adjustments: Record<string, MatchPriorityData>;
+    fileExtAdjustments: Record<string, MatchPriorityData>;
+  };
   preserveCommandPaletteLastInput: boolean;
   preserveQuickSwitcherLastInput: boolean;
   quickFilters: FacetSettingsData;

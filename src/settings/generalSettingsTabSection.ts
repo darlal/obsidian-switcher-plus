@@ -3,21 +3,6 @@ import { SwitcherPlusSettings } from 'src/settings';
 import { Mode, PathDisplayFormat, TitleSource } from 'src/types';
 import { SettingsTabSection } from './settingsTabSection';
 
-const PRIORITY_ADJUSTMENTS = [
-  { key: 'isOpenInEditor', name: 'Open items', desc: '' },
-  { key: 'isBookmarked', name: 'Bookmarked items', desc: '' },
-  { key: 'isRecent', name: 'Recent items', desc: '' },
-  { key: 'file', name: 'Filenames', desc: '' },
-  { key: 'alias', name: 'Aliases', desc: '' },
-  { key: 'unresolved', name: 'Unresolved filenames', desc: '' },
-  { key: 'h1', name: 'H₁ headings', desc: '' },
-  { key: 'h2', name: 'H₂ headings', desc: '' },
-  { key: 'h3', name: 'H₃ headings', desc: '' },
-  { key: 'h4', name: 'H₄ headings', desc: '' },
-  { key: 'h5', name: 'H₅ headings', desc: '' },
-  { key: 'h6', name: 'H₆ headings', desc: '' },
-];
-
 export class GeneralSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
     const { config } = this;
@@ -188,22 +173,25 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     containerEl: HTMLElement,
     config: SwitcherPlusSettings,
   ): void {
-    const { enableMatchPriorityAdjustments, matchPriorityAdjustments } = config;
+    const {
+      matchPriorityAdjustments: { isEnabled, adjustments, fileExtAdjustments },
+    } = config;
+
     this.addToggleSetting(
       containerEl,
       'Result priority adjustments',
       'Artificially increase the match score of the specified item types by a fixed percentage so they appear higher in the results list',
-      enableMatchPriorityAdjustments,
+      isEnabled,
       null,
       (isEnabled, config) => {
-        config.enableMatchPriorityAdjustments = isEnabled;
+        config.matchPriorityAdjustments.isEnabled = isEnabled;
 
         // have to wait for the save here because the call to display() will
         // trigger a read of the updated data
         config.saveSettings().then(
           () => {
             // reload the settings panel. This will cause the matchPriorityAdjustments
-            // controls to be shown/hidden based on enableMatchPriorityAdjustments status
+            // controls to be shown/hidden based on isEnabled status
             this.mainSettingsTab.display();
           },
           (reason) =>
@@ -215,24 +203,26 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       },
     );
 
-    if (enableMatchPriorityAdjustments) {
-      PRIORITY_ADJUSTMENTS.forEach(({ key, name, desc }) => {
-        if (Object.prototype.hasOwnProperty.call(matchPriorityAdjustments, key)) {
+    if (isEnabled) {
+      [adjustments, fileExtAdjustments].forEach((collection) => {
+        Object.entries(collection).forEach(([key, data]) => {
+          const { value, label } = data;
+
           const setting = this.addSliderSetting(
             containerEl,
-            name,
-            desc,
-            matchPriorityAdjustments[key],
+            label,
+            data.desc ?? '',
+            value,
             [-1, 1, 0.05],
             null,
             (value, config) => {
-              matchPriorityAdjustments[key] = value;
+              collection[key].value = value;
               config.save();
             },
           );
 
           setting.setClass('qsp-setting-item-indent');
-        }
+        });
       });
     }
   }

@@ -134,3 +134,11 @@ export const FACETS_ALL: Facet[] = [
   ...RELATED_ITEMS_MODE_FACETS,
   ...BOOKMARKS_MODE_FACETS,
 ];
+
+export function getFacetMap(): Record<string, Facet> {
+  return FACETS_ALL.reduce((facetMap, facet) => {
+    const facetId = facet['id'];
+    facetMap[facetId] = Object.assign({}, facet);
+    return facetMap;
+  }, {} as Record<string, Facet>);
+}

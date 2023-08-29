@@ -109,7 +109,7 @@ export class ModeHandler {
     exKeymap.isOpen = true;
 
     if (settings.quickFilters?.shouldResetActiveFacets) {
-      settings.quickFilters.facetList?.forEach((f) => (f.isActive = false));
+      Object.values(settings.quickFilters.facetList).forEach((f) => (f.isActive = false));
     }
   }
 

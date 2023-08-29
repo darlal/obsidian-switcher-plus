@@ -25,6 +25,7 @@ import {
 import {
   AnySuggestion,
   Facet,
+  MatchPriorityData,
   MatchType,
   Mode,
   PathDisplayFormat,
@@ -78,7 +79,11 @@ export abstract class Handler<T> {
 
   getFacets(mode: Mode): Facet[] {
     if (!this.facets) {
-      this.facets = this.settings.quickFilters.facetList?.filter((v) => v.mode === mode);
+      const facetList = this.settings?.quickFilters?.facetList;
+
+      if (facetList) {
+        this.facets = Object.values(facetList).filter((facet) => facet.mode === mode);
+      }
     }
 
     return this.facets ?? [];
@@ -1069,15 +1074,21 @@ export abstract class Handler<T> {
         // downrank suggestions that are in an obsidian ignored paths
         sugg.downranked = true;
         sugg.match.score -= 10;
-      } else if (settings?.enableMatchPriorityAdjustments) {
-        const adjustments = settings?.matchPriorityAdjustments ?? {};
+      } else if (settings?.matchPriorityAdjustments?.isEnabled) {
+        const { matchPriorityAdjustments } = settings;
+        const adjustments = matchPriorityAdjustments.adjustments ?? {};
+        const fileExtAdjustments = matchPriorityAdjustments.fileExtAdjustments ?? {};
         let factor = 0;
 
-        const getFactor = (key: string) => {
+        const getFactor = (
+          key: string,
+          collection?: Record<string, MatchPriorityData>,
+        ) => {
+          collection = collection ?? adjustments;
           let val = 0;
 
-          if (Object.prototype.hasOwnProperty.call(adjustments, key)) {
-            val = Number(adjustments[key]);
+          if (Object.prototype.hasOwnProperty.call(collection, key)) {
+            val = Number(collection[key]?.value);
           }
 
           return isNaN(val) ? 0 : val;
@@ -1096,6 +1107,7 @@ export abstract class Handler<T> {
         factor += getFactorConstrained(SuggestionType.Bookmark, 'isBookmarked');
         factor += getFactorConstrained(SuggestionType.EditorList, 'isOpenInEditor');
         factor += getFactorConstrained(null, 'isRecent');
+        factor += getFactor(file?.extension, fileExtAdjustments);
 
         if (isHeadingSuggestion(sugg)) {
           factor += getFactor(`h${sugg.item?.level}`);

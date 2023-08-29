@@ -295,7 +295,7 @@ describe('generalSettingsTabSection', () => {
       const finalEnabledValue = true;
       const savePromise = Promise.resolve();
 
-      config.enableMatchPriorityAdjustments = initialEnabledValue;
+      config.matchPriorityAdjustments.isEnabled = initialEnabledValue;
       saveSettingsSpy.mockReturnValueOnce(savePromise);
       addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
         if (args[1] === 'Result priority adjustments') {
@@ -314,9 +314,9 @@ describe('generalSettingsTabSection', () => {
 
       expect(saveSettingsSpy).toHaveBeenCalled();
       expect(mockPluginSettingTab.display).toHaveBeenCalled();
-      expect(config.enableMatchPriorityAdjustments).toBe(finalEnabledValue);
+      expect(config.matchPriorityAdjustments.isEnabled).toBe(finalEnabledValue);
 
-      config.enableMatchPriorityAdjustments = false;
+      config.matchPriorityAdjustments.isEnabled = false;
       addToggleSettingSpy.mockReset();
       mockPluginSettingTab.display.mockClear();
     });
@@ -365,6 +365,8 @@ describe('generalSettingsTabSection', () => {
       const initialValue = 0;
       const finalValue = 0.5;
       const saveSpy = jest.spyOn(config, 'save').mockReturnValueOnce();
+      const adjustmentData =
+        config.matchPriorityAdjustments.adjustments[fieldToAdjustKey];
 
       const addSliderSettingSpy = jest
         .spyOn(SettingsTabSection.prototype, 'addSliderSetting')
@@ -376,8 +378,8 @@ describe('generalSettingsTabSection', () => {
           return mock<Setting>();
         });
 
-      config.enableMatchPriorityAdjustments = true;
-      config.matchPriorityAdjustments[fieldToAdjustKey] = initialValue;
+      config.matchPriorityAdjustments.isEnabled = true;
+      adjustmentData.value = initialValue;
 
       sut.showMatchPriorityAdjustments(mockContainerEl, config);
 
@@ -385,10 +387,10 @@ describe('generalSettingsTabSection', () => {
       sliderSettingOnChangeFn(finalValue, config);
 
       expect(saveSpy).toHaveBeenCalled();
-      expect(config.matchPriorityAdjustments[fieldToAdjustKey]).toBe(finalValue);
+      expect(adjustmentData.value).toBe(finalValue);
 
-      config.enableMatchPriorityAdjustments = false;
-      config.matchPriorityAdjustments[fieldToAdjustKey] = 0;
+      config.matchPriorityAdjustments.isEnabled = false;
+      adjustmentData.value = 0;
       addSliderSettingSpy.mockRestore();
       saveSpy.mockRestore();
     });

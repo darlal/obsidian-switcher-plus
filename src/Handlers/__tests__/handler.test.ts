@@ -43,6 +43,7 @@ import {
   FacetSettingsData,
   SessionOpts,
   BookmarksItemInfo,
+  SettingsData,
 } from 'src/types';
 import { mock, mockClear, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
@@ -104,6 +105,7 @@ describe('Handler', () => {
       excludeViewTypes: [],
       referenceViews: [],
       includeSidePanelViewTypes: [],
+      matchPriorityAdjustments: mock<SettingsData['matchPriorityAdjustments']>(),
     });
 
     sut = new SUT(mockApp, mockSettings);
@@ -1909,12 +1911,18 @@ describe('Handler', () => {
     });
 
     it('should not change score if setting is not a valid number', () => {
+      const mockMatchPriorityAdjustments = mockSettings.matchPriorityAdjustments;
       const sugg = makeFileSuggestion(null, null, 0);
       sugg.isBookmarked = true;
 
-      // eslint-disable-next-line
-      // @ts-ignore
-      mockSettings.matchPriorityAdjustments = { isBookmarked: '0NAN' };
+      mockMatchPriorityAdjustments.adjustments = {
+        isBookmarked: {
+          // eslint-disable-next-line
+          // @ts-ignore
+          value: '0NAN',
+          label: '',
+        },
+      };
 
       const result = sut.applyMatchPriorityPreferences(sugg);
 
@@ -1924,9 +1932,11 @@ describe('Handler', () => {
     });
 
     it('should not change score if setting is not set', () => {
+      const mockMatchPriorityAdjustments = mockSettings.matchPriorityAdjustments;
       const sugg = makeFileSuggestion(null, null, 0);
 
-      mockSettings.matchPriorityAdjustments = null;
+      mockMatchPriorityAdjustments.adjustments = null;
+      mockMatchPriorityAdjustments.fileExtAdjustments = null;
 
       const result = sut.applyMatchPriorityPreferences(sugg);
 
@@ -1961,10 +1971,13 @@ describe('Handler', () => {
         title: 'a negative factor should decrease a negative score',
       },
     ])('$title', ({ score, factor, expected }) => {
+      const mockMatchPriorityAdjustments = mockSettings.matchPriorityAdjustments;
       const sugg = makeFileSuggestion(null, null, score);
       sugg.isOpenInEditor = true;
 
-      mockSettings.matchPriorityAdjustments = { isOpenInEditor: factor };
+      mockMatchPriorityAdjustments.adjustments = {
+        isOpenInEditor: { value: factor, label: '' },
+      };
 
       const result = sut.applyMatchPriorityPreferences(sugg);
 
@@ -1974,10 +1987,13 @@ describe('Handler', () => {
     });
 
     it('should update score for suggestions that is open in an editor', () => {
+      const mockMatchPriorityAdjustments = mockSettings.matchPriorityAdjustments;
       const sugg = makeFileSuggestion(null, null, -0.15);
       sugg.isOpenInEditor = true;
 
-      mockSettings.matchPriorityAdjustments = { isOpenInEditor: 0.5 };
+      mockMatchPriorityAdjustments.adjustments = {
+        isOpenInEditor: { value: 0.5, label: '' },
+      };
 
       const result = sut.applyMatchPriorityPreferences(sugg);
 
@@ -1987,10 +2003,13 @@ describe('Handler', () => {
     });
 
     it('should update score for bookmarked suggestions', () => {
+      const mockMatchPriorityAdjustments = mockSettings.matchPriorityAdjustments;
       const sugg = makeFileSuggestion(null, null, -0.15);
       sugg.isBookmarked = true;
 
-      mockSettings.matchPriorityAdjustments = { isBookmarked: 0.5 };
+      mockMatchPriorityAdjustments.adjustments = {
+        isBookmarked: { value: 0.5, label: '' },
+      };
 
       const result = sut.applyMatchPriorityPreferences(sugg);
 
@@ -2000,10 +2019,13 @@ describe('Handler', () => {
     });
 
     it('should update score for recently open suggestions', () => {
+      const mockMatchPriorityAdjustments = mockSettings.matchPriorityAdjustments;
       const sugg = makeFileSuggestion(null, null, -0.15);
       sugg.isRecent = true;
 
-      mockSettings.matchPriorityAdjustments = { isRecent: 0.5 };
+      mockMatchPriorityAdjustments.adjustments = {
+        isRecent: { value: 0.5, label: '' },
+      };
 
       const result = sut.applyMatchPriorityPreferences(sugg);
 
@@ -2013,6 +2035,7 @@ describe('Handler', () => {
     });
 
     it('should update score for heading suggestions', () => {
+      const mockMatchPriorityAdjustments = mockSettings.matchPriorityAdjustments;
       const sugg = makeHeadingSuggestion(
         mock<HeadingCache>({ level: 2 }),
         null,
@@ -2020,7 +2043,29 @@ describe('Handler', () => {
         -0.15,
       );
 
-      mockSettings.matchPriorityAdjustments = { h2: 0.5 };
+      mockMatchPriorityAdjustments.adjustments = {
+        h2: { value: 0.5, label: '' },
+      };
+
+      const result = sut.applyMatchPriorityPreferences(sugg);
+
+      expect(result.match.score).toBe(-0.075);
+
+      mockReset(mockSettings);
+    });
+
+    it('should update score for canvas files', () => {
+      const mockMatchPriorityAdjustments = mockSettings.matchPriorityAdjustments;
+
+      const file = new TFile();
+      file.extension = 'canvas';
+
+      const sugg = makeFileSuggestion(file, null, -0.15);
+      sugg.isRecent = true;
+
+      mockMatchPriorityAdjustments.fileExtAdjustments = {
+        canvas: { value: 0.5, label: '' },
+      };
 
       const result = sut.applyMatchPriorityPreferences(sugg);
 
