@@ -457,7 +457,7 @@ describe('relatedItemsHandler', () => {
       mockFuzzySearch.mockImplementation(
         (_q: PreparedQuery, text: string): SearchResult => {
           const match = makeFuzzyMatch();
-          return text.includes(filterText) ? match : null;
+          return text === filterText ? match : null;
         },
       );
 
