@@ -90,6 +90,8 @@ declare module 'obsidian' {
       findCommand(id: string): Command;
     };
     hotkeyManager: {
+      getHotkeys(id: string): Hotkey[];
+      getDefaultHotkeys(id: string): Hotkey[];
       printHotkeyForCommand(id: string): string;
     };
   }

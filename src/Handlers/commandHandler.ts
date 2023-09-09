@@ -102,12 +102,17 @@ export class CommandHandler extends Handler<CommandSuggestion> {
 
   renderHotkeyForCommand(id: string, app: App, flairContainerEl: HTMLElement): void {
     try {
-      const hotkeyStr = app.hotkeyManager.printHotkeyForCommand(id);
-      if (hotkeyStr?.length) {
-        flairContainerEl.createEl('kbd', {
-          cls: 'suggestion-hotkey',
-          text: hotkeyStr,
-        });
+      const { hotkeyManager } = app;
+
+      if (hotkeyManager.getHotkeys(id) || hotkeyManager.getDefaultHotkeys(id)) {
+        const hotkeyStr = hotkeyManager.printHotkeyForCommand(id);
+
+        if (hotkeyStr?.length) {
+          flairContainerEl.createEl('kbd', {
+            cls: 'suggestion-hotkey',
+            text: hotkeyStr,
+          });
+        }
       }
     } catch (err) {
       console.log('Switcher++: error rendering hotkey for command id: ', id, err);

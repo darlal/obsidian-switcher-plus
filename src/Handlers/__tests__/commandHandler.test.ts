@@ -11,6 +11,7 @@ import {
   prepareQuery,
   CommandPalettePluginInstance,
   Command,
+  Hotkey,
 } from 'obsidian';
 import {
   makePreparedQuery,
@@ -59,8 +60,11 @@ describe('commandHandler', () => {
   let mockCommandPalettePluginInstance: MockProxy<CommandPalettePluginInstance>;
   let mockCommands: Command[];
   let sut: CommandHandler;
-  const mockFindCommand = mockFn();
-  const mockPrintHotkeyForCommand = mockFn();
+  const mockFindCommand = mockFn<App['commands']['findCommand']>();
+  const mockGetHotkeys = mockFn<App['hotkeyManager']['getHotkeys']>();
+  const mockGetDefaultHotkeys = mockFn<App['hotkeyManager']['getDefaultHotkeys']>();
+  const mockPrintHotkeyForCommand =
+    mockFn<App['hotkeyManager']['printHotkeyForCommand']>();
 
   beforeAll(() => {
     const commandPalettePluginInstall = makeCommandPalettePluginInstall();
@@ -85,6 +89,8 @@ describe('commandHandler', () => {
       },
       hotkeyManager: {
         printHotkeyForCommand: mockPrintHotkeyForCommand,
+        getHotkeys: mockGetHotkeys,
+        getDefaultHotkeys: mockGetDefaultHotkeys,
       },
     });
 
@@ -364,6 +370,8 @@ describe('commandHandler', () => {
       const mockFlairContainer = mock<HTMLElement>();
       const keyStr = chance.word();
       const id = chance.word();
+
+      mockGetHotkeys.mockReturnValueOnce([mock<Hotkey>()]);
       mockPrintHotkeyForCommand.calledWith(id).mockReturnValueOnce(keyStr);
 
       sut.renderHotkeyForCommand(id, mockApp, mockFlairContainer);
@@ -375,9 +383,25 @@ describe('commandHandler', () => {
       );
     });
 
+    it('should not render if both custom, and default hotkeys are not defined', () => {
+      const mockFlairContainer = mock<HTMLElement>();
+      const id = chance.word();
+
+      mockGetHotkeys.mockReturnValueOnce(null);
+      mockGetDefaultHotkeys.mockReturnValueOnce(null);
+      mockPrintHotkeyForCommand.mockClear();
+
+      sut.renderHotkeyForCommand(id, mockApp, mockFlairContainer);
+
+      expect(mockPrintHotkeyForCommand).not.toHaveBeenCalledWith();
+      expect(mockFlairContainer.createEl).not.toHaveBeenCalledWith();
+    });
+
     it('should log errors to the console', () => {
       const id = chance.word();
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      mockGetDefaultHotkeys.mockReturnValueOnce([mock<Hotkey>()]);
       mockPrintHotkeyForCommand.mockImplementationOnce(() => {
         throw new Error('renderHotkeyForCommand unit test error');
       });
