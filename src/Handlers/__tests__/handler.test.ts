@@ -2082,13 +2082,14 @@ describe('Handler', () => {
       expect(() => Handler.updateWorkspaceEnvListStatus(list, sugg)).not.toThrow();
     });
 
-    it('should update WorkspaceListstatus', () => {
+    it('should update WorkspaceListStatus', () => {
       const file = new TFile();
       const sugg = makeEditorSuggestion(null, file);
       const mockEnvList = mock<WorkspaceEnvList>();
       mockEnvList.openWorkspaceFiles = new Set<TFile>([file]);
       mockEnvList.mostRecentFiles = new Set<TFile>([file]);
       mockEnvList.fileBookmarks = new Map<TFile, BookmarksItemInfo>([[file, null]]);
+      mockEnvList.attachmentFileExtensions = new Set<string>([file.extension]);
 
       Handler.updateWorkspaceEnvListStatus(mockEnvList, sugg);
 
@@ -2097,6 +2098,7 @@ describe('Handler', () => {
           isOpenInEditor: true,
           isRecent: true,
           isBookmarked: true,
+          isAttachment: true,
         }),
       );
     });

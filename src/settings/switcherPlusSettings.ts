@@ -74,6 +74,7 @@ export class SwitcherPlusSettings {
           isOpenInEditor: { value: 0, label: 'Open items' },
           isBookmarked: { value: 0, label: 'Bookmarked items' },
           isRecent: { value: 0, label: 'Recent items' },
+          isAttachment: { value: 0, label: 'Attachment file types' },
           file: { value: 0, label: 'Filenames' },
           alias: { value: 0, label: 'Aliases' },
           unresolved: { value: 0, label: 'Unresolved filenames' },

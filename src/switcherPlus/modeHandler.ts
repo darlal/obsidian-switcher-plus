@@ -1,3 +1,6 @@
+import { SwitcherPlusKeymap } from './switcherPlusKeymap';
+import { InputInfo } from './inputInfo';
+import { SwitcherPlusSettings } from 'src/settings';
 import {
   Handler,
   WorkspaceHandler,
@@ -28,10 +31,15 @@ import {
   SessionOpts,
   BookmarksItemInfo,
 } from 'src/types';
-import { InputInfo } from './inputInfo';
-import { SwitcherPlusSettings } from 'src/settings';
-import { WorkspaceLeaf, App, Chooser, Debouncer, debounce, TFile } from 'obsidian';
-import { SwitcherPlusKeymap } from './switcherPlusKeymap';
+import {
+  WorkspaceLeaf,
+  App,
+  Chooser,
+  Debouncer,
+  debounce,
+  TFile,
+  ViewRegistry,
+} from 'obsidian';
 
 const lastInputInfoByMode = {} as Record<Mode, InputInfo>;
 
@@ -603,12 +611,39 @@ export class ModeHandler {
       lists.fileBookmarks = fileBookmarks;
       lists.nonFileBookmarks = nonFileBookmarks;
 
+      lists.attachmentFileExtensions = this.getAttachmentFileExtensions(
+        this.app.viewRegistry,
+        this.settings.fileExtAllowList,
+      );
+
       const maxCount =
         openEditorFilesSet.size + this.settings.maxRecentFileSuggestionsOnInit;
       lists.mostRecentFiles = this.getRecentFiles(openEditorFilesSet, maxCount);
     }
 
     return inputInfo;
+  }
+
+  getAttachmentFileExtensions(
+    viewRegistry: ViewRegistry,
+    exemptFileExtensions: string[],
+  ): Set<string> {
+    let extList = new Set<string>();
+
+    try {
+      const coreExts = new Set<string>(['md', 'canvas', ...exemptFileExtensions]);
+
+      // Get the list of registered extensions excluding the markdown and canvas
+      const extensions = Object.keys(viewRegistry.typeByExtension).filter(
+        (ext) => !coreExts.has(ext),
+      );
+
+      extList = new Set<string>(extensions);
+    } catch (err) {
+      console.log('Switcher++: error retrieving attachment list from ViewRegistry', err);
+    }
+
+    return extList;
   }
 
   getRecentFiles(ignoreFiles: Set<TFile>, maxCount = 75): Set<TFile> {

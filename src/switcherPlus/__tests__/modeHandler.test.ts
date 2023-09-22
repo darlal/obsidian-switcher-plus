@@ -43,6 +43,7 @@ import {
   Vault,
   BookmarksPluginItem,
   BookmarksPluginSearchItem,
+  ViewRegistry,
 } from 'obsidian';
 import {
   editorTrigger,
@@ -171,6 +172,9 @@ describe('modeHandler', () => {
       internalPlugins: mockInternalPlugins,
       workspace: mockWorkspace,
       vault: mockVault,
+      viewRegistry: mock<ViewRegistry>({
+        typeByExtension: {},
+      }),
     });
 
     mockSettings = mock<SwitcherPlusSettings>({
@@ -189,6 +193,7 @@ describe('modeHandler', () => {
       overrideStandardModeBehaviors: false,
       preserveCommandPaletteLastInput: false,
       preserveQuickSwitcherLastInput: false,
+      fileExtAllowList: [],
     });
   });
 
@@ -1111,6 +1116,40 @@ describe('modeHandler', () => {
       editorSpy.mockRestore();
       bookmarksSpy.mockRestore();
       recentSpy.mockRestore();
+    });
+  });
+
+  describe('getAttachmentFileExtensions', () => {
+    let sut: ModeHandler;
+
+    beforeAll(() => {
+      sut = new ModeHandler(mockApp, mockSettings, null);
+    });
+
+    test('exemptFileExtensions should not be in the attachment file extensions list', () => {
+      const exempt = chance.word();
+      const mockViewRegister = mock<ViewRegistry>({
+        typeByExtension: {},
+      });
+
+      mockViewRegister.typeByExtension[exempt] = '';
+
+      const results = sut.getAttachmentFileExtensions(mockViewRegister, [exempt]);
+
+      expect(results).not.toContain(exempt);
+    });
+
+    it('should log errors to the console', () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      sut.getAttachmentFileExtensions(null, null);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Switcher++: error retrieving attachment list from ViewRegistry',
+        expect.anything(),
+      );
+
+      consoleLogSpy.mockRestore();
     });
   });
 

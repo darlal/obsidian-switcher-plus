@@ -7,6 +7,7 @@ export interface WorkspaceEnvList {
   fileBookmarks: Map<TFile, BookmarksItemInfo>;
   nonFileBookmarks: Set<BookmarksItemInfo>;
   mostRecentFiles: Set<TFile>;
+  attachmentFileExtensions: Set<string>;
 }
 
 export interface ParsedCommand {
@@ -39,6 +40,7 @@ export class InputInfo {
     fileBookmarks: new Map<TFile, BookmarksItemInfo>(),
     nonFileBookmarks: new Set<BookmarksItemInfo>(),
     mostRecentFiles: new Set<TFile>(),
+    attachmentFileExtensions: new Set<string>(),
   };
 
   get searchQuery(): SearchQuery {

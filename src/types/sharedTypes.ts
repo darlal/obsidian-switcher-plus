@@ -154,6 +154,7 @@ export interface Suggestion<T> extends FuzzyMatch<T> {
   isOpenInEditor?: boolean;
   isBookmarked?: boolean;
   isRecent?: boolean;
+  isAttachment?: boolean;
   preferredTitle?: string;
 }
 

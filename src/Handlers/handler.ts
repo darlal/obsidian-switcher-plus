@@ -1107,6 +1107,7 @@ export abstract class Handler<T> {
         factor += getFactorConstrained(SuggestionType.Bookmark, 'isBookmarked');
         factor += getFactorConstrained(SuggestionType.EditorList, 'isOpenInEditor');
         factor += getFactorConstrained(null, 'isRecent');
+        factor += getFactorConstrained(null, 'isAttachment');
         factor += getFactor(file?.extension, fileExtAdjustments);
 
         if (isHeadingSuggestion(sugg)) {
@@ -1131,7 +1132,8 @@ export abstract class Handler<T> {
   }
 
   /**
-   * Sets isOpenInEditor, isRecent, isBookmarked, status of sugg based on currentWorkspaceEnvList
+   * Sets isOpenInEditor, isRecent, isBookmarked, isAttachment, status of sugg
+   * based on currentWorkspaceEnvList
    * @param  {WorkspaceEnvList} currentWorkspaceEnvList
    * @param  {V} sugg
    * @returns V
@@ -1146,6 +1148,10 @@ export abstract class Handler<T> {
       sugg.isOpenInEditor = currentWorkspaceEnvList.openWorkspaceFiles?.has(file);
       sugg.isRecent = currentWorkspaceEnvList.mostRecentFiles?.has(file);
       sugg.isBookmarked = currentWorkspaceEnvList.fileBookmarks?.has(file);
+
+      sugg.isAttachment = currentWorkspaceEnvList.attachmentFileExtensions?.has(
+        file.extension,
+      );
     }
 
     return sugg;

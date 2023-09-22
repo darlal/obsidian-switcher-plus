@@ -76,6 +76,7 @@ declare module 'obsidian' {
 
   export interface ViewRegistry {
     viewByType: Record<string, unknown>;
+    typeByExtension: Record<string, string>;
     isExtensionRegistered(extension: string): boolean;
   }
 
