@@ -47,6 +47,7 @@ export class ModeHandler {
   >;
 
   sessionOpts: SessionOpts = {};
+  noResultActionModes = [Mode.HeadingsList, Mode.WorkspaceList];
 
   constructor(
     private app: App,
@@ -310,13 +311,11 @@ export class ModeHandler {
     ]);
 
     if (sugg === null) {
-      if (isHeadingMode) {
-        // in Headings mode, a null suggestion should create a new note
-        const headingHandler = this.getHandler(mode);
-        const filename = inputInfo.parsedCommand(mode)?.parsedInput;
-
-        headingHandler.createFile(filename, evt);
-        handled = true;
+      if (this.noResultActionModes.includes(mode)) {
+        // In these modes, a null suggestion indicates that
+        // the <enter to create> UI action was chosen
+        const handler = this.getHandler(mode);
+        handled = !!handler?.onNoResultsCreateAction(inputInfo, evt);
       }
     } else if (!systemBehaviorPreferred.has(sugg.type)) {
       if (overrideStandardModeBehaviors || isHeadingMode || isExSuggestion(sugg)) {
@@ -368,7 +367,10 @@ export class ModeHandler {
         chooser.setSuggestions(suggs);
         ModeHandler.setActiveSuggestion(mode, chooser);
       } else {
-        if (mode === Mode.HeadingsList && inputInfo.parsedCommand(mode).parsedInput) {
+        if (
+          this.noResultActionModes.includes(mode) &&
+          inputInfo.parsedCommand(mode).parsedInput
+        ) {
           modal.onNoSuggestion();
         } else {
           chooser.setSuggestions(null);

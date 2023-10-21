@@ -592,4 +592,13 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
     return [...openEditors, ...recentFiles];
   }
+
+  override onNoResultsCreateAction(
+    inputInfo: InputInfo,
+    evt: MouseEvent | KeyboardEvent,
+  ): boolean {
+    const filename = inputInfo.parsedCommand(Mode.HeadingsList)?.parsedInput;
+    this.createFile(filename, evt);
+    return true;
+  }
 }

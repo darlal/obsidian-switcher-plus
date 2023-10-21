@@ -109,10 +109,13 @@ describe('Handler', () => {
     sut = new SUT(mockApp, mockSettings);
   });
 
-  describe('reset', () => {
-    it('should not throw', () => {
-      expect(() => sut.reset()).not.toThrow();
-    });
+  test('.reset should not throw', () => {
+    expect(() => sut.reset()).not.toThrow();
+  });
+
+  test('.onNoResultsCreateAction should return false', () => {
+    const result = sut.onNoResultsCreateAction(null, null);
+    expect(result).toBeFalsy();
   });
 
   describe('getEditorInfo', () => {

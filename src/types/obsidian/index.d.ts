@@ -48,6 +48,8 @@ declare module 'obsidian' {
   export interface WorkspacesPluginInstance extends PluginInstance {
     workspaces: Record<string, unknown>;
     loadWorkspace(id: string): void;
+    saveWorkspace(id: string): void;
+    setActiveWorkspace(id: string): void;
   }
 
   export interface QuickSwitcherOptions {

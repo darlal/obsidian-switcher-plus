@@ -1,4 +1,4 @@
-import { getInternalPluginById } from 'src/utils';
+import { getInternalEnabledPluginById } from 'src/utils';
 import {
   AnySuggestion,
   Mode,
@@ -10,7 +10,6 @@ import {
 import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import {
   fuzzySearch,
-  InstalledPlugin,
   SearchResult,
   sortSearchResults,
   WorkspaceLeaf,
@@ -34,7 +33,7 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
   ): ParsedCommand {
     const cmd = inputInfo.parsedCommand(Mode.WorkspaceList);
 
-    if (this.isWorkspacesPluginEnabled()) {
+    if (this.getEnabledWorkspacesPluginInstance()) {
       inputInfo.mode = Mode.WorkspaceList;
 
       cmd.index = index;
@@ -93,9 +92,9 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
     let handled = false;
     if (sugg) {
       const { id } = sugg.item;
-      const pluginInstance = this.getSystemWorkspacesPluginInstance();
+      const pluginInstance = this.getEnabledWorkspacesPluginInstance();
 
-      if (typeof pluginInstance['loadWorkspace'] === 'function') {
+      if (pluginInstance) {
         pluginInstance.loadWorkspace(id);
       }
 
@@ -105,9 +104,26 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
     return handled;
   }
 
+  override onNoResultsCreateAction(
+    inputInfo: InputInfo,
+    _evt: MouseEvent | KeyboardEvent,
+  ): boolean {
+    const pluginInstance = this.getEnabledWorkspacesPluginInstance();
+
+    if (pluginInstance) {
+      const input = inputInfo.parsedCommand(Mode.WorkspaceList)?.parsedInput;
+
+      // create a new workspace and set it active
+      pluginInstance.saveWorkspace(input);
+      pluginInstance.setActiveWorkspace(input);
+    }
+
+    return true;
+  }
+
   private getItems(): WorkspaceInfo[] {
     const items: WorkspaceInfo[] = [];
-    const workspaces = this.getSystemWorkspacesPluginInstance()?.workspaces;
+    const workspaces = this.getEnabledWorkspacesPluginInstance()?.workspaces;
 
     if (workspaces) {
       Object.keys(workspaces).forEach((id) => items.push({ id, type: 'workspaceInfo' }));
@@ -116,17 +132,10 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
     return items.sort((a, b) => a.id.localeCompare(b.id));
   }
 
-  private isWorkspacesPluginEnabled(): boolean {
-    const plugin = this.getSystemWorkspacesPlugin();
-    return plugin?.enabled;
-  }
-
-  private getSystemWorkspacesPlugin(): InstalledPlugin {
-    return getInternalPluginById(this.app, WORKSPACE_PLUGIN_ID);
-  }
-
-  private getSystemWorkspacesPluginInstance(): WorkspacesPluginInstance {
-    const workspacesPlugin = this.getSystemWorkspacesPlugin();
-    return workspacesPlugin?.instance as WorkspacesPluginInstance;
+  getEnabledWorkspacesPluginInstance(): WorkspacesPluginInstance {
+    return getInternalEnabledPluginById(
+      this.app,
+      WORKSPACE_PLUGIN_ID,
+    ) as WorkspacesPluginInstance;
   }
 }

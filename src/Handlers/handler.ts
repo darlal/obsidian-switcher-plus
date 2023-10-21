@@ -69,6 +69,13 @@ export abstract class Handler<T> {
     /* noop */
   }
 
+  onNoResultsCreateAction(
+    _inputInfo: InputInfo,
+    _evt: MouseEvent | KeyboardEvent,
+  ): boolean {
+    return false;
+  }
+
   getFacets(mode: Mode): Facet[] {
     if (!this.facets) {
       this.facets = this.settings.quickFilters.facetList?.filter((v) => v.mode === mode);

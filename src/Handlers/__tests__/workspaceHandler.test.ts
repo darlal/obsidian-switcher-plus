@@ -43,7 +43,9 @@ function makeInternalPluginList(
 
   const mockInternalPlugins = mock<InternalPlugins>({ plugins: mockPlugins });
 
-  mockInternalPlugins.getPluginById.mockImplementation((id) => mockPlugins[id]);
+  mockInternalPlugins.getEnabledPluginById
+    .calledWith(WORKSPACE_PLUGIN_ID)
+    .mockReturnValue(mockPlugins[WORKSPACE_PLUGIN_ID].instance);
 
   return mockInternalPlugins;
 }
@@ -76,6 +78,18 @@ describe('workspaceHandler', () => {
     sut = new WorkspaceHandler(mockApp, settings);
   });
 
+  it('should create a new workspace when the no result action is triggered', () => {
+    const mockEvt = mock<MouseEvent>();
+    const name = 'new workspace';
+    const inputInfo = new InputInfo(name, Mode.WorkspaceList);
+    inputInfo.parsedCommand(Mode.WorkspaceList).parsedInput = name;
+
+    sut.onNoResultsCreateAction(inputInfo, mockEvt);
+
+    expect(mockWsPluginInstance.saveWorkspace).toHaveBeenCalledWith(name);
+    expect(mockWsPluginInstance.setActiveWorkspace).toHaveBeenCalledWith(name);
+  });
+
   describe('getCommandString', () => {
     it('should return workspaceListCommand trigger', () => {
       expect(sut.getCommandString()).toBe(workspaceTrigger);
@@ -101,16 +115,13 @@ describe('workspaceHandler', () => {
       const workspaceCmd = inputInfo.parsedCommand();
       expect(workspaceCmd.parsedInput).toBe(filterText);
       expect(workspaceCmd.isValidated).toBe(true);
-      expect(mockApp.internalPlugins.getPluginById).toHaveBeenCalledWith(
+      expect(mockApp.internalPlugins.getEnabledPluginById).toHaveBeenCalledWith(
         WORKSPACE_PLUGIN_ID,
       );
     });
 
     it('should not validate parsed input with workspace plugin disabled', () => {
-      mockInternalPlugins.getPluginById.mockReturnValueOnce({
-        enabled: false,
-        instance: null,
-      });
+      mockInternalPlugins.getEnabledPluginById.mockReturnValueOnce(null);
 
       const inputInfo = new InputInfo(inputText);
 
@@ -120,7 +131,9 @@ describe('workspaceHandler', () => {
       const workspaceCmd = inputInfo.parsedCommand();
       expect(workspaceCmd.parsedInput).toBe(null);
       expect(workspaceCmd.isValidated).toBe(false);
-      expect(mockInternalPlugins.getPluginById).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);
+      expect(mockInternalPlugins.getEnabledPluginById).toHaveBeenCalledWith(
+        WORKSPACE_PLUGIN_ID,
+      );
     });
   });
 
@@ -147,7 +160,9 @@ describe('workspaceHandler', () => {
       expect(results.every((sugg) => sugg.type === SuggestionType.WorkspaceList)).toBe(
         true,
       );
-      expect(mockInternalPlugins.getPluginById).toHaveBeenCalledWith(WORKSPACE_PLUGIN_ID);
+      expect(mockInternalPlugins.getEnabledPluginById).toHaveBeenCalledWith(
+        WORKSPACE_PLUGIN_ID,
+      );
     });
 
     test('with filter search term, it should return only matching suggestions for workspace mode', () => {
@@ -174,7 +189,7 @@ describe('workspaceHandler', () => {
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(mockInternalPlugins.getPluginById).toHaveBeenCalled();
+      expect(mockInternalPlugins.getEnabledPluginById).toHaveBeenCalled();
 
       mockFuzzySearch.mockReset();
     });
@@ -214,7 +229,7 @@ describe('workspaceHandler', () => {
     it('should tell the workspaces plugin to load the workspace with the chosen ID', () => {
       sut.onChooseSuggestion(suggestionInstance, null);
 
-      expect(mockInternalPlugins.getPluginById).toHaveBeenCalled();
+      expect(mockInternalPlugins.getEnabledPluginById).toHaveBeenCalled();
       expect(mockWsPluginInstance.loadWorkspace).toHaveBeenCalledWith(
         suggestionInstance.item.id,
       );

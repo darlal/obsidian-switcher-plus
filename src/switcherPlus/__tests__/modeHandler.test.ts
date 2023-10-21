@@ -29,6 +29,7 @@ import {
   Handler,
   BookmarksHandler,
   BOOKMARKS_PLUGIN_ID,
+  WORKSPACE_PLUGIN_ID,
 } from 'src/Handlers';
 import {
   App,
@@ -150,12 +151,11 @@ describe('modeHandler', () => {
 
   beforeAll(() => {
     const mockInternalPlugins = mock<InternalPlugins>();
-    mockInternalPlugins.getPluginById.mockImplementation((_id) => {
-      return {
-        enabled: true,
-        instance: null,
-      };
-    });
+    mockInternalPlugins.getEnabledPluginById
+      .calledWith(WORKSPACE_PLUGIN_ID)
+      .mockReturnValue({
+        id: WORKSPACE_PLUGIN_ID,
+      });
 
     mockInternalPlugins.getEnabledPluginById
       .calledWith(BOOKMARKS_PLUGIN_ID)
