@@ -113,7 +113,7 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
       Object.keys(workspaces).forEach((id) => items.push({ id, type: 'workspaceInfo' }));
     }
 
-    return items;
+    return items.sort((a, b) => a.id.localeCompare(b.id));
   }
 
   private isWorkspacesPluginEnabled(): boolean {
