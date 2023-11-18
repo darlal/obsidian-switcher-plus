@@ -51,7 +51,10 @@ import {
 export abstract class Handler<T> {
   facets: Facet[];
 
-  constructor(protected app: App, protected settings: SwitcherPlusSettings) {}
+  constructor(
+    protected app: App,
+    protected settings: SwitcherPlusSettings,
+  ) {}
 
   abstract renderSuggestion(sugg: T, parentEl: HTMLElement): boolean;
   abstract onChooseSuggestion(sugg: T, evt: MouseEvent | KeyboardEvent): boolean;

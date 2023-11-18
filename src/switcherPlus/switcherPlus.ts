@@ -29,7 +29,10 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
   const SwitcherPlusModal = class extends SystemSwitcherModal implements SwitcherPlus {
     private exMode: ModeHandler;
 
-    constructor(app: App, public plugin: SwitcherPlusPlugin) {
+    constructor(
+      app: App,
+      public plugin: SwitcherPlusPlugin,
+    ) {
       super(app, plugin.options.builtInSystemOptions);
 
       const { options } = plugin;

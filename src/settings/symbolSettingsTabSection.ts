@@ -115,7 +115,7 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
     );
 
     if (isLinksEnabled) {
-      const allowedLinkTypes: [string, LinkType][] = [
+      const allowedLinkTypes: [string, number][] = [
         ['Links to headings', LinkType.Heading],
         ['Links to blocks', LinkType.Block],
       ];

@@ -57,7 +57,6 @@ import {
 import { mock, MockProxy, mockClear, mockFn } from 'jest-mock-extended';
 import { Chance } from 'chance';
 import {
-  AllCanvasNodeData,
   CanvasData,
   CanvasFileData,
   CanvasGroupData,
@@ -1082,9 +1081,7 @@ describe('symbolHandler', () => {
   });
 
   describe('getSuggestionTextForCanvasNode', () => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const canvasNodes = JSON.parse(makeCanvasFileContentString())
-      .nodes as AllCanvasNodeData[];
+    const canvasNodes = (JSON.parse(makeCanvasFileContentString()) as CanvasData).nodes;
 
     it('should return .file for CanvasFileData', () => {
       const node = canvasNodes.find((v) => v.type === 'file');

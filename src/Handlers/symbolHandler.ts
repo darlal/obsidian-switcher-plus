@@ -493,7 +493,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
     if (this.shouldIncludeSymbol(SymbolType.Link, activeFacetIds)) {
       for (const link of linkData) {
-        const type = getLinkType(link);
+        const type: number = getLinkType(link);
         const isExcluded = (settings.excludeLinkSubTypes & type) === type;
 
         if (!isExcluded) {

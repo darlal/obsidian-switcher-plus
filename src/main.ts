@@ -131,10 +131,13 @@ export default class SwitcherPlusPlugin extends Plugin {
     });
 
     // map to keyed object
-    const commandDataByMode = COMMAND_DATA.reduce((acc, curr) => {
-      acc[curr.mode] = curr;
-      return acc;
-    }, {} as Record<Mode, CommandDefinition>);
+    const commandDataByMode = COMMAND_DATA.reduce(
+      (acc, curr) => {
+        acc[curr.mode] = curr;
+        return acc;
+      },
+      {} as Record<Mode, CommandDefinition>,
+    );
 
     this.options.enabledRibbonCommands.forEach((command) => {
       const data = commandDataByMode[Mode[command]];
