@@ -97,6 +97,7 @@ declare module 'obsidian' {
       getDefaultHotkeys(id: string): Hotkey[];
       printHotkeyForCommand(id: string): string;
     };
+    openVaultChooser(): void;
   }
 
   export interface Chooser<T> {

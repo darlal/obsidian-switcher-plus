@@ -9,6 +9,7 @@ import {
   BookmarksSettingsTabSection,
   CommandListSettingsTabSection,
   WorkspaceSettingsTabSection,
+  VaultListSettingsTabSection,
 } from 'src/settings';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { App, ViewRegistry } from 'obsidian';
@@ -60,6 +61,7 @@ describe('SwitcherPlusSettingTab', () => {
         [BookmarksSettingsTabSection],
         [CommandListSettingsTabSection],
         [WorkspaceSettingsTabSection],
+        [VaultListSettingsTabSection],
       ];
 
       sut.display();

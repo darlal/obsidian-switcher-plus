@@ -1324,10 +1324,10 @@ describe('Handler', () => {
   });
 
   describe('splitSearchMatchesAtBasename', () => {
-    const filename = 'Pane layout II.md'.toLowerCase();
-    const filepath = 'Obsidian Help/Panes/Pane layout II.md'.toLowerCase();
+    const filename = 'Pane layout II'.toLowerCase();
+    const filepath = `Obsidian Help/Panes/${filename}.md`.toLowerCase();
     const file = new TFile();
-    file.name = filename;
+    file.basename = filename;
     file.path = filepath;
 
     const matchPart: (query: string, offset?: number) => SearchMatchPart = (

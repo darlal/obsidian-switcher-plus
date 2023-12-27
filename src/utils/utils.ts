@@ -19,12 +19,10 @@ import {
   AliasSuggestion,
   UnresolvedSuggestion,
   AnySystemSuggestion,
-  WorkspaceSuggestion,
   HeadingSuggestion,
   AnySuggestion,
   AnyExSuggestion,
   LinkType,
-  CommandSuggestion,
   SuggestionType,
   CalloutCache,
 } from 'src/types';
@@ -54,16 +52,8 @@ export function isEditorSuggestion(obj: unknown): obj is EditorSuggestion {
   return isOfType<EditorSuggestion>(obj, 'type', SuggestionType.EditorList);
 }
 
-export function isWorkspaceSuggestion(obj: unknown): obj is WorkspaceSuggestion {
-  return isOfType<WorkspaceSuggestion>(obj, 'type', SuggestionType.WorkspaceList);
-}
-
 export function isHeadingSuggestion(obj: unknown): obj is HeadingSuggestion {
   return isOfType<HeadingSuggestion>(obj, 'type', SuggestionType.HeadingsList);
-}
-
-export function isCommandSuggestion(obj: unknown): obj is CommandSuggestion {
-  return isOfType<CommandSuggestion>(obj, 'type', SuggestionType.CommandList);
 }
 
 export function isFileSuggestion(obj: unknown): obj is FileSuggestion {

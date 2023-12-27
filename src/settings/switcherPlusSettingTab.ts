@@ -7,6 +7,7 @@ import { WorkspaceSettingsTabSection } from './workspaceSettingsTabSection';
 import { EditorSettingsTabSection } from './editorSettingsTabSection';
 import { HeadingsSettingsTabSection } from './headingsSettingsTabSection';
 import { SymbolSettingsTabSection } from './symbolSettingsTabSection';
+import { VaultListSettingsTabSection } from './vaultListSettingsTabSection';
 import { SwitcherPlusSettings } from './switcherPlusSettings';
 import { App, PluginSettingTab } from 'obsidian';
 import type SwitcherPlusPlugin from '../main';
@@ -39,6 +40,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       BookmarksSettingsTabSection,
       CommandListSettingsTabSection,
       WorkspaceSettingsTabSection,
+      VaultListSettingsTabSection,
     ];
 
     containerEl.empty();

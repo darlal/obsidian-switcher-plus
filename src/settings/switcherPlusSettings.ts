@@ -40,6 +40,7 @@ export class SwitcherPlusSettings {
       headingsListCommand: '#',
       bookmarksListCommand: "'",
       commandListCommand: '>',
+      vaultListCommand: 'vault ',
       relatedItemsListCommand: '~',
       relatedItemsListActiveEditorCommand: '^ ',
       strictHeadingsOnly: false,
@@ -267,6 +268,18 @@ export class SwitcherPlusSettings {
 
   get commandListPlaceholderText(): string {
     return SwitcherPlusSettings.defaults.commandListCommand;
+  }
+
+  get vaultListCommand(): string {
+    return this.data.vaultListCommand;
+  }
+
+  set vaultListCommand(value: string) {
+    this.data.vaultListCommand = value;
+  }
+
+  get vaultListPlaceholderText(): string {
+    return SwitcherPlusSettings.defaults.vaultListCommand;
   }
 
   get relatedItemsListCommand(): string {

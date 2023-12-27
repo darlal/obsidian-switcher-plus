@@ -29,6 +29,7 @@ import {
   MatchType,
   Mode,
   PathDisplayFormat,
+  PathSegments,
   SearchResultWithFallback,
   SessionOpts,
   SourceInfo,
@@ -39,12 +40,8 @@ import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
   getTFileByPath,
-  isCommandSuggestion,
   isEditorSuggestion,
   isHeadingSuggestion,
-  isSymbolSuggestion,
-  isUnresolvedSuggestion,
-  isWorkspaceSuggestion,
   stripMDExtensionFromPath,
 } from 'src/utils';
 
@@ -161,17 +158,19 @@ export abstract class Handler<T> {
     let file: TFile = null;
     let leaf: WorkspaceLeaf = null;
 
-    // Can't use a symbol, workspace, unresolved (non-existent file) suggestions as
-    // the target for another symbol command, because they don't point to a file
-    const isFileBasedSuggestion =
-      suggestion &&
-      !isSymbolSuggestion(suggestion) &&
-      !isUnresolvedSuggestion(suggestion) &&
-      !isWorkspaceSuggestion(suggestion) &&
-      !isCommandSuggestion(suggestion);
+    // Can't use these suggestions as the target for another symbol command,
+    // because they don't point to a file
+    const invalidTypes = [
+      SuggestionType.SymbolList,
+      SuggestionType.Unresolved,
+      SuggestionType.WorkspaceList,
+      SuggestionType.CommandList,
+      SuggestionType.VaultList,
+    ];
 
+    const isFileBasedSuggestion = suggestion && !invalidTypes.includes(suggestion.type);
     if (isFileBasedSuggestion) {
-      file = suggestion.file;
+      file = (suggestion as { file: TFile }).file;
     }
 
     if (isEditorSuggestion(suggestion)) {
@@ -746,46 +745,44 @@ export abstract class Handler<T> {
    * Searches through primaryText, if no match is found and file is not null, it will
    * fallback to searching 1) file.basename, 2) file.path
    * @param  {PreparedQuery} prepQuery
-   * @param  {string} primaryString?
-   * @param  {TFile} file
+   * @param  {string} primaryString
+   * @param  {PathSegments} pathSegments? TFile like object containing the basename and full path.
    * @returns SearchResultWithFallback
    */
   fuzzySearchWithFallback(
     prepQuery: PreparedQuery,
     primaryString: string,
-    file?: TFile,
+    pathSegments?: PathSegments,
   ): SearchResultWithFallback {
     let matchType = MatchType.None;
     let matchText: string;
     let match: SearchResult = null;
 
-    const search = (matchTypes: [MatchType, MatchType], p1: string, p2?: string) => {
-      const res = this.fuzzySearchStrings(prepQuery, p1, p2);
+    let res = this.fuzzySearchStrings(prepQuery, primaryString);
 
-      if (res.match) {
-        matchType = matchTypes[1];
-        matchText = p2;
-        match = res.match;
-
-        if (res.isPrimary) {
-          matchType = matchTypes[0];
-          matchText = p1;
-        }
-      }
-
-      return !!res.match;
-    };
-
-    const isMatch = search([MatchType.Primary, MatchType.None], primaryString);
-    if (!isMatch && file) {
-      const { basename, path } = file;
+    if (res.match) {
+      match = res.match;
+      matchType = MatchType.Primary;
+      matchText = primaryString;
+    } else if (pathSegments) {
+      const { basename, path } = pathSegments;
 
       // Note: the fallback to path has to search through the entire path
       // because search needs to match over the filename/basename boundaries
       // e.g. search string "to my" should match "path/to/myfile.md"
       // that means MatchType.Basename will always be in the basename, while
       // MatchType.ParentPath can span both filename and basename
-      search([MatchType.Basename, MatchType.Path], basename, path);
+      res = this.fuzzySearchStrings(prepQuery, basename, path);
+
+      if (res.isPrimary) {
+        matchType = MatchType.Basename;
+        matchText = basename;
+      } else if (res.match) {
+        matchType = MatchType.Path;
+        matchText = path;
+      }
+
+      match = res.match;
     }
 
     return { matchType, matchText, match };
@@ -794,12 +791,12 @@ export abstract class Handler<T> {
   /**
    * Separate match into two groups, one that only matches the path segment of file, and
    * a second that only matches the filename segment
-   * @param  {TFile} file
+   * @param  {PathSegments} pathSegments
    * @param  {SearchResult} match
    * @returns {SearchResult; SearchResult}
    */
   splitSearchMatchesAtBasename(
-    file: TFile,
+    pathSegments: PathSegments,
     match: SearchResult,
   ): { pathMatch: SearchResult; basenameMatch: SearchResult } {
     let basenameMatch: SearchResult = null;
@@ -813,9 +810,8 @@ export abstract class Handler<T> {
       });
     };
 
-    if (file && match?.matches) {
-      const { name, path } = file;
-      const nameIndex = path.lastIndexOf(name);
+    if (pathSegments && match?.matches) {
+      const nameIndex = pathSegments.path.lastIndexOf(pathSegments.basename);
 
       if (nameIndex >= 0) {
         const { matches, score } = match;

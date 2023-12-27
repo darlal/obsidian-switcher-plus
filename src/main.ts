@@ -88,6 +88,13 @@ const COMMAND_DATA: CommandDefinition[] = [
     ribbonIconEl: null,
     sessionOpts: { useActiveEditorAsSource: true },
   },
+  {
+    id: 'switcher-plus:open-vaults',
+    name: 'Open in Vaults Mode',
+    mode: Mode.VaultList,
+    iconId: 'vault',
+    ribbonIconEl: null,
+  },
 ];
 
 export default class SwitcherPlusPlugin extends Plugin {

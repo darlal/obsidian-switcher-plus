@@ -41,6 +41,7 @@ export enum Mode {
   BookmarksList = 32,
   CommandList = 64,
   RelatedItemsList = 128,
+  VaultList = 256,
 }
 
 export enum SymbolType {
@@ -131,6 +132,7 @@ export enum SuggestionType {
   Bookmark = 'bookmark',
   CommandList = 'commandList',
   RelatedItemsList = 'relatedItemsList',
+  VaultList = 'vaultList',
   File = 'file',
   Alias = 'alias',
   Unresolved = 'unresolved',
@@ -217,6 +219,14 @@ export interface CommandSuggestion extends Omit<Suggestion<Command>, 'file'> {
   isPinned?: boolean;
 }
 
+export type PathSegments = Pick<TFile, 'basename' | 'path'>;
+
+export interface VaultSuggestion extends Omit<Suggestion<string>, 'file'> {
+  type: SuggestionType.VaultList;
+  pathSegments: PathSegments;
+  isOpen?: boolean;
+}
+
 export type AnyExSuggestionPayload = WorkspaceLeaf | SymbolInfo | WorkspaceInfo;
 
 export type AnyExSuggestion =
@@ -226,6 +236,7 @@ export type AnyExSuggestion =
   | HeadingSuggestion
   | BookmarksSuggestion
   | CommandSuggestion
+  | VaultSuggestion
   | RelatedItemsSuggestion;
 
 export type AnySystemSuggestion = FileSuggestion | AliasSuggestion | UnresolvedSuggestion;
@@ -316,6 +327,7 @@ export interface SettingsData {
   headingsListCommand: string;
   bookmarksListCommand: string;
   commandListCommand: string;
+  vaultListCommand: string;
   relatedItemsListCommand: string;
   relatedItemsListActiveEditorCommand: string;
   strictHeadingsOnly: boolean;

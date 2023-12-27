@@ -8,6 +8,7 @@ import {
   relatedItemsTrigger,
   bookmarksTrigger,
   escapeCmdCharTrigger,
+  vaultTrigger,
 } from './modeTrigger.fixture';
 
 interface InputExpectation {
@@ -27,6 +28,7 @@ const triggerMap = new Map<Mode, string>([
   [Mode.BookmarksList, bookmarksTrigger],
   [Mode.SymbolList, symbolTrigger],
   [Mode.WorkspaceList, workspaceTrigger],
+  [Mode.VaultList, vaultTrigger],
 ]);
 
 export function makeInputExpectation(

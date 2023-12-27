@@ -1,3 +1,4 @@
+import { Chance } from 'chance';
 import {
   makeBookmarksPluginFileItem,
   makeCommandItem,
@@ -30,7 +31,11 @@ import {
   RelationType,
   RelatedItemsInfo,
   BookmarksSuggestion,
+  PathSegments,
+  VaultSuggestion,
 } from 'src/types';
+
+const chance = new Chance();
 
 export function makeFileSuggestion(
   file?: TFile,
@@ -139,6 +144,34 @@ export function makeCommandSuggestion(
     type: SuggestionType.CommandList,
     match: makeFuzzyMatch(matches, score),
     item,
+  };
+}
+
+export function makeVaultSuggestion(options?: {
+  item?: string;
+  pathSegments?: PathSegments;
+  isOpen?: boolean;
+  matches?: SearchMatches;
+  score?: number;
+  matchType?: MatchType;
+}): VaultSuggestion {
+  options = Object.assign(
+    {
+      item: chance.word(),
+      pathSegments: { basename: 'vault', path: 'path/to/vault' },
+      isOpen: false,
+    },
+    options,
+  );
+  const { item, isOpen, pathSegments, score, matches, matchType } = options;
+
+  return {
+    type: SuggestionType.VaultList,
+    match: makeFuzzyMatch(matches, score),
+    item,
+    isOpen,
+    pathSegments,
+    matchType,
   };
 }
 

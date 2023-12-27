@@ -30,6 +30,7 @@ import {
   BookmarksHandler,
   BOOKMARKS_PLUGIN_ID,
   WORKSPACE_PLUGIN_ID,
+  VaultHandler,
 } from 'src/Handlers';
 import {
   App,
@@ -75,6 +76,8 @@ import {
   makeEscapedStandardModeInputFixture,
   makeEscapedPrefixCommandInputFixture,
   makeEscapedSourcedCommandInputFixture,
+  vaultTrigger,
+  makeVaultSuggestion,
 } from '@fixtures';
 
 const chance = new Chance();
@@ -115,6 +118,13 @@ const modeHandlingData = [
     handlerPrototype: CommandHandler.prototype,
     trigger: commandTrigger,
     suggestions: [makeCommandSuggestion()],
+  },
+  {
+    title: 'VAULT MODE',
+    mode: Mode.VaultList,
+    handlerPrototype: VaultHandler.prototype,
+    trigger: vaultTrigger,
+    suggestions: [makeVaultSuggestion()],
   },
   {
     title: 'SYMBOL MODE',
@@ -185,6 +195,7 @@ describe('modeHandler', () => {
       headingsListCommand: headingsTrigger,
       bookmarksListCommand: bookmarksTrigger,
       commandListCommand: commandTrigger,
+      vaultListCommand: vaultTrigger,
       relatedItemsListCommand: relatedItemsTrigger,
       relatedItemsListActiveEditorCommand: relatedItemsActiveTrigger,
       escapeCmdChar: escapeCmdCharTrigger,
@@ -690,9 +701,8 @@ describe('modeHandler', () => {
         .spyOn(SymbolHandler.prototype, 'getSuggestions')
         .mockReturnValueOnce(rejectedPromise);
 
-      sut.updateSuggestions(symbolTrigger, mockChooser, null);
-
       try {
+        sut.updateSuggestions(symbolTrigger, mockChooser, null);
         await rejectedPromise;
       } catch (e) {
         /* noop */

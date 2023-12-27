@@ -10,6 +10,7 @@ import {
   SymbolHandler,
   BookmarksHandler,
   CommandHandler,
+  VaultHandler,
   StandardExHandler,
   SupportedSystemSuggestions,
 } from 'src/Handlers';
@@ -73,6 +74,7 @@ export class ModeHandler {
       [Mode.BookmarksList, new BookmarksHandler(app, settings)],
       [Mode.CommandList, new CommandHandler(app, settings)],
       [Mode.RelatedItemsList, new RelatedItemsHandler(app, settings)],
+      [Mode.VaultList, new VaultHandler(app, settings)],
     ]);
 
     this.handlersByMode = handlersByMode;
@@ -84,6 +86,7 @@ export class ModeHandler {
       [SuggestionType.Bookmark, handlersByMode.get(Mode.BookmarksList)],
       [SuggestionType.SymbolList, handlersByMode.get(Mode.SymbolList)],
       [SuggestionType.WorkspaceList, handlersByMode.get(Mode.WorkspaceList)],
+      [SuggestionType.VaultList, handlersByMode.get(Mode.VaultList)],
       [SuggestionType.File, standardExHandler],
       [SuggestionType.Alias, standardExHandler],
     ]);
@@ -97,6 +100,7 @@ export class ModeHandler {
       [settings.symbolListCommand, handlersByMode.get(Mode.SymbolList)],
       [settings.symbolListActiveEditorCommand, handlersByMode.get(Mode.SymbolList)],
       [settings.relatedItemsListCommand, handlersByMode.get(Mode.RelatedItemsList)],
+      [settings.vaultListCommand, handlersByMode.get(Mode.VaultList)],
       [
         settings.relatedItemsListActiveEditorCommand,
         handlersByMode.get(Mode.RelatedItemsList),
@@ -434,6 +438,7 @@ export class ModeHandler {
       config.headingsListCommand,
       config.bookmarksListCommand,
       config.commandListCommand,
+      config.vaultListCommand,
     ]
       .concat(activeEditorCmds)
       .map((v) => `(?:${escapeRegExp(v)})`)
@@ -468,7 +473,6 @@ export class ModeHandler {
     if (!isValidated && handler) {
       inputInfo.sessionOpts.useActiveEditorAsSource = activeEditorCmds.includes(cmdStr);
 
-      // const filterText = match[match.length - 1];
       const filterText = inputInfo.inputTextSansEscapeChar.slice(cmdStr.length);
       handler.validateCommand(inputInfo, match.index, filterText, activeSugg, activeLeaf);
     }

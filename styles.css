@@ -31,6 +31,19 @@
   color: var(--text-error);
 }
 
+.qsp-tag {
+  background-color: var(--background-modifier-hover);
+  border-radius: var(--radius-s);
+  font-size: 9px;
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.05em;
+  line-height: var(--line-height-normal);
+  margin-left: var(--size-2-3);
+  padding: 0 var(--size-4-1);
+  text-transform: uppercase;
+  align-self: center;
+}
+
 /* settings panel, indent setting to create visual hierarchy */
 .qsp-setting-item-indent {
   border: 0px;

@@ -83,6 +83,7 @@ export class InputInfo {
       Mode.HeadingsList,
       Mode.BookmarksList,
       Mode.CommandList,
+      Mode.VaultList,
     ].forEach((mode) => {
       parsedCmds[mode] = InputInfo.defaultParsedCommand;
     });

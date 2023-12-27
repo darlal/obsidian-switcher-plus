@@ -15,6 +15,7 @@ Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](ht
 * [Search Obsidian Bookmarks](#search-obsidian-bookmarks)
 * [Run Obsidian commands](#run-commands)
 * [Navigate to related files](#related-items)
+* [Open vaults](#open-vaults)
 * [Quick Filters to narrow down your search results](#quick-filters)
 * [General Settings](#general-settings)
 * [Global Commands for Hotkeys/Shortcuts](#global-commands-for-hotkeys)
@@ -182,6 +183,18 @@ When the Related Items command is triggered for a selected input suggestion/file
 | Show related item types         | Specify which relation types are enabled to be displayed in the result list. | `backlink`<br />`disk-location`<br />`outgoing-link` |
 | Exclude open files              | **Enabled**: related files which are already open in an editor will not be displayed in the list.<br />**Disabled**: All related files will be displayed in the list. | disabled |
 
+## Open Vaults
+
+Note: this is an experimental feature.
+
+Open existing [vaults](https://help.obsidian.md/Files+and+folders/Manage+vaults) directly from the switcher using the default `vault ` command.
+
+### Vault configuration
+
+| Setting                  | Description | Default |
+|--------------------------|-------------|---------|
+| Vault list mode trigger | Character that will trigger vault list mode in the switcher. | `vault ` |
+
 ## Quick Filters
 
 Quick Filters enable you to quickly narrow down the types of items that appear in your search results without having to change your query. Each type of results will have a hotkey assigned that can be used to toggle (show/hide) that type from the result list. When active, only results that match the Quick Filter type will be displayed, multiple Quick Filters can be active at the same time.
@@ -220,6 +233,7 @@ The following Global Commands are registered by the plugin, which can be used fo
 * `Quick Switcher++: Open in Headings Mode`
 * `Quick Switcher++: Open in Bookmarks Mode`
 * `Quick Switcher++: Open in Commands Mode`
+* `Quick Switcher++: Open in Vaults Mode`
 * `Quick Switcher++: Open Related Items for selected suggestion or editor`
 * `Quick Switcher++: Open Related Items for the active editor`
 

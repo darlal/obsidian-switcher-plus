@@ -7,3 +7,4 @@ export * from './commandHandler';
 export * from './handler';
 export * from './relatedItemsHandler';
 export * from './standardExHandler';
+export * from './vaultHandler';
