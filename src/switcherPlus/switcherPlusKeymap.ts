@@ -278,7 +278,7 @@ export class SwitcherPlusKeymap {
     let keyInfo: CustomKeymapInfo = null;
 
     if (isEnabled) {
-      const excludedModes = [Mode.CommandList, Mode.WorkspaceList];
+      const excludedModes = [Mode.CommandList, Mode.WorkspaceList, Mode.VaultList];
       const activeViewType = activeEditor?.view?.getViewType();
 
       const isExcluded =
