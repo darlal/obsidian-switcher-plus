@@ -31,6 +31,7 @@ import {
   BOOKMARKS_PLUGIN_ID,
   WORKSPACE_PLUGIN_ID,
   VaultHandler,
+  COMMAND_PALETTE_PLUGIN_ID,
 } from 'src/Handlers';
 import {
   App,
@@ -172,6 +173,12 @@ describe('modeHandler', () => {
       .calledWith(BOOKMARKS_PLUGIN_ID)
       .mockReturnValue({
         id: BOOKMARKS_PLUGIN_ID,
+      });
+
+    mockInternalPlugins.getEnabledPluginById
+      .calledWith(COMMAND_PALETTE_PLUGIN_ID)
+      .mockReturnValue({
+        id: COMMAND_PALETTE_PLUGIN_ID,
       });
 
     mockVault = mock<Vault>();

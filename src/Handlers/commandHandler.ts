@@ -1,4 +1,4 @@
-import { getInternalPluginById } from 'src/utils';
+import { getInternalEnabledPluginById } from 'src/utils';
 import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import {
   AnySuggestion,
@@ -9,7 +9,6 @@ import {
 } from 'src/types';
 import { Handler } from './handler';
 import {
-  InstalledPlugin,
   SearchResult,
   sortSearchResults,
   WorkspaceLeaf,
@@ -36,12 +35,15 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     _activeSuggestion: AnySuggestion,
     _activeLeaf: WorkspaceLeaf,
   ): ParsedCommand {
-    inputInfo.mode = Mode.CommandList;
-
     const cmd = inputInfo.parsedCommand(Mode.CommandList);
-    cmd.index = index;
-    cmd.parsedInput = filterText;
-    cmd.isValidated = true;
+
+    if (this.getEnabledCommandPalettePluginInstance()) {
+      inputInfo.mode = Mode.CommandList;
+
+      cmd.index = index;
+      cmd.parsedInput = filterText;
+      cmd.isValidated = true;
+    }
 
     return cmd;
   }
@@ -194,16 +196,9 @@ export class CommandHandler extends Handler<CommandSuggestion> {
   }
 
   getPinnedCommandIds(): Set<string> {
-    let pinnedCommandIds: Set<string>;
-
-    if (
-      this.isCommandPalettePluginEnabled() &&
-      this.getCommandPalettePluginInstance()?.options.pinned?.length
-    ) {
-      pinnedCommandIds = new Set(this.getCommandPalettePluginInstance().options.pinned);
-    }
-
-    return pinnedCommandIds ?? new Set<string>();
+    const ids = this.getEnabledCommandPalettePluginInstance()?.options?.pinned;
+    const pinnedCommandIds = new Set<string>(ids ?? []);
+    return pinnedCommandIds;
   }
 
   createSuggestion(commandInfo: CommandInfo, match: SearchResult): CommandSuggestion {
@@ -219,17 +214,10 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     return this.applyMatchPriorityPreferences(sugg);
   }
 
-  private isCommandPalettePluginEnabled(): boolean {
-    const plugin = this.getCommandPalettePlugin();
-    return plugin?.enabled;
-  }
-
-  private getCommandPalettePlugin(): InstalledPlugin {
-    return getInternalPluginById(this.app, COMMAND_PALETTE_PLUGIN_ID);
-  }
-
-  private getCommandPalettePluginInstance(): CommandPalettePluginInstance {
-    const commandPalettePlugin = this.getCommandPalettePlugin();
-    return commandPalettePlugin?.instance as CommandPalettePluginInstance;
+  getEnabledCommandPalettePluginInstance(): CommandPalettePluginInstance {
+    return getInternalEnabledPluginById(
+      this.app,
+      COMMAND_PALETTE_PLUGIN_ID,
+    ) as CommandPalettePluginInstance;
   }
 }

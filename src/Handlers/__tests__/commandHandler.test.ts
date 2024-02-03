@@ -48,7 +48,9 @@ function makeInternalPluginList(
 
   const mockInternalPlugins = mock<InternalPlugins>({ plugins: mockPlugins });
 
-  mockInternalPlugins.getPluginById.mockImplementation((id) => mockPlugins[id]);
+  mockInternalPlugins.getEnabledPluginById
+    .calledWith(COMMAND_PALETTE_PLUGIN_ID)
+    .mockReturnValue(mockPlugins[COMMAND_PALETTE_PLUGIN_ID].instance);
 
   return mockInternalPlugins;
 }
@@ -153,7 +155,7 @@ describe('commandHandler', () => {
       expect(results.every((sugg) => sugg.type === SuggestionType.CommandList)).toBe(
         true,
       );
-      expect(mockInternalPlugins.getPluginById).toHaveBeenCalledWith(
+      expect(mockInternalPlugins.getEnabledPluginById).toHaveBeenCalledWith(
         COMMAND_PALETTE_PLUGIN_ID,
       );
     });
@@ -188,7 +190,7 @@ describe('commandHandler', () => {
 
       expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(mockInternalPlugins.getPluginById).toHaveBeenCalled();
+      expect(mockInternalPlugins.getEnabledPluginById).toHaveBeenCalled();
 
       mockFuzzySearch.mockReset();
     });
@@ -285,7 +287,7 @@ describe('commandHandler', () => {
 
       sut.onChooseSuggestion(sugg);
 
-      expect(mockInternalPlugins.getPluginById).toHaveBeenCalled();
+      expect(mockInternalPlugins.getEnabledPluginById).toHaveBeenCalled();
       expect(mockApp.commands.executeCommandById).toHaveBeenCalledWith(item.id);
     });
   });
