@@ -1,5 +1,6 @@
 import { getInternalEnabledPluginById } from 'src/utils';
 import { InputInfo, ParsedCommand } from 'src/switcherPlus';
+import { CommandListFacetIds } from 'src/settings';
 import {
   AnySuggestion,
   Mode,
@@ -54,7 +55,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     if (inputInfo) {
       inputInfo.buildSearchQuery();
       const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
-      const itemsInfo = this.getItems(hasSearchTerm, RECENTLY_USED_COMMAND_IDS);
+      const itemsInfo = this.getItems(inputInfo, hasSearchTerm);
 
       itemsInfo.forEach((info) => {
         let shouldPush = true;
@@ -147,20 +148,81 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     }
   }
 
-  getItems(includeAllCommands: boolean, recentCommandIds: string[]): CommandInfo[] {
-    const { app } = this;
-    const items = includeAllCommands
-      ? this.getAllCommandsList(app, recentCommandIds)
-      : this.getInitialCommandList(app, recentCommandIds);
+  getItems(inputInfo: InputInfo, includeAllCommands: boolean): CommandInfo[] {
+    let items: CommandInfo[] = [];
+    const activeFacetIds = this.getActiveFacetIds(inputInfo);
+    const hasActiveFacets = !!activeFacetIds.size;
 
-    return items ?? [];
+    if (hasActiveFacets) {
+      items = this.getPinnedAndRecentCommands(activeFacetIds);
+    } else if (includeAllCommands) {
+      items = this.getAllCommands();
+    } else {
+      const pinnedAndRecents = this.getPinnedAndRecentCommands(activeFacetIds);
+      items = pinnedAndRecents.length ? pinnedAndRecents : this.getAllCommands();
+    }
+
+    return items;
   }
 
-  getAllCommandsList(app: App, recentCommandIds: string[]): CommandInfo[] {
+  getPinnedAndRecentCommands(activeFacetIds: Set<string>): CommandInfo[] {
+    const items: CommandInfo[] = [];
     const pinnedIdsSet = this.getPinnedCommandIds();
-    const recentIdsSet = new Set(recentCommandIds);
+    const recentIdsSet = this.getRecentCommandIds();
 
-    return app.commands
+    const findCommandInfo = (id: string) => {
+      let cmdInfo: CommandInfo = null;
+      const cmd = this.app.commands.findCommand(id);
+
+      if (cmd) {
+        cmdInfo = {
+          isPinned: pinnedIdsSet.has(id),
+          isRecent: recentIdsSet.has(id),
+          cmd,
+        };
+      }
+
+      return cmdInfo;
+    };
+
+    const addCommandInfo = (facetId: string, cmdIds: string[]) => {
+      if (this.isFacetedWith(activeFacetIds, facetId)) {
+        cmdIds.forEach((id) => {
+          const cmdInfo = findCommandInfo(id);
+
+          if (cmdInfo) {
+            items.push(cmdInfo);
+          }
+        });
+      }
+    };
+
+    addCommandInfo(CommandListFacetIds.Pinned, Array.from(pinnedIdsSet));
+
+    const isPinnedFaceted = this.isFacetedWith(
+      activeFacetIds,
+      CommandListFacetIds.Pinned,
+    );
+
+    // Remove any recently used ids that are also in the pinned list so they don't
+    // appear twice in the result list when the pinned facet is enabled
+    const recentIds = Array.from(recentIdsSet).filter(
+      // When not pinned faceted then the recent item should be in the result list
+      // but when it is pinned facted, the recent item should only be in the result list
+      // when it does not already exist in the pinned list
+      (id) => !isPinnedFaceted || (isPinnedFaceted && !pinnedIdsSet.has(id)),
+    );
+
+    addCommandInfo(CommandListFacetIds.Recent, recentIds);
+
+    return items;
+  }
+
+  getAllCommands(): CommandInfo[] {
+    const pinnedIdsSet = this.getPinnedCommandIds();
+    const recentIdsSet = this.getRecentCommandIds();
+
+    return this.app.commands
       .listCommands()
       ?.sort((a, b) => a.name.localeCompare(b.name))
       .map((cmd) => {
@@ -172,33 +234,13 @@ export class CommandHandler extends Handler<CommandSuggestion> {
       });
   }
 
-  getInitialCommandList(app: App, recentCommandIds: string[]): CommandInfo[] {
-    const commands: CommandInfo[] = [];
-
-    const findAndAdd = (id: string, isPinned: boolean, isRecent: boolean) => {
-      const cmd = app.commands.findCommand(id);
-      if (cmd) {
-        commands.push({ isPinned, isRecent, cmd });
-      }
-    };
-
-    const pinnedCommandIds = this.getPinnedCommandIds();
-    pinnedCommandIds.forEach((id) => findAndAdd(id, true, false));
-
-    // remove any pinned commands from the recently used list so they don't show up in
-    // both pinned and recent sections
-    recentCommandIds
-      ?.filter((v) => !pinnedCommandIds.has(v))
-      .forEach((id) => findAndAdd(id, false, true));
-
-    // if there are no pinned, and no recent items, show the whole list
-    return commands.length ? commands : this.getAllCommandsList(app, recentCommandIds);
-  }
-
   getPinnedCommandIds(): Set<string> {
     const ids = this.getEnabledCommandPalettePluginInstance()?.options?.pinned;
-    const pinnedCommandIds = new Set<string>(ids ?? []);
-    return pinnedCommandIds;
+    return new Set<string>(ids ?? []);
+  }
+
+  getRecentCommandIds(): Set<string> {
+    return new Set(RECENTLY_USED_COMMAND_IDS);
   }
 
   createSuggestion(commandInfo: CommandInfo, match: SearchResult): CommandSuggestion {

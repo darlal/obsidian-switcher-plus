@@ -129,19 +129,41 @@ export const BOOKMARKS_MODE_FACETS: Facet[] = [
   },
 ];
 
-export const FACETS_ALL: Facet[] = [
-  ...SYMBOL_MODE_FACETS,
-  ...RELATED_ITEMS_MODE_FACETS,
-  ...BOOKMARKS_MODE_FACETS,
+export enum CommandListFacetIds {
+  Pinned = 'pinnedCommands',
+  Recent = 'recentCommands',
+}
+
+export const COMMAND_MODE_FACETS: Facet[] = [
+  {
+    id: CommandListFacetIds.Pinned,
+    mode: Mode.CommandList,
+    label: 'pinned',
+    isActive: false,
+    isAvailable: true,
+  },
+  {
+    id: CommandListFacetIds.Recent,
+    mode: Mode.CommandList,
+    label: 'recent',
+    isActive: false,
+    isAvailable: true,
+  },
 ];
 
 export function getFacetMap(): Record<string, Facet> {
-  return FACETS_ALL.reduce(
-    (facetMap, facet) => {
-      const facetId = facet['id'];
-      facetMap[facetId] = Object.assign({}, facet);
-      return facetMap;
-    },
-    {} as Record<string, Facet>,
-  );
+  const facetMap: Record<string, Facet> = {};
+  const facetLists = [
+    SYMBOL_MODE_FACETS,
+    RELATED_ITEMS_MODE_FACETS,
+    BOOKMARKS_MODE_FACETS,
+    COMMAND_MODE_FACETS,
+  ];
+
+  facetLists.flat().reduce((facetMap, facet) => {
+    facetMap[facet.id] = Object.assign({}, facet);
+    return facetMap;
+  }, facetMap);
+
+  return facetMap;
 }

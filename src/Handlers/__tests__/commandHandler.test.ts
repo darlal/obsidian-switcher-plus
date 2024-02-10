@@ -3,6 +3,7 @@ import { Mode, CommandSuggestion, SuggestionType } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { CommandHandler, COMMAND_PALETTE_PLUGIN_ID, Handler } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
+import { CommandListFacetIds } from 'src/settings';
 import {
   App,
   fuzzySearch,
@@ -20,7 +21,7 @@ import {
   makeCommandItem,
   makeCommandSuggestion,
 } from '@fixtures';
-import { mock, mockFn, MockProxy } from 'jest-mock-extended';
+import { mock, mockFn, MockProxy, mockReset } from 'jest-mock-extended';
 
 const chance = new Chance();
 const expectedCommandName = 'Command 1';
@@ -142,9 +143,6 @@ describe('commandHandler', () => {
     test('with default settings, it should return suggestions for command list mode', () => {
       const inputInfo = new InputInfo(commandTrigger);
       const results = sut.getSuggestions(inputInfo);
-
-      expect(results).not.toBeNull();
-      expect(results).toBeInstanceOf(Array);
 
       const resultCommandIds = new Set(results.map((sugg) => sugg.item.id));
 
@@ -306,21 +304,8 @@ describe('commandHandler', () => {
       mockCommandPalettePluginInstance.options.pinned = oldPinnedCommandIds;
     });
 
-    it('should return empty array if items cannot be found', () => {
-      const getInitialCommandListSpy = jest
-        .spyOn(sut, 'getInitialCommandList')
-        .mockReturnValueOnce(null);
-
-      const results = sut.getItems(false, null);
-
-      expect(results).toBeInstanceOf(Array);
-      expect(results).toHaveLength(0);
-
-      getInitialCommandListSpy.mockRestore();
-    });
-
     it('should return all commands', () => {
-      const recentCommandIds = ['recent:commandB'];
+      const recentCommandIds = new Set(['recent:commandB']);
       mockCommands = [
         makeCommandItem({ name: 'Command C', id: 'pinned:commandC' }),
         makeCommandItem({ name: 'Command B', id: 'recent:commandB' }),
@@ -330,17 +315,23 @@ describe('commandHandler', () => {
       ];
       mockCommandPalettePluginInstance.options.pinned = ['pinned:commandC'];
 
-      const results = sut.getItems(true, recentCommandIds);
+      const recentCommandIdsSpy = jest
+        .spyOn(sut, 'getRecentCommandIds')
+        .mockReturnValueOnce(recentCommandIds);
+
+      const results = sut.getItems(new InputInfo(commandTrigger), true);
 
       const resultNames = new Set(results.map((v) => v.cmd.name));
       expect(results).toHaveLength(5);
       expect(mockCommands.every((command) => resultNames.has(command.name))).toBe(true);
       expect(results.find((v) => v.cmd.id === 'pinned:commandC').isPinned).toBe(true);
       expect(results.find((v) => v.cmd.id === 'recent:commandB').isRecent).toBe(true);
+
+      recentCommandIdsSpy.mockRestore();
     });
 
     it('should order pinned commands first, then recently used', () => {
-      const recentCommandIds = ['recent:commandA', 'recent:commandB'];
+      const recentCommandIds = new Set(['recent:commandA', 'recent:commandB']);
       mockCommands = [
         makeCommandItem({ name: 'Command B', id: 'recent:commandB' }),
         makeCommandItem({ name: 'Command A', id: 'recent:commandA' }),
@@ -353,9 +344,13 @@ describe('commandHandler', () => {
         'pinned:command2',
       ];
 
+      const recentCommandIdsSpy = jest
+        .spyOn(sut, 'getRecentCommandIds')
+        .mockReturnValueOnce(recentCommandIds);
+
       mockFindCommand.mockImplementation((id) => mockCommands.find((c) => c.id === id));
 
-      const results = sut.getItems(false, recentCommandIds);
+      const results = sut.getItems(new InputInfo(commandTrigger), false);
 
       expect(results).toHaveLength(4);
       expect(results[0].cmd.name).toBe('Command Pinned 1');
@@ -363,7 +358,76 @@ describe('commandHandler', () => {
       expect(results[2].cmd.name).toBe('Command A');
       expect(results[3].cmd.name).toBe('Command B');
 
-      mockFindCommand.mockReset();
+      recentCommandIdsSpy.mockRestore();
+      mockReset(mockFindCommand);
+    });
+
+    test('should return only commands that match the active facet', () => {
+      const expectedId = 'expectedCommandId';
+      const expectedCommand = mock<Command>({ id: expectedId });
+      const mockCommand = mock<Command>();
+
+      const getPinnedCommandIdsSpy = jest
+        .spyOn(sut, 'getPinnedCommandIds')
+        .mockReturnValueOnce(new Set([expectedId]));
+
+      const getRecentCommandIdsSpy = jest
+        .spyOn(sut, 'getRecentCommandIds')
+        .mockReturnValueOnce(new Set(['firstId']));
+
+      const getActiveFacetIdsSpy = jest
+        .spyOn(sut, 'getActiveFacetIds')
+        .mockReturnValueOnce(new Set([CommandListFacetIds.Pinned]));
+
+      mockFindCommand.mockImplementation((id) => {
+        return id === expectedId ? expectedCommand : mockCommand;
+      });
+
+      const results = sut.getItems(new InputInfo(commandTrigger), false);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].cmd).toBe(expectedCommand);
+      expect(results[0].isPinned).toBe(true);
+
+      getPinnedCommandIdsSpy.mockRestore();
+      getRecentCommandIdsSpy.mockRestore();
+      getActiveFacetIdsSpy.mockRestore();
+      mockReset(mockFindCommand);
+    });
+
+    test('commands that are both pinned and recently used should appear in the result list once (as pinned)', () => {
+      const expectedId = 'expectedCommandId';
+      const expectedCommand = mock<Command>({ id: expectedId });
+      const mockCommand = mock<Command>();
+
+      const getPinnedCommandIdsSpy = jest
+        .spyOn(sut, 'getPinnedCommandIds')
+        .mockReturnValueOnce(new Set([expectedId]));
+
+      const getRecentCommandIdsSpy = jest
+        .spyOn(sut, 'getRecentCommandIds')
+        .mockReturnValueOnce(new Set(['firstId', expectedId]));
+
+      mockFindCommand.mockImplementation((id) => {
+        return id === expectedId ? expectedCommand : mockCommand;
+      });
+
+      const results = sut.getItems(new InputInfo(commandTrigger), false);
+
+      // First item should the expected item, both pinned and recent
+      expect(results).toHaveLength(2);
+      expect(results[0].cmd).toBe(expectedCommand);
+      expect(results[0].isPinned).toBe(true);
+      expect(results[0].isRecent).toBe(true);
+
+      // Secon item should be the other distict recent item
+      expect(results[1].cmd).toBe(mockCommand);
+      expect(results[1].isRecent).toBe(true);
+      expect(results[1].isPinned).toBe(false);
+
+      getPinnedCommandIdsSpy.mockRestore();
+      getRecentCommandIdsSpy.mockRestore();
+      mockReset(mockFindCommand);
     });
   });
 
