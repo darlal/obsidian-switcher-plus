@@ -180,7 +180,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     this.addToggleSetting(
       containerEl,
       'Result priority adjustments',
-      'Artificially increase the match score of the specified item types by a fixed percentage so they appear higher in the results list',
+      'Artificially increase the match score of the specified item types by a fixed percentage so they appear higher in the results list (does not apply to Standard Mode).',
       isEnabled,
       null,
       (isEnabled, config) => {
