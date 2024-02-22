@@ -385,7 +385,7 @@ describe('headingsHandler', () => {
       const inputInfo = new InputInfo(`${headingsTrigger}${filterText}`);
       inputInfo.currentWorkspaceEnvList.nonFileBookmarks = new Set([searchBookmark]);
       inputInfo.currentWorkspaceEnvList.fileBookmarks = new Map([
-        [expected, fileBookmark],
+        [expected, [fileBookmark]],
       ]);
 
       sut.validateCommand(inputInfo, 0, filterText, null, null);

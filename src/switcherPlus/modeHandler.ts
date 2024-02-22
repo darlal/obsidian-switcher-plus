@@ -30,7 +30,6 @@ import {
   Facet,
   KeymapConfig,
   SessionOpts,
-  BookmarksItemInfo,
 } from 'src/types';
 import {
   WorkspaceLeaf,
@@ -588,30 +587,22 @@ export class ModeHandler {
 
   addWorkspaceEnvLists(inputInfo: InputInfo): InputInfo {
     if (inputInfo) {
-      const fileBookmarks = new Map<TFile, BookmarksItemInfo>();
-      const nonFileBookmarks = new Set<BookmarksItemInfo>();
       const openEditors = (this.getHandler(Mode.EditorList) as EditorHandler).getItems();
-      const openEditorFiles = openEditors
-        .map((v) => v?.view?.file)
-        .filter((file) => !!file);
 
-      const openEditorFilesSet = new Set(openEditorFiles);
+      // Create a Set containing the files from all the open editors
+      const openEditorFilesSet = openEditors
+        .map((leaf) => leaf?.view?.file)
+        .filter((file) => !!file)
+        .reduce((collection, file) => collection.add(file), new Set<TFile>());
 
-      (this.getHandler(Mode.BookmarksList) as BookmarksHandler)
-        .getItems(null)
-        .forEach((bInfo) => {
-          if (BookmarksHandler.isBookmarksPluginFileItem(bInfo.item)) {
-            if (bInfo.file) {
-              fileBookmarks.set(bInfo.file, bInfo);
-            }
-          } else {
-            nonFileBookmarks.add(bInfo);
-          }
-        });
+      // Get the list of bookmarks split into file bookmarks and non-file bookmarks
+      const { fileBookmarks, nonFileBookmarks } = (
+        this.getHandler(Mode.BookmarksList) as BookmarksHandler
+      ).getItems(null);
 
       const lists = inputInfo.currentWorkspaceEnvList;
       lists.openWorkspaceLeaves = new Set(openEditors);
-      lists.openWorkspaceFiles = new Set(openEditorFiles);
+      lists.openWorkspaceFiles = openEditorFilesSet;
       lists.fileBookmarks = fileBookmarks;
       lists.nonFileBookmarks = nonFileBookmarks;
 
@@ -620,6 +611,7 @@ export class ModeHandler {
         this.settings.fileExtAllowList,
       );
 
+      // Get the list of recently closed files excluding the currently open ones
       const maxCount =
         openEditorFilesSet.size + this.settings.maxRecentFileSuggestionsOnInit;
       lists.mostRecentFiles = this.getRecentFiles(openEditorFilesSet, maxCount);
@@ -632,17 +624,15 @@ export class ModeHandler {
     viewRegistry: ViewRegistry,
     exemptFileExtensions: string[],
   ): Set<string> {
-    let extList = new Set<string>();
+    const extList = new Set<string>();
 
     try {
       const coreExts = new Set<string>(['md', 'canvas', ...exemptFileExtensions]);
 
-      // Get the list of registered extensions excluding the markdown and canvas
-      const extensions = Object.keys(viewRegistry.typeByExtension).filter(
-        (ext) => !coreExts.has(ext),
-      );
-
-      extList = new Set<string>(extensions);
+      // Add the list of registered extensions to extList, excluding the markdown and canvas
+      Object.keys(viewRegistry.typeByExtension)
+        .filter((ext) => !coreExts.has(ext))
+        .reduce((collection, ext) => collection.add(ext), extList);
     } catch (err) {
       console.log('Switcher++: error retrieving attachment list from ViewRegistry', err);
     }

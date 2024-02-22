@@ -285,11 +285,11 @@ describe('bookmarksHandler', () => {
 
       mockPluginInstance.items = [parentGroup];
 
-      const results = sut.getItems(null);
+      const { allBookmarks } = sut.getItems(null);
 
-      expect(results).toHaveLength(1);
+      expect(allBookmarks).toHaveLength(1);
 
-      const resultBookmarkItem = results[0].item;
+      const resultBookmarkItem = allBookmarks[0].item;
       expect(resultBookmarkItem).toBe(leafBookmark);
     });
 
@@ -305,10 +305,10 @@ describe('bookmarksHandler', () => {
         .calledWith(leafBookmark.path)
         .mockReturnValueOnce(tFile);
 
-      const results = sut.getItems(null);
+      const { allBookmarks } = sut.getItems(null);
 
-      expect(results).toHaveLength(1);
-      expect(results[0].file).toBe(tFile);
+      expect(allBookmarks).toHaveLength(1);
+      expect(allBookmarks[0].file).toBe(tFile);
 
       mockReset(mockVault);
     });

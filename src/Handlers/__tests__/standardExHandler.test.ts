@@ -121,9 +121,9 @@ describe('standardExHandler', () => {
     const inputInfo = new InputInfo();
     inputInfo.currentWorkspaceEnvList.openWorkspaceFiles = new Set([mockFile]);
     inputInfo.currentWorkspaceEnvList.mostRecentFiles = new Set([mockFile]);
-    inputInfo.currentWorkspaceEnvList.fileBookmarks = new Map<TFile, BookmarksItemInfo>([
-      [mockFile, null],
-    ]);
+    inputInfo.currentWorkspaceEnvList.fileBookmarks = new Map<TFile, BookmarksItemInfo[]>(
+      [[mockFile, []]],
+    );
 
     it('should set extra properties on alias suggestions', () => {
       const sugg = makeAliasSuggestion(mockFile);

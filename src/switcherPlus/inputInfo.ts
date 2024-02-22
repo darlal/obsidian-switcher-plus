@@ -4,7 +4,7 @@ import { Mode, SourceInfo, SearchQuery, SessionOpts, BookmarksItemInfo } from 's
 export interface WorkspaceEnvList {
   openWorkspaceLeaves: Set<WorkspaceLeaf>;
   openWorkspaceFiles: Set<TFile>;
-  fileBookmarks: Map<TFile, BookmarksItemInfo>;
+  fileBookmarks: Map<TFile, BookmarksItemInfo[]>;
   nonFileBookmarks: Set<BookmarksItemInfo>;
   mostRecentFiles: Set<TFile>;
   attachmentFileExtensions: Set<string>;
@@ -37,7 +37,7 @@ export class InputInfo {
   readonly currentWorkspaceEnvList: WorkspaceEnvList = {
     openWorkspaceLeaves: new Set<WorkspaceLeaf>(),
     openWorkspaceFiles: new Set<TFile>(),
-    fileBookmarks: new Map<TFile, BookmarksItemInfo>(),
+    fileBookmarks: new Map<TFile, BookmarksItemInfo[]>(),
     nonFileBookmarks: new Set<BookmarksItemInfo>(),
     mostRecentFiles: new Set<TFile>(),
     attachmentFileExtensions: new Set<string>(),

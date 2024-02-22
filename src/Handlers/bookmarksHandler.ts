@@ -57,9 +57,9 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
     if (inputInfo) {
       inputInfo.buildSearchQuery();
       const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
-      const itemsInfo = this.getItems(inputInfo);
+      const { allBookmarks } = this.getItems(inputInfo);
 
-      itemsInfo.forEach((info) => {
+      allBookmarks.forEach((info) => {
         let shouldPush = true;
         let result: SearchResultWithFallback = { matchType: MatchType.None, match: null };
 
@@ -117,8 +117,14 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
     return text;
   }
 
-  getItems(inputInfo: InputInfo | null): BookmarksItemInfo[] {
-    const itemsInfo: BookmarksItemInfo[] = [];
+  getItems(inputInfo: InputInfo | null): {
+    allBookmarks: BookmarksItemInfo[];
+    fileBookmarks: Map<TFile, BookmarksItemInfo[]>;
+    nonFileBookmarks: Set<BookmarksItemInfo>;
+  } {
+    const allBookmarks: BookmarksItemInfo[] = [];
+    const fileBookmarks = new Map<TFile, BookmarksItemInfo[]>();
+    const nonFileBookmarks = new Set<BookmarksItemInfo>();
     const pluginInstance = this.getEnabledBookmarksPluginInstance();
 
     if (pluginInstance) {
@@ -135,22 +141,35 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
           } else if (
             this.isFacetedWith(activeFacetIds, BOOKMARKS_FACET_ID_MAP[bookmark.type])
           ) {
-            let file: TFile = null;
+            const bookmarkInfo: BookmarksItemInfo = {
+              item: bookmark,
+              bookmarkPath: null,
+              file: null,
+            };
 
             if (BookmarksHandler.isBookmarksPluginFileItem(bookmark)) {
-              file = this.getTFileByPath(bookmark.path);
+              const file = this.getTFileByPath(bookmark.path);
+
+              if (file) {
+                bookmarkInfo.file = file;
+
+                const infoList = fileBookmarks.get(file) ?? [];
+                infoList.push(bookmarkInfo);
+                fileBookmarks.set(file, infoList);
+              }
+            } else {
+              nonFileBookmarks.add(bookmarkInfo);
             }
 
             const title = this.getPreferredTitle(
               pluginInstance,
               bookmark,
-              file,
+              bookmarkInfo.file,
               this.settings.preferredSourceForTitle,
             );
 
-            const bookmarkPath = path + title;
-
-            itemsInfo.push({ item: bookmark, bookmarkPath, file });
+            bookmarkInfo.bookmarkPath = path + title;
+            allBookmarks.push(bookmarkInfo);
           }
         });
       };
@@ -158,7 +177,7 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
       traverseBookmarks(pluginInstance.items, '');
     }
 
-    return itemsInfo;
+    return { allBookmarks, fileBookmarks, nonFileBookmarks };
   }
 
   getEnabledBookmarksPluginInstance(): BookmarksPluginInstance {

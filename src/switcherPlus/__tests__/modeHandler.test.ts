@@ -1112,7 +1112,11 @@ describe('modeHandler', () => {
 
       const bookmarksSpy = jest
         .spyOn(BookmarksHandler.prototype, 'getItems')
-        .mockReturnValueOnce([fileBookmark, searchBookmark]);
+        .mockReturnValueOnce({
+          fileBookmarks: new Map([[fileBookmark.file, [fileBookmark]]]),
+          nonFileBookmarks: new Set([searchBookmark]),
+          allBookmarks: null,
+        });
 
       const recentSpy = jest
         .spyOn(sut, 'getRecentFiles')
@@ -1124,8 +1128,8 @@ describe('modeHandler', () => {
         openWorkspaceLeaves: new Set(editors),
         openWorkspaceFiles: new Set(editorFiles),
         mostRecentFiles: new Set(recentFiles),
-        fileBookmarks: new Map<TFile, BookmarksItemInfo>([
-          [fileBookmark.file, fileBookmark],
+        fileBookmarks: new Map<TFile, BookmarksItemInfo[]>([
+          [fileBookmark.file, [fileBookmark]],
         ]),
         nonFileBookmarks: new Set([searchBookmark]),
       });
@@ -1144,15 +1148,17 @@ describe('modeHandler', () => {
     });
 
     test('exemptFileExtensions should not be in the attachment file extensions list', () => {
+      const expected = chance.word();
       const exempt = chance.word();
       const mockViewRegister = mock<ViewRegistry>({
-        typeByExtension: {},
+        typeByExtension: { [expected]: 'UnitTestType' },
       });
 
       mockViewRegister.typeByExtension[exempt] = '';
 
       const results = sut.getAttachmentFileExtensions(mockViewRegister, [exempt]);
 
+      expect(results).toContain(expected);
       expect(results).not.toContain(exempt);
     });
 

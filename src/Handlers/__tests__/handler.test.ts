@@ -2088,7 +2088,7 @@ describe('Handler', () => {
       const mockEnvList = mock<WorkspaceEnvList>();
       mockEnvList.openWorkspaceFiles = new Set<TFile>([file]);
       mockEnvList.mostRecentFiles = new Set<TFile>([file]);
-      mockEnvList.fileBookmarks = new Map<TFile, BookmarksItemInfo>([[file, null]]);
+      mockEnvList.fileBookmarks = new Map<TFile, BookmarksItemInfo[]>([[file, []]]);
       mockEnvList.attachmentFileExtensions = new Set<string>([file.extension]);
 
       Handler.updateWorkspaceEnvListStatus(mockEnvList, sugg);

@@ -246,14 +246,16 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
     const isBookmarked = currentWorkspaceEnvList.fileBookmarks?.has(file);
     if (isBookmarked && shouldSearchBookmarks && !strictHeadingsOnly) {
-      const bookmarkInfo = currentWorkspaceEnvList.fileBookmarks.get(file);
+      const bookmarkInfoList = currentWorkspaceEnvList.fileBookmarks.get(file);
 
-      this.addBookmarkSuggestion(
-        inputInfo,
-        suggestions as BookmarksSuggestion[],
-        prepQuery,
-        bookmarkInfo,
-      );
+      bookmarkInfoList.forEach((bookmarkInfo) => {
+        this.addBookmarkSuggestion(
+          inputInfo,
+          suggestions as BookmarksSuggestion[],
+          prepQuery,
+          bookmarkInfo,
+        );
+      });
     }
   }
 
