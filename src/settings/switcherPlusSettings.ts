@@ -43,6 +43,7 @@ export class SwitcherPlusSettings {
       vaultListCommand: 'vault ',
       relatedItemsListCommand: '~',
       relatedItemsListActiveEditorCommand: '^ ',
+      shouldSearchHeadings: true,
       strictHeadingsOnly: false,
       searchAllHeadings: true,
       headingsSearchDebounceMilli: 250,
@@ -59,6 +60,7 @@ export class SwitcherPlusSettings {
       excludeObsidianIgnoredFiles: false,
       shouldSearchFilenames: false,
       shouldSearchBookmarks: false,
+      shouldSearchRecentFiles: true,
       pathDisplayFormat: PathDisplayFormat.FolderWithFilename,
       hidePathIfRoot: true,
       enabledRelatedItems: Object.values(RelationType),
@@ -302,6 +304,14 @@ export class SwitcherPlusSettings {
     this.data.relatedItemsListActiveEditorCommand = value;
   }
 
+  get shouldSearchHeadings(): boolean {
+    return this.data.shouldSearchHeadings;
+  }
+
+  set shouldSearchHeadings(value: boolean) {
+    this.data.shouldSearchHeadings = value;
+  }
+
   get strictHeadingsOnly(): boolean {
     return this.data.strictHeadingsOnly;
   }
@@ -426,6 +436,14 @@ export class SwitcherPlusSettings {
 
   set shouldSearchBookmarks(value: boolean) {
     this.data.shouldSearchBookmarks = value;
+  }
+
+  get shouldSearchRecentFiles(): boolean {
+    return this.data.shouldSearchRecentFiles;
+  }
+
+  set shouldSearchRecentFiles(value: boolean) {
+    this.data.shouldSearchRecentFiles = value;
   }
 
   get pathDisplayFormat(): PathDisplayFormat {

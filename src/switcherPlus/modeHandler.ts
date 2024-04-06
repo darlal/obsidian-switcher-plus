@@ -630,9 +630,13 @@ export class ModeHandler {
       const coreExts = new Set<string>(['md', 'canvas', ...exemptFileExtensions]);
 
       // Add the list of registered extensions to extList, excluding the markdown and canvas
-      Object.keys(viewRegistry.typeByExtension)
-        .filter((ext) => !coreExts.has(ext))
-        .reduce((collection, ext) => collection.add(ext), extList);
+      Object.keys(viewRegistry.typeByExtension).reduce((collection, ext) => {
+        if (!coreExts.has(ext)) {
+          collection.add(ext);
+        }
+
+        return collection;
+      }, extList);
     } catch (err) {
       console.log('Switcher++: error retrieving attachment list from ViewRegistry', err);
     }

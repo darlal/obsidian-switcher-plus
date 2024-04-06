@@ -17,25 +17,11 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
       config.headingsListPlaceholderText,
     );
 
-    this.addToggleSetting(
-      containerEl,
-      'Show headings only',
-      'Enabled, strictly search through only the headings contained in the file. Note: this setting overrides the "Show existing only", and "Search filenames" settings. Disabled, fallback to searching against the filename when there is not a match in the first H1 contained in the file. This will also allow searching through filenames, Aliases, and Unresolved links to be enabled.',
-      config.strictHeadingsOnly,
-      'strictHeadingsOnly',
-    );
+    this.showHeadingSettings(containerEl, config);
 
     this.addToggleSetting(
       containerEl,
-      'Search all headings',
-      'Enabled, search through all headings contained in each file. Disabled, only search through the first H1 in each file.',
-      config.searchAllHeadings,
-      'searchAllHeadings',
-    );
-
-    this.addToggleSetting(
-      containerEl,
-      'Search filenames',
+      'Search Filenames',
       "Enabled, search and show suggestions for filenames. Disabled, Don't search through filenames (except for fallback searches)",
       config.shouldSearchFilenames,
       'shouldSearchFilenames',
@@ -44,7 +30,7 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
     this.addToggleSetting(
       containerEl,
       'Search Bookmarks',
-      "Enabled, search and show suggestions for Boomarks. Disabled, Don't search through Bookmarks",
+      "Enabled, search and show suggestions for Bookmarks. Disabled, Don't search through Bookmarks",
       config.shouldSearchBookmarks,
       'shouldSearchBookmarks',
     );
@@ -69,6 +55,55 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
     );
 
     this.showFileExtAllowList(containerEl, config);
+  }
+
+  showHeadingSettings(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
+    const isEnabled = config.shouldSearchHeadings;
+
+    this.addToggleSetting(
+      containerEl,
+      'Search Headings',
+      "Enabled, search and show suggestions for Headings. Disabled, Don't search through Headings",
+      isEnabled,
+      null,
+      (isEnabled, config) => {
+        config.shouldSearchHeadings = isEnabled;
+
+        // have to wait for the save here because the call to display() will
+        // trigger a read of the updated data
+        config.saveSettings().then(
+          () => {
+            // reload the settings panel. This will cause the other option
+            // controls to be shown/hidden based on isEnabled status
+            this.mainSettingsTab.display();
+          },
+          (reason) =>
+            console.log('Switcher++: error saving "Search Headings" setting. ', reason),
+        );
+      },
+    );
+
+    if (isEnabled) {
+      let setting = this.addToggleSetting(
+        containerEl,
+        'Turn off filename fallback',
+        'Enabled, strictly search through only the headings contained in the file. Do not fallback to searching the filename when an H1 match is not found. Disabled, fallback to searching against the filename when there is not a match in the first H1 contained in the file.',
+        config.strictHeadingsOnly,
+        'strictHeadingsOnly',
+      );
+
+      setting.setClass('qsp-setting-item-indent');
+
+      setting = this.addToggleSetting(
+        containerEl,
+        'Search all headings',
+        'Enabled, search through all headings contained in each file. Disabled, only search through the first H1 in each file.',
+        config.searchAllHeadings,
+        'searchAllHeadings',
+      );
+
+      setting.setClass('qsp-setting-item-indent');
+    }
   }
 
   showFileExtAllowList(containerEl: HTMLElement, config: SwitcherPlusSettings): void {

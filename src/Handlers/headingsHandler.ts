@@ -2,6 +2,7 @@ import { Handler } from './handler';
 import { StandardExHandler } from './standardExHandler';
 import { EditorHandler } from './editorHandler';
 import { BookmarksHandler } from './bookmarksHandler';
+import { HeadingsListFacetIds } from 'src/settings';
 import {
   HeadingCache,
   PreparedQuery,
@@ -11,6 +12,7 @@ import {
   sortSearchResults,
   WorkspaceLeaf,
   TFolder,
+  ViewRegistry,
 } from 'obsidian';
 import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import {
@@ -28,6 +30,7 @@ import {
   SessionOpts,
   BookmarksSuggestion,
   BookmarksItemInfo,
+  Facet,
 } from 'src/types';
 import { isTFile, FrontMatterParser, matcherFnForRegExList } from 'src/utils';
 
@@ -128,159 +131,350 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     return handled;
   }
 
+  getAvailableFacets(inputInfo: InputInfo): Facet[] {
+    const {
+      settings: {
+        shouldSearchHeadings,
+        shouldSearchBookmarks,
+        shouldSearchFilenames,
+        shouldSearchRecentFiles,
+        builtInSystemOptions: { showAttachments, showAllFileTypes },
+      },
+    } = this;
+
+    const externalFilesEnabled = showAttachments || showAllFileTypes;
+
+    // List of facetIds that depend on the corresponding feature being enabled
+    const featureEnablementStatus: Partial<Record<HeadingsListFacetIds, boolean>> = {
+      [HeadingsListFacetIds.RecentFiles]: shouldSearchRecentFiles,
+      [HeadingsListFacetIds.Bookmarks]: shouldSearchBookmarks,
+      [HeadingsListFacetIds.Filenames]: shouldSearchFilenames,
+      [HeadingsListFacetIds.Headings]: shouldSearchHeadings,
+      [HeadingsListFacetIds.ExternalFiles]: externalFilesEnabled,
+    };
+
+    return this.getFacets(inputInfo.mode).filter((facet) => {
+      // If the facetId exists in the feature list, set its availability to the
+      // corresponding feature availability
+      if (Object.prototype.hasOwnProperty.call(featureEnablementStatus, facet.id)) {
+        facet.isAvailable = featureEnablementStatus[facet.id as HeadingsListFacetIds];
+      }
+
+      return facet.isAvailable;
+    });
+  }
+
   getSuggestions(inputInfo: InputInfo): SupportedSuggestionTypes[] {
     let suggestions: SupportedSuggestionTypes[] = [];
 
     if (inputInfo) {
       inputInfo.buildSearchQuery();
       const { hasSearchTerm } = inputInfo.searchQuery;
+      const { settings } = this;
+      const activeFacetIds = this.getActiveFacetIds(inputInfo);
+      const hasActiveFacets = !!activeFacetIds.size;
 
-      if (hasSearchTerm) {
-        const { limit } = this.settings;
-        suggestions = this.getAllFilesSuggestions(inputInfo);
+      if (hasSearchTerm || hasActiveFacets) {
+        const { limit } = settings;
+        const {
+          app: { vault },
+        } = this;
+
+        // initialize options
+        const options = {
+          headings: settings.shouldSearchHeadings,
+          allHeadings: settings.searchAllHeadings,
+          aliases: settings.shouldShowAlias,
+          bookmarks: settings.shouldSearchBookmarks,
+          filename: settings.shouldSearchFilenames,
+          filenameAsFallback: !settings.strictHeadingsOnly,
+          unresolved: !settings.showExistingOnly,
+        };
+
+        this.getItems([vault.getRoot()], inputInfo, suggestions, activeFacetIds, options);
         sortSearchResults(suggestions);
 
-        if (suggestions.length > 0 && limit > 0) {
+        if (limit > 0 && suggestions.length > limit) {
           suggestions = suggestions.slice(0, limit);
         }
       } else {
-        suggestions = this.getInitialSuggestionList(inputInfo);
+        this.getSuggestionsForEditorsAndRecentFiles(
+          inputInfo,
+          suggestions as (HeadingSuggestion | FileSuggestion | EditorSuggestion)[],
+          new Set<string>(),
+          { editors: true, recentFiles: settings.shouldSearchRecentFiles },
+        );
       }
     }
 
     return suggestions;
   }
 
-  getAllFilesSuggestions(inputInfo: InputInfo): SupportedSuggestionTypes[] {
-    const suggestions: SupportedSuggestionTypes[] = [];
+  getItems(
+    files: TAbstractFile[],
+    inputInfo: InputInfo,
+    collection: SupportedSuggestionTypes[],
+    activeFacetIds: Set<string>,
+    options: {
+      headings?: boolean;
+      allHeadings?: boolean;
+      aliases?: boolean;
+      bookmarks?: boolean;
+      filename?: boolean;
+      filenameAsFallback?: boolean;
+      unresolved?: boolean;
+    },
+  ): void {
+    const hasActiveFacets = !!activeFacetIds.size;
+
+    // Editors and recent files should only be displayed when there's no search term, or when
+    // it's faceted with recentFiles
+    const editorAndRecentOptions = { editors: false, recentFiles: false };
+    this.getSuggestionsForEditorsAndRecentFiles(
+      inputInfo,
+      collection as (HeadingSuggestion | FileSuggestion | EditorSuggestion)[],
+      activeFacetIds,
+      editorAndRecentOptions,
+    );
+
+    // Use the bookmark enabled state to determine whether or not to include them
+    const bookmarkOptions = {
+      fileBookmarks: options.bookmarks,
+      nonFileBookmarks: options.bookmarks,
+    };
+    this.getSuggestionsForBookmarks(
+      inputInfo,
+      collection,
+      activeFacetIds,
+      bookmarkOptions,
+    );
+
+    // Set up options for processing the collections of files
+    const fileOptions = {
+      headings: options.headings,
+      allHeadings: options.allHeadings,
+      aliases: options.aliases,
+      filename: options.filename,
+      filenameAsFallback: options.filenameAsFallback,
+    };
+    this.getSuggestionForFiles(inputInfo, files, collection, activeFacetIds, fileOptions);
+
+    // Since there's no facet for unresolved, they should never show up when
+    // facets are active.
+    if (options.unresolved && !hasActiveFacets) {
+      this.addUnresolvedSuggestions(
+        collection as UnresolvedSuggestion[],
+        inputInfo.searchQuery.prepQuery,
+      );
+    }
+  }
+
+  getSuggestionsForBookmarks(
+    inputInfo: InputInfo,
+    collection: SupportedSuggestionTypes[],
+    activeFacetIds: Set<string>,
+    options: {
+      fileBookmarks?: boolean;
+      nonFileBookmarks?: boolean;
+    },
+  ): void {
+    const hasActiveFacets = activeFacetIds.size;
     const { prepQuery } = inputInfo.searchQuery;
-    const {
-      app: { vault },
-      settings: {
-        strictHeadingsOnly,
-        showExistingOnly,
-        shouldSearchBookmarks,
-        excludeFolders,
-      },
-    } = this;
+    const { fileBookmarks, nonFileBookmarks } = inputInfo.currentWorkspaceEnvList;
 
-    const isExcludedFolder = matcherFnForRegExList(excludeFolders);
-    let nodes: TAbstractFile[] = [vault.getRoot()];
+    if (hasActiveFacets) {
+      const isBookmarkFacetEnabled = activeFacetIds.has(HeadingsListFacetIds.Bookmarks);
 
-    while (nodes.length > 0) {
-      const node = nodes.pop();
-
-      if (isTFile(node)) {
-        this.addSuggestionsFromFile(inputInfo, suggestions, node, prepQuery);
-      } else if (!isExcludedFolder(node.path)) {
-        nodes = nodes.concat((node as TFolder).children);
-      }
+      options = Object.assign(options, {
+        fileBookmarks: isBookmarkFacetEnabled,
+        nonFileBookmarks: isBookmarkFacetEnabled,
+      });
     }
 
-    if (!strictHeadingsOnly) {
-      if (shouldSearchBookmarks) {
-        inputInfo.currentWorkspaceEnvList.nonFileBookmarks?.forEach((bInfo) => {
-          this.addBookmarkSuggestion(
-            inputInfo,
-            suggestions as BookmarksSuggestion[],
-            prepQuery,
-            bInfo,
-          );
-        });
+    const processBookmarks = (bookmarkInfoList: Iterable<BookmarksItemInfo>) => {
+      for (const bookmarkInfo of bookmarkInfoList) {
+        this.addBookmarkSuggestion(
+          inputInfo,
+          collection as BookmarksSuggestion[],
+          prepQuery,
+          bookmarkInfo,
+        );
       }
+    };
 
-      if (!showExistingOnly) {
-        this.addUnresolvedSuggestions(suggestions as UnresolvedSuggestion[], prepQuery);
-      }
+    if (options.fileBookmarks) {
+      fileBookmarks.forEach((bookmarkInfoList) => {
+        processBookmarks(bookmarkInfoList);
+      });
     }
 
-    return suggestions;
+    if (options.nonFileBookmarks) {
+      processBookmarks(nonFileBookmarks);
+    }
   }
 
-  addSuggestionsFromFile(
+  getSuggestionForFiles(
+    inputInfo: InputInfo,
+    files: TAbstractFile[],
+    collection: SupportedSuggestionTypes[],
+    activeFacetIds: Set<string>,
+    options: {
+      headings?: boolean;
+      allHeadings?: boolean;
+      aliases?: boolean;
+      filename?: boolean;
+      filenameAsFallback?: boolean;
+    },
+  ): void {
+    const hasActiveFacets = !!activeFacetIds.size;
+
+    if (hasActiveFacets) {
+      const isHeadingsEnabled = this.isFacetedWith(
+        activeFacetIds,
+        HeadingsListFacetIds.Headings,
+      );
+
+      const isExternalFilesEnabled = this.isFacetedWith(
+        activeFacetIds,
+        HeadingsListFacetIds.ExternalFiles,
+      );
+
+      // Enable filename when external files facet is active, or, when the Filename
+      // facet is active
+      const isFilenameEnabled =
+        isExternalFilesEnabled ||
+        this.isFacetedWith(activeFacetIds, HeadingsListFacetIds.Filenames);
+
+      let allHeadings = false;
+      let filenameAsFallback = false;
+
+      if (isHeadingsEnabled) {
+        allHeadings = options.allHeadings === true;
+        filenameAsFallback = options.filenameAsFallback === true;
+      }
+
+      options = Object.assign(options, {
+        headings: isHeadingsEnabled,
+        aliases: false,
+        filename: isFilenameEnabled,
+        allHeadings,
+        filenameAsFallback,
+      });
+    } else {
+      options = Object.assign(
+        {
+          headings: true,
+          allHeadings: true,
+          aliases: true,
+          filename: true,
+          filenameAsFallback: true,
+        },
+        options,
+      );
+    }
+
+    // If any of these options are true then every file needs to be processed.
+    const shouldProcessFiles = [options.headings, options.aliases, options.filename].some(
+      (option) => option === true,
+    );
+
+    if (shouldProcessFiles) {
+      const { prepQuery } = inputInfo.searchQuery;
+      const { excludeFolders } = this.settings;
+      const isExcludedFolder = matcherFnForRegExList(excludeFolders);
+      let nodes = Array.prototype.concat(files) as TAbstractFile[];
+
+      while (nodes.length > 0) {
+        const node = nodes.pop();
+
+        if (isTFile(node)) {
+          if (this.shouldIncludeFile(node, activeFacetIds)) {
+            this.addSuggestionsForFile(inputInfo, collection, node, prepQuery, options);
+          }
+        } else if (!isExcludedFolder(node.path)) {
+          nodes = nodes.concat((node as TFolder).children);
+        }
+      }
+    }
+  }
+
+  addSuggestionsForFile(
     inputInfo: InputInfo,
     suggestions: SupportedSuggestionTypes[],
     file: TFile,
     prepQuery: PreparedQuery,
+    options: {
+      headings?: boolean;
+      allHeadings?: boolean;
+      aliases?: boolean;
+      filename?: boolean;
+      filenameAsFallback?: boolean;
+    },
   ): void {
-    const { currentWorkspaceEnvList } = inputInfo;
-    const {
-      searchAllHeadings,
-      strictHeadingsOnly,
-      shouldSearchFilenames,
-      shouldSearchBookmarks,
-      shouldShowAlias,
-    } = this.settings;
+    let isH1Matched = false;
 
-    if (this.shouldIncludeFile(file)) {
-      const isH1Matched = this.addHeadingSuggestions(
+    if (options.headings) {
+      isH1Matched = this.addHeadingSuggestions(
         inputInfo,
         suggestions as HeadingSuggestion[],
         prepQuery,
         file,
-        searchAllHeadings,
+        options.allHeadings,
       );
-
-      if (!strictHeadingsOnly) {
-        if (shouldSearchFilenames || !isH1Matched) {
-          // if strict is disabled and filename search is enabled or there
-          // isn't an H1 match, then do a fallback search against the filename, then path
-          this.addFileSuggestions(
-            inputInfo,
-            suggestions as FileSuggestion[],
-            prepQuery,
-            file,
-          );
-        }
-
-        if (shouldShowAlias) {
-          this.addAliasSuggestions(
-            inputInfo,
-            suggestions as AliasSuggestion[],
-            prepQuery,
-            file,
-          );
-        }
-      }
     }
 
-    const isBookmarked = currentWorkspaceEnvList.fileBookmarks?.has(file);
-    if (isBookmarked && shouldSearchBookmarks && !strictHeadingsOnly) {
-      const bookmarkInfoList = currentWorkspaceEnvList.fileBookmarks.get(file);
+    if (options.filename || (!isH1Matched && options.filenameAsFallback)) {
+      this.addFileSuggestions(
+        inputInfo,
+        suggestions as FileSuggestion[],
+        prepQuery,
+        file,
+      );
+    }
 
-      bookmarkInfoList.forEach((bookmarkInfo) => {
-        this.addBookmarkSuggestion(
-          inputInfo,
-          suggestions as BookmarksSuggestion[],
-          prepQuery,
-          bookmarkInfo,
-        );
-      });
+    if (options.aliases) {
+      this.addAliasSuggestions(
+        inputInfo,
+        suggestions as AliasSuggestion[],
+        prepQuery,
+        file,
+      );
     }
   }
 
-  shouldIncludeFile(file: TAbstractFile): boolean {
+  shouldIncludeFile(file: TFile, activeFacetIds = new Set<string>()): boolean {
     let isIncluded = false;
-    const {
-      settings: {
-        excludeObsidianIgnoredFiles,
-        builtInSystemOptions: { showAttachments, showAllFileTypes },
-        fileExtAllowList,
-      },
-      app: { viewRegistry, metadataCache },
-    } = this;
 
-    if (isTFile(file)) {
+    if (file) {
+      const coreFileExtensions = new Set(['md', 'canvas']);
       const { extension } = file;
 
-      if (!metadataCache.isUserIgnored(file.path) || !excludeObsidianIgnoredFiles) {
-        isIncluded = viewRegistry.isExtensionRegistered(extension)
-          ? showAttachments || extension === 'md'
-          : showAllFileTypes;
+      const {
+        app: { viewRegistry, metadataCache },
+        settings: {
+          excludeObsidianIgnoredFiles,
+          fileExtAllowList,
+          builtInSystemOptions: { showAttachments, showAllFileTypes },
+        },
+      } = this;
 
-        if (!isIncluded) {
-          const allowList = new Set(fileExtAllowList);
-          isIncluded = allowList.has(extension);
+      const isUserIgnored =
+        excludeObsidianIgnoredFiles && metadataCache.isUserIgnored(file.path);
+
+      if (!isUserIgnored) {
+        if (activeFacetIds.has(HeadingsListFacetIds.ExternalFiles)) {
+          const externalFilesEnabled = showAttachments || showAllFileTypes;
+          isIncluded = !coreFileExtensions.has(extension) && externalFilesEnabled;
+        } else {
+          const isExtAllowed = this.isExternalFileTypeAllowed(
+            file,
+            viewRegistry,
+            showAttachments,
+            showAllFileTypes,
+            fileExtAllowList,
+          );
+
+          isIncluded = isExtAllowed || coreFileExtensions.has(extension);
         }
       }
     }
@@ -288,7 +482,28 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     return isIncluded;
   }
 
-  private addAliasSuggestions(
+  isExternalFileTypeAllowed(
+    file: TFile,
+    viewRegistry: ViewRegistry,
+    showAttachments: boolean,
+    showAllFileTypes: boolean,
+    fileExtAllowList: string[],
+  ): boolean {
+    const { extension } = file;
+
+    let isAllowed = viewRegistry.isExtensionRegistered(extension)
+      ? showAttachments
+      : showAllFileTypes;
+
+    if (!isAllowed) {
+      const allowList = new Set(fileExtAllowList);
+      isAllowed = allowList.has(extension);
+    }
+
+    return isAllowed;
+  }
+
+  addAliasSuggestions(
     inputInfo: InputInfo,
     suggestions: AliasSuggestion[],
     prepQuery: PreparedQuery,
@@ -313,7 +528,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     }
   }
 
-  private addFileSuggestions(
+  addFileSuggestions(
     inputInfo: InputInfo,
     suggestions: FileSuggestion[],
     prepQuery: PreparedQuery,
@@ -353,7 +568,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     }
   }
 
-  private addHeadingSuggestions(
+  addHeadingSuggestions(
     inputInfo: InputInfo,
     suggestions: HeadingSuggestion[],
     prepQuery: PreparedQuery,
@@ -397,7 +612,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     return isH1Matched;
   }
 
-  private matchAndPushHeading(
+  matchAndPushHeading(
     inputInfo: InputInfo,
     suggestions: HeadingSuggestion[],
     prepQuery: PreparedQuery,
@@ -413,7 +628,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     return !!match;
   }
 
-  private addUnresolvedSuggestions(
+  addUnresolvedSuggestions(
     suggestions: UnresolvedSuggestion[],
     prepQuery: PreparedQuery,
   ): void {
@@ -459,7 +674,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     }
   }
 
-  private createAliasSuggestion(
+  createAliasSuggestion(
     inputInfo: InputInfo,
     alias: string,
     file: TFile,
@@ -476,12 +691,12 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     return this.applyMatchPriorityPreferences(sugg);
   }
 
-  private createFileSuggestion(
+  createFileSuggestion(
     inputInfo: InputInfo,
     file: TFile,
     match: SearchResult,
-    matchType = MatchType.None,
-    matchText: string = null,
+    matchType: MatchType,
+    matchText: string,
   ): FileSuggestion {
     let sugg: FileSuggestion = {
       file,
@@ -495,7 +710,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     return this.applyMatchPriorityPreferences(sugg);
   }
 
-  private createHeadingSuggestion(
+  createHeadingSuggestion(
     inputInfo: InputInfo,
     item: HeadingCache,
     file: TFile,
@@ -512,7 +727,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     return this.applyMatchPriorityPreferences(sugg);
   }
 
-  private createSearchMatch(
+  createSearchMatch(
     match: SearchResult,
     type: MatchType,
     text: string,
@@ -532,67 +747,111 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     };
   }
 
-  getRecentFilesSuggestions(
+  addRecentFilesSuggestions(
+    file: TFile,
     inputInfo: InputInfo,
-  ): (HeadingSuggestion | FileSuggestion)[] {
-    const suggestions: (HeadingSuggestion | FileSuggestion)[] = [];
-    const files = inputInfo?.currentWorkspaceEnvList?.mostRecentFiles;
+    prepQuery: PreparedQuery,
+    collection: (HeadingSuggestion | FileSuggestion)[],
+  ): void {
+    const h1 = this.getFirstH1(file);
+    const { match, matchType, matchText } = this.fuzzySearchWithFallback(
+      prepQuery,
+      h1?.heading,
+      file,
+    );
 
-    files?.forEach((file) => {
-      if (this.shouldIncludeFile(file)) {
-        const h1 = this.getFirstH1(file);
-        const sugg = h1
-          ? this.createHeadingSuggestion(inputInfo, h1, file, null)
-          : this.createFileSuggestion(inputInfo, file, null);
+    if (match) {
+      let sugg: HeadingSuggestion | FileSuggestion;
 
-        sugg.isRecent = true;
-        suggestions.push(sugg);
+      if (matchType === MatchType.Primary) {
+        sugg = this.createHeadingSuggestion(inputInfo, h1, file, match);
+      } else {
+        sugg = this.createFileSuggestion(inputInfo, file, match, matchType, matchText);
       }
-    });
 
-    return suggestions;
+      collection.push(sugg);
+    }
   }
 
-  getOpenEditorSuggestions(inputInfo: InputInfo): EditorSuggestion[] {
-    const suggestions: EditorSuggestion[] = [];
-    const leaves = inputInfo?.currentWorkspaceEnvList?.openWorkspaceLeaves;
-
+  addOpenEditorSuggestions(
+    leaf: WorkspaceLeaf,
+    inputInfo: InputInfo,
+    prepQuery: PreparedQuery,
+    collection: EditorSuggestion[],
+  ): void {
+    const file = leaf?.view?.file;
     const {
       settings,
       app: { metadataCache },
     } = this;
 
-    leaves?.forEach((leaf) => {
-      const file = leaf.view?.file;
+    const preferredTitle = EditorHandler.getPreferredTitle(
+      leaf,
+      settings.preferredSourceForTitle,
+      metadataCache,
+    );
 
-      const preferredTitle = EditorHandler.getPreferredTitle(
-        leaf,
-        settings.preferredSourceForTitle,
-        metadataCache,
-      );
+    const result = this.fuzzySearchWithFallback(prepQuery, preferredTitle, file);
 
+    if (result.match) {
       const sugg = EditorHandler.createSuggestion(
         inputInfo.currentWorkspaceEnvList,
         leaf,
         file,
         settings,
-        this.app.metadataCache,
+        metadataCache,
         preferredTitle,
+        result,
       );
 
-      suggestions.push(sugg);
-    });
-
-    return suggestions;
+      collection.push(sugg);
+    }
   }
 
-  getInitialSuggestionList(
+  getSuggestionsForEditorsAndRecentFiles(
     inputInfo: InputInfo,
-  ): (HeadingSuggestion | FileSuggestion | EditorSuggestion)[] {
-    const openEditors = this.getOpenEditorSuggestions(inputInfo);
-    const recentFiles = this.getRecentFilesSuggestions(inputInfo);
+    collection: (HeadingSuggestion | FileSuggestion | EditorSuggestion)[],
+    activeFacetIds: Set<string>,
+    options: {
+      editors?: boolean;
+      recentFiles?: boolean;
+    },
+  ): void {
+    const prepQuery = inputInfo.searchQuery?.prepQuery;
 
-    return [...openEditors, ...recentFiles];
+    if (activeFacetIds.has(HeadingsListFacetIds.RecentFiles)) {
+      options = Object.assign(options, { editors: false, recentFiles: true });
+    } else {
+      options = Object.assign({ editors: true, recentFiles: true }, options);
+    }
+
+    if (options.editors) {
+      const leaves = inputInfo.currentWorkspaceEnvList?.openWorkspaceLeaves;
+
+      leaves?.forEach((leaf) => {
+        this.addOpenEditorSuggestions(
+          leaf,
+          inputInfo,
+          prepQuery,
+          collection as EditorSuggestion[],
+        );
+      });
+    }
+
+    if (options.recentFiles) {
+      const files = inputInfo.currentWorkspaceEnvList?.mostRecentFiles;
+
+      files?.forEach((file) => {
+        if (this.shouldIncludeFile(file, activeFacetIds)) {
+          this.addRecentFilesSuggestions(
+            file,
+            inputInfo,
+            prepQuery,
+            collection as (HeadingSuggestion | FileSuggestion)[],
+          );
+        }
+      });
+    }
   }
 
   override onNoResultsCreateAction(

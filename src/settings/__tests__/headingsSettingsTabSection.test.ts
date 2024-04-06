@@ -22,7 +22,9 @@ describe('headingsSettingsTabSection', () => {
     mockPluginSettingTab = mock<SwitcherPlusSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
 
-    addToggleSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'addToggleSetting');
+    addToggleSettingSpy = jest
+      .spyOn(SettingsTabSection.prototype, 'addToggleSetting')
+      .mockReturnValue(mock<Setting>());
 
     addSliderSettingSpy = jest
       .spyOn(SettingsTabSection.prototype, 'addSliderSetting')
@@ -69,46 +71,18 @@ describe('headingsSettingsTabSection', () => {
     addTextSettingSpy.mockRestore();
   });
 
-  it('should show the strictHeadingsOnly setting', () => {
-    sut.display(mockContainerEl);
-
-    expect(addToggleSettingSpy).toHaveBeenCalledWith(
-      mockContainerEl,
-      'Show headings only',
-      expect.any(String),
-      config.strictHeadingsOnly,
-      'strictHeadingsOnly',
-    );
-
-    addToggleSettingSpy.mockReset();
-  });
-
-  it('should show the searchAllHeadings setting', () => {
-    sut.display(mockContainerEl);
-
-    expect(addToggleSettingSpy).toHaveBeenCalledWith(
-      mockContainerEl,
-      'Search all headings',
-      expect.any(String),
-      config.searchAllHeadings,
-      'searchAllHeadings',
-    );
-
-    addToggleSettingSpy.mockReset();
-  });
-
   it('should show the shouldSearchFilenames setting', () => {
     sut.display(mockContainerEl);
 
     expect(addToggleSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
-      'Search filenames',
+      'Search Filenames',
       expect.any(String),
       config.shouldSearchFilenames,
       'shouldSearchFilenames',
     );
 
-    addToggleSettingSpy.mockReset();
+    addToggleSettingSpy.mockClear();
   });
 
   it('should show the shouldSearchBookmarks setting', () => {
@@ -122,7 +96,7 @@ describe('headingsSettingsTabSection', () => {
       'shouldSearchBookmarks',
     );
 
-    addToggleSettingSpy.mockReset();
+    addToggleSettingSpy.mockClear();
   });
 
   it('should show the maxRecentFileSuggestionsOnInit setting', () => {
@@ -137,7 +111,7 @@ describe('headingsSettingsTabSection', () => {
       'maxRecentFileSuggestionsOnInit',
     );
 
-    addToggleSettingSpy.mockReset();
+    addToggleSettingSpy.mockClear();
   });
 
   it('should show the excludeObsidianIgnoredFiles setting', () => {
@@ -151,7 +125,7 @@ describe('headingsSettingsTabSection', () => {
       'excludeObsidianIgnoredFiles',
     );
 
-    addToggleSettingSpy.mockReset();
+    addToggleSettingSpy.mockClear();
   });
 
   it('should show file extension override settings', () => {
@@ -164,6 +138,135 @@ describe('headingsSettingsTabSection', () => {
     expect(showFileExtAllowListSpy).toHaveBeenCalled();
 
     showFileExtAllowListSpy.mockRestore();
+  });
+
+  it('should show setting to change Heading options', () => {
+    const showHeadingSettingsSpy = jest
+      .spyOn(sut, 'showHeadingSettings')
+      .mockReturnValueOnce();
+
+    sut.display(mockContainerEl);
+
+    expect(showHeadingSettingsSpy).toHaveBeenCalled();
+
+    showHeadingSettingsSpy.mockRestore();
+  });
+
+  describe('showHeadingOptions', () => {
+    type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
+    let toggleSettingOnChangeFn: addToggleSettingArgs[5];
+    let saveSettingsSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      saveSettingsSpy = jest.spyOn(config, 'saveSettings');
+    });
+
+    afterAll(() => {
+      saveSettingsSpy.mockRestore();
+    });
+
+    afterEach(() => {
+      toggleSettingOnChangeFn = null;
+    });
+
+    it('should refresh the mainSettingsTab panel when the search headings setting is changes', async () => {
+      const initialEnabledValue = false;
+      const finalEnabledValue = true;
+      const savePromise = Promise.resolve();
+
+      config.shouldSearchHeadings = initialEnabledValue;
+      saveSettingsSpy.mockReturnValueOnce(savePromise);
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+        if (args[1] === 'Search Headings') {
+          toggleSettingOnChangeFn = args[5];
+        }
+
+        return mock<Setting>();
+      });
+
+      sut.showHeadingSettings(mockContainerEl, config);
+
+      // trigger the change/save
+      toggleSettingOnChangeFn(finalEnabledValue, config);
+
+      await savePromise;
+
+      expect(saveSettingsSpy).toHaveBeenCalled();
+      expect(mockPluginSettingTab.display).toHaveBeenCalled();
+      expect(config.shouldSearchHeadings).toBe(finalEnabledValue);
+
+      config.shouldSearchHeadings = false;
+      addToggleSettingSpy.mockReset();
+      mockPluginSettingTab.display.mockClear();
+    });
+
+    it('should log error to the console when setting cannot be saved', async () => {
+      const errorMsg = 'showHeadingOptions Unit test error';
+      const rejectedPromise = Promise.reject(errorMsg);
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+        if (args[1] === 'Search Headings') {
+          toggleSettingOnChangeFn = args[5];
+        }
+
+        return mock<Setting>();
+      });
+
+      saveSettingsSpy.mockReturnValueOnce(rejectedPromise);
+
+      sut.showHeadingSettings(mockContainerEl, config);
+
+      // trigger the change/save
+      toggleSettingOnChangeFn(true, config);
+
+      try {
+        await rejectedPromise;
+      } catch (e) {
+        /* noop */
+      }
+
+      expect(saveSettingsSpy).toHaveBeenCalled();
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Switcher++: error saving "Search Headings" setting. ',
+        errorMsg,
+      );
+
+      addToggleSettingSpy.mockReset();
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should show the strictHeadingsOnly setting', () => {
+      addToggleSettingSpy.mockReturnValue(mock<Setting>());
+
+      sut.showHeadingSettings(mockContainerEl, config);
+
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
+        mockContainerEl,
+        'Turn off filename fallback',
+        expect.any(String),
+        config.strictHeadingsOnly,
+        'strictHeadingsOnly',
+      );
+
+      addToggleSettingSpy.mockReset();
+    });
+
+    it('should show the searchAllHeadings setting', () => {
+      addToggleSettingSpy.mockReturnValue(mock<Setting>());
+
+      sut.showHeadingSettings(mockContainerEl, config);
+
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
+        mockContainerEl,
+        'Search all headings',
+        expect.any(String),
+        config.searchAllHeadings,
+        'searchAllHeadings',
+      );
+
+      addToggleSettingSpy.mockReset();
+    });
   });
 
   describe('showFileExtAllowList setting', () => {

@@ -330,6 +330,7 @@ export interface SettingsData {
   vaultListCommand: string;
   relatedItemsListCommand: string;
   relatedItemsListActiveEditorCommand: string;
+  shouldSearchHeadings: boolean;
   strictHeadingsOnly: boolean;
   searchAllHeadings: boolean;
   headingsSearchDebounceMilli: number;
@@ -346,6 +347,7 @@ export interface SettingsData {
   excludeObsidianIgnoredFiles: boolean;
   shouldSearchFilenames: boolean;
   shouldSearchBookmarks: boolean;
+  shouldSearchRecentFiles: boolean;
   pathDisplayFormat: PathDisplayFormat;
   hidePathIfRoot: boolean;
   enabledRelatedItems: RelationType[];

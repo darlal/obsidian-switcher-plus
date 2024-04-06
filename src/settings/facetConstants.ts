@@ -151,6 +151,52 @@ export const COMMAND_MODE_FACETS: Facet[] = [
   },
 ];
 
+export enum HeadingsListFacetIds {
+  RecentFiles = 'recentFilesSearch',
+  Bookmarks = 'bookmarksSearch',
+  Filenames = 'filenamesSearch',
+  Headings = 'headingsSearch',
+  ExternalFiles = 'externalFilesSearch',
+}
+
+export const HEADINGS_MODE_FACETS: Facet[] = [
+  {
+    id: HeadingsListFacetIds.RecentFiles,
+    mode: Mode.HeadingsList,
+    label: 'recent files',
+    isActive: false,
+    isAvailable: true,
+  },
+  {
+    id: HeadingsListFacetIds.Bookmarks,
+    mode: Mode.HeadingsList,
+    label: 'bookmarks',
+    isActive: false,
+    isAvailable: true,
+  },
+  {
+    id: HeadingsListFacetIds.Filenames,
+    mode: Mode.HeadingsList,
+    label: 'filenames',
+    isActive: false,
+    isAvailable: true,
+  },
+  {
+    id: HeadingsListFacetIds.Headings,
+    mode: Mode.HeadingsList,
+    label: 'headings',
+    isActive: false,
+    isAvailable: true,
+  },
+  {
+    id: HeadingsListFacetIds.ExternalFiles,
+    mode: Mode.HeadingsList,
+    label: 'external files',
+    isActive: false,
+    isAvailable: true,
+  },
+];
+
 export function getFacetMap(): Record<string, Facet> {
   const facetMap: Record<string, Facet> = {};
   const facetLists = [
@@ -158,6 +204,7 @@ export function getFacetMap(): Record<string, Facet> {
     RELATED_ITEMS_MODE_FACETS,
     BOOKMARKS_MODE_FACETS,
     COMMAND_MODE_FACETS,
+    HEADINGS_MODE_FACETS,
   ];
 
   facetLists.flat().reduce((facetMap, facet) => {

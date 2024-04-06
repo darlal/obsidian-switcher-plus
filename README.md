@@ -52,9 +52,10 @@ Find the file you're looking for by searching through the headings contained in 
 | Setting                  | Description | Default |
 |--------------------------|-------------|---------|
 | Headings list mode trigger | Character that will trigger headings list mode in the switcher. | `#` |
-| Show headings only | **Enabled**: strictly search through only the headings contained in the file. Note: this setting overrides the "Show existing only", and "Search filenames" settings. <br />**Disabled**: fallback to searching against the filename when there is not a match in the first H1 contained in the file. This will also allow searching through filenames, Aliases, and Unresolved links to be enabled. | disabled |
+| Search Headings | **Enabled**: search and show suggestions for Headings <br />**Disabled**: Don't search through Headings | enabled |
+| Turn off filename fallback | **Enabled**: strictly search through only the headings contained in the file. Do not fallback to searching the filename when an H1 match is not found. <br />**Disabled**: fallback to searching against the filename when there is not a match in the first H1 contained in the file. | disabled |
 | Search all headings | **Enabled**: search through all headings contained in the file. <br />**Disabled**: only search through the first H1 in each file. | enabled |
-| Search filenames | **Enabled**: search and show suggestions for filenames <br />**Disabled**: Don't search through filenames (except for fallback searches) | disabled |
+| Search Filenames | **Enabled**: search and show suggestions for filenames <br />**Disabled**: Don't search through filenames (except for fallback searches) | disabled |
 | Search Bookmarks | **Enabled**: search and show suggestions for Bookmarks <br />**Disabled**: Don't search through Bookmarks | enabled |
 | Max recent files to show | The maximum number of recent files to show when there is no search term. Set this to `0` to hide recent file suggestions in that case | 25 |
 | Exclude folders | List of folder path regex that will be used to exclude folders and their sub-directories from suggestion search. One per line. | None |

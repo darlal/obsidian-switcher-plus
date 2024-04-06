@@ -88,6 +88,7 @@ export abstract class Handler<T> {
 
     return this.facets ?? [];
   }
+
   getAvailableFacets(inputInfo: InputInfo): Facet[] {
     return this.getFacets(inputInfo.mode).filter((v) => v.isAvailable);
   }
