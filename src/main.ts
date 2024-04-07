@@ -18,7 +18,7 @@ const COMMAND_DATA: CommandDefinition[] = [
     id: 'switcher-plus:open',
     name: 'Open in Standard Mode',
     mode: Mode.Standard,
-    iconId: 'lucide-search',
+    iconId: 'lucide-file-search',
     ribbonIconEl: null,
   },
   {
