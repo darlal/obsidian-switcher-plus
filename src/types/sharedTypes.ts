@@ -314,6 +314,29 @@ export type NavigationKeysConfig = {
 export type TitleSource = 'Default' | 'H1';
 export type MatchPriorityData = { value: number; label: string; desc?: string };
 
+export type MobileLauncherConfig = {
+  /**
+   * Whether or not the feature is turned on.
+   */
+  isEnabled: boolean;
+  /**
+   * The custom mode string identifier to launch in switcher++.
+   */
+  modeString: string;
+  /**
+   * Name of icon file to use instead of the default "plus" icon.
+   */
+  iconName: string;
+  /**
+   * Selector to use for locating the default launcher button element.
+   */
+  coreLauncherButtonSelector: string;
+  /**
+   * Selector to use for locating the icon element within the button.
+   */
+  coreLauncherButtonIconSelector: string;
+};
+
 export interface SettingsData {
   version: string;
   onOpenPreferNewTab: boolean;
@@ -372,6 +395,11 @@ export interface SettingsData {
   preferredSourceForTitle: TitleSource;
   closeWhenEmptyKeys: Hotkey[];
   escapeCmdChar: string;
+  /**
+   * Settings for overriding the default "plus" button behavior on mobile Platforms
+   * to launch switcher++ instead of the default system switcher
+   */
+  mobileLauncher: MobileLauncherConfig;
 }
 
 export type SessionOpts = {

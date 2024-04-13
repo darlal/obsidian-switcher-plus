@@ -2,6 +2,7 @@ import { Modal } from 'obsidian';
 import { SwitcherPlusSettings } from 'src/settings';
 import { Mode, PathDisplayFormat, TitleSource } from 'src/types';
 import { SettingsTabSection } from './settingsTabSection';
+import { getModeNames } from 'src/utils';
 
 export class GeneralSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
@@ -9,6 +10,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
 
     this.addSectionTitle(containerEl, 'General Settings');
     this.showEnabledRibbonCommands(containerEl, config);
+    this.showOverrideMobileLauncher(containerEl, config);
     this.showPreferredSourceForTitle(containerEl, config);
 
     this.showPathDisplayFormat(containerEl, config);
@@ -167,6 +169,52 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     popup.titleEl.setText('Invalid mode');
     popup.contentEl.innerHTML = `Changes not saved. Available modes are: ${validModes}. The following are invalid:<br/><br/>${invalidValues}`;
     popup.open();
+  }
+
+  showOverrideMobileLauncher(
+    containerEl: HTMLElement,
+    config: SwitcherPlusSettings,
+  ): void {
+    const { mobileLauncher } = config;
+    const desc =
+      'Override the "⊕" button (in the Navigation Bar) on mobile platforms to launch Switcher++ instead of the default system switcher. Select the Mode to launch Switcher++ in, or select "Do not override" to disable the feature.';
+
+    const disableOptionKey = 'disabled'; // Option to disable the feature
+    const options: Record<string, string> = { [disableOptionKey]: 'Do not override' };
+
+    // Add each mode to the list of options
+    const modeNames = getModeNames();
+    modeNames.forEach((name) => {
+      options[name] = name;
+    });
+
+    let initialValue = disableOptionKey;
+    if (
+      mobileLauncher.isEnabled &&
+      modeNames.includes(mobileLauncher.modeString as keyof typeof Mode)
+    ) {
+      initialValue = mobileLauncher.modeString;
+    }
+
+    this.addDropdownSetting(
+      containerEl,
+      'Override default Switcher launch button (the "⊕" button) on mobile platforms',
+      desc,
+      initialValue,
+      options,
+      null,
+      (rawValue, config) => {
+        const isEnabled = rawValue !== disableOptionKey;
+
+        config.mobileLauncher.isEnabled = isEnabled;
+        if (isEnabled) {
+          config.mobileLauncher.modeString = rawValue;
+        }
+
+        config.save();
+        this.mainSettingsTab.plugin.updateMobileLauncherButtonOverride(isEnabled);
+      },
+    );
   }
 
   showMatchPriorityAdjustments(

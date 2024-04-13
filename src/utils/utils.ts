@@ -25,6 +25,7 @@ import {
   LinkType,
   SuggestionType,
   CalloutCache,
+  Mode,
 } from 'src/types';
 
 export function isOfType<T>(
@@ -107,6 +108,14 @@ export function getInternalEnabledPluginById(app: App, id: string): PluginInstan
 export function getSystemSwitcherInstance(app: App): QuickSwitcherPluginInstance {
   const plugin = getInternalPluginById(app, 'switcher');
   return plugin?.instance as QuickSwitcherPluginInstance;
+}
+/**
+ * @returns Array The string names for all the available Modes.
+ */
+export function getModeNames(): Array<keyof typeof Mode> {
+  return Object.values(Mode)
+    .filter((v) => isNaN(Number(v)))
+    .sort() as Array<keyof typeof Mode>;
 }
 
 export function stripMDExtensionFromPath(file: TFile): string {

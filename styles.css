@@ -165,3 +165,6 @@
 .qsp-headings-l4 {}
 .qsp-headings-l5 {}
 .qsp-headings-l6 {}
+
+/* Usually the "plus" button button in the NavBar on mobile platforms */
+.qsp-mobile-launcher-button {}

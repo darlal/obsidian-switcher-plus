@@ -128,6 +128,14 @@ function getDefaultSettingsData(): SettingsData {
     preferredSourceForTitle: 'H1',
     closeWhenEmptyKeys: [{ modifiers: null, key: 'Backspace' }],
     escapeCmdChar: '!',
+    mobileLauncher: {
+      isEnabled: false,
+      modeString: Mode[Mode.HeadingsList],
+      iconName: '',
+      coreLauncherButtonIconSelector: 'span.clickable-icon',
+      coreLauncherButtonSelector:
+        '.mobile-navbar-action.mod-tappable:has(span.clickable-icon svg.svg-icon.lucide-plus-circle)',
+    },
   };
 
   return data;
@@ -249,6 +257,13 @@ function getTransientSettingsData(): SettingsData {
       },
     ],
     escapeCmdChar: chance.letter(),
+    mobileLauncher: {
+      isEnabled: false,
+      modeString: Mode[Mode.CommandList],
+      iconName: '',
+      coreLauncherButtonIconSelector: '',
+      coreLauncherButtonSelector: '',
+    },
   };
 
   return data;

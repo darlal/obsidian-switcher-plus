@@ -97,6 +97,9 @@ declare module 'obsidian' {
       getDefaultHotkeys(id: string): Hotkey[];
       printHotkeyForCommand(id: string): string;
     };
+    mobileNavbar: {
+      containerEl: HTMLElement;
+    };
     openVaultChooser(): void;
   }
 

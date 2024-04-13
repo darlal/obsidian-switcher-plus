@@ -6,6 +6,7 @@ import {
   FacetSettingsData,
   InsertLinkConfig,
   MatchPriorityData,
+  MobileLauncherConfig,
   Mode,
   NavigationKeysConfig,
   PathDisplayFormat,
@@ -125,6 +126,14 @@ export class SwitcherPlusSettings {
       preferredSourceForTitle: 'H1',
       closeWhenEmptyKeys: [{ modifiers: null, key: 'Backspace' }],
       escapeCmdChar: '!',
+      mobileLauncher: {
+        isEnabled: false,
+        modeString: Mode[Mode.HeadingsList],
+        iconName: '',
+        coreLauncherButtonIconSelector: 'span.clickable-icon',
+        coreLauncherButtonSelector:
+          '.mobile-navbar-action.mod-tappable:has(span.clickable-icon svg.svg-icon.lucide-plus-circle)',
+      },
     };
   }
 
@@ -605,6 +614,14 @@ export class SwitcherPlusSettings {
 
   set escapeCmdChar(value: string) {
     this.data.escapeCmdChar = value;
+  }
+
+  get mobileLauncher(): MobileLauncherConfig {
+    return this.data.mobileLauncher;
+  }
+
+  set mobileLauncher(value: MobileLauncherConfig) {
+    this.data.mobileLauncher = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

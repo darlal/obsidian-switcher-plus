@@ -78,18 +78,6 @@ describe('generalSettingsTabSection', () => {
       );
     });
 
-    it('should show path settings', () => {
-      const showPathDisplayFormatSpy = jest
-        .spyOn(sut, 'showPathDisplayFormat')
-        .mockReturnValueOnce();
-
-      sut.display(mockContainerEl);
-
-      expect(showPathDisplayFormatSpy).toHaveBeenCalled();
-
-      showPathDisplayFormatSpy.mockRestore();
-    });
-
     it('should show the hidePathIfRoot setting', () => {
       sut.display(mockContainerEl);
 
@@ -154,26 +142,30 @@ describe('generalSettingsTabSection', () => {
       expect(addDropdownSettingSpy).toHaveBeenCalled();
 
       showPathDisplayFormatSpy.mockRestore();
-      showPathDisplayFormatSpy.mockRestore();
+      addDropdownSettingSpy.mockRestore();
     });
 
     it('should save modified setting', () => {
       config.pathDisplayFormat = PathDisplayFormat.None;
       const finalValue = PathDisplayFormat.Full;
 
-      let onChangeFn: (v: string, c: SwitcherPlusSettings) => void;
+      type addDropdownSettingArgs = Parameters<SettingsTabSection['addDropdownSetting']>;
+      let dropdownSettingOnChangeFn: addDropdownSettingArgs[6];
+
+      // let onChangeFn: (v: string, c: SwitcherPlusSettings) => void;
       const addDropdownSettingSpy = jest
         .spyOn(SettingsTabSection.prototype, 'addDropdownSetting')
-        .mockImplementationOnce((_c, _n, _d, _i, _o, _k, onChange) => {
-          onChangeFn = onChange;
+        .mockImplementationOnce((...args) => {
+          dropdownSettingOnChangeFn = args[6];
           return mock<Setting>();
         });
 
       const configSaveSpy = jest.spyOn(config, 'save');
 
       sut.showPathDisplayFormat(mockContainerEl, config);
+
       // trigger the save
-      onChangeFn(finalValue.toString(), config);
+      dropdownSettingOnChangeFn(finalValue.toString(), config);
 
       expect(config.pathDisplayFormat).toBe(finalValue);
       expect(configSaveSpy).toHaveBeenCalled();
@@ -270,6 +262,66 @@ describe('generalSettingsTabSection', () => {
       expect(saveSpy).not.toHaveBeenCalled();
 
       saveSpy.mockRestore();
+    });
+  });
+
+  describe('showOverrideMobileLauncher', () => {
+    it('should show setting to override the mobile launcher (plus) button', () => {
+      const initialValue = Mode[Mode.CommandList];
+      config.mobileLauncher.modeString = initialValue;
+      config.mobileLauncher.isEnabled = true;
+
+      const addDropdownSettingSpy = jest.spyOn(
+        SettingsTabSection.prototype,
+        'addDropdownSetting',
+      );
+
+      const showOverrideMobileLauncherSpy = jest.spyOn(sut, 'showOverrideMobileLauncher');
+
+      sut.display(mockContainerEl);
+
+      expect(showOverrideMobileLauncherSpy).toHaveBeenCalledWith(mockContainerEl, config);
+      expect(addDropdownSettingSpy).toHaveBeenCalledWith(
+        mockContainerEl,
+        expect.any(String),
+        expect.any(String),
+        initialValue,
+        expect.anything(),
+        null,
+        expect.any(Function),
+      );
+
+      showOverrideMobileLauncherSpy.mockRestore();
+      addDropdownSettingSpy.mockRestore();
+    });
+
+    it('should save modified setting', () => {
+      const finalValue = Mode[Mode.Standard];
+      config.mobileLauncher.modeString = Mode[Mode.CommandList];
+      config.mobileLauncher.isEnabled = true;
+
+      type addDropdownSettingArgs = Parameters<SettingsTabSection['addDropdownSetting']>;
+      let dropdownSettingOnChangeFn: addDropdownSettingArgs[6];
+
+      const addDropdownSettingSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'addDropdownSetting')
+        .mockImplementationOnce((...args) => {
+          dropdownSettingOnChangeFn = args[6];
+          return mock<Setting>();
+        });
+
+      const configSaveSpy = jest.spyOn(config, 'save');
+
+      sut.showOverrideMobileLauncher(mockContainerEl, config);
+
+      // trigger the save
+      dropdownSettingOnChangeFn(finalValue, config);
+
+      expect(config.mobileLauncher.modeString).toBe(finalValue);
+      expect(configSaveSpy).toHaveBeenCalled();
+
+      addDropdownSettingSpy.mockRestore();
+      configSaveSpy.mockRestore();
     });
   });
 

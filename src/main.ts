@@ -1,6 +1,6 @@
 import { Plugin } from 'obsidian';
 import { SwitcherPlusSettings, SwitcherPlusSettingTab } from 'src/settings';
-import { createSwitcherPlus } from 'src/switcherPlus';
+import { createSwitcherPlus, MobileLauncher } from 'src/switcherPlus';
 import { Mode, SessionOpts } from 'src/types';
 
 type CommandDefinitionOpts = Pick<SessionOpts, 'useActiveEditorAsSource'>;
@@ -107,10 +107,15 @@ export default class SwitcherPlusPlugin extends Plugin {
 
     this.addSettingTab(new SwitcherPlusSettingTab(this.app, this, options));
     this.registerRibbonCommandIcons();
+    this.updateMobileLauncherButtonOverride(options.mobileLauncher.isEnabled);
 
     COMMAND_DATA.forEach(({ id, name, mode, iconId, sessionOpts }) => {
       this.registerCommand(id, name, mode, iconId, sessionOpts);
     });
+  }
+
+  onunload(): void {
+    this.updateMobileLauncherButtonOverride(false);
   }
 
   registerCommand(
@@ -174,5 +179,26 @@ export default class SwitcherPlusPlugin extends Plugin {
     }
 
     return true;
+  }
+
+  updateMobileLauncherButtonOverride(isEnabled: boolean): void {
+    if (isEnabled) {
+      const onclickListener = () => {
+        const modeString = this.options.mobileLauncher.modeString as keyof typeof Mode;
+        const openMode = Mode[modeString];
+
+        if (openMode) {
+          this.createModalAndOpen(openMode, false);
+        }
+      };
+
+      MobileLauncher.installMobileLauncherOverride(
+        this.app,
+        this.options.mobileLauncher,
+        onclickListener,
+      );
+    } else {
+      MobileLauncher.removeMobileLauncherOverride();
+    }
   }
 }
