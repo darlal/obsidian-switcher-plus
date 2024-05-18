@@ -136,6 +136,10 @@ function getDefaultSettingsData(): SettingsData {
       coreLauncherButtonSelector:
         '.mobile-navbar-action.mod-tappable:has(span.clickable-icon svg.svg-icon.lucide-plus-circle)',
     },
+    allowCreateNewFileInModeNames: [
+      Mode[Mode.Standard] as keyof typeof Mode,
+      Mode[Mode.HeadingsList] as keyof typeof Mode,
+    ],
   };
 
   return data;
@@ -264,6 +268,7 @@ function getTransientSettingsData(): SettingsData {
       coreLauncherButtonIconSelector: '',
       coreLauncherButtonSelector: '',
     },
+    allowCreateNewFileInModeNames: [Mode[Mode.CommandList] as keyof typeof Mode],
   };
 
   return data;

@@ -134,6 +134,10 @@ export class SwitcherPlusSettings {
         coreLauncherButtonSelector:
           '.mobile-navbar-action.mod-tappable:has(span.clickable-icon svg.svg-icon.lucide-plus-circle)',
       },
+      allowCreateNewFileInModeNames: [
+        Mode[Mode.Standard] as keyof typeof Mode,
+        Mode[Mode.HeadingsList] as keyof typeof Mode,
+      ],
     };
   }
 
@@ -622,6 +626,15 @@ export class SwitcherPlusSettings {
 
   set mobileLauncher(value: MobileLauncherConfig) {
     this.data.mobileLauncher = value;
+  }
+
+  get allowCreateNewFileInModeNames(): Array<keyof typeof Mode> {
+    return this.data.allowCreateNewFileInModeNames;
+  }
+
+  set allowCreateNewFileInModeNames(value: Array<keyof typeof Mode>) {
+    // remove any duplicates before storing
+    this.data.allowCreateNewFileInModeNames = [...new Set(value)];
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

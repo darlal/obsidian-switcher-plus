@@ -46,6 +46,7 @@ import {
   BookmarksPluginItem,
   BookmarksPluginSearchItem,
   ViewRegistry,
+  Platform,
 } from 'obsidian';
 import {
   editorTrigger,
@@ -160,6 +161,8 @@ describe('modeHandler', () => {
 
   const mockDebounce = jest.mocked(debounce);
   mockDebounce.mockReturnValue(mockDebouncedGetSuggestions);
+
+  const mockPlatform = jest.mocked<typeof Platform>(Platform);
 
   beforeAll(() => {
     const mockInternalPlugins = mock<InternalPlugins>();
@@ -1296,6 +1299,52 @@ describe('modeHandler', () => {
 
       expect(facetList.every((facet) => facet.isActive === true)).toBe(true);
       expect(getSuggestionSpy).toHaveBeenCalledWith(inputInfo, mockChooser, mockModal);
+    });
+  });
+
+  describe('Create file button on mobile platforms', () => {
+    let mockModal: MockProxy<SwitcherPlus>;
+    let mockChooser: MockProxy<Chooser<AnySuggestion>>;
+    let sut: ModeHandler;
+
+    beforeAll(() => {
+      mockPlatform.isMobile = true;
+
+      sut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
+      mockModal = mock<SwitcherPlus>({ createButtonEl: mock<HTMLElement>() });
+      mockChooser = mock<Chooser<AnySuggestion>>();
+    });
+
+    afterEach(() => {
+      mockClear(mockModal);
+      mockModal.allowCreateNewFile = null;
+    });
+
+    afterAll(() => {
+      mockPlatform.isMobile = false;
+    });
+
+    it('should enable the create file button on mobile platforms in supported modes', () => {
+      const supportedMode = Mode.HeadingsList;
+      const supportedModeName = Mode[supportedMode] as keyof typeof Mode;
+
+      mockSettings.allowCreateNewFileInModeNames = [supportedModeName];
+
+      const result = sut.updateSuggestions(`${headingsTrigger}`, mockChooser, mockModal);
+
+      expect(mockModal).toHaveProperty('allowCreateNewFile', true);
+      expect(result).toBe(true);
+    });
+
+    it('should disable the create file button on mobile platforms in modes that are not supported', () => {
+      // Disable in all modes
+      mockSettings.allowCreateNewFileInModeNames = [];
+
+      const result = sut.updateSuggestions(`${headingsTrigger}`, mockChooser, mockModal);
+
+      expect(mockModal).toHaveProperty('allowCreateNewFile', false);
+      expect(mockModal.createButtonEl.detach).toHaveBeenCalled();
+      expect(result).toBe(true);
     });
   });
 });

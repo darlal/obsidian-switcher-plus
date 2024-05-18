@@ -39,6 +39,7 @@ import {
   debounce,
   TFile,
   ViewRegistry,
+  Platform,
 } from 'obsidian';
 
 const lastInputInfoByMode = {} as Record<Mode, InputInfo>;
@@ -196,6 +197,7 @@ export class ModeHandler {
     lastInputInfoByMode[mode] = inputInfo;
 
     this.updatedKeymapForMode(inputInfo, chooser, modal, exKeymap, settings, activeLeaf);
+    this.toggleMobileCreateFileButton(modal, mode, settings);
 
     if (mode !== Mode.Standard) {
       if (mode === Mode.HeadingsList && inputInfo.parsedCommand().parsedInput?.length) {
@@ -209,6 +211,33 @@ export class ModeHandler {
     }
 
     return handled;
+  }
+
+  /**
+   * Sets the allowCreateNewFile property of the modal based on config settings and mode
+   * @param  {SwitcherPlus} modal
+   * @param  {Mode} mode
+   * @param  {SwitcherPlusSettings} config
+   * @returns void
+   */
+  toggleMobileCreateFileButton(
+    modal: SwitcherPlus,
+    mode: Mode,
+    config: SwitcherPlusSettings,
+  ): void {
+    if (!Platform.isMobile) {
+      return;
+    }
+
+    const modeName = Mode[mode] as keyof typeof Mode;
+
+    modal.allowCreateNewFile = config.allowCreateNewFileInModeNames.includes(modeName);
+    if (!modal.allowCreateNewFile) {
+      // If file creation is disabled, remove the button from the DOM.
+      // Note that when enabled, the core switcher will add automatically add
+      // createButtonEl back to the DOM.
+      modal.createButtonEl?.detach();
+    }
   }
 
   updatedKeymapForMode(

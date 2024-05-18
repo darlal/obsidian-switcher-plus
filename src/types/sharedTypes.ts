@@ -84,6 +84,16 @@ HeadingIndicators[6] = 'H₆';
 
 export declare class SystemSwitcher extends SuggestModal<AnySuggestion> {
   shouldShowAlias: boolean;
+  /**
+   * Controls (along with Platform.isMobile) the enablement status
+   * of the create new file button on mobile platforms
+   */
+  allowCreateNewFile: boolean;
+  /**
+   * Button that appears in the switcher when there is text input to enable
+   * creating new files
+   */
+  createButtonEl: HTMLElement;
   protected isOpen: boolean;
   protected chooser: Chooser<AnySuggestion>;
   constructor(app: App);
@@ -400,6 +410,11 @@ export interface SettingsData {
    * to launch switcher++ instead of the default system switcher
    */
   mobileLauncher: MobileLauncherConfig;
+  /**
+   * Array of mode names that will allow a button to be displayed for creating new
+   * files directly from the switcher when on mobile platforms.
+   */
+  allowCreateNewFileInModeNames: Array<keyof typeof Mode>;
 }
 
 export type SessionOpts = {
