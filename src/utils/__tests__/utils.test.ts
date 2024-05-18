@@ -292,6 +292,22 @@ describe('utils', () => {
       );
     });
 
+    test('generated links for Heading subpath should not contain illegal link characters', () => {
+      const illegalChar = ':#|^\\%%[[]]';
+      const heading = `head ${illegalChar} tail`;
+      const expectedLinkHeadingStr = 'head tail';
+      const sugg = makeHeadingSuggestion(makeHeading(heading, 1), destFile);
+
+      generateMarkdownLink(mockFileManager, mockVault, sugg, activeFilePath);
+
+      expect(mockFileManager.generateMarkdownLink).toHaveBeenCalledWith(
+        destFile,
+        activeFilePath,
+        `#${expectedLinkHeadingStr}`,
+        expectedLinkHeadingStr,
+      );
+    });
+
     test('with useHeadingAsAlias disabled, it should generate a link for Heading suggestions with file basename as alias', () => {
       const heading = chance.sentence();
       const sugg = makeHeadingSuggestion(makeHeading(heading, 1), destFile);

@@ -224,30 +224,9 @@ export function generateMarkdownLink(
   options = Object.assign({ useBasenameAsAlias: true, useHeadingAsAlias: true }, options);
 
   if (sugg) {
-    let destFile: TFile = null;
+    let destFile = getDestinationFileForSuggestion(sugg);
     let alias = null;
     let subpath = null;
-    const fileSuggTypes = [
-      SuggestionType.Alias,
-      SuggestionType.Bookmark,
-      SuggestionType.HeadingsList,
-      SuggestionType.SymbolList,
-      SuggestionType.RelatedItemsList,
-      SuggestionType.EditorList,
-      SuggestionType.File,
-    ];
-
-    // for file based suggestions, get the destination file
-    if (fileSuggTypes.includes(sugg.type)) {
-      destFile = (sugg as { file: TFile }).file;
-    }
-
-    const linkSubPathForHeading = (heading: string) => {
-      return {
-        subpath: `#${heading}`,
-        alias: options.useHeadingAsAlias ? heading : null,
-      };
-    };
 
     switch (sugg.type) {
       case SuggestionType.Unresolved:
@@ -265,7 +244,10 @@ export function generateMarkdownLink(
       }
       case SuggestionType.HeadingsList: {
         const { heading } = sugg.item;
-        ({ subpath, alias } = linkSubPathForHeading(heading));
+        ({ subpath, alias } = sanitizeStringForLinkSubpath(
+          heading,
+          options.useHeadingAsAlias,
+        ));
         break;
       }
       case SuggestionType.SymbolList: {
@@ -274,7 +256,10 @@ export function generateMarkdownLink(
         } = sugg;
 
         if (isHeadingCache(symbol)) {
-          ({ subpath, alias } = linkSubPathForHeading(symbol.heading));
+          ({ subpath, alias } = sanitizeStringForLinkSubpath(
+            symbol.heading,
+            options.useHeadingAsAlias,
+          ));
         } else if (isOfType<ReferenceCache>(symbol, 'link')) {
           // Test if the link matches the external link format [text](url)
           const isExternalLink = new RegExp(/^\[(.*?)\]\((.+?)\)/).test(symbol.original);
@@ -317,6 +302,49 @@ export function generateMarkdownLink(
   }
 
   return linkStr;
+}
+
+function sanitizeStringForLinkSubpath(
+  input: string,
+  useInputAsAlias: boolean,
+): { subpath: string; alias: string | null } {
+  // May 2024: shamelessly borrowed from Obsidian
+  const illegalLinkCharsRegex = /([:#|^\\\r\n]|%%|\[\[|]])/g;
+  const sanitizedInput = input
+    .replace(illegalLinkCharsRegex, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return {
+    subpath: `#${sanitizedInput}`,
+    alias: useInputAsAlias ? sanitizedInput : null,
+  };
+}
+
+/**
+ * Determines if sugg is a file-based suggestion, and if so, returns the associated
+ * destination TFile. Otherwise returns null.
+ * @param  {AnySuggestion} sugg
+ * @returns TFile|null
+ */
+function getDestinationFileForSuggestion(sugg: AnySuggestion): TFile | null {
+  let destFile: TFile = null;
+  const fileSuggTypes = [
+    SuggestionType.Alias,
+    SuggestionType.Bookmark,
+    SuggestionType.HeadingsList,
+    SuggestionType.SymbolList,
+    SuggestionType.RelatedItemsList,
+    SuggestionType.EditorList,
+    SuggestionType.File,
+  ];
+
+  if (fileSuggTypes.includes(sugg.type)) {
+    // for file based suggestions, get the destination file
+    destFile = (sugg as { file: TFile }).file;
+  }
+
+  return destFile;
 }
 
 function generateMarkdownLinkForUnresolved(path: string, displayText?: string): string {
