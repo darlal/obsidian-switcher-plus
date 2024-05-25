@@ -127,6 +127,7 @@ function getDefaultSettingsData(): SettingsData {
     },
     preferredSourceForTitle: 'H1',
     closeWhenEmptyKeys: [{ modifiers: null, key: 'Backspace' }],
+    navigateToHotkeySelectorKeys: { modifiers: ['Ctrl', 'Shift'], key: 'h' },
     escapeCmdChar: '!',
     mobileLauncher: {
       isEnabled: false,
@@ -261,6 +262,10 @@ function getTransientSettingsData(): SettingsData {
         key: chance.letter(),
       },
     ],
+    navigateToHotkeySelectorKeys: {
+      modifiers: chance.pickset(['Alt', 'Ctrl'], 1),
+      key: chance.letter(),
+    },
     escapeCmdChar: chance.letter(),
     mobileLauncher: {
       isEnabled: false,

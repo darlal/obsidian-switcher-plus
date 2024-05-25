@@ -84,6 +84,15 @@ declare module 'obsidian' {
     isUserIgnored(path: string): boolean;
   }
 
+  export interface SettingsTab {
+    id: string;
+  }
+
+  export class HotkeysSettingTab implements SettingsTab {
+    id: 'hotkeys';
+    setQuery(query: string): void;
+  }
+
   export interface App {
     internalPlugins: InternalPlugins;
     viewRegistry: ViewRegistry;
@@ -99,6 +108,10 @@ declare module 'obsidian' {
     };
     mobileNavbar: {
       containerEl: HTMLElement;
+    };
+    setting: {
+      open(): void;
+      openTabById(id: string): SettingsTab;
     };
     openVaultChooser(): void;
   }

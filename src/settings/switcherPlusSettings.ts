@@ -125,6 +125,7 @@ export class SwitcherPlusSettings {
       },
       preferredSourceForTitle: 'H1',
       closeWhenEmptyKeys: [{ modifiers: null, key: 'Backspace' }],
+      navigateToHotkeySelectorKeys: { modifiers: ['Ctrl', 'Shift'], key: 'h' },
       escapeCmdChar: '!',
       mobileLauncher: {
         isEnabled: false,
@@ -611,6 +612,14 @@ export class SwitcherPlusSettings {
 
   set closeWhenEmptyKeys(value: Hotkey[]) {
     this.data.closeWhenEmptyKeys = value;
+  }
+
+  get navigateToHotkeySelectorKeys(): Hotkey {
+    return this.data.navigateToHotkeySelectorKeys;
+  }
+
+  set navigateToHotkeySelectorKeys(value: Hotkey) {
+    this.data.navigateToHotkeySelectorKeys = value;
   }
 
   get escapeCmdChar(): string {

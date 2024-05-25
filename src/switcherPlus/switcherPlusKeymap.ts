@@ -2,6 +2,7 @@ import { SwitcherPlusSettings } from 'src/settings';
 import { generateMarkdownLink } from 'src/utils';
 import {
   AnySuggestion,
+  CommandSuggestion,
   Facet,
   FacetSettingsData,
   InsertLinkConfig,
@@ -23,7 +24,10 @@ import {
   WorkspaceLeaf,
   MarkdownView,
   Hotkey,
+  HotkeysSettingTab,
 } from 'obsidian';
+
+export const MOD_KEY: Modifier = Platform.isMacOS ? 'Meta' : 'Ctrl';
 
 export type CustomKeymapInfo = Omit<KeymapEventHandler, 'scope'> &
   Instruction & { isInstructionOnly?: boolean; modes?: Mode[] };
@@ -40,7 +44,6 @@ export class SwitcherPlusKeymap {
   readonly standardInstructionsEl: HTMLElement;
   readonly facetKeysInfo: Array<CustomKeymapInfo & { facet: Facet }> = [];
   readonly insertIntoEditorKeysInfo: CustomKeymapInfo[] = [];
-  modKey: Modifier = 'Ctrl';
   modifierToPlatformStrMap: Record<Modifier, string> = {
     Mod: 'Ctrl',
     Ctrl: 'Ctrl',
@@ -65,7 +68,6 @@ export class SwitcherPlusKeymap {
     private config: SwitcherPlusSettings,
   ) {
     if (Platform.isMacOS) {
-      this.modKey = 'Meta';
       this.modifierToPlatformStrMap = {
         Mod: '⌘',
         Ctrl: '⌃',
@@ -76,6 +78,7 @@ export class SwitcherPlusKeymap {
     }
 
     this.initKeysInfo();
+    this.bindNavigateToCommandHotkeySelector(this.customKeysInfo, config);
     this.removeDefaultTabKeyBinding(scope, config);
     this.registerNavigationBindings(scope, config.navigationKeys);
     this.registerEditorTabBindings(scope);
@@ -116,7 +119,7 @@ export class SwitcherPlusKeymap {
       {
         isInstructionOnly: true,
         modes: customFileBasedModes,
-        modifiers: this.modKey,
+        modifiers: SwitcherPlusKeymap.modifiersToKeymapInfoStr([MOD_KEY]),
         key: '\\',
         func: null,
         command: this.commandDisplayStr(['Mod'], '\\'),
@@ -125,7 +128,7 @@ export class SwitcherPlusKeymap {
       {
         isInstructionOnly: true,
         modes: customFileBasedModes,
-        modifiers: `${this.modKey},Shift`,
+        modifiers: SwitcherPlusKeymap.modifiersToKeymapInfoStr([MOD_KEY, 'Shift']),
         key: '\\',
         func: null,
         command: this.commandDisplayStr(['Mod', 'Shift'], '\\'),
@@ -134,7 +137,7 @@ export class SwitcherPlusKeymap {
       {
         isInstructionOnly: true,
         modes: customFileBasedModes,
-        modifiers: this.modKey,
+        modifiers: SwitcherPlusKeymap.modifiersToKeymapInfoStr([MOD_KEY]),
         key: 'o',
         func: null,
         command: this.commandDisplayStr(['Mod'], 'o'),
@@ -162,6 +165,33 @@ export class SwitcherPlusKeymap {
 
     this.standardKeysInfo.push(...standardKeysInfo);
     this.customKeysInfo.push(...customKeysInfo);
+  }
+
+  /**
+   * Adds the configured key combination for launching the Obsidian hotkey selection
+   * dialog to customKeysInfo
+   *
+   * @param {CustomKeymapInfo[]} customKeysInfo
+   * @param {SwitcherPlusSettings} config
+   */
+  bindNavigateToCommandHotkeySelector(
+    customKeysInfo: CustomKeymapInfo[],
+    config: SwitcherPlusSettings,
+  ): void {
+    const {
+      navigateToHotkeySelectorKeys: { modifiers, key },
+    } = config;
+
+    const hotkeySelectorNavKeymap: CustomKeymapInfo = {
+      modes: [Mode.CommandList],
+      purpose: 'set hotkey',
+      func: this.navigateToCommandHotkeySelector.bind(this),
+      command: this.commandDisplayStr(modifiers, key),
+      modifiers: SwitcherPlusKeymap.modifiersToKeymapInfoStr(modifiers),
+      key,
+    };
+
+    customKeysInfo.push(hotkeySelectorNavKeymap);
   }
 
   removeDefaultTabKeyBinding(scope: Scope, config: SwitcherPlusSettings): void {
@@ -251,9 +281,9 @@ export class SwitcherPlusKeymap {
 
   registerEditorTabBindings(scope: Scope): void {
     const keys: [Modifier[], string][] = [
-      [[this.modKey], '\\'],
-      [[this.modKey, 'Shift'], '\\'],
-      [[this.modKey], 'o'],
+      [[MOD_KEY], '\\'],
+      [[MOD_KEY, 'Shift'], '\\'],
+      [[MOD_KEY], 'o'],
     ];
 
     keys.forEach((v) => {
@@ -296,7 +326,7 @@ export class SwitcherPlusKeymap {
             modes: [],
             func: null,
             command: this.commandDisplayStr(modifiers, key),
-            modifiers: modifiers.join(','),
+            modifiers: SwitcherPlusKeymap.modifiersToKeymapInfoStr(modifiers),
             key,
             purpose,
           };
@@ -374,7 +404,7 @@ export class SwitcherPlusKeymap {
 
   registerKeys(scope: Scope, keymaps: Omit<KeymapEventHandler, 'scope'>[]): void {
     keymaps.forEach((keymap) => {
-      const modifiers = keymap.modifiers.split(',') as Modifier[];
+      const modifiers = SwitcherPlusKeymap.modifiersFromKeymapInfoStr(keymap.modifiers);
       scope.register(modifiers, keymap.key, keymap.func);
     });
   }
@@ -387,15 +417,7 @@ export class SwitcherPlusKeymap {
     while (i--) {
       const keymap = scope.keys[i];
       const foundIndex = keysToRemove.findIndex((kRemove) => {
-        // when the 'Mod' modifier is registered, it gets translated to the platform
-        // specific version 'Meta' on MacOS or Ctrl on others, so when unregistering
-        // account for this conversion
-        const kRemoveModifiers = kRemove.modifiers
-          .split(',')
-          .map((modifier) => (modifier === 'Mod' ? this.modKey : modifier))
-          .join(',');
-
-        return kRemoveModifiers === keymap.modifiers && kRemove.key === keymap.key;
+        return kRemove.modifiers === keymap.modifiers && kRemove.key === keymap.key;
       });
 
       if (foundIndex >= 0) {
@@ -616,6 +638,43 @@ export class SwitcherPlusKeymap {
     }
   }
 
+  /**
+   * Launches the builtin Obsidian hotkey selection dialog for assigning a hotkey to
+   * the selected Command in the Chooser
+   *
+   * @param {KeyboardEvent} _evt
+   * @param {KeymapContext} _ctx
+   * @returns {(boolean | void)} false
+   */
+  navigateToCommandHotkeySelector(
+    _evt: KeyboardEvent,
+    _ctx: KeymapContext,
+  ): boolean | void {
+    const {
+      modal,
+      chooser,
+      app: { setting },
+    } = this;
+
+    const selectedCommand = chooser.values?.[chooser.selectedItem] as CommandSuggestion;
+
+    if (selectedCommand) {
+      // Open the builtin hotkey selection settings tab
+      setting.open();
+      const hotkeysSettingTab = setting.openTabById('hotkeys') as HotkeysSettingTab;
+
+      if (hotkeysSettingTab) {
+        modal.close();
+
+        const commandId = selectedCommand.item.id;
+        hotkeysSettingTab.setQuery(`${commandId}`);
+      }
+    }
+
+    // Return false to prevent default
+    return false;
+  }
+
   useSelectedItem(evt: KeyboardEvent, _ctx: KeymapContext): boolean | void {
     this.chooser.useSelectedItem(evt);
   }
@@ -668,11 +727,40 @@ export class SwitcherPlusKeymap {
         .map((modifier) => {
           return modifierToPlatformStrMap[modifier]?.toLocaleLowerCase();
         })
+        .sort()
         .join(' ');
 
       displayStr = `${modifierStr} ${key}`;
     }
 
     return displayStr;
+  }
+
+  /**
+   * Converts modifiers into a string that can be used to search against Scope.keys
+   *
+   * @static
+   * @param {Modifier[]} modifiers
+   * @returns {string}
+   */
+  static modifiersToKeymapInfoStr(modifiers: Modifier[]): string {
+    // when the 'Mod' modifier is registered, it gets translated to the platform
+    // specific version 'Meta' on MacOS or Ctrl on others
+    return modifiers
+      ?.map((modifier) => (modifier === 'Mod' ? MOD_KEY : modifier))
+      .sort()
+      .join(',');
+  }
+
+  /**
+   * Converts a string of Modifers from Scope.keys to a Modifer[].
+   * Note: this does not reverse map from the platform specific MOD_KEY back to "Mod"
+   *
+   * @static
+   * @param {string} modifiersStr
+   * @returns {Modifier[]}
+   */
+  static modifiersFromKeymapInfoStr(modifiersStr: string): Modifier[] {
+    return modifiersStr?.split(',') as Modifier[];
   }
 }

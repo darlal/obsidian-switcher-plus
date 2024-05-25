@@ -1,6 +1,6 @@
 import { Chance } from 'chance';
 import { SwitcherPlusSettings } from 'src/settings';
-import { CustomKeymapInfo, SwitcherPlusKeymap } from 'src/switcherPlus';
+import { CustomKeymapInfo, MOD_KEY, SwitcherPlusKeymap } from 'src/switcherPlus';
 import { generateMarkdownLink } from 'src/utils';
 import {
   MockProxy,
@@ -18,13 +18,13 @@ import {
   KeymapEventListener,
   MarkdownView,
   Modifier,
-  Platform,
   Scope,
   View,
   Workspace,
   WorkspaceLeaf,
   TFile,
   Editor,
+  HotkeysSettingTab,
 } from 'obsidian';
 import {
   AnySuggestion,
@@ -34,6 +34,8 @@ import {
   Facet,
   FacetSettingsData,
   InsertLinkConfig,
+  CommandSuggestion,
+  SuggestionType,
 } from 'src/types';
 
 jest.mock('src/utils/utils');
@@ -216,11 +218,10 @@ describe('SwitcherPlusKeymap', () => {
     });
 
     it('should register Tab creation keys', () => {
-      const modKey: Modifier = Platform.isMacOS ? 'Meta' : 'Ctrl';
       const keys: [Modifier[], string][] = [
-        [[modKey], '\\'],
-        [[modKey, 'Shift'], '\\'],
-        [[modKey], 'o'],
+        [[MOD_KEY], '\\'],
+        [[MOD_KEY, 'Shift'], '\\'],
+        [[MOD_KEY], 'o'],
       ];
 
       new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, mockConfig);
@@ -379,8 +380,10 @@ describe('SwitcherPlusKeymap', () => {
       expect(customKeysInfo[0]).toBe(result);
       expect(result.key).toBe(keymap.key);
       expect(result.purpose).toBe(keymap.purpose);
-      expect(result.modifiers).toBe(keymap.modifiers.join(','));
       expect(result.isInstructionOnly).toBeFalsy();
+      expect(result.modifiers).toBe(
+        SwitcherPlusKeymap.modifiersToKeymapInfoStr(keymap.modifiers),
+      );
     });
 
     test('when the keymap already exists, it should update the keymap handler function', () => {
@@ -459,7 +462,6 @@ describe('SwitcherPlusKeymap', () => {
     });
 
     it('should register each keymap', () => {
-      const modifiers: Modifier[] = ['Alt', 'Mod'];
       const key = 'x';
       const func = () => false;
 
@@ -471,10 +473,13 @@ describe('SwitcherPlusKeymap', () => {
         mockConfig,
       );
 
-      sut.registerKeys(mockScope, [{ modifiers: modifiers.join(','), key, func }]);
+      const modifiers = SwitcherPlusKeymap.modifiersToKeymapInfoStr(['Alt', 'Mod']);
+      const keymaps = [{ modifiers, key, func }];
+
+      sut.registerKeys(mockScope, keymaps);
 
       expect(mockScope.register).toHaveBeenCalledWith(
-        expect.arrayContaining(modifiers),
+        expect.arrayContaining(['Alt', MOD_KEY]),
         key,
         func,
       );
@@ -567,7 +572,7 @@ describe('SwitcherPlusKeymap', () => {
 
       // convert to [][] so each call can be checked separately
       const expected = sut.standardKeysInfo.map((v) => {
-        const modifiers = v.modifiers.split(',') as Modifier[];
+        const modifiers = SwitcherPlusKeymap.modifiersFromKeymapInfoStr(v.modifiers);
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return [modifiers, v.key, expect.any(Function)];
@@ -590,7 +595,7 @@ describe('SwitcherPlusKeymap', () => {
 
       // convert to [][] so each call can be checked separately
       const expected = customKeymaps.map((v) => {
-        const modifiers = v.modifiers.split(',') as Modifier[];
+        const modifiers = SwitcherPlusKeymap.modifiersFromKeymapInfoStr(v.modifiers);
         return [modifiers, v.key, v.func];
       });
 
@@ -1057,6 +1062,71 @@ describe('SwitcherPlusKeymap', () => {
           text: purpose,
         }),
       );
+    });
+  });
+
+  describe('Launching the hotkey selection dialog for Commands', () => {
+    const commandId = 'testCommandId';
+    let sut: SwitcherPlusKeymap;
+    let mockCommandSugg: MockProxy<CommandSuggestion>;
+    let mockSetting: MockProxy<App['setting']>;
+    let mockHotkeySettingTab: MockProxy<HotkeysSettingTab>;
+
+    beforeAll(() => {
+      mockHotkeySettingTab = mock<HotkeysSettingTab>();
+
+      mockCommandSugg = mock<CommandSuggestion>({
+        type: SuggestionType.CommandList,
+        item: { id: commandId },
+      });
+
+      mockSetting = mock<App['setting']>();
+      mockApp.setting = mockSetting;
+
+      const mockChooserLocal = mock<Chooser<CommandSuggestion>>({
+        values: [mockCommandSugg],
+        selectedItem: 0,
+      });
+
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooserLocal,
+        mockModal,
+        mockConfig,
+      );
+    });
+
+    afterEach(() => {
+      mockClear(mockSetting);
+      mockClear(mockHotkeySettingTab);
+    });
+
+    afterAll(() => {
+      mockApp.setting = null;
+    });
+
+    it('should return false to prevent default', () => {
+      const result = sut.navigateToCommandHotkeySelector(null, null);
+
+      expect(result).toBe(false);
+    });
+
+    test('When there is an active selected command, it should open the builtin hotkey settings tab for assigning a hotkey', () => {
+      mockSetting.openTabById.mockReturnValueOnce(mockHotkeySettingTab);
+
+      sut.navigateToCommandHotkeySelector(null, null);
+
+      expect(mockSetting.open).toHaveBeenCalled();
+      expect(mockSetting.openTabById).toHaveBeenCalledWith('hotkeys');
+    });
+
+    it('should trigger a query using the Id of the selected command', () => {
+      mockSetting.openTabById.mockReturnValueOnce(mockHotkeySettingTab);
+
+      sut.navigateToCommandHotkeySelector(null, null);
+
+      expect(mockHotkeySettingTab.setQuery).toHaveBeenCalledWith(commandId);
     });
   });
 });

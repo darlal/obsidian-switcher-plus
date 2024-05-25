@@ -404,6 +404,11 @@ export interface SettingsData {
   navigationKeys: NavigationKeysConfig;
   preferredSourceForTitle: TitleSource;
   closeWhenEmptyKeys: Hotkey[];
+  /**
+   * When in Command Mode this key combination launches the Obsidian built in dialog to
+   * assign a Hotkey to a command
+   */
+  navigateToHotkeySelectorKeys: Hotkey;
   escapeCmdChar: string;
   /**
    * Settings for overriding the default "plus" button behavior on mobile Platforms
