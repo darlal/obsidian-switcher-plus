@@ -3,6 +3,7 @@ import { MockProxy, mock, mockFn, mockClear } from 'jest-mock-extended';
 import { App, Platform, setIcon } from 'obsidian';
 import { MobileLauncherConfig } from 'src/types';
 import { MobileLauncher } from 'src/switcherPlus';
+import { SwitcherPlusSettings } from 'src/settings';
 
 const chance = new Chance();
 
@@ -182,6 +183,34 @@ describe('MobileLauncher', () => {
       expect(mockCoreButtonEl.insertAdjacentElement).toHaveBeenCalledWith(
         'beforebegin',
         mockQspButtonEl,
+      );
+    });
+
+    test('when the core launcher button is not found using the default selector, it should try using the selector stored in settings', () => {
+      const mockContainerEl = mock<HTMLElement>();
+      const defaultSelector =
+        SwitcherPlusSettings.defaults.mobileLauncher.coreLauncherButtonSelector;
+
+      const localApp = mock<App>({
+        mobileNavbar: {
+          containerEl: mockContainerEl,
+        },
+      });
+
+      // return null when called using default selector
+      mockContainerEl.querySelector.calledWith(defaultSelector).mockReturnValue(null);
+
+      // return expected value when called using stored selector
+      mockContainerEl.querySelector
+        .calledWith(launcherConfig.coreLauncherButtonSelector)
+        .mockReturnValue(mockCoreButtonEl);
+
+      const result = sut.installMobileLauncherOverride(localApp, launcherConfig, null);
+
+      expect(result).toBe(mockQspButtonEl);
+      expect(mockContainerEl.querySelector).toHaveBeenCalledWith(defaultSelector);
+      expect(mockContainerEl.querySelector).toHaveBeenCalledWith(
+        launcherConfig.coreLauncherButtonSelector,
       );
     });
   });

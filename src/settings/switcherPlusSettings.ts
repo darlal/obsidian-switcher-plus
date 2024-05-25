@@ -20,7 +20,7 @@ import merge from 'ts-deepmerge';
 export class SwitcherPlusSettings {
   private readonly data: SettingsData;
 
-  private static get defaults(): SettingsData {
+  static get defaults(): SettingsData {
     const enabledSymbolTypes = {} as Record<SymbolType, boolean>;
     enabledSymbolTypes[SymbolType.Link] = true;
     enabledSymbolTypes[SymbolType.Embed] = true;
@@ -132,7 +132,7 @@ export class SwitcherPlusSettings {
         iconName: '',
         coreLauncherButtonIconSelector: 'span.clickable-icon',
         coreLauncherButtonSelector:
-          '.mobile-navbar-action.mod-tappable:has(span.clickable-icon svg.svg-icon.lucide-plus-circle)',
+          '.mobile-navbar-action:has(span.clickable-icon svg.svg-icon.lucide-plus-circle)',
       },
       allowCreateNewFileInModeNames: [
         Mode[Mode.Standard] as keyof typeof Mode,

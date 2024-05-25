@@ -1,4 +1,5 @@
 import { App, Platform, setIcon } from 'obsidian';
+import { SwitcherPlusSettings } from 'src/settings';
 import { MobileLauncherConfig } from 'src/types';
 
 /**
@@ -69,6 +70,35 @@ function replaceCoreLauncherButtonWithQSPButton(
 
   return isSuccessful;
 }
+/**
+ * Finds the "⊕" button element using the default selector.
+ * If that fails, retries using the selector stored in settings
+ * @param  {App} app
+ * @param  {MobileLauncherConfig} launcherConfig
+ * @returns Element The button Element
+ */
+function getCoreLauncherButtonElement(
+  app: App,
+  launcherConfig: MobileLauncherConfig,
+): Element {
+  let coreLauncherButtonEl: Element = null;
+  const containerEl = app?.mobileNavbar?.containerEl;
+
+  if (containerEl) {
+    coreLauncherButtonEl = containerEl.querySelector(
+      SwitcherPlusSettings.defaults.mobileLauncher.coreLauncherButtonSelector,
+    );
+
+    if (!coreLauncherButtonEl) {
+      // Element wasn't found using the default selector, try using the custom selector
+      coreLauncherButtonEl = containerEl.querySelector(
+        launcherConfig.coreLauncherButtonSelector,
+      );
+    }
+  }
+
+  return coreLauncherButtonEl;
+}
 
 export class MobileLauncher {
   // Reference to the system switcher launcher button on mobile platforms,
@@ -79,7 +109,7 @@ export class MobileLauncher {
   static qspMobileLauncherButtonEl: HTMLElement | null;
 
   /**
-   * Overrides the default functionality of the "Plus" button on mobile platforms
+   * Overrides the default functionality of the "⊕" button on mobile platforms
    * to launch Switcher++ instead of the default system switcher.
    * @param  {App} app
    * @param  {MobileLauncherConfig} launcherConfig
@@ -103,11 +133,7 @@ export class MobileLauncher {
       return null;
     }
 
-    // Find the system launcher button
-    const coreLauncherButtonEl = app?.mobileNavbar?.containerEl?.querySelector(
-      launcherConfig.coreLauncherButtonSelector,
-    );
-
+    const coreLauncherButtonEl = getCoreLauncherButtonElement(app, launcherConfig);
     if (coreLauncherButtonEl) {
       const qspButtonEl = createQSPLauncherButton(
         coreLauncherButtonEl,
@@ -124,7 +150,11 @@ export class MobileLauncher {
 
     return qspLauncherButtonEl;
   }
-
+  /**
+   * Restores the default functionality of the "⊕" button on mobile platforms and
+   * removes the custom launcher button.
+   * @returns boolean true if successful
+   */
   static removeMobileLauncherOverride(): boolean {
     let isSuccessful = false;
 
