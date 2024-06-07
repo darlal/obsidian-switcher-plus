@@ -42,23 +42,33 @@ const chance = new Chance();
 
 describe('SwitcherPlusKeymap', () => {
   const selector = '.prompt-instructions';
-  const selectorCustomInstructions = `${selector}:not([data-mode="standard"])`;
   const mockScope = mock<Scope>({ keys: [] });
   const mockChooser = mock<Chooser<AnySuggestion>>();
-  const mockModalContainer = mock<HTMLElement>();
-  const mockModal = mock<SwitcherPlus>({ containerEl: mockModalContainer });
   const mockConfig = mock<SwitcherPlusSettings>({ closeWhenEmptyKeys: [] });
   const mockWorkspace = mock<Workspace>();
-  const mockApp = mock<App>({
-    workspace: mockWorkspace,
+
+  // The .prompt-instruction wrapper element
+  const mockInstructionEl = mock<HTMLDivElement>();
+  const createInstructionElFn =
+    mockFn<typeof createDiv>().mockReturnValue(mockInstructionEl);
+
+  // The .prompt-instructions container element
+  const mockInstructionsContainerEl = mock<HTMLDivElement>({
+    createDiv: () => createInstructionElFn(),
   });
 
-  it('should add a data-mode attribute to the standard instructions element', () => {
-    const mockEl = mock<HTMLElement>();
-    mockModalContainer.querySelector.mockReturnValueOnce(mockEl);
-    new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, mockConfig);
+  const createInstructionsContainerElFn = mockFn<typeof createDiv>().mockImplementation(
+    () => mockInstructionsContainerEl,
+  );
 
-    expect(mockEl.setAttribute).toHaveBeenCalledWith('data-mode', 'standard');
+  const mockModalEl = mock<HTMLElement>({
+    createDiv: () => createInstructionsContainerElFn(),
+  });
+
+  const mockModal = mock<SwitcherPlus>({ modalEl: mockModalEl });
+
+  const mockApp = mock<App>({
+    workspace: mockWorkspace,
   });
 
   it('should remove the builtin Tab hotkey binding', () => {
@@ -245,7 +255,7 @@ describe('SwitcherPlusKeymap', () => {
     test('with shouldCloseModalOnBackspace enabled it should close the modal when the search box is empty', () => {
       config.shouldCloseModalOnBackspace = true;
       const emptyModal = mock<SwitcherPlus>({
-        containerEl: mockModalContainer,
+        modalEl: mockModalEl,
         inputEl: mock<HTMLInputElement>({ value: '' }),
       });
 
@@ -267,7 +277,7 @@ describe('SwitcherPlusKeymap', () => {
     test('with shouldCloseModalOnBackspace enabled it should not close the modal when the search box has text', () => {
       config.shouldCloseModalOnBackspace = true;
       const emptyModal = mock<SwitcherPlus>({
-        containerEl: mockModalContainer,
+        modalEl: mockModalEl,
         inputEl: mock<HTMLInputElement>({ value: chance.word() }),
       });
 
@@ -486,13 +496,7 @@ describe('SwitcherPlusKeymap', () => {
     });
 
     beforeAll(() => {
-      mockModalContainer.querySelectorAll
-        .calledWith(selectorCustomInstructions)
-        .mockReturnValue(mock<NodeListOf<Element>>());
-
-      mockModalContainer.querySelector
-        .calledWith(selector)
-        .mockReturnValue(mockInstructionsEl);
+      mockModalEl.querySelector.calledWith(selector).mockReturnValue(mockInstructionsEl);
     });
 
     beforeEach(() => {
@@ -511,8 +515,12 @@ describe('SwitcherPlusKeymap', () => {
       mockReset(mockScope);
       mockScope.keys = [];
 
-      mockClear(mockModalContainer);
+      mockClear(mockModalEl);
       mockClear(mockModal);
+      mockClear(mockInstructionsContainerEl);
+      mockClear(mockInstructionEl);
+      mockClear(createInstructionElFn);
+      mockClear(createInstructionsContainerElFn);
     });
 
     it('should hide the default prompt instructions in custom modes', () => {
@@ -529,11 +537,10 @@ describe('SwitcherPlusKeymap', () => {
 
     it('should show custom prompt instructions in custom modes', () => {
       const mode = Mode.EditorList;
-      const keymaps = sut.customKeysInfo.filter((keymap) => keymap.modes?.includes(mode));
 
       sut.updateKeymapForMode({ mode });
 
-      expect(mockModal.setInstructions).toHaveBeenCalledWith(keymaps);
+      expect(mockModalEl.appendChild).toHaveBeenCalledWith(mockInstructionsContainerEl);
     });
 
     it('should not remove Enter hotkey without shift/meta modifier', () => {
@@ -600,37 +607,6 @@ describe('SwitcherPlusKeymap', () => {
 
       expect(mockScope.unregister).toHaveBeenCalledWith(mockShiftEnter);
       expect(removed[0]).toEqual(mockShiftEnter);
-    });
-  });
-
-  describe('clearCustomInstructions', () => {
-    let sut: SwitcherPlusKeymap;
-
-    beforeAll(() => {
-      sut = new SwitcherPlusKeymap(
-        mockApp,
-        mockScope,
-        mockChooser,
-        mockModal,
-        mockConfig,
-      );
-    });
-
-    beforeEach(() => {
-      mockClear(mockScope);
-      mockClear(mockModalContainer);
-      mockClear(mockModal);
-    });
-
-    it('should remove found elements from their parents', () => {
-      const mockEl = mock<HTMLElement>();
-      const mockElements = [mockEl];
-      const mockContainer = mock<HTMLElement>();
-      mockContainer.querySelectorAll.mockReturnValueOnce(mockElements as never);
-
-      sut.clearCustomInstructions(mockContainer);
-
-      expect(mockEl.remove).toHaveBeenCalled();
     });
   });
 
@@ -806,7 +782,6 @@ describe('SwitcherPlusKeymap', () => {
 
   describe('renderFacetInstructions', () => {
     let sut: SwitcherPlusKeymap;
-    let mockInstructionEl: HTMLSpanElement;
 
     beforeAll(() => {
       sut = new SwitcherPlusKeymap(
@@ -816,20 +791,15 @@ describe('SwitcherPlusKeymap', () => {
         mockModal,
         mockConfig,
       );
-
-      mockInstructionEl = mock<HTMLDivElement>();
-      mockModal.modalEl = mock<HTMLElement>({
-        // return the filters container element
-        createDiv: mockFn().mockReturnValue({
-          // return the instructions wrapper element
-          createDiv: mockFn().mockReturnValue(mockInstructionEl),
-        }),
-      });
     });
 
     beforeEach(() => {
+      mockClear(mockModalEl);
       mockClear(mockModal);
+      mockClear(mockInstructionsContainerEl);
       mockClear(mockInstructionEl);
+      mockClear(createInstructionElFn);
+      mockClear(createInstructionsContainerElFn);
     });
 
     afterAll(() => {
@@ -853,7 +823,7 @@ describe('SwitcherPlusKeymap', () => {
         }),
       });
 
-      sut.renderFacetInstructions(mockModal, facetSettings, [facetKeyInfo]);
+      sut.renderFacetInstructions(mockModal.modalEl, facetSettings, [facetKeyInfo]);
 
       expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -879,7 +849,7 @@ describe('SwitcherPlusKeymap', () => {
         }),
       });
 
-      sut.renderFacetInstructions(mockModal, facetSettings, [facetKeyInfo]);
+      sut.renderFacetInstructions(mockModal.modalEl, facetSettings, [facetKeyInfo]);
 
       const modifierStr = modifiers.toString().replace(',', ' ');
       expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
@@ -908,7 +878,7 @@ describe('SwitcherPlusKeymap', () => {
         }),
       });
 
-      sut.renderFacetInstructions(mockModal, facetSettings, [facetKeyInfo]);
+      sut.renderFacetInstructions(mockModal.modalEl, facetSettings, [facetKeyInfo]);
 
       expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -931,13 +901,72 @@ describe('SwitcherPlusKeymap', () => {
         facet: null,
       });
 
-      sut.renderFacetInstructions(mockModal, facetSettings, [facetKeyInfo]);
+      sut.renderFacetInstructions(mockModal.modalEl, facetSettings, [facetKeyInfo]);
 
       const modifierStr = modifiers.toString().replace(',', ' ');
       expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
           cls: 'prompt-instruction-command',
           text: `(${modifierStr}) ${key}`,
+        }),
+      );
+    });
+  });
+
+  describe('renderCustomInstructions', () => {
+    let sut: SwitcherPlusKeymap;
+
+    beforeAll(() => {
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        mockModal,
+        mockConfig,
+      );
+    });
+
+    beforeEach(() => {
+      mockClear(mockModalEl);
+      mockClear(mockModal);
+      mockClear(mockInstructionsContainerEl);
+      mockClear(mockInstructionEl);
+      mockClear(createInstructionElFn);
+      mockClear(createInstructionsContainerElFn);
+    });
+
+    afterAll(() => {
+      mockReset(mockModal);
+    });
+
+    it('should render custom instructions element', () => {
+      const mockInstructionEl = mock<HTMLDivElement>();
+      const mockInstructionContainerEl = mock<HTMLDivElement>({
+        createDiv: () => mockInstructionEl,
+      });
+
+      const mockParentEl = mock<HTMLDivElement>({
+        createDiv: () => mockInstructionContainerEl,
+      });
+
+      const mockKeymap = mock<CustomKeymapInfo>({
+        command: chance.word(),
+        purpose: chance.word(),
+      });
+
+      sut.renderCustomInstructions(mockParentEl, [mockKeymap]);
+
+      expect(mockParentEl.appendChild).toHaveBeenCalledWith(mockInstructionContainerEl);
+      expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: 'prompt-instruction-command',
+          text: mockKeymap.command,
+        }),
+      );
+
+      expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: mockKeymap.purpose,
         }),
       );
     });

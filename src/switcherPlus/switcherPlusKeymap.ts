@@ -33,9 +33,9 @@ export class SwitcherPlusKeymap {
   readonly customKeysInfo: CustomKeymapInfo[] = [];
   private _isOpen: boolean;
   private readonly savedStandardKeysInfo: KeymapEventHandler[] = [];
-  private standardInstructionsElSelector = '.prompt-instructions';
-  private standardInstructionsElDataValue = 'standard';
 
+  readonly customInstructionEls = new Map<'custom' | 'facets', HTMLDivElement>();
+  readonly standardInstructionsEl: HTMLElement;
   readonly facetKeysInfo: Array<CustomKeymapInfo & { facet: Facet }> = [];
   readonly insertIntoEditorKeysInfo: CustomKeymapInfo[] = [];
   modKey: Modifier = 'Ctrl';
@@ -78,11 +78,9 @@ export class SwitcherPlusKeymap {
     this.registerNavigationBindings(scope, config.navigationKeys);
     this.registerEditorTabBindings(scope);
     this.registerCloseWhenEmptyBindings(scope, config);
-    this.addDataAttrToInstructionsEl(
-      modal.containerEl,
-      this.standardInstructionsElSelector,
-      this.standardInstructionsElDataValue,
-    );
+
+    this.standardInstructionsEl =
+      modal.modalEl.querySelector<HTMLElement>('.prompt-instructions');
   }
 
   initKeysInfo(): void {
@@ -355,7 +353,7 @@ export class SwitcherPlusKeymap {
       // should also work in standard mode
       this.registerKeys(scope, customKeysToAdd);
 
-      this.toggleStandardInstructions(modal.containerEl, true);
+      this.toggleStandardInstructions(true);
     } else {
       const standardKeysRemoved = this.unregisterKeys(scope, standardKeysInfo);
       if (standardKeysRemoved.length) {
@@ -405,37 +403,23 @@ export class SwitcherPlusKeymap {
     return removed;
   }
 
-  addDataAttrToInstructionsEl(
-    containerEl: HTMLElement,
-    selector: string,
-    value: string,
-  ): HTMLElement {
-    const el = containerEl.querySelector<HTMLElement>(selector);
-    el?.setAttribute('data-mode', value);
-
-    return el;
+  detachCustomInstructionEls(): void {
+    this.customInstructionEls.forEach((el) => {
+      el.detach();
+    });
   }
 
-  clearCustomInstructions(containerEl: HTMLElement): void {
-    const { standardInstructionsElSelector, standardInstructionsElDataValue } = this;
-    const selector = `${standardInstructionsElSelector}:not([data-mode="${standardInstructionsElDataValue}"])`;
-    const elements = containerEl.querySelectorAll<HTMLElement>(selector);
-
-    elements.forEach((el) => el.remove());
-  }
-
-  toggleStandardInstructions(containerEl: HTMLElement, shouldShow: boolean): void {
-    const { standardInstructionsElSelector } = this;
+  toggleStandardInstructions(shouldShow: boolean): void {
+    const { standardInstructionsEl } = this;
     let displayValue = 'none';
 
     if (shouldShow) {
       displayValue = '';
-      this.clearCustomInstructions(containerEl);
+      this.detachCustomInstructionEls();
     }
 
-    const el = containerEl.querySelector<HTMLElement>(standardInstructionsElSelector);
-    if (el) {
-      el.style.display = displayValue;
+    if (standardInstructionsEl) {
+      standardInstructionsEl.style.display = displayValue;
     }
   }
 
@@ -446,18 +430,16 @@ export class SwitcherPlusKeymap {
     facetKeysInfo: Array<CustomKeymapInfo & { facet: Facet }>,
   ): void {
     const { mode, facets } = keymapConfig;
-    const { containerEl } = modal;
+    const { modalEl } = modal;
     const keymaps = keymapInfo.filter((keymap) => keymap.modes?.includes(mode));
 
-    this.toggleStandardInstructions(containerEl, false);
-    this.clearCustomInstructions(containerEl);
-
-    this.renderFacetInstructions(modal, facets?.facetSettings, facetKeysInfo);
-    modal.setInstructions(keymaps);
+    this.toggleStandardInstructions(false);
+    this.renderFacetInstructions(modalEl, facets?.facetSettings, facetKeysInfo);
+    this.renderCustomInstructions(modalEl, keymaps);
   }
 
   renderFacetInstructions(
-    modal: SwitcherPlus,
+    parentEl: HTMLElement,
     facetSettings: FacetSettingsData,
     facetKeysInfo: Array<CustomKeymapInfo & { facet: Facet }>,
   ): void {
@@ -466,10 +448,13 @@ export class SwitcherPlusKeymap {
         return modifiers?.toString().replace(',', ' ');
       };
 
-      const containerEl = modal.modalEl.createDiv('prompt-instructions');
+      const facetInstructionsEl = this.getCustomInstructionsEl('facets', parentEl);
+
+      facetInstructionsEl.empty();
+      parentEl.appendChild(facetInstructionsEl);
 
       // render the preamble
-      let instructionEl = containerEl.createDiv();
+      let instructionEl = facetInstructionsEl.createDiv();
       instructionEl.createSpan({
         cls: 'prompt-instruction-command',
         text: `filters | ${modifiersToString(facetSettings.modifiers)}`,
@@ -502,7 +487,7 @@ export class SwitcherPlusKeymap {
           ? `(${modifiersToString(modifiers)}) ${key}`
           : `${key}`;
 
-        instructionEl = containerEl.createDiv();
+        instructionEl = facetInstructionsEl.createDiv();
         instructionEl.createSpan({
           cls: 'prompt-instruction-command',
           text: commandDisplayText,
@@ -514,6 +499,52 @@ export class SwitcherPlusKeymap {
         });
       });
     }
+  }
+
+  renderCustomInstructions(parentEl: HTMLElement, keymapInfo: CustomKeymapInfo[]): void {
+    const customInstructionsEl = this.getCustomInstructionsEl('custom', parentEl);
+
+    customInstructionsEl.empty();
+    parentEl.appendChild(customInstructionsEl);
+
+    keymapInfo.forEach((keymap) => {
+      const instructionEl = customInstructionsEl.createDiv();
+
+      instructionEl.createSpan({
+        cls: 'prompt-instruction-command',
+        text: keymap.command,
+      });
+
+      instructionEl.createSpan({ text: keymap.purpose });
+    });
+  }
+
+  getCustomInstructionsEl(
+    kind: 'custom' | 'facets',
+    parentEl: HTMLElement,
+  ): HTMLDivElement {
+    let el = this.customInstructionEls.get(kind);
+
+    if (!el) {
+      // CSS classes for each kind of custom instruction element
+      const cls = {
+        custom: ['qsp-prompt-instructions'],
+        facets: ['qsp-prompt-instructions-facets'],
+      };
+
+      el = this.createPromptInstructionsEl(cls[kind], parentEl);
+      this.customInstructionEls.set(kind, el);
+    }
+
+    return el;
+  }
+
+  createPromptInstructionsEl(cls: string[], parentEl: HTMLElement): HTMLDivElement {
+    const elInfo: DomElementInfo = {
+      cls: ['prompt-instructions', ...cls],
+    };
+
+    return parentEl.createDiv(elInfo);
   }
 
   closeModalIfEmpty(evt: KeyboardEvent, _ctx: KeymapContext): boolean | void {
