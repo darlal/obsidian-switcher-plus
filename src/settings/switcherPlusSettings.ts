@@ -2,6 +2,7 @@ import { getSystemSwitcherInstance } from 'src/utils';
 import type SwitcherPlusPlugin from 'src/main';
 import { Hotkey, QuickSwitcherOptions } from 'obsidian';
 import { getFacetMap } from './facetConstants';
+import { merge } from 'ts-deepmerge';
 import {
   FacetSettingsData,
   InsertLinkConfig,
@@ -15,7 +16,6 @@ import {
   SymbolType,
   TitleSource,
 } from 'src/types';
-import merge from 'ts-deepmerge';
 
 export class SwitcherPlusSettings {
   private readonly data: SettingsData;

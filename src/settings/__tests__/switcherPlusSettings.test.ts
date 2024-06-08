@@ -17,7 +17,7 @@ import {
   InternalPlugins,
 } from 'obsidian';
 import { mock, mockClear, MockProxy, mockReset } from 'jest-mock-extended';
-import merge from 'ts-deepmerge';
+import { merge } from 'ts-deepmerge';
 
 const chance = new Chance();
 const sidePanelOptions = ['backlink', 'image', 'markdown', 'pdf'];
