@@ -415,6 +415,10 @@ export interface SettingsData {
    * files directly from the switcher when on mobile platforms.
    */
   allowCreateNewFileInModeNames: Array<keyof typeof Mode>;
+  /**
+   * When true enables the mode triggers keys to be displayed as Instructions in the modal.
+   */
+  showModeTriggerInstructions: boolean;
 }
 
 export type SessionOpts = {

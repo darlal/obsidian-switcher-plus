@@ -138,6 +138,7 @@ export class SwitcherPlusSettings {
         Mode[Mode.Standard] as keyof typeof Mode,
         Mode[Mode.HeadingsList] as keyof typeof Mode,
       ],
+      showModeTriggerInstructions: true,
     };
   }
 
@@ -635,6 +636,14 @@ export class SwitcherPlusSettings {
   set allowCreateNewFileInModeNames(value: Array<keyof typeof Mode>) {
     // remove any duplicates before storing
     this.data.allowCreateNewFileInModeNames = [...new Set(value)];
+  }
+
+  get showModeTriggerInstructions(): boolean {
+    return this.data.showModeTriggerInstructions;
+  }
+
+  set showModeTriggerInstructions(value: boolean) {
+    this.data.showModeTriggerInstructions = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

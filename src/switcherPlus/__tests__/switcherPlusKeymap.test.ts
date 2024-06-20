@@ -827,7 +827,7 @@ describe('SwitcherPlusKeymap', () => {
 
       expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
-          cls: 'prompt-instruction-command',
+          cls: ['prompt-instruction-command'],
           text: key,
         }),
       );
@@ -854,7 +854,7 @@ describe('SwitcherPlusKeymap', () => {
       const modifierStr = modifiers.toString().replace(',', ' ');
       expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
-          cls: 'prompt-instruction-command',
+          cls: ['prompt-instruction-command'],
           text: `(${modifierStr}) ${key}`,
         }),
       );
@@ -906,7 +906,7 @@ describe('SwitcherPlusKeymap', () => {
       const modifierStr = modifiers.toString().replace(',', ' ');
       expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
-          cls: 'prompt-instruction-command',
+          cls: ['prompt-instruction-command'],
           text: `(${modifierStr}) ${key}`,
         }),
       );
@@ -959,7 +959,7 @@ describe('SwitcherPlusKeymap', () => {
       expect(mockParentEl.appendChild).toHaveBeenCalledWith(mockInstructionContainerEl);
       expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
-          cls: 'prompt-instruction-command',
+          cls: ['prompt-instruction-command'],
           text: mockKeymap.command,
         }),
       );
@@ -967,6 +967,94 @@ describe('SwitcherPlusKeymap', () => {
       expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
           text: mockKeymap.purpose,
+        }),
+      );
+    });
+  });
+
+  describe('Rendering mode trigger prompt instructions', () => {
+    let sut: SwitcherPlusKeymap;
+
+    beforeAll(() => {
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        mockModal,
+        mockConfig,
+      );
+    });
+
+    test('.showModeTriggerInstructions() should attach instruction element to DOM', () => {
+      const isEnabled = true;
+      const mockParentEl = mock<HTMLElement>();
+
+      sut.showModeTriggerInstructions(mockParentEl, isEnabled);
+
+      expect(mockParentEl.appendChild).toHaveBeenCalled();
+    });
+  });
+
+  describe('createPromptInstructionCommandEl', () => {
+    let sut: SwitcherPlusKeymap;
+    let mockParentEl: MockProxy<HTMLElement>;
+    let mockInstructionsEl: MockProxy<HTMLDivElement>;
+
+    beforeAll(() => {
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        mockModal,
+        mockConfig,
+      );
+
+      mockInstructionsEl = mock<HTMLDivElement>();
+      mockParentEl = mock<HTMLElement>({
+        createDiv: () => mockInstructionsEl,
+      });
+    });
+
+    beforeEach(() => {
+      mockClear(mockParentEl);
+      mockClear(mockInstructionsEl);
+    });
+
+    it('should create command element with custom css class', () => {
+      const command = chance.word();
+      const cls = chance.word();
+
+      const result = sut.createPromptInstructionCommandEl(mockParentEl, command, null, [
+        cls,
+      ]);
+
+      expect(result).toBe(mockInstructionsEl);
+      expect(mockInstructionsEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: ['prompt-instruction-command', cls],
+          text: command,
+        }),
+      );
+    });
+
+    it('should create command element with purpose hint text and custom css class', () => {
+      const command = chance.word();
+      const purpose = chance.word();
+      const cls = chance.word();
+
+      const result = sut.createPromptInstructionCommandEl(
+        mockParentEl,
+        command,
+        purpose,
+        null,
+        [cls],
+      );
+
+      expect(result).toBe(mockInstructionsEl);
+      expect(mockInstructionsEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: [cls],
+          text: purpose,
         }),
       );
     });

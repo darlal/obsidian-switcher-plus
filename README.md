@@ -222,6 +222,7 @@ In the demo below, `Quick Switcher++: Open Symbols for the active editor` global
 | Use heading as alias | **Enabled**: The file heading will be set as the link alias. This overrides the "use filename as alias" setting.<br />**Disabled**: fall back to the "use filename as alias" setting. | enabled |
 | Restore previous input in Command Mode | **Enabled**: restore previous command mode input when launched via global command hotkey | disabled |
 | Restore previous input | **Enabled**: restore previous switcher input when launched via global command hotkey | disabled |
+| Display mode trigger instructions | **Enabled**: the trigger key for each mode will be displayed in the instructions section of the Switcher. | enabled |
 
 ## Global Commands for Hotkeys
 

@@ -79,6 +79,13 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       config.preserveQuickSwitcherLastInput,
       'preserveQuickSwitcherLastInput',
     );
+    this.addToggleSetting(
+      containerEl,
+      'Display mode trigger instructions',
+      'When enabled, the trigger key for each mode will be displayed in the instructions section of the Switcher.',
+      config.showModeTriggerInstructions,
+      'showModeTriggerInstructions',
+    );
 
     this.showResetFacetEachSession(containerEl, config);
   }

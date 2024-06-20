@@ -34,7 +34,9 @@ export class SwitcherPlusKeymap {
   private _isOpen: boolean;
   private readonly savedStandardKeysInfo: KeymapEventHandler[] = [];
 
-  readonly customInstructionEls = new Map<'custom' | 'facets', HTMLDivElement>();
+  readonly customInstructionEls: Map<'custom' | 'facets' | 'modes', HTMLDivElement> =
+    new Map();
+
   readonly standardInstructionsEl: HTMLElement;
   readonly facetKeysInfo: Array<CustomKeymapInfo & { facet: Facet }> = [];
   readonly insertIntoEditorKeysInfo: CustomKeymapInfo[] = [];
@@ -78,6 +80,7 @@ export class SwitcherPlusKeymap {
     this.registerNavigationBindings(scope, config.navigationKeys);
     this.registerEditorTabBindings(scope);
     this.registerCloseWhenEmptyBindings(scope, config);
+    this.renderModeTriggerInstructions(modal.modalEl, config);
 
     this.standardInstructionsEl =
       modal.modalEl.querySelector<HTMLElement>('.prompt-instructions');
@@ -326,7 +329,7 @@ export class SwitcherPlusKeymap {
       standardKeysInfo,
       customKeysInfo,
       facetKeysInfo,
-      config: { insertLinkInEditor },
+      config: { insertLinkInEditor, showModeTriggerInstructions },
     } = this;
 
     this.updateInsertIntoEditorCommand(
@@ -365,6 +368,8 @@ export class SwitcherPlusKeymap {
 
       this.showCustomInstructions(modal, keymapConfig, customKeysInfo, facetKeysInfo);
     }
+
+    this.showModeTriggerInstructions(modal.modalEl, showModeTriggerInstructions);
   }
 
   registerKeys(scope: Scope, keymaps: Omit<KeymapEventHandler, 'scope'>[]): void {
@@ -434,8 +439,8 @@ export class SwitcherPlusKeymap {
     const keymaps = keymapInfo.filter((keymap) => keymap.modes?.includes(mode));
 
     this.toggleStandardInstructions(false);
-    this.renderFacetInstructions(modalEl, facets?.facetSettings, facetKeysInfo);
     this.renderCustomInstructions(modalEl, keymaps);
+    this.renderFacetInstructions(modalEl, facets?.facetSettings, facetKeysInfo);
   }
 
   renderFacetInstructions(
@@ -454,11 +459,8 @@ export class SwitcherPlusKeymap {
       parentEl.appendChild(facetInstructionsEl);
 
       // render the preamble
-      let instructionEl = facetInstructionsEl.createDiv();
-      instructionEl.createSpan({
-        cls: 'prompt-instruction-command',
-        text: `filters | ${modifiersToString(facetSettings.modifiers)}`,
-      });
+      const preamble = `filters | ${modifiersToString(facetSettings.modifiers)}`;
+      this.createPromptInstructionCommandEl(facetInstructionsEl, preamble);
 
       // render each key instruction
       facetKeysInfo.forEach((facetKeyInfo) => {
@@ -487,16 +489,13 @@ export class SwitcherPlusKeymap {
           ? `(${modifiersToString(modifiers)}) ${key}`
           : `${key}`;
 
-        instructionEl = facetInstructionsEl.createDiv();
-        instructionEl.createSpan({
-          cls: 'prompt-instruction-command',
-          text: commandDisplayText,
-        });
-
-        instructionEl.createSpan({
-          cls: activeCls,
-          text: purpose,
-        });
+        this.createPromptInstructionCommandEl(
+          facetInstructionsEl,
+          commandDisplayText,
+          purpose,
+          [],
+          activeCls,
+        );
       });
     }
   }
@@ -508,19 +507,56 @@ export class SwitcherPlusKeymap {
     parentEl.appendChild(customInstructionsEl);
 
     keymapInfo.forEach((keymap) => {
-      const instructionEl = customInstructionsEl.createDiv();
+      this.createPromptInstructionCommandEl(
+        customInstructionsEl,
+        keymap.command,
+        keymap.purpose,
+      );
+    });
+  }
 
-      instructionEl.createSpan({
-        cls: 'prompt-instruction-command',
-        text: keymap.command,
-      });
+  showModeTriggerInstructions(parentEl: HTMLElement, isEnabled: boolean): void {
+    if (isEnabled) {
+      const el = this.customInstructionEls.get('modes');
+      if (el) {
+        parentEl.appendChild(el);
+      }
+    }
+  }
 
-      instructionEl.createSpan({ text: keymap.purpose });
+  renderModeTriggerInstructions(
+    parentEl: HTMLElement,
+    config: SwitcherPlusSettings,
+  ): void {
+    // Map mode triggers to labels (purpose)
+    const instructionsByModeTrigger = new Map<string, string>([
+      [config.headingsListCommand, 'heading list'],
+      [config.editorListCommand, 'editor list'],
+      [config.bookmarksListCommand, 'bookmark list'],
+      [config.commandListCommand, 'command list'],
+      [config.workspaceListCommand, 'workspace list'],
+      [config.vaultListCommand, 'vault list'],
+      [config.symbolListActiveEditorCommand, 'symbol list (active editor)'],
+      [config.symbolListCommand, 'symbol list (embedded)'],
+      [config.relatedItemsListActiveEditorCommand, 'related items (active editor)'],
+      [config.relatedItemsListCommand, 'related items (embedded)'],
+    ]);
+
+    const modeInstructionsEl = this.getCustomInstructionsEl('modes', parentEl);
+    modeInstructionsEl.detach();
+    modeInstructionsEl.empty();
+
+    // Render the preamble
+    this.createPromptInstructionCommandEl(modeInstructionsEl, 'mode triggers |');
+
+    // Render each item
+    instructionsByModeTrigger.forEach((purpose, modeTrigger) => {
+      this.createPromptInstructionCommandEl(modeInstructionsEl, modeTrigger, purpose);
     });
   }
 
   getCustomInstructionsEl(
-    kind: 'custom' | 'facets',
+    kind: 'custom' | 'facets' | 'modes',
     parentEl: HTMLElement,
   ): HTMLDivElement {
     let el = this.customInstructionEls.get(kind);
@@ -530,6 +566,7 @@ export class SwitcherPlusKeymap {
       const cls = {
         custom: ['qsp-prompt-instructions'],
         facets: ['qsp-prompt-instructions-facets'],
+        modes: ['qsp-prompt-instructions-modes'],
       };
 
       el = this.createPromptInstructionsEl(cls[kind], parentEl);
@@ -545,6 +582,29 @@ export class SwitcherPlusKeymap {
     };
 
     return parentEl.createDiv(elInfo);
+  }
+
+  createPromptInstructionCommandEl(
+    parentEl: HTMLElement,
+    command: string,
+    purpose?: string,
+    clsCommand?: string[],
+    clsPurpose?: string[],
+  ): HTMLDivElement {
+    clsCommand = clsCommand ?? [];
+    const instructionEl = parentEl.createDiv();
+
+    instructionEl.createSpan({
+      cls: ['prompt-instruction-command', ...clsCommand],
+      text: command,
+    });
+
+    if (purpose) {
+      clsPurpose = clsPurpose ?? [];
+      instructionEl.createSpan({ cls: clsPurpose, text: purpose });
+    }
+
+    return instructionEl;
   }
 
   closeModalIfEmpty(evt: KeyboardEvent, _ctx: KeymapContext): boolean | void {

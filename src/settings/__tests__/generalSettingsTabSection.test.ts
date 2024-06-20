@@ -125,6 +125,18 @@ describe('generalSettingsTabSection', () => {
 
       showMatchPriorityAdjustmentsSpy.mockRestore();
     });
+
+    it('should show the showModeTriggerInstructions setting', () => {
+      sut.display(mockContainerEl);
+
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
+        mockContainerEl,
+        'Display mode trigger instructions',
+        expect.any(String),
+        config.showModeTriggerInstructions,
+        'showModeTriggerInstructions',
+      );
+    });
   });
 
   describe('showPathDisplayFormat', () => {

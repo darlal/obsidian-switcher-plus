@@ -140,6 +140,7 @@ function getDefaultSettingsData(): SettingsData {
       Mode[Mode.Standard] as keyof typeof Mode,
       Mode[Mode.HeadingsList] as keyof typeof Mode,
     ],
+    showModeTriggerInstructions: true,
   };
 
   return data;
@@ -269,6 +270,7 @@ function getTransientSettingsData(): SettingsData {
       coreLauncherButtonSelector: '',
     },
     allowCreateNewFileInModeNames: [Mode[Mode.CommandList] as keyof typeof Mode],
+    showModeTriggerInstructions: chance.bool(),
   };
 
   return data;

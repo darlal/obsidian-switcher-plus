@@ -174,3 +174,6 @@
 
 /* Prompt instructions element for facets in custom modes */
 .qsp-prompt-instructions-facets {}
+
+/* Prompt instructions element for mode triggers*/
+.qsp-prompt-instructions-modes {}
