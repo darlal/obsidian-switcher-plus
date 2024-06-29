@@ -126,6 +126,7 @@ export class SwitcherPlusSettings {
       preferredSourceForTitle: 'H1',
       closeWhenEmptyKeys: [{ modifiers: null, key: 'Backspace' }],
       navigateToHotkeySelectorKeys: { modifiers: ['Ctrl', 'Shift'], key: 'h' },
+      togglePinnedCommandKeys: { modifiers: ['Ctrl', 'Shift'], key: 'p' },
       escapeCmdChar: '!',
       mobileLauncher: {
         isEnabled: false,
@@ -620,6 +621,14 @@ export class SwitcherPlusSettings {
 
   set navigateToHotkeySelectorKeys(value: Hotkey) {
     this.data.navigateToHotkeySelectorKeys = value;
+  }
+
+  get togglePinnedCommandKeys(): Hotkey {
+    return this.data.togglePinnedCommandKeys;
+  }
+
+  set togglePinnedCommandKeys(value: Hotkey) {
+    this.data.togglePinnedCommandKeys = value;
   }
 
   get escapeCmdChar(): string {

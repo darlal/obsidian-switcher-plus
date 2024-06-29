@@ -2,6 +2,7 @@ import { Chance } from 'chance';
 import { SwitcherPlusSettings } from 'src/settings';
 import { CustomKeymapInfo, MOD_KEY, SwitcherPlusKeymap } from 'src/switcherPlus';
 import { generateMarkdownLink } from 'src/utils';
+import { CommandHandler } from 'src/Handlers';
 import {
   MockProxy,
   anyFunction,
@@ -25,6 +26,7 @@ import {
   TFile,
   Editor,
   HotkeysSettingTab,
+  CommandPalettePluginInstance,
 } from 'obsidian';
 import {
   AnySuggestion,
@@ -1127,6 +1129,109 @@ describe('SwitcherPlusKeymap', () => {
       sut.navigateToCommandHotkeySelector(null, null);
 
       expect(mockHotkeySettingTab.setQuery).toHaveBeenCalledWith(commandId);
+    });
+  });
+
+  describe('Toggle pinned state for Commands', () => {
+    const commandId = 'testCommandId';
+    let sut: SwitcherPlusKeymap;
+    let mockCommandSugg: MockProxy<CommandSuggestion>;
+    let getPluginInstanceSpy: jest.SpyInstance;
+    let renderSuggestionSpy: jest.SpyInstance;
+    let mockPluginInstance: MockProxy<CommandPalettePluginInstance>;
+    let mockSuggParentEl: MockProxy<HTMLElement>;
+
+    beforeAll(() => {
+      mockSuggParentEl = mock<HTMLElement>();
+      mockPluginInstance = mock<CommandPalettePluginInstance>({
+        options: { pinned: null },
+      });
+
+      getPluginInstanceSpy = jest
+        .spyOn(CommandHandler, 'getEnabledCommandPalettePluginInstance')
+        .mockReturnValue(mockPluginInstance);
+
+      renderSuggestionSpy = jest
+        .spyOn(CommandHandler.prototype, 'renderSuggestion')
+        .mockReturnValue(true);
+
+      mockCommandSugg = mock<CommandSuggestion>({
+        type: SuggestionType.CommandList,
+        item: { id: commandId },
+      });
+
+      const mockChooserLocal = mock<Chooser<CommandSuggestion>>({
+        values: [mockCommandSugg],
+        suggestions: [mockSuggParentEl],
+        selectedItem: 0,
+      });
+
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooserLocal,
+        mockModal,
+        mockConfig,
+      );
+    });
+
+    afterEach(() => {
+      mockClear(mockPluginInstance);
+      mockClear(mockSuggParentEl);
+      getPluginInstanceSpy.mockClear();
+    });
+
+    afterAll(() => {
+      getPluginInstanceSpy.mockRestore();
+      renderSuggestionSpy.mockRestore();
+    });
+
+    it('should return false to prevent default', () => {
+      const result = sut.togglePinnedCommand(null, null);
+
+      expect(result).toBe(false);
+    });
+
+    test('when the pinned command list is undefined it should create a new list containing the command', () => {
+      mockPluginInstance.options.pinned = undefined;
+
+      sut.togglePinnedCommand(null, null);
+
+      expect(mockPluginInstance.options.pinned).toHaveLength(1);
+      expect(mockPluginInstance.options.pinned[0]).toBe(commandId);
+      expect(mockPluginInstance.saveSettings).toHaveBeenCalled();
+    });
+
+    test('when the pinned command list already contains the command, it should remove (toggle) the command from the list', () => {
+      mockPluginInstance.options.pinned = [commandId];
+
+      sut.togglePinnedCommand(null, null);
+
+      expect(mockPluginInstance.options.pinned).toHaveLength(0);
+      expect(mockPluginInstance.saveSettings).toHaveBeenCalled();
+    });
+
+    test('when the pinned command list does not contain the command, it should add the command to the list', () => {
+      mockPluginInstance.options.pinned = [];
+
+      sut.togglePinnedCommand(null, null);
+
+      expect(mockPluginInstance.options.pinned).toHaveLength(1);
+      expect(mockPluginInstance.options.pinned[0]).toBe(commandId);
+      expect(mockPluginInstance.saveSettings).toHaveBeenCalled();
+    });
+
+    test('after modifying the pinned command list, it should re-render the suggestion', () => {
+      mockPluginInstance.options.pinned = [];
+
+      sut.togglePinnedCommand(null, null);
+
+      expect(mockPluginInstance.options.pinned).toHaveLength(1);
+      expect(mockPluginInstance.options.pinned[0]).toBe(commandId);
+
+      // Expect it to first clear all the child elements
+      expect(mockSuggParentEl.empty).toHaveBeenCalled();
+      expect(renderSuggestionSpy).toHaveBeenCalledWith(mockCommandSugg, mockSuggParentEl);
     });
   });
 });

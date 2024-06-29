@@ -409,6 +409,10 @@ export interface SettingsData {
    * assign a Hotkey to a command
    */
   navigateToHotkeySelectorKeys: Hotkey;
+  /**
+   * When in Command Mode this key combination will toggle the pinned status of a Command
+   */
+  togglePinnedCommandKeys: Hotkey;
   escapeCmdChar: string;
   /**
    * Settings for overriding the default "plus" button behavior on mobile Platforms

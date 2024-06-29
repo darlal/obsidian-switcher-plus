@@ -257,8 +257,12 @@ export class CommandHandler extends Handler<CommandSuggestion> {
   }
 
   getEnabledCommandPalettePluginInstance(): CommandPalettePluginInstance {
+    return CommandHandler.getEnabledCommandPalettePluginInstance(this.app);
+  }
+
+  static getEnabledCommandPalettePluginInstance(app: App): CommandPalettePluginInstance {
     return getInternalEnabledPluginById(
-      this.app,
+      app,
       COMMAND_PALETTE_PLUGIN_ID,
     ) as CommandPalettePluginInstance;
   }

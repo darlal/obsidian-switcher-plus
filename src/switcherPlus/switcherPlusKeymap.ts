@@ -26,6 +26,7 @@ import {
   Hotkey,
   HotkeysSettingTab,
 } from 'obsidian';
+import { CommandHandler } from 'src/Handlers';
 
 export const MOD_KEY: Modifier = Platform.isMacOS ? 'Meta' : 'Ctrl';
 
@@ -79,6 +80,7 @@ export class SwitcherPlusKeymap {
 
     this.initKeysInfo();
     this.bindNavigateToCommandHotkeySelector(this.customKeysInfo, config);
+    this.bindTogglePinnedCommand(this.customKeysInfo, config);
     this.removeDefaultTabKeyBinding(scope, config);
     this.registerNavigationBindings(scope, config.navigationKeys);
     this.registerEditorTabBindings(scope);
@@ -192,6 +194,32 @@ export class SwitcherPlusKeymap {
     };
 
     customKeysInfo.push(hotkeySelectorNavKeymap);
+  }
+
+  /**
+   * Adds the configured key combination to pin/unpin Commands to customKeysInfo
+   *
+   * @param {CustomKeymapInfo[]} customKeysInfo
+   * @param {SwitcherPlusSettings} config
+   */
+  bindTogglePinnedCommand(
+    customKeysInfo: CustomKeymapInfo[],
+    config: SwitcherPlusSettings,
+  ): void {
+    const {
+      togglePinnedCommandKeys: { modifiers, key },
+    } = config;
+
+    const togglePinnedKeymap: CustomKeymapInfo = {
+      modes: [Mode.CommandList],
+      purpose: 'toggle pinned',
+      func: this.togglePinnedCommand.bind(this),
+      command: this.commandDisplayStr(modifiers, key),
+      modifiers: SwitcherPlusKeymap.modifiersToKeymapInfoStr(modifiers),
+      key,
+    };
+
+    customKeysInfo.push(togglePinnedKeymap);
   }
 
   removeDefaultTabKeyBinding(scope: Scope, config: SwitcherPlusSettings): void {
@@ -669,6 +697,52 @@ export class SwitcherPlusKeymap {
         const commandId = selectedCommand.item.id;
         hotkeysSettingTab.setQuery(`${commandId}`);
       }
+    }
+
+    // Return false to prevent default
+    return false;
+  }
+
+  /**
+   * Toggles the pinned status of the currently selected Command suggestion in the Chooser
+   *
+   * @param {KeyboardEvent} _evt
+   * @param {KeymapContext} _ctx
+   * @returns {(boolean | void)}
+   */
+  togglePinnedCommand(_evt: KeyboardEvent, _ctx: KeymapContext): boolean | void {
+    const { app, config, chooser } = this;
+    const selectedSugg = chooser.values?.[chooser.selectedItem] as CommandSuggestion;
+    const pluginInstance = CommandHandler.getEnabledCommandPalettePluginInstance(app);
+
+    if (selectedSugg && pluginInstance) {
+      const commandId = selectedSugg.item.id;
+      const parentEl = chooser.suggestions[chooser.selectedItem];
+      let pinned = pluginInstance.options?.pinned;
+
+      if (pinned) {
+        const idx = pinned.indexOf(commandId);
+
+        // When idx is not found, isPinned should be toggled on, and when idx is found
+        // isPinned should be toggled off
+        selectedSugg.isPinned = idx === -1;
+
+        if (selectedSugg.isPinned) {
+          // Add this command to the pinned list
+          pinned.push(commandId);
+        } else {
+          // Remove this command command from the pinned list
+          pinned.splice(idx, 1);
+        }
+      } else {
+        pinned = [commandId];
+        pluginInstance.options.pinned = pinned;
+      }
+
+      // Save the updated setting, and update the suggestion rendering
+      pluginInstance.saveSettings(pluginInstance.plugin);
+      parentEl.empty();
+      new CommandHandler(app, config).renderSuggestion(selectedSugg, parentEl);
     }
 
     // Return false to prevent default

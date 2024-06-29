@@ -40,9 +40,11 @@ declare module 'obsidian' {
   }
 
   export interface CommandPalettePluginInstance extends PluginInstance {
+    plugin: Plugin;
     options: {
       pinned?: Array<string>;
     };
+    saveSettings(plugin: Plugin): void;
   }
 
   export interface WorkspacesPluginInstance extends PluginInstance {
