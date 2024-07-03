@@ -383,9 +383,7 @@ describe('SwitcherPlusKeymap', () => {
       expect(result.key).toBe(keymap.key);
       expect(result.purpose).toBe(keymap.purpose);
       expect(result.isInstructionOnly).toBeFalsy();
-      expect(result.modifiers).toBe(
-        SwitcherPlusKeymap.modifiersToKeymapInfoStr(keymap.modifiers),
-      );
+      expect(result.modifiers).toBe(keymap.modifiers);
     });
 
     test('when the keymap already exists, it should update the keymap handler function', () => {
@@ -393,7 +391,7 @@ describe('SwitcherPlusKeymap', () => {
         {
           isInstructionOnly: false,
           modes: [Mode.HeadingsList],
-          func: null,
+          eventListener: null,
           command: null,
           modifiers: null,
           key: null,
@@ -408,7 +406,7 @@ describe('SwitcherPlusKeymap', () => {
         mockInsertConfig,
       );
 
-      expect(result.func).not.toBeNull();
+      expect(result.eventListener).not.toBeNull();
       expect(result.modes[0]).toBe(Mode.Standard);
     });
 
@@ -425,7 +423,7 @@ describe('SwitcherPlusKeymap', () => {
       );
 
       // simulate the keymap being triggered
-      result.func(mock<KeyboardEvent>(), mock<KeymapContext>());
+      result.eventListener(mock<KeyboardEvent>(), mock<KeymapContext>());
 
       expect(mockModal.close).toHaveBeenCalled();
       expect(insertSpy).toHaveBeenCalled();
@@ -452,7 +450,7 @@ describe('SwitcherPlusKeymap', () => {
       );
 
       // simulate the keymap being triggered
-      result.func(mock<KeyboardEvent>(), mock<KeymapContext>());
+      result.eventListener(mock<KeyboardEvent>(), mock<KeymapContext>());
 
       expect(mockView.editor.replaceSelection).toHaveBeenCalledWith(linkText);
     });
@@ -465,7 +463,9 @@ describe('SwitcherPlusKeymap', () => {
 
     it('should register each keymap', () => {
       const key = 'x';
-      const func = () => false;
+      const eventListener = () => false;
+      const command = chance.word();
+      const purpose = chance.word();
 
       const sut = new SwitcherPlusKeymap(
         mockApp,
@@ -475,16 +475,12 @@ describe('SwitcherPlusKeymap', () => {
         mockConfig,
       );
 
-      const modifiers = SwitcherPlusKeymap.modifiersToKeymapInfoStr(['Alt', 'Mod']);
-      const keymaps = [{ modifiers, key, func }];
+      const modifiers: Modifier[] = ['Alt', 'Mod'];
+      const keymaps = [{ modifiers, key, eventListener, command, purpose }];
 
       sut.registerKeys(mockScope, keymaps);
 
-      expect(mockScope.register).toHaveBeenCalledWith(
-        expect.arrayContaining(['Alt', MOD_KEY]),
-        key,
-        func,
-      );
+      expect(mockScope.register).toHaveBeenCalledWith(modifiers, key, eventListener);
     });
   });
 
@@ -574,10 +570,8 @@ describe('SwitcherPlusKeymap', () => {
 
       // convert to [][] so each call can be checked separately
       const expected = sut.standardKeysInfo.map((v) => {
-        const modifiers = SwitcherPlusKeymap.modifiersFromKeymapInfoStr(v.modifiers);
-
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        return [modifiers, v.key, expect.any(Function)];
+        return [v.modifiers, v.key, expect.any(Function)];
       });
 
       expect(mockScope.register.mock.calls).toEqual(expected);
@@ -589,16 +583,13 @@ describe('SwitcherPlusKeymap', () => {
         (v) => v.modes?.includes(mode) && !v.isInstructionOnly,
       );
 
-      const unregisterKeysSpy = jest
-        .spyOn(sut, 'unregisterKeys')
-        .mockReturnValue([mock<KeymapEventHandler>()]);
+      const unregisterKeysSpy = jest.spyOn(sut, 'unregisterKeys').mockReturnValue([]);
 
       sut.updateKeymapForMode({ mode });
 
       // convert to [][] so each call can be checked separately
       const expected = customKeymaps.map((v) => {
-        const modifiers = SwitcherPlusKeymap.modifiersFromKeymapInfoStr(v.modifiers);
-        return [modifiers, v.key, v.func];
+        return [v.modifiers, v.key, v.eventListener];
       });
 
       expect(mockScope.register.mock.calls).toEqual(expected);
@@ -610,10 +601,62 @@ describe('SwitcherPlusKeymap', () => {
     it('should unregister keys that are found to be registered', () => {
       mockScope.keys = [mockShiftEnter];
 
-      const removed = sut.unregisterKeys(mockScope, [mockShiftEnter]);
+      const keymap: CustomKeymapInfo = {
+        modifiers: ['Shift'],
+        key: 'Enter',
+        command: null,
+        purpose: null,
+      };
+
+      const removed = sut.unregisterKeys(mockScope, [keymap]);
 
       expect(mockScope.unregister).toHaveBeenCalledWith(mockShiftEnter);
-      expect(removed[0]).toEqual(mockShiftEnter);
+      expect(removed[0][1]).toEqual(mockShiftEnter);
+    });
+
+    test('.updateKeymapForStandardMode() should register standard keys that were unregistered', () => {
+      const mockKeymap = mock<CustomKeymapInfo>({
+        modifiers: ['Alt'],
+        key: chance.letter(),
+      });
+
+      const mockEvenHandler = mock<KeymapEventHandler>({
+        func: () => null,
+      });
+
+      mockScope.register.mockReset();
+      sut.updateKeymapForStandardMode(mockScope, [], [[mockKeymap, mockEvenHandler]]);
+
+      expect(mockScope.register).toHaveBeenCalledWith(
+        mockKeymap.modifiers,
+        mockKeymap.key,
+        mockEvenHandler.func,
+      );
+    });
+
+    test('updateKeymapForCustomModes() should unregister standard keys', () => {
+      const mockModEnter = mock<KeymapEventHandler>({
+        modifiers: MOD_KEY,
+        key: 'Enter',
+      });
+
+      mockScope.keys = [mockModEnter];
+      const mockKeymap = mock<CustomKeymapInfo>({
+        modifiers: ['Mod'],
+        key: 'Enter',
+      });
+
+      sut.updateKeymapForCustomModes(
+        mockScope,
+        [],
+        [mockKeymap],
+        mock<KeymapConfig>(),
+        mockModal,
+      );
+
+      expect(mockScope.unregister).toHaveBeenCalledWith(mockModEnter);
+      expect(sut.savedStandardKeysInfo[0][0]).toBe(mockKeymap);
+      expect(sut.savedStandardKeysInfo[0][1]).toBe(mockModEnter);
     });
   });
 
@@ -842,10 +885,11 @@ describe('SwitcherPlusKeymap', () => {
 
     it('should render a facet indicator using custom modifiers', () => {
       const key = chance.letter();
-      const modifiers = chance.pickset<Modifier>(['Alt', 'Ctrl'], 1);
+      const modifiers: Modifier[] = ['Ctrl'];
 
       const facetSettings = mock<FacetSettingsData>({
         keyList: [key],
+        modifiers: [],
       });
 
       const facetKeyInfo = mock<CustomKeymapInfo & { facet: Facet }>({
@@ -858,11 +902,10 @@ describe('SwitcherPlusKeymap', () => {
 
       sut.renderFacetInstructions(mockModal.modalEl, facetSettings, [facetKeyInfo]);
 
-      const modifierStr = modifiers.toString().replace(',', ' ');
       expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
           cls: ['prompt-instruction-command'],
-          text: `(${modifierStr}) ${key}`,
+          text: `(⌃) ${key}`,
         }),
       );
     });
@@ -897,11 +940,12 @@ describe('SwitcherPlusKeymap', () => {
 
     it('should render the reset toggle indicator', () => {
       const key = chance.letter();
-      const modifiers = chance.pickset<Modifier>(['Alt', 'Ctrl'], 1);
+      const resetModifiers: Modifier[] = ['Ctrl'];
 
       const facetSettings = mock<FacetSettingsData>({
         resetKey: key,
-        resetModifiers: modifiers,
+        resetModifiers,
+        modifiers: [],
       });
 
       const facetKeyInfo = mock<CustomKeymapInfo & { facet: Facet }>({
@@ -910,11 +954,10 @@ describe('SwitcherPlusKeymap', () => {
 
       sut.renderFacetInstructions(mockModal.modalEl, facetSettings, [facetKeyInfo]);
 
-      const modifierStr = modifiers.toString().replace(',', ' ');
       expect(mockInstructionEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({
           cls: ['prompt-instruction-command'],
-          text: `(${modifierStr}) ${key}`,
+          text: `(⌃) ${key}`,
         }),
       );
     });

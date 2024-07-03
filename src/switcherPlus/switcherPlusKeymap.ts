@@ -17,7 +17,6 @@ import {
   Chooser,
   Modifier,
   KeymapEventHandler,
-  KeymapInfo,
   Instruction,
   Platform,
   App,
@@ -25,19 +24,24 @@ import {
   MarkdownView,
   Hotkey,
   HotkeysSettingTab,
+  KeymapEventListener,
 } from 'obsidian';
 import { CommandHandler } from 'src/Handlers';
 
 export const MOD_KEY: Modifier = Platform.isMacOS ? 'Meta' : 'Ctrl';
 
-export type CustomKeymapInfo = Omit<KeymapEventHandler, 'scope'> &
-  Instruction & { isInstructionOnly?: boolean; modes?: Mode[] };
+export type CustomKeymapInfo = Hotkey &
+  Instruction & {
+    isInstructionOnly?: boolean;
+    modes?: Mode[];
+    eventListener?: KeymapEventListener;
+  };
 
 export class SwitcherPlusKeymap {
-  readonly standardKeysInfo: KeymapInfo[] = [];
+  readonly standardKeysInfo: CustomKeymapInfo[] = [];
   readonly customKeysInfo: CustomKeymapInfo[] = [];
+  readonly savedStandardKeysInfo: Array<[CustomKeymapInfo, KeymapEventHandler]> = [];
   private _isOpen: boolean;
-  private readonly savedStandardKeysInfo: KeymapEventHandler[] = [];
 
   readonly customInstructionEls: Map<'custom' | 'facets' | 'modes', HTMLDivElement> =
     new Map();
@@ -101,9 +105,10 @@ export class SwitcherPlusKeymap {
     ];
 
     // standard mode keys that are registered by default, and
-    // should be unregistered in custom modes, then re-registered in standard mode
-    // example: { modifiers: 'Shift', key: 'Enter' }
-    const standardKeysInfo: KeymapInfo[] = [];
+    // should be unregistered in custom modes, then re-registered in standard mode.
+    // Note: these won't have the eventListener when they are defined here, since
+    // the listener is registered by core Obsidian.
+    const standardKeysInfo: CustomKeymapInfo[] = [];
 
     // custom mode keys that should be registered, then unregistered in standard mode
     // Note: modifiers should be a comma separated string of Modifiers
@@ -114,34 +119,30 @@ export class SwitcherPlusKeymap {
         modes: customFileBasedModes,
         modifiers: null,
         key: null,
-        func: null,
         command: this.commandDisplayStr(['Mod'], '↵'),
         purpose: 'open in new tab',
       },
       {
         isInstructionOnly: true,
         modes: customFileBasedModes,
-        modifiers: SwitcherPlusKeymap.modifiersToKeymapInfoStr([MOD_KEY]),
-        key: '\\',
-        func: null,
+        modifiers: null,
+        key: null,
         command: this.commandDisplayStr(['Mod'], '\\'),
         purpose: 'open to the right',
       },
       {
         isInstructionOnly: true,
         modes: customFileBasedModes,
-        modifiers: SwitcherPlusKeymap.modifiersToKeymapInfoStr([MOD_KEY, 'Shift']),
-        key: '\\',
-        func: null,
+        modifiers: null,
+        key: null,
         command: this.commandDisplayStr(['Mod', 'Shift'], '\\'),
         purpose: 'open below',
       },
       {
         isInstructionOnly: true,
         modes: customFileBasedModes,
-        modifiers: SwitcherPlusKeymap.modifiersToKeymapInfoStr([MOD_KEY]),
-        key: 'o',
-        func: null,
+        modifiers: null,
+        key: null,
         command: this.commandDisplayStr(['Mod'], 'o'),
         purpose: 'open in new window',
       },
@@ -150,7 +151,6 @@ export class SwitcherPlusKeymap {
         modes: [Mode.CommandList],
         modifiers: null,
         key: null,
-        func: null,
         command: `↵`,
         purpose: 'execute command',
       },
@@ -159,7 +159,6 @@ export class SwitcherPlusKeymap {
         modes: [Mode.WorkspaceList],
         modifiers: null,
         key: null,
-        func: null,
         command: `↵`,
         purpose: 'open workspace',
       },
@@ -187,9 +186,9 @@ export class SwitcherPlusKeymap {
     const hotkeySelectorNavKeymap: CustomKeymapInfo = {
       modes: [Mode.CommandList],
       purpose: 'set hotkey',
-      func: this.navigateToCommandHotkeySelector.bind(this),
+      eventListener: this.navigateToCommandHotkeySelector.bind(this),
       command: this.commandDisplayStr(modifiers, key),
-      modifiers: SwitcherPlusKeymap.modifiersToKeymapInfoStr(modifiers),
+      modifiers: modifiers,
       key,
     };
 
@@ -213,9 +212,9 @@ export class SwitcherPlusKeymap {
     const togglePinnedKeymap: CustomKeymapInfo = {
       modes: [Mode.CommandList],
       purpose: 'toggle pinned',
-      func: this.togglePinnedCommand.bind(this),
+      eventListener: this.togglePinnedCommand.bind(this),
       command: this.commandDisplayStr(modifiers, key),
-      modifiers: SwitcherPlusKeymap.modifiersToKeymapInfoStr(modifiers),
+      modifiers: modifiers,
       key,
     };
 
@@ -255,7 +254,6 @@ export class SwitcherPlusKeymap {
       const { facetList, facetSettings, onToggleFacet } = facets;
       const { keyList, modifiers, resetKey, resetModifiers } = facetSettings;
       let currKeyListIndex = 0;
-      let keyHandler: KeymapEventHandler;
 
       const registerFn = (
         modKeys: Modifier[],
@@ -287,22 +285,25 @@ export class SwitcherPlusKeymap {
           continue;
         }
 
-        keyHandler = registerFn(facetModifiers, key, [facet], false);
+        registerFn(facetModifiers, key, [facet], false);
         this.facetKeysInfo.push({
           facet,
           command: key,
           purpose: facet.label,
-          ...keyHandler,
+          modifiers: facetModifiers,
+          key,
         });
       }
 
       // register the toggle key
-      keyHandler = registerFn(resetModifiers ?? modifiers, resetKey, facetList, true);
+      const resetMods = resetModifiers ?? modifiers;
+      registerFn(resetMods, resetKey, facetList, true);
       this.facetKeysInfo.push({
         facet: null,
         command: resetKey,
         purpose: 'toggle all',
-        ...keyHandler,
+        modifiers: resetMods,
+        key: resetKey,
       });
     }
   }
@@ -351,10 +352,8 @@ export class SwitcherPlusKeymap {
           const { modifiers, key, purpose } = keymap;
           keyInfo = {
             isInstructionOnly: false,
-            modes: [],
-            func: null,
             command: this.commandDisplayStr(modifiers, key),
-            modifiers: SwitcherPlusKeymap.modifiersToKeymapInfoStr(modifiers),
+            modifiers,
             key,
             purpose,
           };
@@ -363,7 +362,7 @@ export class SwitcherPlusKeymap {
         }
 
         // update the handler to capture the active editor
-        keyInfo.func = () => {
+        keyInfo.eventListener = () => {
           const { modal, chooser } = this;
           modal.close();
           const item = chooser.values?.[chooser.selectedItem];
@@ -383,13 +382,12 @@ export class SwitcherPlusKeymap {
     const {
       modal,
       scope,
-      savedStandardKeysInfo,
-      standardKeysInfo,
       customKeysInfo,
       facetKeysInfo,
+      standardKeysInfo,
+      savedStandardKeysInfo,
       config: { insertLinkInEditor, showModeTriggerInstructions },
     } = this;
-
     this.updateInsertIntoEditorCommand(
       mode,
       activeLeaf,
@@ -397,65 +395,151 @@ export class SwitcherPlusKeymap {
       insertLinkInEditor,
     );
 
+    // Unregister all custom keys that was previously registered
     const customKeymaps = customKeysInfo.filter((v) => !v.isInstructionOnly);
     this.unregisterKeys(scope, customKeymaps);
 
-    // remove facet keys and reset storage array
+    // Remove facet keys and reset storage array
     this.unregisterKeys(scope, facetKeysInfo);
     facetKeysInfo.length = 0;
 
+    // Filter to just the list of custom keys that should be
+    // registered in the current mode
     const customKeysToAdd = customKeymaps.filter((v) => v.modes?.includes(mode));
 
     if (mode === Mode.Standard) {
-      this.registerKeys(scope, savedStandardKeysInfo);
-      savedStandardKeysInfo.length = 0;
-
-      // after (re)registering the standard keys, register any custom keys that
-      // should also work in standard mode
-      this.registerKeys(scope, customKeysToAdd);
-
-      this.toggleStandardInstructions(true);
+      this.updateKeymapForStandardMode(scope, customKeysToAdd, savedStandardKeysInfo);
     } else {
-      const standardKeysRemoved = this.unregisterKeys(scope, standardKeysInfo);
-      if (standardKeysRemoved.length) {
-        savedStandardKeysInfo.push(...standardKeysRemoved);
-      }
-
-      this.registerKeys(scope, customKeysToAdd);
-      this.registerFacetBinding(scope, keymapConfig);
-
-      this.showCustomInstructions(modal, keymapConfig, customKeysInfo, facetKeysInfo);
+      this.updateKeymapForCustomModes(
+        scope,
+        customKeysToAdd,
+        standardKeysInfo,
+        keymapConfig,
+        modal,
+      );
     }
 
     this.showModeTriggerInstructions(modal.modalEl, showModeTriggerInstructions);
   }
 
-  registerKeys(scope: Scope, keymaps: Omit<KeymapEventHandler, 'scope'>[]): void {
-    keymaps.forEach((keymap) => {
-      const modifiers = SwitcherPlusKeymap.modifiersFromKeymapInfoStr(keymap.modifiers);
-      scope.register(modifiers, keymap.key, keymap.func);
+  /**
+   * Re-register the standard mode keys that were previously unregistered, if any.
+   * And enables displaying the standard prompt instructions
+   *
+   * @param {Scope} scope
+   * @param {CustomKeymapInfo[]} customKeysToAdd Array of custom keymaps that should be registered
+   * @param {Array<[CustomKeymapInfo, KeymapEventHandler]>} savedStandardKeysInfo Event
+   * handler info for standard keys that were previously unregistered
+   */
+  updateKeymapForStandardMode(
+    scope: Scope,
+    customKeysToAdd: CustomKeymapInfo[],
+    savedStandardKeysInfo: Array<[CustomKeymapInfo, KeymapEventHandler]>,
+  ): void {
+    // Merge the properties from the saved tuple into an object that can be used
+    // for re-registering. This is because access to the listener is only available after
+    // a standard keymap has already been unregistered.
+    const reregisterKeymaps = savedStandardKeysInfo.map(([keymap, eventHandler]) => {
+      return {
+        eventListener: eventHandler.func,
+        ...keymap,
+      };
+    });
+
+    // Register the standard keys again
+    this.registerKeys(scope, reregisterKeymaps);
+    savedStandardKeysInfo.length = 0;
+
+    // after (re)registering the standard keys, register any custom keys that
+    // should also work in standard mode
+    this.registerKeys(scope, customKeysToAdd);
+    this.toggleStandardInstructions(true);
+  }
+
+  /**
+   * Unregisters the standard mode keys, registers the custom keys and displays
+   * the custom prompt instructions
+   *
+   * @param {Scope} scope
+   * @param {CustomKeymapInfo[]} customKeysToAdd Array of custom keymaps that should be registered
+   * @param {CustomKeymapInfo[]} standardKeysInfo Array of standard keymaps that should be unregistered
+   * @param {KeymapConfig} keymapConfig
+   * @param {SwitcherPlus} modal
+   */
+  updateKeymapForCustomModes(
+    scope: Scope,
+    customKeysToAdd: CustomKeymapInfo[],
+    standardKeysInfo: CustomKeymapInfo[],
+    keymapConfig: KeymapConfig,
+    modal: SwitcherPlus,
+  ): void {
+    const { savedStandardKeysInfo, customKeysInfo, facetKeysInfo } = this;
+
+    // Unregister the standard keys and save them so they can be registered
+    // again later
+    const standardKeysRemoved = this.unregisterKeys(scope, standardKeysInfo);
+    if (standardKeysRemoved.length) {
+      savedStandardKeysInfo.push(...standardKeysRemoved);
+    }
+
+    this.registerKeys(scope, customKeysToAdd);
+    this.registerFacetBinding(scope, keymapConfig);
+    this.showCustomInstructions(modal, keymapConfig, customKeysInfo, facetKeysInfo);
+  }
+
+  /**
+   * Registers keymaps using the provided scope.
+   *
+   * @param {Scope} scope
+   * @param {CustomKeymapInfo[]} keymaps
+   */
+  registerKeys(scope: Scope, keymaps: CustomKeymapInfo[]): void {
+    keymaps.forEach(({ modifiers, key, eventListener }) => {
+      scope.register(modifiers, key, eventListener);
     });
   }
 
-  unregisterKeys(scope: Scope, keyInfo: KeymapInfo[]): KeymapEventHandler[] {
-    const keysToRemove = [...keyInfo];
-    const removed: KeymapEventHandler[] = [];
+  /**
+   * Finds each keymap in Scope.keys and unregisters the associated KeymapEventHandler
+   *
+   * @param {Scope} scope
+   * @param {CustomKeymapInfo[]} keymaps the keymaps to remove
+   * @returns {Array<[CustomKeymapInfo, KeymapEventHandler]>} An array of tuples containing the keymap removed and the associated KeymapEventHandler that was unregistered.
+   */
+  unregisterKeys(
+    scope: Scope,
+    keymaps: CustomKeymapInfo[],
+  ): Array<[CustomKeymapInfo, KeymapEventHandler]> {
+    const removedEventHandlers: Array<[CustomKeymapInfo, KeymapEventHandler]> = [];
+
+    // Map the keymaps to remove into an object that looks like:
+    // { key: { modifiers1: keymap, modifiers2: keymap } }
+    const keymapsByKey: Record<string, Record<string, CustomKeymapInfo>> = {};
+    keymaps.map((keymap) => {
+      const { key, modifiers } = keymap;
+      const modifierStr = SwitcherPlusKeymap.modifiersToKeymapInfoStr(modifiers);
+      const modifierList = keymapsByKey[key];
+
+      if (modifierList) {
+        modifierList[modifierStr] = keymap;
+      } else {
+        keymapsByKey[key] = { [modifierStr]: keymap };
+      }
+    });
 
     let i = scope.keys.length;
     while (i--) {
-      const keymap = scope.keys[i];
-      const foundIndex = keysToRemove.findIndex((kRemove) => {
-        return kRemove.modifiers === keymap.modifiers && kRemove.key === keymap.key;
-      });
+      const registeredHandler = scope.keys[i];
+      const modifiersList = keymapsByKey[registeredHandler.key];
+      const foundKeymap = modifiersList?.[registeredHandler.modifiers];
 
-      if (foundIndex >= 0) {
-        scope.unregister(keymap);
-        removed.push(keymap);
-        keysToRemove.splice(foundIndex, 1);
+      if (foundKeymap) {
+        scope.unregister(registeredHandler);
+        removedEventHandlers.push([foundKeymap, registeredHandler]);
       }
     }
 
-    return removed;
+    return removedEventHandlers;
   }
 
   detachCustomInstructionEls(): void {
@@ -499,17 +583,13 @@ export class SwitcherPlusKeymap {
     facetKeysInfo: Array<CustomKeymapInfo & { facet: Facet }>,
   ): void {
     if (facetKeysInfo?.length && facetSettings.shouldShowFacetInstructions) {
-      const modifiersToString = (modifiers: Modifier[]) => {
-        return modifiers?.toString().replace(',', ' ');
-      };
-
       const facetInstructionsEl = this.getCustomInstructionsEl('facets', parentEl);
 
       facetInstructionsEl.empty();
       parentEl.appendChild(facetInstructionsEl);
 
       // render the preamble
-      const preamble = `filters | ${modifiersToString(facetSettings.modifiers)}`;
+      const preamble = `filters | ${this.commandDisplayStr(facetSettings.modifiers)}`;
       this.createPromptInstructionCommandEl(facetInstructionsEl, preamble);
 
       // render each key instruction
@@ -536,7 +616,7 @@ export class SwitcherPlusKeymap {
         // if a modifier is specified for this specific facet, it overrides the
         // default modifier so display that too. Otherwise, just show the key alone
         const commandDisplayText = modifiers
-          ? `(${modifiersToString(modifiers)}) ${key}`
+          ? `(${this.commandDisplayStr(modifiers)}) ${key}`
           : `${key}`;
 
         this.createPromptInstructionCommandEl(
@@ -791,23 +871,28 @@ export class SwitcherPlusKeymap {
     }
   }
 
-  commandDisplayStr(modifiers: Modifier[], key: string): string {
-    let displayStr = '';
+  /**
+   * Converts modifiers and key into a string that can be used for visual display purposes, taking into account platform specific modifier renderings.
+   *
+   * @param {Modifier[]} modifiers
+   * @param {?string} [key]
+   * @returns {string}
+   */
+  commandDisplayStr(modifiers: Modifier[], key?: string): string {
+    let modifierStr = '';
 
-    if (modifiers && key) {
+    if (modifiers) {
       const { modifierToPlatformStrMap } = this;
 
-      const modifierStr = modifiers
+      modifierStr = modifiers
         .map((modifier) => {
           return modifierToPlatformStrMap[modifier]?.toLocaleLowerCase();
         })
         .sort()
         .join(' ');
-
-      displayStr = `${modifierStr} ${key}`;
     }
 
-    return displayStr;
+    return key ? `${modifierStr} ${key}` : modifierStr;
   }
 
   /**
@@ -824,17 +909,5 @@ export class SwitcherPlusKeymap {
       ?.map((modifier) => (modifier === 'Mod' ? MOD_KEY : modifier))
       .sort()
       .join(',');
-  }
-
-  /**
-   * Converts a string of Modifers from Scope.keys to a Modifer[].
-   * Note: this does not reverse map from the platform specific MOD_KEY back to "Mod"
-   *
-   * @static
-   * @param {string} modifiersStr
-   * @returns {Modifier[]}
-   */
-  static modifiersFromKeymapInfoStr(modifiersStr: string): Modifier[] {
-    return modifiersStr?.split(',') as Modifier[];
   }
 }
