@@ -167,14 +167,14 @@ export default class SwitcherPlusPlugin extends Plugin {
     isChecking: boolean,
     sessionOpts?: CommandDefinitionOpts,
   ): boolean {
-    // modal needs to be created dynamically (same as system switcher)
-    // as system options are evaluated in the modal constructor
-    const modal = createSwitcherPlus(this.app, this);
-    if (!modal) {
-      return false;
-    }
-
     if (!isChecking) {
+      // modal needs to be created dynamically (same as system switcher)
+      // as system options are evaluated in the modal constructor
+      const modal = createSwitcherPlus(this.app, this);
+      if (!modal) {
+        return false;
+      }
+
       modal.openInMode(mode, sessionOpts);
     }
 
