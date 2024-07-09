@@ -75,10 +75,13 @@ const mockPrepareQuery = mockFn<typeof prepareQuery>().mockImplementation((_quer
   makePreparedQuery(),
 );
 
+const mockNormalizePath = mockFn<typeof normalizePath>().mockImplementation(
+  (path) => path,
+);
+
 const mockSortSearchResults = mockFn<typeof sortSearchResults>().mockImplementation();
 const mockRenderResults = mockFn<typeof renderResults>().mockImplementation();
 const mockDebounce = mockFn<typeof debounce>().mockImplementation();
-const mockNormalizePath = mockFn<typeof normalizePath>().mockImplementation();
 const mockSetIcon = mockFn<typeof setIcon>().mockImplementation();
 const mockParseLinktext = mockFn<typeof parseLinktext>().mockImplementation();
 

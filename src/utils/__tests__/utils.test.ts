@@ -1,4 +1,4 @@
-import { FileManager, TFile, Vault, parseLinktext } from 'obsidian';
+import { FileManager, TFile, Vault, normalizePath, parseLinktext } from 'obsidian';
 import {
   BookmarksSuggestion,
   LinkType,
@@ -28,7 +28,7 @@ import {
   makeSymbolSuggestion,
   makeUnresolvedSuggestion,
 } from '@fixtures';
-import { MockProxy, mock, mockReset } from 'jest-mock-extended';
+import { MockProxy, mock, mockClear, mockReset } from 'jest-mock-extended';
 import { Chance } from 'chance';
 
 const chance = new Chance();
@@ -92,6 +92,12 @@ describe('utils', () => {
   });
 
   describe('filenameFromPath', () => {
+    const mockNormalizePath = jest.mocked(normalizePath);
+
+    beforeEach(() => {
+      mockClear(mockNormalizePath);
+    });
+
     it('should return null with falsy input', () => {
       const result = filenameFromPath(null);
       expect(result).toBe(null);
@@ -107,6 +113,12 @@ describe('utils', () => {
       const leaf = 'foo';
       const result = filenameFromPath(`path/to/${leaf}`);
       expect(result).toBe(leaf);
+    });
+
+    it('should normalize paths', () => {
+      const path = `path\\to\\filename.ext`;
+      filenameFromPath(path);
+      expect(mockNormalizePath).toHaveBeenCalledWith(path);
     });
   });
 

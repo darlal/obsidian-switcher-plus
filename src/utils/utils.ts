@@ -11,6 +11,7 @@ import {
   ReferenceCache,
   parseLinktext,
   Vault,
+  normalizePath,
 } from 'obsidian';
 import {
   SymbolSuggestion,
@@ -138,14 +139,15 @@ export function stripMDExtensionFromPath(file: TFile): string {
 }
 
 export function filenameFromPath(path: string): string {
-  let retVal = null;
+  let filename = null;
 
   if (path) {
-    const index = path.lastIndexOf('/');
-    retVal = index === -1 ? path : path.slice(index + 1);
+    const normalizedPath = normalizePath(path);
+    const index = normalizedPath.lastIndexOf('/');
+    filename = index === -1 ? normalizedPath : normalizedPath.slice(index + 1);
   }
 
-  return retVal;
+  return filename;
 }
 
 export function matcherFnForRegExList(
