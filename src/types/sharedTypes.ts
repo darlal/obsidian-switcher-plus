@@ -347,6 +347,26 @@ export type MobileLauncherConfig = {
   coreLauncherButtonIconSelector: string;
 };
 
+export type RenderMarkdownContentConfig = {
+  /**
+   * Whether or not the feature is turned on.
+   */
+  isEnabled: boolean;
+  /**
+   * If true markdown content in heading suggestions will be displayed as HTML elements
+   *
+   * @type {boolean}
+   */
+  renderHeadings: boolean;
+  /**
+   * Key combination that toggles between displaying the rendered HTML content or the
+   * raw text content.
+   *
+   * @type {Hotkey}
+   */
+  toggleContentRenderingKeys: Hotkey;
+};
+
 export interface SettingsData {
   version: string;
   onOpenPreferNewTab: boolean;
@@ -428,6 +448,10 @@ export interface SettingsData {
    * When true enables the mode triggers keys to be displayed as Instructions in the modal.
    */
   showModeTriggerInstructions: boolean;
+  /**
+   * Configuration for how markdown content found in suggestions should be displayed
+   */
+  renderMarkdownContentInSuggestions: RenderMarkdownContentConfig;
 }
 
 export type SessionOpts = {

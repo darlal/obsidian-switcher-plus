@@ -12,6 +12,7 @@ import {
   NavigationKeysConfig,
   PathDisplayFormat,
   RelationType,
+  RenderMarkdownContentConfig,
   SettingsData,
   SymbolType,
   TitleSource,
@@ -141,6 +142,11 @@ export class SwitcherPlusSettings {
         Mode[Mode.HeadingsList] as keyof typeof Mode,
       ],
       showModeTriggerInstructions: true,
+      renderMarkdownContentInSuggestions: {
+        isEnabled: false,
+        renderHeadings: false,
+        toggleContentRenderingKeys: { modifiers: ['Shift', 'Ctrl'], key: 'm' },
+      },
     };
   }
 
@@ -662,6 +668,14 @@ export class SwitcherPlusSettings {
 
   set showModeTriggerInstructions(value: boolean) {
     this.data.showModeTriggerInstructions = value;
+  }
+
+  get renderMarkdownContentInSuggestions(): RenderMarkdownContentConfig {
+    return this.data.renderMarkdownContentInSuggestions;
+  }
+
+  set renderMarkdownContentInSuggestions(value: RenderMarkdownContentConfig) {
+    this.data.renderMarkdownContentInSuggestions = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

@@ -2,7 +2,7 @@ import { Chance } from 'chance';
 import { SwitcherPlusSettings } from 'src/settings';
 import { CustomKeymapInfo, SwitcherPlusKeymap } from 'src/switcherPlus';
 import { generateMarkdownLink } from 'src/utils';
-import { CommandHandler } from 'src/Handlers';
+import { CommandHandler, Handler } from 'src/Handlers';
 import {
   MockProxy,
   anyFunction,
@@ -27,6 +27,8 @@ import {
   Editor,
   HotkeysSettingTab,
   CommandPalettePluginInstance,
+  renderResults,
+  Platform,
 } from 'obsidian';
 import {
   AnySuggestion,
@@ -38,9 +40,17 @@ import {
   InsertLinkConfig,
   CommandSuggestion,
   SuggestionType,
+  SymbolType,
 } from 'src/types';
+import { makeHeading, makeHeadingSuggestion, makeSymbolSuggestion } from '@fixtures';
 
-jest.mock('src/utils/utils');
+jest.mock('src/utils', () => {
+  return {
+    __esModule: true,
+    ...jest.requireActual<typeof import('src/utils')>('src/utils'),
+    generateMarkdownLink: jest.fn(),
+  };
+});
 
 const chance = new Chance();
 
@@ -73,6 +83,38 @@ describe('SwitcherPlusKeymap', () => {
 
   const mockApp = mock<App>({
     workspace: mockWorkspace,
+  });
+
+  describe('Platform specific properties', () => {
+    let mockPlatform: MockProxy<typeof Platform>;
+
+    beforeAll(() => {
+      mockPlatform = jest.mocked<typeof Platform>(Platform);
+    });
+
+    afterAll(() => {
+      mockReset(mockPlatform);
+    });
+
+    test('.modKey property should return "Meta" for MacOS Platform', () => {
+      mockPlatform.isMacOS = true;
+      expect(SwitcherPlusKeymap.modKey).toBe('Meta');
+    });
+
+    test('.modKey property should return "Ctrl" for non-MacOS Platform', () => {
+      mockPlatform.isMacOS = false;
+      expect(SwitcherPlusKeymap.modKey).toBe('Ctrl');
+    });
+
+    test('.keyDisplayStr property should return MacOS specific modifier display strings', () => {
+      mockPlatform.isMacOS = true;
+      expect(SwitcherPlusKeymap.keyDisplayStr['Mod']).toBe('⌘');
+    });
+
+    test('keyDisplayStr property should return non-MacOs modifier display strings on other platforms', () => {
+      mockPlatform.isMacOS = false;
+      expect(SwitcherPlusKeymap.keyDisplayStr['Mod']).toBe('Ctrl');
+    });
   });
 
   it('should remove the builtin Tab hotkey binding', () => {
@@ -433,9 +475,9 @@ describe('SwitcherPlusKeymap', () => {
     });
 
     test('the keymap handler should insert a link into the editor', () => {
+      const linkText = chance.word();
       customKeysInfo = [];
 
-      const linkText = chance.word();
       const mockView = mock<MarkdownView>({ editor: mock<Editor>() });
       mockView.leaf = mockEditor;
       mockView.file = new TFile();
@@ -833,6 +875,7 @@ describe('SwitcherPlusKeymap', () => {
 
   describe('renderFacetInstructions', () => {
     let sut: SwitcherPlusKeymap;
+    let mockPlatform: MockProxy<typeof Platform>;
 
     beforeAll(() => {
       sut = new SwitcherPlusKeymap(
@@ -842,6 +885,9 @@ describe('SwitcherPlusKeymap', () => {
         mockModal,
         mockConfig,
       );
+
+      mockPlatform = jest.mocked<typeof Platform>(Platform);
+      mockPlatform.isMacOS = true;
     });
 
     beforeEach(() => {
@@ -855,6 +901,7 @@ describe('SwitcherPlusKeymap', () => {
 
     afterAll(() => {
       mockReset(mockModal);
+      mockReset(mockPlatform);
     });
 
     it('should render a facet indicator using default modifiers', () => {
@@ -1276,6 +1323,136 @@ describe('SwitcherPlusKeymap', () => {
       // Expect it to first clear all the child elements
       expect(mockSuggParentEl.empty).toHaveBeenCalled();
       expect(renderSuggestionSpy).toHaveBeenCalledWith(mockCommandSugg, mockSuggParentEl);
+    });
+  });
+
+  describe('Rendering Markdown content', () => {
+    const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
+    let sut: SwitcherPlusKeymap;
+    let mockSuggParentEl: MockProxy<HTMLDivElement>;
+    let mockTitleEl: MockProxy<HTMLElement>;
+    let file: TFile;
+    let renderContentAsyncSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      file = new TFile();
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        mockModal,
+        mockConfig,
+      );
+
+      mockTitleEl = mock<HTMLElement>();
+      mockSuggParentEl = mock<HTMLDivElement>({
+        querySelector: mockFn().calledWith('.qsp-title').mockReturnValue(mockTitleEl),
+      });
+
+      mockConfig.renderMarkdownContentInSuggestions = {
+        isEnabled: true,
+        renderHeadings: false,
+        toggleContentRenderingKeys: null,
+      };
+
+      renderContentAsyncSpy = jest
+        .spyOn(Handler, 'renderMarkdownContentAsync')
+        .mockReturnValue();
+    });
+
+    afterEach(() => {
+      mockChooser.values = null;
+      mockChooser.suggestions = null;
+      renderContentAsyncSpy.mockClear();
+      mockRenderResults.mockClear();
+
+      mockClear(mockChooser);
+      mockClear(mockSuggParentEl);
+      mockClear(mockTitleEl);
+    });
+
+    afterAll(() => {
+      mockConfig.renderMarkdownContentInSuggestions = null;
+      renderContentAsyncSpy.mockRestore();
+    });
+
+    it('should render a HeadingSuggestion as HTML', () => {
+      const heading = makeHeading(chance.word(), 1);
+      const sugg = makeHeadingSuggestion(heading, file, null);
+      mockChooser.values = [sugg];
+      mockChooser.suggestions = [mockSuggParentEl];
+      mockChooser.selectedItem = 0;
+
+      sut.toggleMarkdownContentRendering(null, null);
+
+      expect(renderContentAsyncSpy).toHaveBeenCalledWith(
+        mockApp,
+        mockTitleEl,
+        heading.heading,
+        file.path,
+      );
+    });
+
+    it('should render a SymbolSuggestion with a Heading payload as HTML', () => {
+      const heading = makeHeading(chance.word(), 1);
+      const sugg = makeSymbolSuggestion(heading, SymbolType.Heading, file);
+      mockChooser.values = [sugg];
+      mockChooser.suggestions = [mockSuggParentEl];
+      mockChooser.selectedItem = 0;
+
+      sut.toggleMarkdownContentRendering(null, null);
+
+      expect(renderContentAsyncSpy).toHaveBeenCalledWith(
+        mockApp,
+        mockTitleEl,
+        heading.heading,
+        file.path,
+      );
+    });
+
+    it('should toggle the rendering from HTML to raw text', () => {
+      const heading = makeHeading(chance.word(), 1);
+      const sugg = makeHeadingSuggestion(heading, file, null);
+      mockChooser.values = [sugg];
+      mockChooser.suggestions = [mockSuggParentEl];
+      mockChooser.selectedItem = 0;
+
+      // Return a value here to indicate that the suggestion is currently being displayed
+      // as HTML and therefore shoudl be toggled to raw text
+      mockTitleEl.querySelector
+        .calledWith('.qsp-rendered-container')
+        .mockReturnValueOnce(mock<Element>());
+
+      sut.toggleMarkdownContentRendering(null, null);
+
+      expect(mockRenderResults).toHaveBeenCalledWith(
+        mockTitleEl,
+        heading.heading,
+        sugg.match,
+      );
+    });
+
+    it('should toggle the rendering from raw text to HTML', () => {
+      const heading = makeHeading(chance.word(), 1);
+      const sugg = makeHeadingSuggestion(heading, file, null);
+      mockChooser.values = [sugg];
+      mockChooser.suggestions = [mockSuggParentEl];
+      mockChooser.selectedItem = 0;
+
+      // Return null here to indicate that the suggestion is currently being displayed
+      // as raw text and should be toggled to HTML
+      mockTitleEl.querySelector
+        .calledWith('.qsp-rendered-container')
+        .mockReturnValueOnce(null);
+
+      sut.toggleMarkdownContentRendering(null, null);
+
+      expect(renderContentAsyncSpy).toHaveBeenCalledWith(
+        mockApp,
+        mockTitleEl,
+        heading.heading,
+        file.path,
+      );
     });
   });
 });

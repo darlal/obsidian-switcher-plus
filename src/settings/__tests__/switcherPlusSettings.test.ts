@@ -143,6 +143,11 @@ function getDefaultSettingsData(): SettingsData {
       Mode[Mode.HeadingsList] as keyof typeof Mode,
     ],
     showModeTriggerInstructions: true,
+    renderMarkdownContentInSuggestions: {
+      isEnabled: false,
+      renderHeadings: false,
+      toggleContentRenderingKeys: { modifiers: ['Shift', 'Ctrl'], key: 'm' },
+    },
   };
 
   return data;
@@ -281,6 +286,11 @@ function getTransientSettingsData(): SettingsData {
     },
     allowCreateNewFileInModeNames: [Mode[Mode.CommandList] as keyof typeof Mode],
     showModeTriggerInstructions: chance.bool(),
+    renderMarkdownContentInSuggestions: {
+      isEnabled: false,
+      renderHeadings: false,
+      toggleContentRenderingKeys: { modifiers: ['Shift', 'Ctrl'], key: 'm' },
+    },
   };
 
   return data;

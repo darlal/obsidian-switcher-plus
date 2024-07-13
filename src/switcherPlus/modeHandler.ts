@@ -20,6 +20,7 @@ import {
   isExSuggestion,
   isOfType,
   isTFile,
+  ComponentManager,
 } from 'src/utils';
 import {
   Mode,
@@ -127,6 +128,7 @@ export class ModeHandler {
 
   onClose() {
     this.exKeymap.isOpen = false;
+    ComponentManager.unload();
   }
 
   setSessionOpenMode(

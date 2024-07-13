@@ -2,7 +2,7 @@ import { Handler } from './handler';
 import { StandardExHandler } from './standardExHandler';
 import { EditorHandler } from './editorHandler';
 import { BookmarksHandler } from './bookmarksHandler';
-import { HeadingsListFacetIds } from 'src/settings';
+import { HeadingsListFacetIds, SwitcherPlusSettings } from 'src/settings';
 import {
   HeadingCache,
   PreparedQuery,
@@ -13,6 +13,8 @@ import {
   WorkspaceLeaf,
   TFolder,
   ViewRegistry,
+  renderResults,
+  App,
 } from 'obsidian';
 import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import {
@@ -101,15 +103,17 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   renderSuggestion(sugg: HeadingSuggestion, parentEl: HTMLElement): boolean {
     let handled = false;
     if (sugg) {
-      const { item } = sugg;
+      const { item, file, match } = sugg;
+      const { app, settings } = this;
 
       this.addClassesToSuggestionContainer(parentEl, [
         'qsp-suggestion-headings',
         `qsp-headings-l${item.level}`,
       ]);
 
-      const contentEl = this.renderContent(parentEl, item.heading, sugg.match);
-      this.renderPath(contentEl, sugg.file);
+      const { contentEl, titleEl } = Handler.createContentStructureElements(parentEl);
+      HeadingsHandler.renderHeadingContent(app, settings, titleEl, item, file, match);
+      this.renderPath(contentEl, file);
 
       // render the flair icons
       const flairContainerEl = this.createFlairContainer(parentEl);
@@ -129,6 +133,49 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     }
 
     return handled;
+  }
+
+  /**
+   * Renders the heading content into titleEl. Note when shouldRenderAsHTML is true
+   * rendering will happen asynchronously
+   *
+   * @static
+   * @param {App} app
+   * @param {SwitcherPlusSettings} config
+   * @param {HTMLElement} titleEl The parent element that the heading text content should
+   * be rended into
+   * @param {HeadingCache} headingCache
+   * @param {TFile} sourceFile The source file that contains the heading, used for
+   * resolving relative links
+   * @param {?SearchResult} [searchResult]
+   * @param {?boolean} [renderAsHTMLOverride] True to convert markdown text to HTML
+   * elements using MarkdownRenderer.render. This means that search matches (if any) will
+   * not be highlighted in the resulting HTML. False to keep markdown text and search matches
+   * (if any) will be highlighted. Omit this parameter to respect user defined rendering
+   * settings.
+   */
+  static renderHeadingContent(
+    app: App,
+    config: SwitcherPlusSettings,
+    titleEl: HTMLElement,
+    headingCache: HeadingCache,
+    sourceFile: TFile,
+    searchResult?: SearchResult,
+    renderAsHTMLOverride?: boolean,
+  ): void {
+    const { heading } = headingCache;
+    const {
+      renderMarkdownContentInSuggestions: { isEnabled, renderHeadings },
+    } = config;
+
+    // If the override is null or undefined, fallback to the config value
+    renderAsHTMLOverride = renderAsHTMLOverride ?? (isEnabled && renderHeadings);
+
+    if (renderAsHTMLOverride) {
+      Handler.renderMarkdownContentAsync(app, titleEl, heading, sourceFile.path);
+    } else {
+      renderResults(titleEl, heading, searchResult);
+    }
   }
 
   getAvailableFacets(inputInfo: InputInfo): Facet[] {

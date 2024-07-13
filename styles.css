@@ -104,6 +104,29 @@
   padding-left: calc(var(--symbol-base-padding) + (6 * var(--symbol-indent-padding)));
 }
 
+/* Wrapper container for rendered markdown content using MarkdownRenderer.render() */
+.qsp-rendered-container {}
+
+/* Override styles for child elements of rendered markdown content */
+.qsp-rendered-container > * {
+  /* Remove start margin/padding so elements don't take up a bunch of extra
+    horizontal space */
+  margin-block-start: 0px;
+  margin-inline-start: 0px;
+  padding-block-start: 0px;
+  padding-inline-start: 0px;
+  /* Disable elements from reacting to mouse events, so things like links & tags don't
+     react to mouseover hover, etc.. */
+  pointer-events: none;
+}
+
+/* Rendered markdown content that starts with an Ordered List should keep it's start
+  margin so that the list number is displayed properly. Obsidian defaults to 40px */
+.qsp-rendered-container > ol {
+  padding-inline-start: 40px;
+  margin-block-end: 0px;
+}
+
 /* command suggestion item */
 .qsp-suggestion-command {}
 

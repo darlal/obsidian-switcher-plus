@@ -13,6 +13,7 @@ import {
   LinkCache,
   OpenViewState,
   ReferenceCache,
+  renderResults,
   SearchResult,
   SectionCache,
   setIcon,
@@ -39,6 +40,7 @@ import {
 import { getLinkType, isCalloutCache, isHeadingCache, isTagCache } from 'src/utils';
 import { InputInfo, ParsedCommand, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler } from './handler';
+import { HeadingsHandler } from './headingsHandler';
 import { CANVAS_NODE_FACET_ID_MAP } from 'src/settings';
 
 export type SymbolInfoExcludingCanvasNodes = Omit<SymbolInfo, 'symbol'> & {
@@ -126,7 +128,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
   renderSuggestion(sugg: SymbolSuggestion, parentEl: HTMLElement): boolean {
     let handled = false;
     if (sugg) {
-      const { item } = sugg;
+      const { item, file, match } = sugg;
       const parentElClasses = ['qsp-suggestion-symbol'];
 
       if (
@@ -138,9 +140,22 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       }
 
       this.addClassesToSuggestionContainer(parentEl, parentElClasses);
+      const { titleEl } = Handler.createContentStructureElements(parentEl);
 
-      const text = SymbolHandler.getSuggestionTextForSymbol(item);
-      this.renderContent(parentEl, text, sugg.match);
+      if (isHeadingCache(item.symbol)) {
+        HeadingsHandler.renderHeadingContent(
+          this.app,
+          this.settings,
+          titleEl,
+          item.symbol,
+          file,
+          match,
+        );
+      } else {
+        const text = SymbolHandler.getSuggestionTextForSymbol(item);
+        renderResults(titleEl, text, match);
+      }
+
       this.addSymbolIndicator(item, parentEl);
       handled = true;
     }

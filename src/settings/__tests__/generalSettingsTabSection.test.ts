@@ -500,6 +500,45 @@ describe('generalSettingsTabSection', () => {
     });
   });
 
+  describe('showRenderMarkdownContentAsHTML', () => {
+    type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
+    let toggleSettingOnChangeFn: addToggleSettingArgs[5];
+    let saveSettingsSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      saveSettingsSpy = jest.spyOn(config, 'saveSettings');
+    });
+
+    afterAll(() => {
+      saveSettingsSpy.mockRestore();
+    });
+
+    it('should save changes to the renderMarkdownContentInSuggestions setting', () => {
+      const initialValue = false;
+      const finalValue = true;
+
+      config.renderMarkdownContentInSuggestions.renderHeadings = initialValue;
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+        if (args[1] === 'Display Headings as Live Preview') {
+          toggleSettingOnChangeFn = args[5];
+        }
+
+        return mock<Setting>({ nameEl: mock<HTMLElement>() });
+      });
+
+      sut.showRenderMarkdownContentAsHTML(mockContainerEl, config);
+
+      // trigger the change/save
+      toggleSettingOnChangeFn(finalValue, config);
+
+      expect(saveSettingsSpy).toHaveBeenCalled();
+      expect(config.renderMarkdownContentInSuggestions.renderHeadings).toBe(finalValue);
+
+      config.renderMarkdownContentInSuggestions.renderHeadings = false;
+      addToggleSettingSpy.mockReset();
+    });
+  });
+
   describe('showInsertLinkInEditor', () => {
     type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
     let toggleSettingOnChangeFn: addToggleSettingArgs[5];

@@ -11,7 +11,12 @@ import {
   SymbolInfo,
 } from 'src/types';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
-import { Handler, SymbolHandler, SymbolInfoExcludingCanvasNodes } from 'src/Handlers';
+import {
+  Handler,
+  HeadingsHandler,
+  SymbolHandler,
+  SymbolInfoExcludingCanvasNodes,
+} from 'src/Handlers';
 import {
   WorkspaceLeaf,
   PreparedQuery,
@@ -32,6 +37,7 @@ import {
   setIcon,
   CanvasFileView,
   CanvasNodeElement,
+  renderResults,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -53,6 +59,7 @@ import {
   makeCanvasFileContentString,
   makeBookmarkedFileSuggestion,
   symbolActiveTrigger,
+  getCachedMetadata,
 } from '@fixtures';
 import { mock, MockProxy, mockClear, mockFn } from 'jest-mock-extended';
 import { Chance } from 'chance';
@@ -673,42 +680,72 @@ describe('symbolHandler', () => {
       expect(results).toHaveLength(canvasNodes.length);
       expect(mockVault.cachedRead).toHaveBeenCalledWith(mockCanvasFile);
     });
+
+    it('should return suggestion for Headings', async () => {
+      filterText = 'heading3';
+      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
+
+      const metadata = getCachedMetadata();
+      mockMetadataCache.getFileCache.mockReturnValueOnce(metadata);
+
+      const expectedHeading = metadata.headings.filter(
+        ({ heading }) => heading === filterText,
+      )[0];
+
+      mockFuzzySearch.mockImplementation((_q, text) => {
+        return text === filterText ? makeFuzzyMatch() : null;
+      });
+
+      inputText = `${symbolTrigger}${filterText}`;
+      startIndex = 0;
+      const inputInfo = new InputInfo(inputText);
+      sut.validateCommand(inputInfo, startIndex, filterText, null, mockLeftSplitLeaf);
+
+      const results = await sut.getSuggestions(inputInfo);
+
+      expect(results).toHaveLength(1);
+      expect(results.every((sugg) => sugg.type === SuggestionType.SymbolList)).toBe(true);
+      expect(results[0].item.symbol).toEqual(expectedHeading);
+      expect(mockPrepareQuery).toHaveBeenCalled();
+      expect(mockFuzzySearch).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
+        mockLeftSplitLeaf.view.file,
+      );
+
+      mockFuzzySearch.mockReset();
+    });
   });
 
   describe('renderSuggestion', () => {
-    let renderContentSpy: jest.SpyInstance;
     let mockParentEl: MockProxy<HTMLElement>;
+    const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
 
     beforeAll(() => {
-      renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
       mockParentEl = mock<HTMLElement>();
       mockParentEl.createDiv.mockReturnValue(mock<HTMLDivElement>());
     });
 
     afterEach(() => {
       mockParentEl.createDiv.mockClear();
-      renderContentSpy.mockClear();
+      mockRenderResults.mockClear();
     });
 
     afterAll(() => {
-      renderContentSpy.mockRestore();
+      mockRenderResults.mockRestore();
     });
 
     it('should not throw an error with a null suggestion', () => {
       expect(() => sut.renderSuggestion(null, null)).not.toThrow();
     });
 
-    it('should render Heading suggestion', () => {
+    it('should delegate rendering of headings to Headings Handler', () => {
+      const renderHeadingSpy = jest.spyOn(HeadingsHandler, 'renderHeadingContent');
+
       sut.renderSuggestion(symbolSugg, mockParentEl);
 
-      expect(mockParentEl.addClasses).toHaveBeenCalledWith(
-        expect.arrayContaining(['mod-complex', 'qsp-suggestion-symbol']),
-      );
-      expect(renderContentSpy).toHaveBeenCalledWith(
-        mockParentEl,
-        (symbolSugg.item.symbol as HeadingCache).heading,
-        symbolSugg.match,
-      );
+      expect(renderHeadingSpy).toHaveBeenCalled();
+
+      renderHeadingSpy.mockRestore();
     });
 
     it('should render Tag suggestion', () => {
@@ -716,10 +753,10 @@ describe('symbolHandler', () => {
 
       sut.renderSuggestion(tagSugg, mockParentEl);
 
-      expect(renderContentSpy).toHaveBeenCalledWith(
-        mockParentEl,
+      // Check that the first call to renderResults has the expected content passed in
+      // as the second parameter
+      expect(mockRenderResults.mock.calls[0][1]).toBe(
         (tagSugg.item.symbol as TagCache).tag.slice(1),
-        tagSugg.match,
       );
     });
 
@@ -729,11 +766,10 @@ describe('symbolHandler', () => {
       sut.renderSuggestion(linkSugg, mockParentEl);
 
       const { link, displayText } = linkSugg.item.symbol as ReferenceCache;
-      expect(renderContentSpy).toHaveBeenCalledWith(
-        mockParentEl,
-        `${link}|${displayText}`,
-        linkSugg.match,
-      );
+
+      // Check that the first call to renderResults has the expected content passed in
+      // as the second parameter
+      expect(mockRenderResults.mock.calls[0][1]).toBe(`${link}|${displayText}`);
     });
 
     it('should render a callout suggestion', () => {
@@ -744,10 +780,11 @@ describe('symbolHandler', () => {
       sut.renderSuggestion(calloutSugg, mockParentEl);
 
       expect(addIndicatorSpy).toHaveBeenCalled();
-      expect(renderContentSpy).toHaveBeenCalledWith(
-        mockParentEl,
+
+      // Check that the first call to renderResults has the expected content passed in
+      // as the second parameter
+      expect(mockRenderResults.mock.calls[0][1]).toBe(
         (calloutSugg.item.symbol as CalloutCache).calloutTitle,
-        calloutSugg.match,
       );
 
       addIndicatorSpy.mockRestore();
@@ -780,10 +817,11 @@ describe('symbolHandler', () => {
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining(['mod-complex', 'qsp-suggestion-symbol']),
       );
-      expect(renderContentSpy).toHaveBeenCalledWith(
-        mockParentEl,
+
+      // Check that the first call to renderResults has the expected content passed in
+      // as the second parameter
+      expect(mockRenderResults.mock.calls[0][1]).toBe(
         (canvasSugg.item.symbol as CanvasGroupData).label,
-        symbolSugg.match,
       );
     });
   });

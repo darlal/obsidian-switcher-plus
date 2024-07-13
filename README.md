@@ -223,6 +223,7 @@ In the demo below, `Quick Switcher++: Open Symbols for the active editor` global
 | Restore previous input in Command Mode | **Enabled**: restore previous command mode input when launched via global command hotkey | disabled |
 | Restore previous input | **Enabled**: restore previous switcher input when launched via global command hotkey | disabled |
 | Display mode trigger instructions | **Enabled**: the trigger key for each mode will be displayed in the instructions section of the Switcher. | enabled |
+| Display Headings as Live Preview | **Disabled**: Headings will be rendered as HTML similar to the Obsidian "Live Preview" display. Note that when this is enabled search matches in these headings will not be highlighted. The `toggle preview (selected heading)` hotkey can be used to toggle the display of individual results.<br />**Disabled**: Headings will be rendered as raw text and search matches will be highlighted. | disabled |
 
 ## Global Commands for Hotkeys
 

@@ -1,10 +1,12 @@
 import {
   App,
+  Component,
   EditorPosition,
   FileView,
   fuzzySearch,
   HeadingCache,
   Keymap,
+  MarkdownRenderer,
   MarkdownView,
   MetadataCache,
   normalizePath,
@@ -39,6 +41,7 @@ import {
 import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
+  ComponentManager,
   getTFileByPath,
   isEditorSuggestion,
   isHeadingSuggestion,
@@ -665,8 +668,7 @@ export abstract class Handler<T> {
   }
 
   /**
-   * Creates the UI elements to display the primary suggestion text using
-   * the correct styles.
+   * Displays the primary suggestion content.
    * @param  {HTMLElement} parentEl containing element, this should be the element with
    * the "suggestion-item" style
    * @param  {string} content
@@ -680,6 +682,26 @@ export abstract class Handler<T> {
     match: SearchResult,
     offset?: number,
   ): HTMLDivElement {
+    const { contentEl, titleEl } = Handler.createContentStructureElements(parentEl);
+    renderResults(titleEl, content, match, offset);
+
+    return contentEl;
+  }
+
+  /**
+   * Creates the DOM structure for displaying the primary suggestion content
+   *
+   * @static
+   * @param {HTMLElement} parentEl
+   * @returns {{
+   *     contentEl: HTMLDivElement;
+   *     titleEl: HTMLDivElement;
+   *   }}
+   */
+  static createContentStructureElements(parentEl: HTMLElement): {
+    contentEl: HTMLDivElement;
+    titleEl: HTMLDivElement;
+  } {
     const contentEl = parentEl.createDiv({
       cls: ['suggestion-content', 'qsp-content'],
     });
@@ -688,9 +710,70 @@ export abstract class Handler<T> {
       cls: ['suggestion-title', 'qsp-title'],
     });
 
-    renderResults(titleEl, content, match, offset);
+    return { contentEl, titleEl };
+  }
 
-    return contentEl;
+  /**
+   * Asynchronously renders (converts) markdown string content to an HTML element
+   *
+   * @param {App} app
+   * @param {HTMLElement} containerEl The parent element for the rendered content. This
+   * should usually be the 'suggestion-title' element.
+   * @param {string} content The markdown source to render
+   * @param {string} sourcePath The normalized path of this markdown file, used to resolve relative internal links
+   */
+  static renderMarkdownContentAsync(
+    app: App,
+    containerEl: HTMLElement,
+    content: string,
+    sourcePath: string,
+  ): void {
+    Handler.renderMarkdownContent(
+      app,
+      containerEl,
+      content,
+      sourcePath,
+      ComponentManager.getRootComponent(),
+    ).catch((reason) => {
+      console.log(
+        'Switcher++: error rendering markdown to html. ',
+        reason,
+        `content: ${content}`,
+      );
+    });
+  }
+
+  /**
+   * Renders (converts) markdown string content to an HTML element
+   *
+   * @async
+   * @param {App} app
+   * @param {HTMLElement} containerEl The parent element for the rendered content. This
+   * should usually be the 'suggestion-title' element.
+   * @param {string} content The markdown source to render
+   * @param {string} sourcePath The normalized path of this markdown file, used to resolve relative internal links
+   * @param {Component} component A parent component to manage the lifecycle of the rendered child components.
+   * @returns {Promise<HTMLSpanElement>} the root element containing the rendered elements
+   */
+  static async renderMarkdownContent(
+    app: App,
+    containerEl: HTMLElement,
+    content: string,
+    sourcePath: string,
+    component: Component,
+  ): Promise<HTMLSpanElement> {
+    const wrapperEl = containerEl.createSpan({ cls: ['qsp-rendered-container'] });
+    await MarkdownRenderer.render(app, content, wrapperEl, sourcePath, component);
+
+    // Find the inserted <p> wrapping node and replace it with it's children
+    // Note: it's important to operate at the Node abstraction here so that all
+    // Node types that may exist get moved from <p> to wrapperEl
+    if (wrapperEl.childNodes.length === 1 && wrapperEl.firstChild.nodeName === 'P') {
+      const paraNode = wrapperEl.firstChild;
+      paraNode.replaceWith(...Array.from(paraNode.childNodes));
+    }
+
+    return wrapperEl;
   }
 
   /** add the base suggestion styles to the suggestion container element

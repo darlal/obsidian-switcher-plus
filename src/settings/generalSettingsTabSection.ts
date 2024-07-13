@@ -88,6 +88,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     );
 
     this.showResetFacetEachSession(containerEl, config);
+    this.showRenderMarkdownContentAsHTML(containerEl, config);
   }
 
   showPreferredSourceForTitle(
@@ -297,6 +298,31 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         config.save();
       },
     );
+  }
+
+  showRenderMarkdownContentAsHTML(
+    containerEl: HTMLElement,
+    config: SwitcherPlusSettings,
+  ): void {
+    const setting = this.addToggleSetting(
+      containerEl,
+      'Display Headings as Live Preview',
+      'When enabled, Headings will be rendered as HTML similar to the Obsidian "Live Preview" display. When disabled, Headings will be rendered as raw text. Use the "toggle preview (selected heading)" hotkey to toggle the display for individual headings.',
+      config.renderMarkdownContentInSuggestions.renderHeadings,
+      null,
+      (value, config) => {
+        const { renderMarkdownContentInSuggestions } = config;
+        renderMarkdownContentInSuggestions.renderHeadings = value;
+        renderMarkdownContentInSuggestions.isEnabled = value;
+        config.save();
+      },
+    );
+
+    // Show a callout that this feature is experimental
+    setting?.nameEl?.createSpan({
+      cls: ['qsp-tag', 'qsp-warning'],
+      text: 'Experimental',
+    });
   }
 
   showInsertLinkInEditor(containerEl: HTMLElement, config: SwitcherPlusSettings): void {

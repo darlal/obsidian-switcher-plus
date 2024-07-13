@@ -1,5 +1,10 @@
 import { SwitcherPlusSettings } from 'src/settings';
-import { generateMarkdownLink } from 'src/utils';
+import {
+  generateMarkdownLink,
+  isHeadingCache,
+  isHeadingSuggestion,
+  isSymbolSuggestion,
+} from 'src/utils';
 import {
   AnySuggestion,
   CommandSuggestion,
@@ -25,24 +30,29 @@ import {
   Hotkey,
   HotkeysSettingTab,
   KeymapEventListener,
+  HeadingCache,
+  TFile,
 } from 'obsidian';
-import { CommandHandler } from 'src/Handlers';
+import { CommandHandler, HeadingsHandler } from 'src/Handlers';
 
 /**
- * Mapping of Modifiers keys to their string representation for display purposes on MacOS.
+ * Mapping of special keys to their string representation for display purposes.
  */
-const MODIFIER_DISPLAY_STR_MAC: Record<Modifier, string> = {
-  Mod: '⌘',
-  Ctrl: '⌃',
-  Meta: '⌘',
-  Alt: '⌥',
-  Shift: '⇧',
+const SPECIAL_KEYS_DISPLAY_STR: Record<string, string> = {
+  Enter: '↵',
+  Backspace: '⌫',
+  ArrowLeft: '←',
+  ArrowUp: '↑',
+  ArrowDown: '↓',
+  ArrowRight: '→',
+  Tab: '↹',
 };
 
 /**
- * Mapping of Modifiers keys to their string representation for display purposes.
+ * Mapping of keys to their string representation for display purposes.
  */
-const MODIFIER_DISPLAY_STR: Record<Modifier, string> = {
+const KEYS_DISPLAY_STR: Record<string, string> = {
+  ...SPECIAL_KEYS_DISPLAY_STR,
   Mod: 'Ctrl',
   Ctrl: 'Ctrl',
   Meta: 'Win',
@@ -51,15 +61,15 @@ const MODIFIER_DISPLAY_STR: Record<Modifier, string> = {
 };
 
 /**
- * Mapping of keys to their string representation for display purposes.
+ * Mapping of keys to their string representation for display purposes on MacOS.
  */
-const KEY_DISPLAY_STR: Record<string, string> = {
-  Enter: '↵',
-  Backspace: '⌫',
-  ArrowLeft: '←',
-  ArrowUp: '↑',
-  ArrowDown: '↓',
-  ArrowRight: '→',
+const KEYS_DISPLAY_STR_MAC: Record<string, string> = {
+  ...SPECIAL_KEYS_DISPLAY_STR,
+  Mod: '⌘',
+  Ctrl: '⌃',
+  Meta: '⌘',
+  Alt: '⌥',
+  Shift: '⇧',
 };
 
 export type CustomKeymapInfo = Hotkey &
@@ -97,21 +107,11 @@ export class SwitcherPlusKeymap {
     return Platform.isMacOS ? 'Meta' : 'Ctrl';
   }
 
-  private static _keyDisplayStr: Record<string, string>;
-
   /**
    * A Map containing the string representation for various keys to be used for display purposes.
    */
   static get keyDisplayStr(): Record<string, string> {
-    if (!this._keyDisplayStr) {
-      const modifierSet = Platform.isMacOS
-        ? MODIFIER_DISPLAY_STR_MAC
-        : MODIFIER_DISPLAY_STR;
-
-      this._keyDisplayStr = { ...modifierSet, ...KEY_DISPLAY_STR };
-    }
-
-    return this._keyDisplayStr;
+    return Platform.isMacOS ? KEYS_DISPLAY_STR_MAC : KEYS_DISPLAY_STR;
   }
 
   constructor(
@@ -754,6 +754,51 @@ export class SwitcherPlusKeymap {
     return false;
   }
 
+  toggleMarkdownContentRendering(
+    _evt: KeyboardEvent,
+    _ctx: KeymapContext,
+  ): boolean | void {
+    const { app, config, chooser } = this;
+    const selectedSugg = chooser.values?.[chooser.selectedItem];
+    let headingCache: HeadingCache = null;
+    let file: TFile = null;
+
+    if (isSymbolSuggestion(selectedSugg) && isHeadingCache(selectedSugg.item.symbol)) {
+      // Suggestion is a Symbol suggestion with a HeadingCache payload
+      headingCache = selectedSugg.item.symbol;
+      file = selectedSugg.file;
+    } else if (isHeadingSuggestion(selectedSugg)) {
+      // Suggestion is a regular Heading Suggestion
+      headingCache = selectedSugg.item;
+      file = selectedSugg.file;
+    }
+
+    if (headingCache && file) {
+      const parentEl = chooser.suggestions[chooser.selectedItem];
+      const titleEl = parentEl.querySelector<HTMLElement>('.qsp-title');
+
+      // If the .qsp-rendered-container element exists then the suggestion is
+      // currently rendered as HTML, so toggle it to disable HTML rendering.
+      const shouldRenderAsHTML = !titleEl.querySelector('.qsp-rendered-container');
+
+      // Remove the child nodes from titleEl container since they will be re-rendered.
+      titleEl.empty();
+
+      HeadingsHandler.renderHeadingContent(
+        app,
+        config,
+        titleEl,
+        headingCache,
+        file,
+        selectedSugg.match,
+        shouldRenderAsHTML,
+      );
+    }
+
+    // Return false to prevent default
+    return false;
+  }
+
   useSelectedItem(evt: KeyboardEvent, _ctx: KeymapContext): boolean | void {
     this.chooser.useSelectedItem(evt);
   }
@@ -868,20 +913,24 @@ export class SwitcherPlusKeymap {
     shouldAddToColl = true,
     isInstructionOnly = false,
   ): CustomKeymapInfo {
-    const { modifiers, key } = hotkey;
+    let customKeymap: CustomKeymapInfo = null;
 
-    const customKeymap: CustomKeymapInfo = {
-      modes,
-      modifiers,
-      key,
-      eventListener,
-      purpose,
-      command: SwitcherPlusKeymap.commandDisplayStr(modifiers, key),
-      isInstructionOnly,
-    };
+    if (hotkey) {
+      const { modifiers, key } = hotkey;
 
-    if (shouldAddToColl) {
-      this.customKeysInfo.push(customKeymap);
+      customKeymap = {
+        modes,
+        modifiers,
+        key,
+        eventListener,
+        purpose,
+        command: SwitcherPlusKeymap.commandDisplayStr(modifiers, key),
+        isInstructionOnly,
+      };
+
+      if (shouldAddToColl) {
+        this.customKeysInfo.push(customKeymap);
+      }
     }
 
     return customKeymap;
@@ -974,6 +1023,17 @@ export class SwitcherPlusKeymap {
       [Mode.CommandList],
       config.togglePinnedCommandKeys,
       this.togglePinnedCommand.bind(this),
+    );
+
+    // Toggles between showing raw text content for a heading (with search match
+    // highlights), or, showing rendered markdown content for the heading.
+    const { renderMarkdownContentInSuggestions } = config;
+    this.createCustomKeymap(
+      'toggle preview (selected heading)',
+      [Mode.HeadingsList],
+      renderMarkdownContentInSuggestions.toggleContentRenderingKeys,
+      this.toggleMarkdownContentRendering.bind(this),
+      renderMarkdownContentInSuggestions.isEnabled,
     );
   }
 }

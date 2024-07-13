@@ -16,6 +16,8 @@ import {
   normalizePath,
   setIcon,
   parseLinktext,
+  Component,
+  MarkdownRenderer,
 } from 'obsidian';
 import {
   MockSetting,
@@ -36,6 +38,12 @@ const mockKeymap = mock<typeof Keymap>();
 const mockPlatform = mock<typeof Platform>({
   isDesktop: true,
   isMobile: false,
+});
+
+const mockMarkdownRenderer = mock<MarkdownRenderer>();
+
+const mockComponent = jest.fn<Component, []>(() => {
+  return mock<Component>();
 });
 
 const mockModal = jest.fn<Modal, [app: App]>((app) => {
@@ -100,6 +108,8 @@ export {
   mockSetIcon as setIcon,
   mockParseLinktext as parseLinktext,
   mockKeymap as Keymap,
+  mockMarkdownRenderer as MarkdownRenderer,
+  mockComponent as Component,
   MockSetting as Setting,
   MockTextComponent as TextComponent,
   MockToggleComponent as ToggleComponent,

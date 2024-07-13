@@ -7,6 +7,7 @@ import {
   MetadataCache,
   PreparedQuery,
   prepareQuery,
+  renderResults,
   TAbstractFile,
   TFile,
   TFolder,
@@ -78,6 +79,7 @@ function makeFileTree(expectedFile: TFile, parentFolderName = 'l2Folder2'): TFol
 
 describe('headingsHandler', () => {
   let sut: HeadingsHandler;
+  let mockApp: MockProxy<App>;
   let mockWorkspace: MockProxy<Workspace>;
   let mockVault: MockProxy<Vault>;
   let mockMetadataCache: MockProxy<MetadataCache>;
@@ -96,7 +98,7 @@ describe('headingsHandler', () => {
     mockViewRegistry = mock<ViewRegistry>();
     mockViewRegistry.isExtensionRegistered.mockReturnValue(true);
 
-    const mockApp = mock<App>({
+    mockApp = mock<App>({
       workspace: mockWorkspace,
       vault: mockVault,
       metadataCache: mockMetadataCache,
@@ -717,7 +719,9 @@ describe('headingsHandler', () => {
     });
 
     test('with HeadingCache, it should render a suggestion with match offsets', () => {
-      const renderContentSpy = jest.spyOn(Handler.prototype, 'renderContent');
+      const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
+      mockRenderResults.mockClear();
+
       const mockContentEl = mock<HTMLDivElement>();
       const mockParentEl = mock<HTMLElement>();
       mockParentEl.createDiv.mockReturnValue(mockContentEl);
@@ -729,11 +733,11 @@ describe('headingsHandler', () => {
       sut.renderSuggestion(headingSugg, mockParentEl);
 
       expect(renderPathSpy).toHaveBeenCalledWith(mockContentEl, headingSugg.file);
-      expect(renderContentSpy).toHaveBeenCalledWith(
-        mockParentEl,
-        headingSugg.item.heading,
-        headingSugg.match,
-      );
+
+      // Check that the first call to renderResults has the expected content passed in
+      expect(mockRenderResults.mock.calls[0][1]).toBe(headingSugg.item.heading);
+      expect(mockRenderResults.mock.calls[0][2]).toBe(headingSugg.match);
+
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining([
           'mod-complex',
@@ -742,7 +746,7 @@ describe('headingsHandler', () => {
         ]),
       );
 
-      renderContentSpy.mockRestore();
+      mockRenderResults.mockRestore();
       renderPathSpy.mockRestore();
     });
 
@@ -755,6 +759,78 @@ describe('headingsHandler', () => {
       sut.renderSuggestion(sugg, mockParentEl);
 
       expect(mockParentEl.addClass).toHaveBeenCalledWith('mod-downranked');
+    });
+
+    it('.renderHeadingContent() should render markdown content when the config setting is enabled and the override is disabled', () => {
+      const file = new TFile();
+      const mockTitleEl = mock<HTMLElement>();
+      const mockConfig = mock<SwitcherPlusSettings>({
+        renderMarkdownContentInSuggestions: { isEnabled: true, renderHeadings: true },
+      });
+
+      const heading = makeHeading(
+        'Unit Test: markdown should render based on config settings',
+        1,
+      );
+
+      const renderMarkdownSpy = jest
+        .spyOn(Handler, 'renderMarkdownContentAsync')
+        .mockReturnValueOnce();
+
+      // Note: omit the optional renderAsHTMLOverride param
+      HeadingsHandler.renderHeadingContent(
+        mockApp,
+        mockConfig,
+        mockTitleEl,
+        heading,
+        file,
+      );
+
+      expect(renderMarkdownSpy).toHaveBeenCalledWith(
+        mockApp,
+        mockTitleEl,
+        heading.heading,
+        file.path,
+      );
+
+      renderMarkdownSpy.mockRestore();
+    });
+
+    it('.renderHeadingContent() should render markdown content when the override is enabled', () => {
+      const file = new TFile();
+      const mockTitleEl = mock<HTMLElement>();
+      const mockConfig = mock<SwitcherPlusSettings>({
+        // Note: disable the config settings
+        renderMarkdownContentInSuggestions: { isEnabled: false, renderHeadings: false },
+      });
+
+      const heading = makeHeading(
+        'Unit Test: markdown should render based on override',
+        1,
+      );
+
+      const renderMarkdownSpy = jest
+        .spyOn(Handler, 'renderMarkdownContentAsync')
+        .mockReturnValueOnce();
+
+      HeadingsHandler.renderHeadingContent(
+        mockApp,
+        mockConfig,
+        mockTitleEl,
+        heading,
+        file,
+        null,
+        true, // Enable override
+      );
+
+      expect(renderMarkdownSpy).toHaveBeenCalledWith(
+        mockApp,
+        mockTitleEl,
+        heading.heading,
+        file.path,
+      );
+
+      renderMarkdownSpy.mockRestore();
     });
   });
 

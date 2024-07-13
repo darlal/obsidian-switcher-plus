@@ -23,6 +23,7 @@ import {
   TAbstractFile,
   FileView,
   SearchMatchPart,
+  MarkdownRenderer,
 } from 'obsidian';
 import {
   defaultOpenViewState,
@@ -45,7 +46,7 @@ import {
   BookmarksItemInfo,
   SettingsData,
 } from 'src/types';
-import { mock, mockClear, MockProxy, mockReset } from 'jest-mock-extended';
+import { mock, mockClear, mockFn, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
 import { SwitcherPlusSettings } from 'src/settings';
 import { stripMDExtensionFromPath } from 'src/utils';
@@ -1114,6 +1115,80 @@ describe('Handler', () => {
           cls: ['suggestion-title', 'qsp-title'],
         }),
       );
+    });
+  });
+
+  describe('renderMarkdownContent', () => {
+    test('renderMarkdownContent should wrap rendered elements with a span', async () => {
+      const content = chance.word();
+      const mockWrapperSpan = mock<HTMLSpanElement>();
+      const mockMarkdownRenderer = jest.mocked<typeof MarkdownRenderer>(MarkdownRenderer);
+
+      const mockContainerEl = mock<HTMLElement>({
+        createSpan: mockFn().mockReturnValueOnce(mockWrapperSpan),
+      });
+
+      await Handler.renderMarkdownContent(mockApp, mockContainerEl, content, null, null);
+
+      expect(mockContainerEl.createSpan).toHaveBeenCalledWith(
+        expect.objectContaining({ cls: ['qsp-rendered-container'] }),
+      );
+
+      expect(mockMarkdownRenderer.render).toHaveBeenCalledWith(
+        mockApp,
+        content,
+        mockWrapperSpan,
+        null,
+        null,
+      );
+
+      mockMarkdownRenderer.render.mockClear();
+    });
+
+    test('renderMarkdownContent should re-parent child nodes from the paragraph container element to the .qsp-rendered-container element', async () => {
+      const paraEl = mock<HTMLParagraphElement>({ nodeName: 'P' });
+
+      const mockWrapperSpan = mock<HTMLSpanElement>({
+        firstChild: paraEl,
+        childNodes: mock<NodeListOf<ChildNode>>({ length: 1 }),
+      });
+
+      const mockContainerEl = mock<HTMLElement>({
+        createSpan: mockFn().mockReturnValueOnce(mockWrapperSpan),
+      });
+
+      await Handler.renderMarkdownContent(mockApp, mockContainerEl, null, null, null);
+
+      // Expect the paragraph el to be replaced in the DOM tree with its former children
+      expect(paraEl.replaceWith).toHaveBeenCalled();
+    });
+
+    test('renderMarkdownContentAsync should log errors to the console', async () => {
+      const errorMsg = 'renderMarkdownContent unit test error';
+      const rejectedPromise = Promise.reject(errorMsg);
+      const content = chance.word();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      const renderMarkdownContentSpy = jest
+        .spyOn(Handler, 'renderMarkdownContent')
+        .mockReturnValueOnce(rejectedPromise);
+
+      Handler.renderMarkdownContentAsync(null, null, content, null);
+
+      try {
+        await rejectedPromise;
+      } catch (e) {
+        /* noop */
+      }
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        `Switcher++: error rendering markdown to html. `,
+        errorMsg,
+        `content: ${content}`,
+      );
+
+      renderMarkdownContentSpy.mockRestore();
+      consoleLogSpy.mockRestore();
     });
   });
 
