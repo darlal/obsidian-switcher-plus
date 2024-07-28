@@ -1,6 +1,6 @@
 import { Chance } from 'chance';
 import { SwitcherPlusSettings } from 'src/settings';
-import { CustomKeymapInfo, MOD_KEY, SwitcherPlusKeymap } from 'src/switcherPlus';
+import { CustomKeymapInfo, SwitcherPlusKeymap } from 'src/switcherPlus';
 import { generateMarkdownLink } from 'src/utils';
 import { CommandHandler } from 'src/Handlers';
 import {
@@ -220,10 +220,11 @@ describe('SwitcherPlusKeymap', () => {
     });
 
     it('should register Tab creation keys', () => {
+      const { modKey } = SwitcherPlusKeymap;
       const keys: [Modifier[], string][] = [
-        [[MOD_KEY], '\\'],
-        [[MOD_KEY, 'Shift'], '\\'],
-        [[MOD_KEY], 'o'],
+        [[modKey], '\\'],
+        [[modKey, 'Shift'], '\\'],
+        [[modKey], 'o'],
       ];
 
       new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, mockConfig);
@@ -636,7 +637,7 @@ describe('SwitcherPlusKeymap', () => {
 
     test('updateKeymapForCustomModes() should unregister standard keys', () => {
       const mockModEnter = mock<KeymapEventHandler>({
-        modifiers: MOD_KEY,
+        modifiers: SwitcherPlusKeymap.modKey,
         key: 'Enter',
       });
 

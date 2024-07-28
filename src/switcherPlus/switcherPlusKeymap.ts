@@ -28,7 +28,39 @@ import {
 } from 'obsidian';
 import { CommandHandler } from 'src/Handlers';
 
-export const MOD_KEY: Modifier = Platform.isMacOS ? 'Meta' : 'Ctrl';
+/**
+ * Mapping of Modifiers keys to their string representation for display purposes on MacOS.
+ */
+const MODIFIER_DISPLAY_STR_MAC: Record<Modifier, string> = {
+  Mod: '⌘',
+  Ctrl: '⌃',
+  Meta: '⌘',
+  Alt: '⌥',
+  Shift: '⇧',
+};
+
+/**
+ * Mapping of Modifiers keys to their string representation for display purposes.
+ */
+const MODIFIER_DISPLAY_STR: Record<Modifier, string> = {
+  Mod: 'Ctrl',
+  Ctrl: 'Ctrl',
+  Meta: 'Win',
+  Alt: 'Alt',
+  Shift: 'Shift',
+};
+
+/**
+ * Mapping of keys to their string representation for display purposes.
+ */
+const KEY_DISPLAY_STR: Record<string, string> = {
+  Enter: '↵',
+  Backspace: '⌫',
+  ArrowLeft: '←',
+  ArrowUp: '↑',
+  ArrowDown: '↓',
+  ArrowRight: '→',
+};
 
 export type CustomKeymapInfo = Hotkey &
   Instruction & {
@@ -49,13 +81,6 @@ export class SwitcherPlusKeymap {
   readonly standardInstructionsEl: HTMLElement;
   readonly facetKeysInfo: Array<CustomKeymapInfo & { facet: Facet }> = [];
   readonly insertIntoEditorKeysInfo: CustomKeymapInfo[] = [];
-  modifierToPlatformStrMap: Record<Modifier, string> = {
-    Mod: 'Ctrl',
-    Ctrl: 'Ctrl',
-    Meta: 'Win',
-    Alt: 'Alt',
-    Shift: 'Shift',
-  };
 
   get isOpen(): boolean {
     return this._isOpen;
@@ -65,6 +90,30 @@ export class SwitcherPlusKeymap {
     this._isOpen = value;
   }
 
+  /**
+   * Returns the "Mod" key based on the current Platform.
+   */
+  static get modKey(): Modifier {
+    return Platform.isMacOS ? 'Meta' : 'Ctrl';
+  }
+
+  private static _keyDisplayStr: Record<string, string>;
+
+  /**
+   * A Map containing the string representation for various keys to be used for display purposes.
+   */
+  static get keyDisplayStr(): Record<string, string> {
+    if (!this._keyDisplayStr) {
+      const modifierSet = Platform.isMacOS
+        ? MODIFIER_DISPLAY_STR_MAC
+        : MODIFIER_DISPLAY_STR;
+
+      this._keyDisplayStr = { ...modifierSet, ...KEY_DISPLAY_STR };
+    }
+
+    return this._keyDisplayStr;
+  }
+
   constructor(
     public app: App,
     public readonly scope: Scope,
@@ -72,19 +121,7 @@ export class SwitcherPlusKeymap {
     private modal: SwitcherPlus,
     private config: SwitcherPlusSettings,
   ) {
-    if (Platform.isMacOS) {
-      this.modifierToPlatformStrMap = {
-        Mod: '⌘',
-        Ctrl: '⌃',
-        Meta: '⌘',
-        Alt: '⌥',
-        Shift: '⇧',
-      };
-    }
-
     this.initKeysInfo();
-    this.bindNavigateToCommandHotkeySelector(this.customKeysInfo, config);
-    this.bindTogglePinnedCommand(this.customKeysInfo, config);
     this.removeDefaultTabKeyBinding(scope, config);
     this.registerNavigationBindings(scope, config.navigationKeys);
     this.registerEditorTabBindings(scope);
@@ -96,129 +133,14 @@ export class SwitcherPlusKeymap {
   }
 
   initKeysInfo(): void {
-    const customFileBasedModes = [
-      Mode.EditorList,
-      Mode.HeadingsList,
-      Mode.RelatedItemsList,
-      Mode.BookmarksList,
-      Mode.SymbolList,
-    ];
-
     // standard mode keys that are registered by default, and
     // should be unregistered in custom modes, then re-registered in standard mode.
     // Note: these won't have the eventListener when they are defined here, since
     // the listener is registered by core Obsidian.
     const standardKeysInfo: CustomKeymapInfo[] = [];
-
-    // custom mode keys that should be registered, then unregistered in standard mode
-    // Note: modifiers should be a comma separated string of Modifiers
-    // without any padding space characters
-    const customKeysInfo: CustomKeymapInfo[] = [
-      {
-        isInstructionOnly: true,
-        modes: customFileBasedModes,
-        modifiers: null,
-        key: null,
-        command: this.commandDisplayStr(['Mod'], '↵'),
-        purpose: 'open in new tab',
-      },
-      {
-        isInstructionOnly: true,
-        modes: customFileBasedModes,
-        modifiers: null,
-        key: null,
-        command: this.commandDisplayStr(['Mod'], '\\'),
-        purpose: 'open to the right',
-      },
-      {
-        isInstructionOnly: true,
-        modes: customFileBasedModes,
-        modifiers: null,
-        key: null,
-        command: this.commandDisplayStr(['Mod', 'Shift'], '\\'),
-        purpose: 'open below',
-      },
-      {
-        isInstructionOnly: true,
-        modes: customFileBasedModes,
-        modifiers: null,
-        key: null,
-        command: this.commandDisplayStr(['Mod'], 'o'),
-        purpose: 'open in new window',
-      },
-      {
-        isInstructionOnly: true,
-        modes: [Mode.CommandList],
-        modifiers: null,
-        key: null,
-        command: `↵`,
-        purpose: 'execute command',
-      },
-      {
-        isInstructionOnly: true,
-        modes: [Mode.WorkspaceList],
-        modifiers: null,
-        key: null,
-        command: `↵`,
-        purpose: 'open workspace',
-      },
-    ];
-
     this.standardKeysInfo.push(...standardKeysInfo);
-    this.customKeysInfo.push(...customKeysInfo);
-  }
 
-  /**
-   * Adds the configured key combination for launching the Obsidian hotkey selection
-   * dialog to customKeysInfo
-   *
-   * @param {CustomKeymapInfo[]} customKeysInfo
-   * @param {SwitcherPlusSettings} config
-   */
-  bindNavigateToCommandHotkeySelector(
-    customKeysInfo: CustomKeymapInfo[],
-    config: SwitcherPlusSettings,
-  ): void {
-    const {
-      navigateToHotkeySelectorKeys: { modifiers, key },
-    } = config;
-
-    const hotkeySelectorNavKeymap: CustomKeymapInfo = {
-      modes: [Mode.CommandList],
-      purpose: 'set hotkey',
-      eventListener: this.navigateToCommandHotkeySelector.bind(this),
-      command: this.commandDisplayStr(modifiers, key),
-      modifiers: modifiers,
-      key,
-    };
-
-    customKeysInfo.push(hotkeySelectorNavKeymap);
-  }
-
-  /**
-   * Adds the configured key combination to pin/unpin Commands to customKeysInfo
-   *
-   * @param {CustomKeymapInfo[]} customKeysInfo
-   * @param {SwitcherPlusSettings} config
-   */
-  bindTogglePinnedCommand(
-    customKeysInfo: CustomKeymapInfo[],
-    config: SwitcherPlusSettings,
-  ): void {
-    const {
-      togglePinnedCommandKeys: { modifiers, key },
-    } = config;
-
-    const togglePinnedKeymap: CustomKeymapInfo = {
-      modes: [Mode.CommandList],
-      purpose: 'toggle pinned',
-      eventListener: this.togglePinnedCommand.bind(this),
-      command: this.commandDisplayStr(modifiers, key),
-      modifiers: modifiers,
-      key,
-    };
-
-    customKeysInfo.push(togglePinnedKeymap);
+    this.addCustomKeymaps(this.config);
   }
 
   removeDefaultTabKeyBinding(scope: Scope, config: SwitcherPlusSettings): void {
@@ -309,10 +231,11 @@ export class SwitcherPlusKeymap {
   }
 
   registerEditorTabBindings(scope: Scope): void {
+    const { modKey } = SwitcherPlusKeymap;
     const keys: [Modifier[], string][] = [
-      [[MOD_KEY], '\\'],
-      [[MOD_KEY, 'Shift'], '\\'],
-      [[MOD_KEY], 'o'],
+      [[modKey], '\\'],
+      [[modKey, 'Shift'], '\\'],
+      [[modKey], 'o'],
     ];
 
     keys.forEach((v) => {
@@ -352,7 +275,7 @@ export class SwitcherPlusKeymap {
           const { modifiers, key, purpose } = keymap;
           keyInfo = {
             isInstructionOnly: false,
-            command: this.commandDisplayStr(modifiers, key),
+            command: SwitcherPlusKeymap.commandDisplayStr(modifiers, key),
             modifiers,
             key,
             purpose,
@@ -589,7 +512,7 @@ export class SwitcherPlusKeymap {
       parentEl.appendChild(facetInstructionsEl);
 
       // render the preamble
-      const preamble = `filters | ${this.commandDisplayStr(facetSettings.modifiers)}`;
+      const preamble = `filters | ${SwitcherPlusKeymap.commandDisplayStr(facetSettings.modifiers)}`;
       this.createPromptInstructionCommandEl(facetInstructionsEl, preamble);
 
       // render each key instruction
@@ -614,9 +537,11 @@ export class SwitcherPlusKeymap {
         }
 
         // if a modifier is specified for this specific facet, it overrides the
-        // default modifier so display that too. Otherwise, just show the key alone
+        // default modifier so display that too. Otherwise, just show the key alone.
+        // Note: In this case the modifier is purposely displayed separately in parenthesis
+        // to indicate to the user that it's not the "standard" modifier.
         const commandDisplayText = modifiers
-          ? `(${this.commandDisplayStr(modifiers)}) ${key}`
+          ? `(${SwitcherPlusKeymap.commandDisplayStr(modifiers)}) ${key}`
           : `${key}`;
 
         this.createPromptInstructionCommandEl(
@@ -872,27 +797,35 @@ export class SwitcherPlusKeymap {
   }
 
   /**
-   * Converts modifiers and key into a string that can be used for visual display purposes, taking into account platform specific modifier renderings.
+   * Converts modifiers and key into a string that can be used for visual display purposes,
+   * taking into account platform specific modifier renderings.
    *
    * @param {Modifier[]} modifiers
    * @param {?string} [key]
-   * @returns {string}
+   * @returns {string} A string representation of modifier and key usable for display purposes.
    */
-  commandDisplayStr(modifiers: Modifier[], key?: string): string {
-    let modifierStr = '';
+  static commandDisplayStr(modifiers: Modifier[], key?: string): string {
+    const { keyDisplayStr } = this;
+    let modifierStr: string = null;
+    let keyStr: string = null;
 
     if (modifiers) {
-      const { modifierToPlatformStrMap } = this;
-
       modifierStr = modifiers
         .map((modifier) => {
-          return modifierToPlatformStrMap[modifier]?.toLocaleLowerCase();
+          return keyDisplayStr[modifier]?.toLocaleLowerCase();
         })
         .sort()
         .join(' ');
     }
 
-    return key ? `${modifierStr} ${key}` : modifierStr;
+    if (key) {
+      keyStr = Object.prototype.hasOwnProperty.call(keyDisplayStr, key)
+        ? keyDisplayStr[key]
+        : key;
+    }
+
+    // Filter out either of these if falsy, but if both have a value, join them with a space.
+    return [modifierStr, keyStr].filter((str) => str).join(' ');
   }
 
   /**
@@ -906,8 +839,141 @@ export class SwitcherPlusKeymap {
     // when the 'Mod' modifier is registered, it gets translated to the platform
     // specific version 'Meta' on MacOS or Ctrl on others
     return modifiers
-      ?.map((modifier) => (modifier === 'Mod' ? MOD_KEY : modifier))
+      ?.map((modifier) => (modifier === 'Mod' ? this.modKey : modifier))
       .sort()
       .join(',');
+  }
+
+  /**
+   * Generates a hotkey mapping bound to eventListener and optionally add it to the list
+   * of custom keymaps
+   *
+   * @param {string} purpose The label for the keymap, this is user visible in the UI.
+   * @param {Mode[]} modes An array of Modes in which the keymap should be registered.
+   * @param {Hotkey} hotkey The hotkey combination to register.
+   * @param {KeymapEventListener} eventListener The event handler to call when the keymap
+   * combination is triggered.
+   * @param {boolean} [shouldAddToColl=true] True to add the keymap to the list of custom
+   * keymaps.
+   * @param {boolean} [isInstructionOnly=false] True to indicated that the keymap is used
+   * for display purposes only and should not be registered in Scope. This is useful for
+   * core Obsidian keymaps that are already registered.
+   * @returns {CustomKeymapInfo} The keymap that was created.
+   */
+  createCustomKeymap(
+    purpose: string,
+    modes: Mode[],
+    hotkey: Hotkey,
+    eventListener: KeymapEventListener,
+    shouldAddToColl = true,
+    isInstructionOnly = false,
+  ): CustomKeymapInfo {
+    const { modifiers, key } = hotkey;
+
+    const customKeymap: CustomKeymapInfo = {
+      modes,
+      modifiers,
+      key,
+      eventListener,
+      purpose,
+      command: SwitcherPlusKeymap.commandDisplayStr(modifiers, key),
+      isInstructionOnly,
+    };
+
+    if (shouldAddToColl) {
+      this.customKeysInfo.push(customKeymap);
+    }
+
+    return customKeymap;
+  }
+
+  /**
+   * Defines the Hotkey combinations use to trigger actions when in custom modes.
+   *
+   * @param {SwitcherPlusSettings} config
+   */
+  addCustomKeymaps(config: SwitcherPlusSettings): void {
+    // Custom modes that rely on an underlying source file being present.
+    const customFileBasedModes = [
+      Mode.EditorList,
+      Mode.HeadingsList,
+      Mode.RelatedItemsList,
+      Mode.BookmarksList,
+      Mode.SymbolList,
+    ];
+
+    // Builtin keymap to open file in a new tab.
+    this.createCustomKeymap(
+      'open in new tab',
+      customFileBasedModes,
+      { modifiers: ['Mod'], key: 'Enter' },
+      null,
+      true,
+      true,
+    );
+
+    // Open file in new tab, in a pane on the right hand side.
+    this.createCustomKeymap(
+      'open to the right',
+      customFileBasedModes,
+      { modifiers: ['Mod'], key: '\\' },
+      null,
+      true,
+      true,
+    );
+
+    // Open file in a new tab, in a pane below the current pane.
+    this.createCustomKeymap(
+      'open below',
+      customFileBasedModes,
+      { modifiers: ['Mod', 'Shift'], key: '\\' },
+      null,
+      true,
+      true,
+    );
+
+    // Open file in a new Obsidian window.
+    this.createCustomKeymap(
+      'open in new window',
+      customFileBasedModes,
+      { modifiers: ['Mod'], key: 'o' },
+      null,
+      true,
+      true,
+    );
+
+    this.createCustomKeymap(
+      'execute command',
+      [Mode.CommandList],
+      { modifiers: [], key: 'Enter' },
+      null,
+      true,
+      true,
+    );
+
+    this.createCustomKeymap(
+      'open workspace',
+      [Mode.WorkspaceList],
+      { modifiers: [], key: 'Enter' },
+      null,
+      true,
+      true,
+    );
+
+    // Launches the Obsidian hotkey selection dialog for a command.
+    this.createCustomKeymap(
+      'set hotkey',
+      [Mode.CommandList],
+      config.navigateToHotkeySelectorKeys,
+      this.navigateToCommandHotkeySelector.bind(this),
+    );
+
+    // Toggles the pin/unpin state for a command.
+    this.createCustomKeymap(
+      'toggle pinned',
+      [Mode.CommandList],
+      config.togglePinnedCommandKeys,
+      this.togglePinnedCommand.bind(this),
+    );
   }
 }
