@@ -20,6 +20,8 @@ Find what you're looking for faster, using Quick Switcher++. An [Obsidian.md](ht
 * [General Settings](#general-settings)
 * [Global Commands for Hotkeys/Shortcuts](#global-commands-for-hotkeys)
 
+**Note**: the core Obsidian "Quick Switcher" plugin must remain enabled. Quick Switcher++ extends the core switcher and shares the same configuration settings.
+
 ## Demo
 
 ### Search Headings:
@@ -138,6 +140,8 @@ Note: the built-in system [Bookmarks](https://help.obsidian.md/Plugins) plugin m
 ## Run Commands
 
 View, search, and run Obsidian commands quickly using the default `>` command. When there is no search text, the suggestion list will display the list of pinned commands, followed by a list of commands that were recently executed. When there are no pinned commands and no recently executed commands, then all commands are displayed initially. When there is search text, the suggestion list will only display commands that matched the search text.
+
+**Note**: the core Obsidian "Command Palette" plugin must remain enabled. The core plugin provides the capabilities to manage [Pinned Commands](https://help.obsidian.md/Plugins/Command+palette#Pinned+commands).
 
 ### Command configuration
 
