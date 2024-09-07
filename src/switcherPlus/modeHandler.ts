@@ -408,6 +408,7 @@ export class ModeHandler {
       if (suggs?.length) {
         chooser.setSuggestions(suggs);
         ModeHandler.setActiveSuggestion(mode, chooser);
+        this.exKeymap?.renderQuickOpenFlairIcons(chooser.suggestions, this.settings);
       } else {
         if (
           this.noResultActionModes.includes(mode) &&

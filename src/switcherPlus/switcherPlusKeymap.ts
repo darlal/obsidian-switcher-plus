@@ -126,6 +126,7 @@ export class SwitcherPlusKeymap {
     this.registerNavigationBindings(scope, config.navigationKeys);
     this.registerEditorTabBindings(scope);
     this.registerCloseWhenEmptyBindings(scope, config);
+    this.registerQuickOpenBindings(scope, config);
     this.renderModeTriggerInstructions(modal.modalEl, config);
 
     this.standardInstructionsEl =
@@ -249,6 +250,75 @@ export class SwitcherPlusKeymap {
     keymaps?.forEach(({ modifiers, key }) => {
       scope.register(modifiers, key, this.closeModalIfEmpty.bind(this));
     });
+  }
+
+  /**
+   * Registers the hotkeys for selecting a suggestion and opening it using its index number in the array.
+   *
+   * @param {Scope} scope
+   * @param {SwitcherPlusSettings} config
+   */
+  registerQuickOpenBindings(scope: Scope, config: SwitcherPlusSettings): void {
+    const { isEnabled, modifiers, keyList } = config.quickOpen;
+
+    if (isEnabled) {
+      keyList?.forEach((key) => {
+        scope.register(modifiers, key, this.quickOpenByIndex.bind(this));
+      });
+    }
+  }
+
+  /**
+   * Uses the vkey from KeymapContext and the QuickOpenConfig keyList to identify the
+   * index of a suggestion in the chooser to open.
+   *
+   * @param {KeyboardEvent} evt
+   * @param {KeymapContext} ctx
+   * @returns {false}
+   */
+  quickOpenByIndex(evt: KeyboardEvent, ctx: KeymapContext): false {
+    // The index of the key in the keyList array will be used to identify the
+    // suggestion to open from the values array in the chooser.
+    const index = this.config.quickOpen.keyList.indexOf(ctx.vkey);
+
+    if (index !== -1) {
+      const { chooser } = this;
+
+      if (chooser.values.length > index) {
+        chooser.setSelectedItem(index, evt);
+        this.useSelectedItem(evt, ctx);
+      }
+    }
+
+    return false; // Return false to prevent default.
+  }
+
+  /**
+   * Adds a flair icon element to the first nth suggestionElements displaying the hotkey
+   * that can be used to select and open that suggestion.
+   *
+   * @param {HTMLDivElement[]} suggestionElements Array of already rendered Suggestion elements.
+   * @param {SwitcherPlusSettings} config
+   */
+  renderQuickOpenFlairIcons(
+    suggestionElements: HTMLDivElement[],
+    config: SwitcherPlusSettings,
+  ): void {
+    const { isEnabled, modifiers, keyList } = config.quickOpen;
+
+    if (isEnabled) {
+      for (let i = 0; i < keyList.length && i < suggestionElements.length; i++) {
+        const key = keyList[i];
+        const parentEl = suggestionElements[i];
+        const containerEl = parentEl.createDiv({ cls: 'qsp-quick-open-aux' });
+
+        // Create the hotkey flair element.
+        containerEl?.createEl('kbd', {
+          cls: ['suggestion-hotkey', 'qsp-quick-open-hotkey'],
+          text: SwitcherPlusKeymap.commandDisplayStr(modifiers, key),
+        });
+      }
+    }
   }
 
   updateInsertIntoEditorCommand(
@@ -799,8 +869,9 @@ export class SwitcherPlusKeymap {
     return false;
   }
 
-  useSelectedItem(evt: KeyboardEvent, _ctx: KeymapContext): boolean | void {
+  useSelectedItem(evt: KeyboardEvent, _ctx: KeymapContext): false {
     this.chooser.useSelectedItem(evt);
+    return false; // Return false to prevent default.
   }
 
   insertIntoEditorAsLink(
@@ -950,6 +1021,21 @@ export class SwitcherPlusKeymap {
       Mode.BookmarksList,
       Mode.SymbolList,
     ];
+
+    // Display instructions for opening top nth suggestions using a dedicated hotkey
+    const { quickOpen } = this.config;
+    const openKeyList = quickOpen?.keyList;
+    if (openKeyList?.length) {
+      const quickOpenKeyStr = `${openKeyList[0]}~${openKeyList[openKeyList.length - 1]}`;
+      this.createCustomKeymap(
+        'open nth item',
+        [Mode.CommandList, Mode.VaultList, Mode.WorkspaceList, ...customFileBasedModes],
+        { modifiers: quickOpen.modifiers, key: quickOpenKeyStr },
+        null,
+        quickOpen.isEnabled,
+        true,
+      );
+    }
 
     // Builtin keymap to open file in a new tab.
     this.createCustomKeymap(

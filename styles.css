@@ -181,6 +181,17 @@
 /* flair icon for suggestions that represent an alias */
 .qsp-alias-indicator {}
 
+/* Quick Open indicator container element */
+.qsp-quick-open-aux {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+/* Quick Open hotkey indicator element */
+.qsp-quick-open-hotkey {}
+
 /* headings level */
 .qsp-headings-l1 {}
 .qsp-headings-l2 {}
@@ -198,5 +209,5 @@
 /* Prompt instructions element for facets in custom modes */
 .qsp-prompt-instructions-facets {}
 
-/* Prompt instructions element for mode triggers*/
+/* Prompt instructions element for mode triggers */
 .qsp-prompt-instructions-modes {}

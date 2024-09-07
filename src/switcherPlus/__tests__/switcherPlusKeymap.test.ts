@@ -41,6 +41,7 @@ import {
   CommandSuggestion,
   SuggestionType,
   SymbolType,
+  QuickOpenConfig,
 } from 'src/types';
 import { makeHeading, makeHeadingSuggestion, makeSymbolSuggestion } from '@fixtures';
 
@@ -58,8 +59,9 @@ describe('SwitcherPlusKeymap', () => {
   const selector = '.prompt-instructions';
   const mockScope = mock<Scope>({ keys: [] });
   const mockChooser = mock<Chooser<AnySuggestion>>();
-  const mockConfig = mock<SwitcherPlusSettings>({ closeWhenEmptyKeys: [] });
   const mockWorkspace = mock<Workspace>();
+  const config = new SwitcherPlusSettings(null);
+  const mockConfig = mock<SwitcherPlusSettings>({ closeWhenEmptyKeys: [] });
 
   // The .prompt-instruction wrapper element
   const mockInstructionEl = mock<HTMLDivElement>();
@@ -1223,6 +1225,85 @@ describe('SwitcherPlusKeymap', () => {
     });
   });
 
+  describe('QuickOpen Hotkeys', () => {
+    let sut: SwitcherPlusKeymap;
+    let mockChooserLocal: MockProxy<Chooser<CommandSuggestion>>;
+    let mockQuickOpenConfig: QuickOpenConfig;
+
+    beforeAll(() => {
+      mockChooserLocal = mock<Chooser<CommandSuggestion>>();
+      mockQuickOpenConfig = mock<QuickOpenConfig>({
+        isEnabled: true,
+        modifiers: ['Alt'],
+        keyList: ['1'],
+      });
+
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooserLocal,
+        mockModal,
+        mockConfig,
+      );
+
+      mockConfig.quickOpen = mockQuickOpenConfig;
+      mockReset(mockScope);
+    });
+
+    afterAll(() => {
+      mockConfig.quickOpen = null;
+    });
+
+    afterEach(() => {
+      mockReset(mockScope);
+    });
+
+    it('should register the Quick Open hotkeys', () => {
+      sut.registerQuickOpenBindings(mockScope, mockConfig);
+
+      expect(mockScope.register).toHaveBeenCalledWith(
+        mockQuickOpenConfig.modifiers,
+        mockQuickOpenConfig.keyList[0],
+        expect.any(Function),
+      );
+    });
+
+    test('.quickOpenByIndex() should return false to prevent default', () => {
+      const result = sut.quickOpenByIndex(null, mock<KeymapContext>());
+      expect(result).toBe(false);
+    });
+
+    test('.quickOpenByIndex() should open the item at the index number associated with the key pressed', () => {
+      const mockEvt = mock<KeyboardEvent>();
+      mockChooserLocal.values = [mock<CommandSuggestion>()];
+
+      // Use the same key from the config keyList
+      const vkey = mockQuickOpenConfig.keyList[0];
+      const mockCtx = mock<KeymapContext>({ vkey });
+
+      sut.quickOpenByIndex(mockEvt, mockCtx);
+
+      expect(mockChooserLocal.setSelectedItem).toHaveBeenCalledWith(0, mockEvt);
+      expect(mockChooserLocal.useSelectedItem).toHaveBeenCalledWith(mockEvt);
+    });
+
+    test('.renderQuickOpenFlairIcons() should add flair icons to existing suggestion div elements', () => {
+      const mockFlairContainer = mock<HTMLDivElement>();
+
+      const mockSuggEl = mock<HTMLDivElement>();
+      mockSuggEl.createDiv.mockReturnValueOnce(mockFlairContainer);
+
+      sut.renderQuickOpenFlairIcons([mockSuggEl], mockConfig);
+
+      expect(mockFlairContainer.createEl).toHaveBeenCalledWith(
+        'kbd',
+        expect.objectContaining({
+          cls: ['suggestion-hotkey', 'qsp-quick-open-hotkey'],
+        }),
+      );
+    });
+  });
+
   describe('Toggle pinned state for Commands', () => {
     const commandId = 'testCommandId';
     let sut: SwitcherPlusKeymap;
@@ -1262,7 +1343,7 @@ describe('SwitcherPlusKeymap', () => {
         mockScope,
         mockChooserLocal,
         mockModal,
-        mockConfig,
+        config,
       );
     });
 
@@ -1336,13 +1417,7 @@ describe('SwitcherPlusKeymap', () => {
 
     beforeAll(() => {
       file = new TFile();
-      sut = new SwitcherPlusKeymap(
-        mockApp,
-        mockScope,
-        mockChooser,
-        mockModal,
-        mockConfig,
-      );
+      sut = new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, config);
 
       mockTitleEl = mock<HTMLElement>();
       mockSuggParentEl = mock<HTMLDivElement>({

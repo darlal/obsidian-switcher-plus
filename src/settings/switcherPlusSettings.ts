@@ -11,6 +11,7 @@ import {
   Mode,
   NavigationKeysConfig,
   PathDisplayFormat,
+  QuickOpenConfig,
   RelationType,
   RenderMarkdownContentConfig,
   SettingsData,
@@ -146,6 +147,11 @@ export class SwitcherPlusSettings {
         isEnabled: false,
         renderHeadings: false,
         toggleContentRenderingKeys: { modifiers: ['Shift', 'Ctrl'], key: 'm' },
+      },
+      quickOpen: {
+        isEnabled: true,
+        modifiers: ['Alt'],
+        keyList: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
       },
     };
   }
@@ -676,6 +682,14 @@ export class SwitcherPlusSettings {
 
   set renderMarkdownContentInSuggestions(value: RenderMarkdownContentConfig) {
     this.data.renderMarkdownContentInSuggestions = value;
+  }
+
+  get quickOpen(): QuickOpenConfig {
+    return this.data.quickOpen;
+  }
+
+  set quickOpen(value: QuickOpenConfig) {
+    this.data.quickOpen = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

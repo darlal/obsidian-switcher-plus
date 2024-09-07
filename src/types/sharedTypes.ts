@@ -367,6 +367,21 @@ export type RenderMarkdownContentConfig = {
   toggleContentRenderingKeys: Hotkey;
 };
 
+export type QuickOpenConfig = {
+  /**
+   * Whether or not the feature is turned on.
+   */
+  isEnabled: boolean;
+  /**
+   * The modifiers to use for the trigger hotkey.
+   */
+  modifiers: Modifier[];
+  /**
+   * Array of single characters to be used along with modifiers for the trigger hotkey.
+   */
+  keyList: string[];
+};
+
 export interface SettingsData {
   version: string;
   onOpenPreferNewTab: boolean;
@@ -452,6 +467,10 @@ export interface SettingsData {
    * Configuration for how markdown content found in suggestions should be displayed
    */
   renderMarkdownContentInSuggestions: RenderMarkdownContentConfig;
+  /**
+   * Configuration for mapping hotkeys to select nth items from the suggestion list
+   */
+  quickOpen: QuickOpenConfig;
 }
 
 export type SessionOpts = {

@@ -148,6 +148,11 @@ function getDefaultSettingsData(): SettingsData {
       renderHeadings: false,
       toggleContentRenderingKeys: { modifiers: ['Shift', 'Ctrl'], key: 'm' },
     },
+    quickOpen: {
+      isEnabled: true,
+      modifiers: ['Alt'],
+      keyList: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+    },
   };
 
   return data;
@@ -290,6 +295,11 @@ function getTransientSettingsData(): SettingsData {
       isEnabled: false,
       renderHeadings: false,
       toggleContentRenderingKeys: { modifiers: ['Shift', 'Ctrl'], key: 'm' },
+    },
+    quickOpen: {
+      isEnabled: true,
+      modifiers: chance.pickset(['Alt', 'Ctrl'], 1),
+      keyList: [chance.letter()],
     },
   };
 
