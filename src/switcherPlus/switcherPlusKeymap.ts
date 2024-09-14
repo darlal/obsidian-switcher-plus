@@ -1116,7 +1116,7 @@ export class SwitcherPlusKeymap {
     const { renderMarkdownContentInSuggestions } = config;
     this.createCustomKeymap(
       'toggle preview (selected heading)',
-      [Mode.HeadingsList],
+      [Mode.HeadingsList, Mode.SymbolList],
       renderMarkdownContentInSuggestions.toggleContentRenderingKeys,
       this.toggleMarkdownContentRendering.bind(this),
       renderMarkdownContentInSuggestions.isEnabled,
