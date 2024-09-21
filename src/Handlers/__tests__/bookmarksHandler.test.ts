@@ -312,6 +312,24 @@ describe('bookmarksHandler', () => {
 
       mockReset(mockVault);
     });
+
+    it('should not return a bookmark item for file bookmarks where the file has been deleted', () => {
+      const bookmarkItem = makeBookmarksPluginFileItem();
+      mockPluginInstance.items = [bookmarkItem];
+
+      const getFileByPathSpy = jest
+        .spyOn(sut, 'getTFileByPath')
+        .mockImplementationOnce((path) => {
+          return path === bookmarkItem.path ? null : new TFile();
+        });
+
+      const { allBookmarks, fileBookmarks } = sut.getItems(null);
+
+      expect(allBookmarks).toHaveLength(0);
+      expect(fileBookmarks.size).toBe(0);
+
+      getFileByPathSpy.mockRestore();
+    });
   });
 
   describe('getPreferredTitle', () => {

@@ -141,35 +141,38 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
           } else if (
             this.isFacetedWith(activeFacetIds, BOOKMARKS_FACET_ID_MAP[bookmark.type])
           ) {
-            const bookmarkInfo: BookmarksItemInfo = {
-              item: bookmark,
-              bookmarkPath: null,
-              file: null,
-            };
+            let bookmarkInfo: BookmarksItemInfo;
 
             if (BookmarksHandler.isBookmarksPluginFileItem(bookmark)) {
               const file = this.getTFileByPath(bookmark.path);
 
+              // When a file is bookmarked and then deleted. The bookmark data is still
+              // retained, this allows for the bookmark to be restore if the file is restored.
+              // So if the source file for a file bookmark data cannot be found, then it
+              // should not be added to the bookmarks list.
               if (file) {
-                bookmarkInfo.file = file;
+                bookmarkInfo = { item: bookmark, bookmarkPath: null, file };
 
                 const infoList = fileBookmarks.get(file) ?? [];
                 infoList.push(bookmarkInfo);
                 fileBookmarks.set(file, infoList);
               }
             } else {
+              bookmarkInfo = { item: bookmark, bookmarkPath: null, file: null };
               nonFileBookmarks.add(bookmarkInfo);
             }
 
-            const title = this.getPreferredTitle(
-              pluginInstance,
-              bookmark,
-              bookmarkInfo.file,
-              this.settings.preferredSourceForTitle,
-            );
+            if (bookmarkInfo) {
+              const title = this.getPreferredTitle(
+                pluginInstance,
+                bookmark,
+                bookmarkInfo.file,
+                this.settings.preferredSourceForTitle,
+              );
 
-            bookmarkInfo.bookmarkPath = path + title;
-            allBookmarks.push(bookmarkInfo);
+              bookmarkInfo.bookmarkPath = path + title;
+              allBookmarks.push(bookmarkInfo);
+            }
           }
         });
       };
