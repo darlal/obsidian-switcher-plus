@@ -2,10 +2,10 @@ import { Handler } from './handler';
 import { StandardExHandler } from './standardExHandler';
 import { EditorHandler } from './editorHandler';
 import { BookmarksHandler } from './bookmarksHandler';
+import { Searcher, StringSearcher } from 'src/search';
 import { HeadingsListFacetIds, SwitcherPlusSettings } from 'src/settings';
 import {
   HeadingCache,
-  PreparedQuery,
   SearchResult,
   TFile,
   TAbstractFile,
@@ -215,8 +215,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     let suggestions: SupportedSuggestionTypes[] = [];
 
     if (inputInfo) {
-      inputInfo.buildSearchQuery();
-      const { hasSearchTerm } = inputInfo.searchQuery;
+      const { hasSearchTerm } = inputInfo.parsedInputQuery;
       const { settings } = this;
       const activeFacetIds = this.getActiveFacetIds(inputInfo);
       const hasActiveFacets = !!activeFacetIds.size;
@@ -273,6 +272,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     },
   ): void {
     const hasActiveFacets = !!activeFacetIds.size;
+    const searcher = Searcher.create(inputInfo.parsedInputQuery.query);
 
     // Editors and recent files should only be displayed when there's no search term, or when
     // it's faceted with recentFiles
@@ -291,6 +291,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     };
     this.getSuggestionsForBookmarks(
       inputInfo,
+      searcher,
       collection,
       activeFacetIds,
       bookmarkOptions,
@@ -304,20 +305,25 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       filename: options.filename,
       filenameAsFallback: options.filenameAsFallback,
     };
-    this.getSuggestionForFiles(inputInfo, files, collection, activeFacetIds, fileOptions);
+    this.getSuggestionForFiles(
+      inputInfo,
+      searcher,
+      files,
+      collection,
+      activeFacetIds,
+      fileOptions,
+    );
 
     // Since there's no facet for unresolved, they should never show up when
     // facets are active.
     if (options.unresolved && !hasActiveFacets) {
-      this.addUnresolvedSuggestions(
-        collection as UnresolvedSuggestion[],
-        inputInfo.searchQuery.prepQuery,
-      );
+      this.addUnresolvedSuggestions(collection as UnresolvedSuggestion[], searcher);
     }
   }
 
   getSuggestionsForBookmarks(
     inputInfo: InputInfo,
+    searcher: StringSearcher,
     collection: SupportedSuggestionTypes[],
     activeFacetIds: Set<string>,
     options: {
@@ -325,8 +331,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       nonFileBookmarks?: boolean;
     },
   ): void {
-    const hasActiveFacets = activeFacetIds.size;
-    const { prepQuery } = inputInfo.searchQuery;
+    const hasActiveFacets = !!activeFacetIds.size;
     const { fileBookmarks, nonFileBookmarks } = inputInfo.currentWorkspaceEnvList;
 
     if (hasActiveFacets) {
@@ -343,7 +348,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
         this.addBookmarkSuggestion(
           inputInfo,
           collection as BookmarksSuggestion[],
-          prepQuery,
+          searcher,
           bookmarkInfo,
         );
       }
@@ -362,6 +367,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
   getSuggestionForFiles(
     inputInfo: InputInfo,
+    searcher: StringSearcher,
     files: TAbstractFile[],
     collection: SupportedSuggestionTypes[],
     activeFacetIds: Set<string>,
@@ -426,7 +432,6 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     );
 
     if (shouldProcessFiles) {
-      const { prepQuery } = inputInfo.searchQuery;
       const { excludeFolders } = this.settings;
       const isExcludedFolder = matcherFnForRegExList(excludeFolders);
       let nodes = Array.prototype.concat(files) as TAbstractFile[];
@@ -436,7 +441,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
         if (isTFile(node)) {
           if (this.shouldIncludeFile(node, activeFacetIds)) {
-            this.addSuggestionsForFile(inputInfo, collection, node, prepQuery, options);
+            this.addSuggestionsForFile(inputInfo, searcher, collection, node, options);
           }
         } else if (!isExcludedFolder(node.path)) {
           nodes = nodes.concat((node as TFolder).children);
@@ -447,9 +452,9 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
   addSuggestionsForFile(
     inputInfo: InputInfo,
+    searcher: StringSearcher,
     suggestions: SupportedSuggestionTypes[],
     file: TFile,
-    prepQuery: PreparedQuery,
     options: {
       headings?: boolean;
       allHeadings?: boolean;
@@ -463,27 +468,22 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     if (options.headings) {
       isH1Matched = this.addHeadingSuggestions(
         inputInfo,
+        searcher,
         suggestions as HeadingSuggestion[],
-        prepQuery,
         file,
         options.allHeadings,
       );
     }
 
     if (options.filename || (!isH1Matched && options.filenameAsFallback)) {
-      this.addFileSuggestions(
-        inputInfo,
-        suggestions as FileSuggestion[],
-        prepQuery,
-        file,
-      );
+      this.addFileSuggestions(inputInfo, searcher, suggestions as FileSuggestion[], file);
     }
 
     if (options.aliases) {
       this.addAliasSuggestions(
         inputInfo,
+        searcher,
         suggestions as AliasSuggestion[],
-        prepQuery,
         file,
       );
     }
@@ -552,8 +552,8 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
   addAliasSuggestions(
     inputInfo: InputInfo,
+    searcher: StringSearcher,
     suggestions: AliasSuggestion[],
-    prepQuery: PreparedQuery,
     file: TFile,
   ): void {
     const { metadataCache } = this.app;
@@ -566,7 +566,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       // create suggestions where there is a match with an alias
       while (i--) {
         const alias = aliases[i];
-        const { match } = this.fuzzySearchWithFallback(prepQuery, alias);
+        const { match } = searcher.searchWithFallback(alias);
 
         if (match) {
           suggestions.push(this.createAliasSuggestion(inputInfo, alias, file, match));
@@ -577,15 +577,11 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
   addFileSuggestions(
     inputInfo: InputInfo,
+    searcher: StringSearcher,
     suggestions: FileSuggestion[],
-    prepQuery: PreparedQuery,
     file: TFile,
   ): void {
-    const { match, matchType, matchText } = this.fuzzySearchWithFallback(
-      prepQuery,
-      null,
-      file,
-    );
+    const { match, matchType, matchText } = searcher.searchWithFallback(null, file);
 
     if (match) {
       suggestions.push(
@@ -597,10 +593,10 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   addBookmarkSuggestion(
     inputInfo: InputInfo,
     suggestions: BookmarksSuggestion[],
-    prepQuery: PreparedQuery,
+    searcher: StringSearcher,
     bookmarkInfo: BookmarksItemInfo,
   ): void {
-    const result = this.fuzzySearchWithFallback(prepQuery, bookmarkInfo.bookmarkPath);
+    const result = searcher.searchWithFallback(bookmarkInfo.bookmarkPath);
 
     if (result.match) {
       const sugg = BookmarksHandler.createSuggestion(
@@ -617,8 +613,8 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
   addHeadingSuggestions(
     inputInfo: InputInfo,
+    searcher: StringSearcher,
     suggestions: HeadingSuggestion[],
-    prepQuery: PreparedQuery,
     file: TFile,
     allHeadings: boolean,
   ): boolean {
@@ -635,8 +631,8 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       if (allHeadings) {
         isMatched = this.matchAndPushHeading(
           inputInfo,
+          searcher,
           suggestions,
-          prepQuery,
           file,
           heading,
         );
@@ -653,7 +649,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     }
 
     if (!allHeadings && h1) {
-      isH1Matched = this.matchAndPushHeading(inputInfo, suggestions, prepQuery, file, h1);
+      isH1Matched = this.matchAndPushHeading(inputInfo, searcher, suggestions, file, h1);
     }
 
     return isH1Matched;
@@ -661,12 +657,12 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
   matchAndPushHeading(
     inputInfo: InputInfo,
+    searcher: StringSearcher,
     suggestions: HeadingSuggestion[],
-    prepQuery: PreparedQuery,
     file: TFile,
     heading: HeadingCache,
   ): boolean {
-    const { match } = this.fuzzySearchWithFallback(prepQuery, heading.heading);
+    const { match } = searcher.searchWithFallback(heading.heading);
 
     if (match) {
       suggestions.push(this.createHeadingSuggestion(inputInfo, heading, file, match));
@@ -677,7 +673,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
   addUnresolvedSuggestions(
     suggestions: UnresolvedSuggestion[],
-    prepQuery: PreparedQuery,
+    searcher: StringSearcher,
   ): void {
     const { metadataCache } = this.app;
     const { unresolvedLinks } = metadataCache;
@@ -706,7 +702,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     // create suggestions where there is a match with an unresolved link
     while (i--) {
       const unresolved = unresolvedList[i];
-      const result = this.fuzzySearchWithFallback(prepQuery, unresolved);
+      const result = searcher.searchWithFallback(unresolved);
 
       if (result.matchType !== MatchType.None) {
         suggestions.push(
@@ -797,12 +793,11 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   addRecentFilesSuggestions(
     file: TFile,
     inputInfo: InputInfo,
-    prepQuery: PreparedQuery,
+    searcher: StringSearcher,
     collection: (HeadingSuggestion | FileSuggestion)[],
   ): void {
     const h1 = this.getFirstH1(file);
-    const { match, matchType, matchText } = this.fuzzySearchWithFallback(
-      prepQuery,
+    const { match, matchType, matchText } = searcher.searchWithFallback(
       h1?.heading,
       file,
     );
@@ -823,7 +818,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   addOpenEditorSuggestions(
     leaf: WorkspaceLeaf,
     inputInfo: InputInfo,
-    prepQuery: PreparedQuery,
+    searcher: StringSearcher,
     collection: EditorSuggestion[],
   ): void {
     const file = leaf?.view?.file;
@@ -838,7 +833,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       metadataCache,
     );
 
-    const result = this.fuzzySearchWithFallback(prepQuery, preferredTitle, file);
+    const result = searcher.searchWithFallback(preferredTitle, file);
 
     if (result.match) {
       const sugg = EditorHandler.createSuggestion(
@@ -864,7 +859,8 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       recentFiles?: boolean;
     },
   ): void {
-    const prepQuery = inputInfo.searchQuery?.prepQuery;
+    const { query } = inputInfo.parsedInputQuery;
+    const searcher = Searcher.create(query);
 
     if (activeFacetIds.has(HeadingsListFacetIds.RecentFiles)) {
       options = Object.assign(options, { editors: false, recentFiles: true });
@@ -879,7 +875,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
         this.addOpenEditorSuggestions(
           leaf,
           inputInfo,
-          prepQuery,
+          searcher,
           collection as EditorSuggestion[],
         );
       });
@@ -893,7 +889,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
           this.addRecentFilesSuggestions(
             file,
             inputInfo,
-            prepQuery,
+            searcher,
             collection as (HeadingSuggestion | FileSuggestion)[],
           );
         }

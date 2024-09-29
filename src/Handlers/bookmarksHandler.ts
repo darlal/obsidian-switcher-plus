@@ -1,4 +1,5 @@
 import { getInternalEnabledPluginById, isOfType } from 'src/utils';
+import { Searcher } from 'src/search';
 import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 import {
   AnySuggestion,
@@ -55,8 +56,8 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
     const suggestions: BookmarksSuggestion[] = [];
 
     if (inputInfo) {
-      inputInfo.buildSearchQuery();
-      const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
+      const { query, hasSearchTerm } = inputInfo.parsedInputQuery;
+      const searcher = Searcher.create(query);
       const { allBookmarks } = this.getItems(inputInfo);
 
       allBookmarks.forEach((info) => {
@@ -64,7 +65,7 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
         let result: SearchResultWithFallback = { matchType: MatchType.None, match: null };
 
         if (hasSearchTerm) {
-          result = this.fuzzySearchWithFallback(prepQuery, info.bookmarkPath);
+          result = searcher.searchWithFallback(info.bookmarkPath);
           shouldPush = result.matchType !== MatchType.None;
         }
 

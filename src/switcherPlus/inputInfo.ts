@@ -1,4 +1,4 @@
-import { prepareQuery, TFile, WorkspaceLeaf } from 'obsidian';
+import { TFile, WorkspaceLeaf } from 'obsidian';
 import { Mode, SourceInfo, SearchQuery, SessionOpts, BookmarksItemInfo } from 'src/types';
 
 export interface WorkspaceEnvList {
@@ -22,7 +22,6 @@ export interface SourcedParsedCommand extends ParsedCommand {
 
 export class InputInfo {
   private parsedCommands: Record<Mode, ParsedCommand>;
-  private _searchQuery: SearchQuery;
   private _inputTextSansEscapeChar: string = null;
 
   private static get defaultParsedCommand(): ParsedCommand {
@@ -43,8 +42,13 @@ export class InputInfo {
     attachmentFileExtensions: new Set<string>(),
   };
 
-  get searchQuery(): SearchQuery {
-    return this._searchQuery;
+  get parsedInputQuery(): SearchQuery {
+    const query = (this.parsedCommand()?.parsedInput ?? '').trim().toLowerCase();
+
+    return {
+      query,
+      hasSearchTerm: !!query.length,
+    };
   }
 
   get inputTextSansEscapeChar(): string {
@@ -87,15 +91,6 @@ export class InputInfo {
     ].forEach((mode) => {
       parsedCmds[mode] = InputInfo.defaultParsedCommand;
     });
-  }
-
-  buildSearchQuery(): void {
-    const { mode } = this;
-    const input = this.parsedCommands[mode].parsedInput ?? '';
-    const prepQuery = prepareQuery(input.trim().toLowerCase());
-    const hasSearchTerm = prepQuery?.query?.length > 0;
-
-    this._searchQuery = { prepQuery, hasSearchTerm };
   }
 
   parsedCommand(mode?: Mode): ParsedCommand {

@@ -2,10 +2,10 @@ import { SwitcherPlusSettings } from 'src/settings';
 import { mock, MockProxy, mockReset } from 'jest-mock-extended';
 import { BookmarksHandler, BOOKMARKS_PLUGIN_ID } from 'src/Handlers';
 import { InputInfo } from 'src/switcherPlus';
-import { Mode, SuggestionType } from 'src/types';
+import { Mode, SearchQuery, SuggestionType } from 'src/types';
+import { Searcher } from 'src/search';
 import {
   makeFuzzyMatch,
-  makePreparedQuery,
   bookmarksTrigger,
   makeBookmarksPluginFolderItem,
   makeBookmarksPluginFileItem,
@@ -15,10 +15,8 @@ import {
 } from '@fixtures';
 import {
   App,
-  fuzzySearch,
   InstalledPlugin,
   InternalPlugins,
-  prepareQuery,
   Workspace,
   Vault,
   TFile,
@@ -226,38 +224,34 @@ describe('bookmarksHandler', () => {
     });
 
     test('with filter search term, it should return only matching suggestions for bookmarks mode', () => {
+      const inputInfo = new InputInfo(null, Mode.BookmarksList);
+      const parsedInputQuerySpy = jest
+        .spyOn(inputInfo, 'parsedInputQuery', 'get')
+        .mockReturnValue(mock<SearchQuery>({ hasSearchTerm: true, query: null }));
+
       const filterText = expectedBookmarkedFileTitle;
+      const searchSpy = jest
+        .spyOn(Searcher.prototype, 'executeSearch')
+        .mockImplementation((text) => {
+          return text === filterText ? makeFuzzyMatch() : null;
+        });
 
       const expectedItem = expectedBookmarkedItems.find(
         (v): v is BookmarksPluginFileItem =>
           BookmarksHandler.isBookmarksPluginFileItem(v) && v.title === filterText,
       );
 
-      const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
-      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
-
-      const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
-
-      mockFuzzySearch.mockImplementation((_q, text: string) => {
-        return text === filterText ? makeFuzzyMatch() : null;
-      });
-
-      const inputInfo = new InputInfo(`${bookmarksTrigger}${filterText}`);
       const results = sut.getSuggestions(inputInfo);
 
       expect(results).toHaveLength(1);
-
-      const onlyResult = results[0];
-      expect(onlyResult).toHaveProperty('type', SuggestionType.Bookmark);
-      expect((onlyResult.item as BookmarksPluginFileItem).path).toBe(expectedItem.path);
-
-      expect(mockFuzzySearch).toHaveBeenCalled();
-      expect(mockPrepareQuery).toHaveBeenCalled();
+      expect(results[0]).toHaveProperty('type', SuggestionType.Bookmark);
+      expect((results[0].item as BookmarksPluginFileItem).path).toBe(expectedItem.path);
       expect(mockInternalPlugins.getEnabledPluginById).toHaveBeenCalledWith(
         BOOKMARKS_PLUGIN_ID,
       );
 
-      mockFuzzySearch.mockReset();
+      searchSpy.mockRestore();
+      parsedInputQuerySpy.mockRestore();
     });
   });
 

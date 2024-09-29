@@ -1,21 +1,19 @@
 import { Chance } from 'chance';
-import { Mode, CommandSuggestion, SuggestionType } from 'src/types';
+import { Searcher } from 'src/search';
+import { Mode, CommandSuggestion, SuggestionType, SearchQuery } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { CommandHandler, COMMAND_PALETTE_PLUGIN_ID, Handler } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
 import { CommandListFacetIds } from 'src/settings';
 import {
   App,
-  fuzzySearch,
   InstalledPlugin,
   InternalPlugins,
-  prepareQuery,
   CommandPalettePluginInstance,
   Command,
   Hotkey,
 } from 'obsidian';
 import {
-  makePreparedQuery,
   makeFuzzyMatch,
   commandTrigger,
   makeCommandItem,
@@ -159,38 +157,30 @@ describe('commandHandler', () => {
     });
 
     test('with filter search term, it should return only matching suggestions for command list mode', () => {
-      const filterText = expectedCommandName;
+      const inputInfo = new InputInfo(null, Mode.CommandList);
+      const parsedInputQuerySpy = jest
+        .spyOn(inputInfo, 'parsedInputQuery', 'get')
+        .mockReturnValue(mock<SearchQuery>({ hasSearchTerm: true, query: null }));
+
+      const searchSpy = jest
+        .spyOn(Searcher.prototype, 'executeSearch')
+        .mockImplementation((text) => {
+          return text === expectedCommandName ? makeFuzzyMatch() : null;
+        });
 
       const expectedItem = mockCommands.find(
         (command) => command.name === expectedCommandName,
       );
 
-      const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
-      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
-
-      const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
-
-      mockFuzzySearch.mockImplementation((_q, text: string) => {
-        const match = makeFuzzyMatch();
-        return text.startsWith(filterText) ? match : null;
-      });
-
-      const inputInfo = new InputInfo(`${commandTrigger}${filterText}`);
       const results = sut.getSuggestions(inputInfo);
 
-      expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(1);
-
-      const onlyResult = results[0];
-      expect(onlyResult).toHaveProperty('type', SuggestionType.CommandList);
-      expect(onlyResult.item.id).toBe(expectedItem.id);
-      expect(onlyResult.item.name).toBe(expectedItem.name);
-
-      expect(mockFuzzySearch).toHaveBeenCalled();
-      expect(mockPrepareQuery).toHaveBeenCalled();
+      expect(results[0]).toHaveProperty('type', SuggestionType.CommandList);
+      expect(results[0].item).toBe(expectedItem);
       expect(mockInternalPlugins.getEnabledPluginById).toHaveBeenCalled();
 
-      mockFuzzySearch.mockReset();
+      searchSpy.mockRestore();
+      parsedInputQuerySpy.mockRestore();
     });
   });
 

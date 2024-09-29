@@ -28,6 +28,7 @@ import {
 } from 'src/switcherPlus';
 import { Handler } from './handler';
 import { isTFile, isUnresolvedSuggestion, matcherFnForRegExList } from 'src/utils';
+import { Searcher, StringSearcher } from 'src/search';
 
 export class RelatedItemsHandler extends Handler<
   RelatedItemsSuggestion | UnresolvedSuggestion
@@ -75,20 +76,18 @@ export class RelatedItemsHandler extends Handler<
 
     if (inputInfo) {
       this.inputInfo = inputInfo;
-      inputInfo.buildSearchQuery();
-
-      const { hasSearchTerm } = inputInfo.searchQuery;
+      const searcher = Searcher.create(inputInfo.parsedInputQuery.query);
       const cmd = inputInfo.parsedCommand(Mode.RelatedItemsList) as SourcedParsedCommand;
       const items = this.getItems(cmd.source, inputInfo);
 
       items.forEach((item) => {
-        const sugg = this.searchAndCreateSuggestion(inputInfo, item);
+        const sugg = this.searchAndCreateSuggestion(inputInfo, searcher, item);
         if (sugg) {
           suggestions.push(sugg);
         }
       });
 
-      if (hasSearchTerm) {
+      if (searcher.hasSearchTerm) {
         sortSearchResults(suggestions);
       }
     }
@@ -179,16 +178,14 @@ export class RelatedItemsHandler extends Handler<
 
   searchAndCreateSuggestion(
     inputInfo: InputInfo,
+    searcher: StringSearcher,
     item: RelatedItemsInfo,
   ): RelatedItemsSuggestion | UnresolvedSuggestion | null {
     const { file, unresolvedText } = item;
     let result: SearchResultWithFallback = { matchType: MatchType.None, match: null };
     const isUnresolved = file === null && unresolvedText?.length;
 
-    const {
-      currentWorkspaceEnvList,
-      searchQuery: { hasSearchTerm, prepQuery },
-    } = inputInfo;
+    const { currentWorkspaceEnvList } = inputInfo;
 
     const {
       settings,
@@ -197,8 +194,8 @@ export class RelatedItemsHandler extends Handler<
 
     const preferredTitle = this.getPreferredTitle(item, settings.preferredSourceForTitle);
 
-    if (hasSearchTerm) {
-      result = this.fuzzySearchWithFallback(prepQuery, preferredTitle, file);
+    if (searcher.hasSearchTerm) {
+      result = searcher.searchWithFallback(preferredTitle, file);
       if (result.matchType === MatchType.None) {
         return null;
       }

@@ -19,7 +19,6 @@ import {
   Vault,
   Keymap,
   renderResults,
-  fuzzySearch,
   TAbstractFile,
   FileView,
   SearchMatchPart,
@@ -30,7 +29,6 @@ import {
   makeLeaf,
   makeEditorSuggestion,
   makeFuzzyMatch,
-  makePreparedQuery,
   makeFileSuggestion,
   makeHeadingSuggestion,
 } from '@fixtures';
@@ -1497,123 +1495,6 @@ describe('Handler', () => {
       expect(filename.slice(nameMatches[1][0], nameMatches[1][1])).toBe('n');
       expect(filename.slice(nameMatches[2][0], nameMatches[2][1])).toBe(' ');
       expect(filename.slice(nameMatches[3][0], nameMatches[3][1])).toBe('ayout');
-    });
-  });
-
-  describe('fuzzySearchStrings', () => {
-    it('should return result for primary string', () => {
-      const filterText = 'primary';
-      const match = makeFuzzyMatch();
-      const mockFuzzySearch = jest
-        .mocked<typeof fuzzySearch>(fuzzySearch)
-        .mockImplementation((_q, text: string) => {
-          return text === filterText ? match : null;
-        });
-
-      const result = sut.fuzzySearchStrings(null, filterText, chance.sentence());
-
-      expect(result.isPrimary).toBe(true);
-      expect(result.match).toBe(match);
-      expect(mockFuzzySearch).toHaveBeenCalled();
-
-      mockFuzzySearch.mockRestore();
-    });
-
-    it('should return result for secondary string with a downranked score', () => {
-      const filterText = 'secondary';
-      const match = makeFuzzyMatch();
-      const initialScore = match.score;
-      const mockFuzzySearch = jest
-        .mocked<typeof fuzzySearch>(fuzzySearch)
-        .mockImplementation((_q, text: string) => {
-          return text === filterText ? match : null;
-        });
-
-      const result = sut.fuzzySearchStrings(null, chance.sentence(), filterText);
-
-      expect(result.isPrimary).toBe(false);
-      expect(result.match).toBe(match);
-      expect(result.match.score).toBe(initialScore - 1);
-      expect(mockFuzzySearch).toHaveBeenCalled();
-
-      mockFuzzySearch.mockRestore();
-    });
-  });
-
-  describe('fuzzySearchWithFallback', () => {
-    const filterText = chance.word();
-    const filepath = `path/to/${filterText}/${filterText} name.md`;
-    const mockPrepQuery = makePreparedQuery(filterText);
-    const match = makeFuzzyMatch();
-    let mockFuzzySearch: jest.MockedFn<typeof fuzzySearch>;
-
-    beforeAll(() => {
-      mockFuzzySearch = jest
-        .mocked<typeof fuzzySearch>(fuzzySearch)
-        .mockImplementation((_q, text: string) => {
-          return text === filterText || text === filepath ? match : null;
-        });
-    });
-
-    afterAll(() => {
-      mockFuzzySearch.mockRestore();
-    });
-
-    it('should match for primary string', () => {
-      const result = sut.fuzzySearchWithFallback(mockPrepQuery, filterText);
-
-      expect(result).toEqual(
-        expect.objectContaining({
-          matchType: MatchType.Primary,
-          matchText: filterText,
-          match,
-        }),
-      );
-    });
-
-    it('should match file basename', () => {
-      const mockFile = new TFile();
-      mockFile.basename = filterText;
-
-      const result = sut.fuzzySearchWithFallback(mockPrepQuery, null, mockFile);
-
-      expect(result).toEqual(
-        expect.objectContaining({
-          matchType: MatchType.Basename,
-          matchText: filterText,
-          match,
-        }),
-      );
-    });
-
-    it('should match file path', () => {
-      const mockFile = new TFile();
-      mockFile.path = filterText;
-
-      const result = sut.fuzzySearchWithFallback(mockPrepQuery, null, mockFile);
-
-      expect(result).toEqual(
-        expect.objectContaining({
-          matchType: MatchType.Path,
-          matchText: mockFile.path,
-          match,
-        }),
-      );
-    });
-
-    it("should partially match filepath and basename segments when there isn't a full basename match", () => {
-      const mockFile = new TFile();
-      mockFile.path = filepath;
-
-      const result = sut.fuzzySearchWithFallback(mockPrepQuery, null, mockFile);
-
-      expect(result).toEqual(
-        expect.objectContaining({
-          matchType: MatchType.Path,
-          matchText: mockFile.path,
-          match,
-        }),
-      );
     });
   });
 

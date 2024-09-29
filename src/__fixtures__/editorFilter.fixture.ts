@@ -1,13 +1,10 @@
-import { PreparedQuery, SearchMatches, SearchResult, CachedMetadata } from 'obsidian';
+import { SearchMatches, CachedMetadata } from 'obsidian';
 import { editorTrigger } from './modeTrigger.fixture';
 import { getCachedMetadata, getTags } from './fileCachedMetadata.fixture';
-import { makePreparedQuery, makeFuzzyMatch } from './fixtureUtils';
 
 interface EditorFixtureFilter {
   inputText: string;
   displayText: string;
-  prepQuery: PreparedQuery;
-  fuzzyMatch: SearchResult;
   cachedMetadata: CachedMetadata;
 }
 
@@ -18,15 +15,11 @@ function makeEditorFilter(
   score: number,
   metadata?: CachedMetadata,
 ): EditorFixtureFilter {
-  const prepQuery = makePreparedQuery(filterText);
-  const fuzzyMatch = makeFuzzyMatch(matches, score);
   const cachedMetadata = metadata ?? getCachedMetadata();
 
   return {
     inputText: `${editorTrigger}${filterText}`,
     displayText,
-    prepQuery,
-    fuzzyMatch,
     cachedMetadata,
   };
 }

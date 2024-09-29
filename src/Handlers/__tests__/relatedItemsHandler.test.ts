@@ -19,10 +19,6 @@ import {
   Vault,
   TAbstractFile,
   TFolder,
-  prepareQuery,
-  fuzzySearch,
-  PreparedQuery,
-  SearchResult,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -30,7 +26,6 @@ import {
   makeAliasSuggestion,
   makeLeaf,
   makeFuzzyMatch,
-  makePreparedQuery,
   makeEditorSuggestion,
   makeRelatedItemsSuggestion,
   makeUnresolvedSuggestion,
@@ -40,6 +35,7 @@ import {
   makeHeading,
 } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
+import { Searcher } from 'src/search';
 
 const chance = new Chance();
 const file1 = new TFile();
@@ -302,8 +298,6 @@ describe('relatedItemsHandler', () => {
   });
 
   describe('getSuggestions', () => {
-    const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
-    const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
     let getTFileByPathSpy: jest.SpyInstance;
 
     beforeAll(() => {
@@ -319,8 +313,6 @@ describe('relatedItemsHandler', () => {
     beforeEach(() => {
       mockMetadataCache.resolvedLinks = {};
       mockMetadataCache.unresolvedLinks = {};
-      mockPrepareQuery.mockClear();
-      mockFuzzySearch.mockClear();
     });
 
     afterAll(() => {
@@ -379,7 +371,6 @@ describe('relatedItemsHandler', () => {
         .filter((v): v is RelatedItemsSuggestion => !isUnresolvedSuggestion(v));
 
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
-      expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(3);
       expect(results.every((sugg) => sugg.type === SuggestionType.RelatedItemsList)).toBe(
         true,
@@ -394,8 +385,6 @@ describe('relatedItemsHandler', () => {
         .filter((v) => v.item.relationType === RelationType.Backlink)
         .map((v) => v.file);
       expect(backlinkFiles).toHaveLength(1);
-
-      expect(mockPrepareQuery).toHaveBeenCalled();
 
       mockMetadataCache.resolvedLinks = {};
     });
@@ -453,23 +442,19 @@ describe('relatedItemsHandler', () => {
 
     test('with filter search term, it should return only matching related items suggestions', () => {
       filterText = file1.basename;
-      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
-      mockFuzzySearch.mockImplementation(
-        (_q: PreparedQuery, text: string): SearchResult => {
-          const match = makeFuzzyMatch();
-          return text === filterText ? match : null;
-        },
-      );
-
       const inputInfo = new InputInfo(`${relatedItemsTrigger}${filterText}`);
       sut.validateCommand(inputInfo, 0, filterText, null, mockRootSplitLeaf);
+
+      const searchSpy = jest
+        .spyOn(Searcher.prototype, 'executeSearch')
+        .mockImplementation((text) => {
+          return text === file1.basename ? makeFuzzyMatch() : null;
+        });
 
       const results = sut
         .getSuggestions(inputInfo)
         .filter((v): v is RelatedItemsSuggestion => !isUnresolvedSuggestion(v));
 
-      expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
-      expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(1);
       expect(results.every((sugg) => sugg.type === SuggestionType.RelatedItemsList)).toBe(
         true,
@@ -478,32 +463,27 @@ describe('relatedItemsHandler', () => {
         results.every((sugg) => sugg.item.relationType === RelationType.DiskLocation),
       ).toBe(true);
 
-      expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(mockFuzzySearch).toHaveBeenCalled();
-
-      mockFuzzySearch.mockReset();
+      searchSpy.mockRestore();
     });
 
     test('with existing filter search term, it should continue refining suggestions for the previous target', () => {
       // 1) setup first initial run
       filterText = file1.basename.slice(0, file1.basename.length / 2);
-      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
-
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch();
-        return text.includes(filterText) ? match : null;
-      });
 
       let inputInfo = new InputInfo(`${relatedItemsTrigger}${filterText}`);
-
       sut.validateCommand(inputInfo, 0, filterText, null, mockRootSplitLeaf);
+
+      const searchSpy = jest
+        .spyOn(Searcher.prototype, 'executeSearch')
+        .mockImplementation((text) => {
+          return text.includes(filterText) ? makeFuzzyMatch() : null;
+        });
 
       let results = sut
         .getSuggestions(inputInfo)
         .filter((v): v is RelatedItemsSuggestion => !isUnresolvedSuggestion(v));
 
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
-      expect(results).toBeInstanceOf(Array);
       expect(results.every((sugg) => sugg.type === SuggestionType.RelatedItemsList)).toBe(
         true,
       );
@@ -513,21 +493,19 @@ describe('relatedItemsHandler', () => {
 
       let cmd = inputInfo.parsedCommand() as SourcedParsedCommand;
       expect(cmd.source.file).toBe(mockRootSplitLeaf.view.file);
-      mockFuzzySearch.mockReset();
+      searchSpy.mockReset();
 
       // 2) setup second run, which refines the filterText from the first run
       filterText = file1.basename;
-      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
 
-      mockFuzzySearch.mockImplementation((q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch();
-        return text.endsWith(q.query) ? match : null;
+      searchSpy.mockImplementation((text) => {
+        return text.endsWith(filterText) ? makeFuzzyMatch() : null;
       });
 
       const mockTempLeaf = makeLeaf();
       inputInfo = new InputInfo(`${relatedItemsTrigger}${filterText}`);
 
-      // note the use of a different leaf than the first run, because it should use the
+      // note the use of a different leaf than the first run, because it should search the
       // leaf from the previous run
       sut.validateCommand(inputInfo, 0, filterText, null, mockTempLeaf);
 
@@ -536,10 +514,8 @@ describe('relatedItemsHandler', () => {
         .filter((v): v is RelatedItemsSuggestion => !isUnresolvedSuggestion(v));
 
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);
-      expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(1);
       expect(results[0].file).toEqual(file1);
-      expect(mockPrepareQuery).toHaveBeenCalled();
       expect(results.every((sugg) => sugg.type === SuggestionType.RelatedItemsList)).toBe(
         true,
       );
@@ -552,7 +528,7 @@ describe('relatedItemsHandler', () => {
 
       // expect the source file to be the same as the first run
       expect(cmd.source.file).toBe(mockRootSplitLeaf.view.file);
-      mockFuzzySearch.mockReset();
+      searchSpy.mockRestore();
     });
   });
 

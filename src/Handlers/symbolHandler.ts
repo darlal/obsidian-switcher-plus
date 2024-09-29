@@ -9,7 +9,6 @@ import {
 } from 'obsidian/canvas';
 import {
   CanvasFileView,
-  fuzzySearch,
   LinkCache,
   OpenViewState,
   ReferenceCache,
@@ -42,6 +41,7 @@ import { InputInfo, ParsedCommand, SourcedParsedCommand } from 'src/switcherPlus
 import { Handler } from './handler';
 import { HeadingsHandler } from './headingsHandler';
 import { CANVAS_NODE_FACET_ID_MAP } from 'src/settings';
+import { Searcher } from 'src/search';
 
 export type SymbolInfoExcludingCanvasNodes = Omit<SymbolInfo, 'symbol'> & {
   symbol: Exclude<AnySymbolInfoPayload, AllCanvasNodeData>;
@@ -97,8 +97,8 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     if (inputInfo) {
       this.inputInfo = inputInfo;
 
-      inputInfo.buildSearchQuery();
-      const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
+      const { query, hasSearchTerm } = inputInfo.parsedInputQuery;
+      const searcher = Searcher.create(query);
       const symbolCmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
       const items = await this.getItems(symbolCmd.source, hasSearchTerm);
 
@@ -107,7 +107,8 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
         let match: SearchResult = null;
 
         if (hasSearchTerm) {
-          match = fuzzySearch(prepQuery, SymbolHandler.getSuggestionTextForSymbol(item));
+          const itemText = SymbolHandler.getSuggestionTextForSymbol(item);
+          ({ match } = searcher.searchWithFallback(itemText));
           shouldPush = !!match;
         }
 
@@ -134,7 +135,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       if (
         Object.prototype.hasOwnProperty.call(item, 'indentLevel') &&
         this.settings.symbolsInLineOrder &&
-        !this.inputInfo?.searchQuery?.hasSearchTerm
+        !this.inputInfo?.parsedInputQuery?.hasSearchTerm
       ) {
         parentElClasses.push(`qsp-symbol-l${item.indentLevel}`);
       }

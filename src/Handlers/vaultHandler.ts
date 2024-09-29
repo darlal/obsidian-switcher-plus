@@ -17,6 +17,7 @@ import {
 } from 'obsidian';
 import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import { Handler } from './handler';
+import { Searcher } from 'src/search';
 
 // 12/8/23: Format of Record is vaultId as key with and object payload
 export type VaultData = Record<string, { path: string; ts: number; open?: boolean }>;
@@ -54,8 +55,8 @@ export class VaultHandler extends Handler<VaultSuggestion> {
     const suggestions: VaultSuggestion[] = [];
 
     if (inputInfo) {
-      inputInfo.buildSearchQuery();
-      const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
+      const { query, hasSearchTerm } = inputInfo.parsedInputQuery;
+      const searcher = Searcher.create(query);
       const items = Platform.isDesktop
         ? this.getItems()
         : [this.mobileVaultChooserMarker];
@@ -64,12 +65,7 @@ export class VaultHandler extends Handler<VaultSuggestion> {
         let shouldPush = true;
 
         if (hasSearchTerm) {
-          const results = this.fuzzySearchWithFallback(
-            prepQuery,
-            null,
-            item.pathSegments,
-          );
-
+          const results = searcher.searchWithFallback(null, item.pathSegments);
           Object.assign(item, results);
           shouldPush = !!results.match;
         }

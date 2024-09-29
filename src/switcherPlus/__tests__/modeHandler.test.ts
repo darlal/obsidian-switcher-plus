@@ -430,7 +430,6 @@ describe('modeHandler', () => {
       const inputInfo = sut.determineRunMode(input, null, null);
 
       expect(inputInfo.mode).toBe(Mode.Standard);
-      expect(inputInfo.searchQuery).toBeFalsy();
       expect(inputInfo.inputText).toBe('');
     });
 

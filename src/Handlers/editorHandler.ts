@@ -12,6 +12,7 @@ import {
 import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 import { MetadataCache, sortSearchResults, TFile, WorkspaceLeaf } from 'obsidian';
 import { Handler } from './handler';
+import { Searcher } from 'src/search';
 
 export class EditorHandler extends Handler<EditorSuggestion> {
   getCommandString(_sessionOpts?: SessionOpts): string {
@@ -39,8 +40,8 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     const suggestions: EditorSuggestion[] = [];
 
     if (inputInfo) {
-      inputInfo.buildSearchQuery();
-      const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
+      const { query, hasSearchTerm } = inputInfo.parsedInputQuery;
+      const searcher = Searcher.create(query);
       const items = this.getItems();
 
       items.forEach((item) => {
@@ -54,7 +55,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
         );
 
         if (hasSearchTerm) {
-          result = this.fuzzySearchWithFallback(prepQuery, preferredTitle, file);
+          result = searcher.searchWithFallback(preferredTitle, file);
           shouldPush = result.matchType !== MatchType.None;
         }
 

@@ -7,26 +7,19 @@ jest.mock('electron', () => {
 });
 
 import { ipcRenderer } from 'electron';
-import { Mode, SuggestionType, MatchType } from 'src/types';
+import { Mode, SuggestionType, MatchType, SearchQuery } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { Handler, VaultHandler, VaultData } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
+import { App, setIcon, renderResults, Platform } from 'obsidian';
 import {
-  App,
-  fuzzySearch,
-  prepareQuery,
-  setIcon,
-  renderResults,
-  Platform,
-} from 'obsidian';
-import {
-  makePreparedQuery,
   makeFuzzyMatch,
   commandTrigger,
   vaultTrigger,
   makeVaultSuggestion,
 } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
+import { Searcher } from 'src/search';
 
 describe('vaultHandler', () => {
   let settings: SwitcherPlusSettings;
@@ -138,34 +131,31 @@ describe('vaultHandler', () => {
     });
 
     test('with filter search term, it should return only matching suggestions for vault list mode', () => {
+      const inputInfo = new InputInfo(null, Mode.VaultList);
+      const parsedInputQuerySpy = jest
+        .spyOn(inputInfo, 'parsedInputQuery', 'get')
+        .mockReturnValue(mock<SearchQuery>({ hasSearchTerm: true, query: null }));
+
       const filterText = 'firstVault';
       const expectedItem = Object.values(vaultData).find((vault) =>
         vault.path.endsWith(filterText),
       );
 
-      const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
-      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
+      const searchSpy = jest
+        .spyOn(Searcher.prototype, 'executeSearch')
+        .mockImplementation((text) => {
+          return text.endsWith(filterText) ? makeFuzzyMatch() : null;
+        });
 
-      const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
-
-      mockFuzzySearch.mockImplementation((_q, text: string) => {
-        const match = makeFuzzyMatch();
-        return text.endsWith(filterText) ? match : null;
-      });
-
-      const inputInfo = new InputInfo(`${vaultTrigger}${filterText}`);
       mockedIpcRenderer.sendSync.mockReturnValueOnce(vaultData);
 
       const results = sut.getSuggestions(inputInfo);
-
-      const onlyResult = results[0];
       expect(results).toHaveLength(1);
-      expect(onlyResult.pathSegments.path).toBe(expectedItem.path);
+      expect(results[0].pathSegments.path).toBe(expectedItem.path);
       expect(mockedIpcRenderer.sendSync).toHaveBeenCalledWith('vault-list');
-      expect(mockFuzzySearch).toHaveBeenCalled();
-      expect(mockPrepareQuery).toHaveBeenCalled();
 
-      mockFuzzySearch.mockReset();
+      searchSpy.mockRestore();
+      parsedInputQuerySpy.mockRestore();
     });
   });
 

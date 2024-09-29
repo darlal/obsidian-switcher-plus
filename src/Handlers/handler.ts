@@ -3,7 +3,6 @@ import {
   Component,
   EditorPosition,
   FileView,
-  fuzzySearch,
   HeadingCache,
   Keymap,
   MarkdownRenderer,
@@ -13,7 +12,6 @@ import {
   OpenViewState,
   PaneType,
   Platform,
-  PreparedQuery,
   renderResults,
   SearchMatches,
   SearchResult,
@@ -32,7 +30,6 @@ import {
   Mode,
   PathDisplayFormat,
   PathSegments,
-  SearchResultWithFallback,
   SessionOpts,
   SourceInfo,
   Suggestion,
@@ -788,88 +785,6 @@ export abstract class Handler<T> {
     }
 
     parentEl?.addClasses(styles);
-  }
-
-  /**
-   * Searches through primaryString, if not match is found,
-   * searches through secondaryString
-   * @param  {PreparedQuery} prepQuery
-   * @param  {string} primaryString
-   * @param  {string} secondaryString?
-   * @returns { isPrimary: boolean; match?: SearchResult }
-   */
-  fuzzySearchStrings(
-    prepQuery: PreparedQuery,
-    primaryString: string,
-    secondaryString?: string,
-  ): { isPrimary: boolean; match?: SearchResult } {
-    let isPrimary = false;
-    let match: SearchResult = null;
-
-    if (primaryString) {
-      match = fuzzySearch(prepQuery, primaryString);
-      isPrimary = !!match;
-    }
-
-    if (!match && secondaryString) {
-      match = fuzzySearch(prepQuery, secondaryString);
-
-      if (match) {
-        match.score -= 1;
-      }
-    }
-
-    return {
-      isPrimary,
-      match,
-    };
-  }
-
-  /**
-   * Searches through primaryText, if no match is found and file is not null, it will
-   * fallback to searching 1) file.basename, 2) file.path
-   * @param  {PreparedQuery} prepQuery
-   * @param  {string} primaryString
-   * @param  {PathSegments} pathSegments? TFile like object containing the basename and full path.
-   * @returns SearchResultWithFallback
-   */
-  fuzzySearchWithFallback(
-    prepQuery: PreparedQuery,
-    primaryString: string,
-    pathSegments?: PathSegments,
-  ): SearchResultWithFallback {
-    let matchType = MatchType.None;
-    let matchText: string;
-    let match: SearchResult = null;
-
-    let res = this.fuzzySearchStrings(prepQuery, primaryString);
-
-    if (res.match) {
-      match = res.match;
-      matchType = MatchType.Primary;
-      matchText = primaryString;
-    } else if (pathSegments) {
-      const { basename, path } = pathSegments;
-
-      // Note: the fallback to path has to search through the entire path
-      // because search needs to match over the filename/basename boundaries
-      // e.g. search string "to my" should match "path/to/myfile.md"
-      // that means MatchType.Basename will always be in the basename, while
-      // MatchType.ParentPath can span both filename and basename
-      res = this.fuzzySearchStrings(prepQuery, basename, path);
-
-      if (res.isPrimary) {
-        matchType = MatchType.Basename;
-        matchText = basename;
-      } else if (res.match) {
-        matchType = MatchType.Path;
-        matchText = path;
-      }
-
-      match = res.match;
-    }
-
-    return { matchType, matchText, match };
   }
 
   /**

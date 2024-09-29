@@ -1,11 +1,8 @@
 import { SwitcherPlusSettings } from 'src/settings';
-import { Mode, EditorSuggestion, SuggestionType } from 'src/types';
+import { Mode, EditorSuggestion, SuggestionType, SearchQuery } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import {
   WorkspaceLeaf,
-  PreparedQuery,
-  prepareQuery,
-  fuzzySearch,
   App,
   Workspace,
   View,
@@ -22,9 +19,11 @@ import {
   makeLeaf,
   makeEditorSuggestion,
   makeHeading,
+  makeFuzzyMatch,
 } from '@fixtures';
 import { EditorHandler, Handler } from 'src/Handlers';
 import { mock, MockProxy } from 'jest-mock-extended';
+import { Searcher } from 'src/search';
 
 function makeLeafWithRoot(text: string, root: WorkspaceItem): MockProxy<WorkspaceLeaf> {
   const mockLeaf = makeLeaf();
@@ -88,8 +87,6 @@ describe('editorHandler', () => {
   });
 
   describe('getSuggestions', () => {
-    const mockPrepareQuery = jest.mocked(prepareQuery);
-    const mockFuzzySearch = jest.mocked(fuzzySearch);
     const rootFixture = rootSplitEditorFixtures[0];
     const leftFixture = leftSplitEditorFixtures[0];
     const rightFixture = rightSplitEditorFixtures[0];
@@ -130,18 +127,16 @@ describe('editorHandler', () => {
     });
 
     test('that EditorSuggestion have a file property to enable interop with other plugins (like HoverEditor)', () => {
-      const inputInfo = new InputInfo(editorTrigger);
+      const inputInfo = new InputInfo(null, Mode.EditorList);
       const results = sut.getSuggestions(inputInfo);
 
       expect(results.every((v) => v.file !== null)).toBe(true);
     });
 
     test('with default settings, it should return suggestions for editor mode', () => {
-      const inputInfo = new InputInfo(editorTrigger, Mode.EditorList);
+      const inputInfo = new InputInfo(null, Mode.EditorList);
       const results = sut.getSuggestions(inputInfo);
 
-      expect(results).not.toBeNull();
-      expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(3);
 
       const resultLeaves = new Set(results.map((sugg: EditorSuggestion) => sugg.item));
@@ -150,7 +145,6 @@ describe('editorHandler', () => {
       expect(resultLeaves.has(mockRightSplitLeaf)).toBe(true);
       expect(results.every((sugg) => sugg.type === SuggestionType.EditorList)).toBe(true);
 
-      expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
       expect(mockRootSplitLeaf.getRoot).toHaveBeenCalled();
       expect(mockLeftSplitLeaf.getRoot).toHaveBeenCalled();
@@ -158,17 +152,19 @@ describe('editorHandler', () => {
     });
 
     test('with filter search term, it should return only matching suggestions for editor mode', () => {
-      mockPrepareQuery.mockReturnValueOnce(rootFixture.prepQuery);
+      const filterText = rootFixture.displayText;
+      const inputInfo = new InputInfo(null, Mode.EditorList);
+      const parsedInputQuerySpy = jest
+        .spyOn(inputInfo, 'parsedInputQuery', 'get')
+        .mockReturnValue(mock<SearchQuery>({ hasSearchTerm: true, query: filterText }));
 
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        return text === rootFixture.displayText ? rootFixture.fuzzyMatch : null;
-      });
+      const searchSpy = jest
+        .spyOn(Searcher.prototype, 'executeSearch')
+        .mockImplementation((text) => {
+          return text === filterText ? makeFuzzyMatch() : null;
+        });
 
-      const inputInfo = new InputInfo(rootFixture.inputText, Mode.EditorList);
       const results = sut.getSuggestions(inputInfo);
-
-      expect(results).not.toBeNull();
-      expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(1);
 
       const resultLeaves = new Set(results.map((sugg: EditorSuggestion) => sugg.item));
@@ -177,8 +173,6 @@ describe('editorHandler', () => {
       expect(resultLeaves.has(mockRightSplitLeaf)).toBe(false);
       expect(results[0]).toHaveProperty('type', SuggestionType.EditorList);
 
-      expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
       expect(mockRootSplitLeaf.getRoot).toHaveBeenCalled();
       expect(mockLeftSplitLeaf.getRoot).toHaveBeenCalled();
@@ -187,7 +181,8 @@ describe('editorHandler', () => {
       expect(mockLeftSplitLeaf.getDisplayText).toHaveBeenCalled();
       expect(mockRightSplitLeaf.getDisplayText).toHaveBeenCalled();
 
-      mockFuzzySearch.mockReset();
+      searchSpy.mockRestore();
+      parsedInputQuerySpy.mockRestore();
     });
 
     test('with INCLUDED side view type, it should return included side panel editor suggestions for editor mode', () => {
@@ -199,11 +194,9 @@ describe('editorHandler', () => {
       const mockView = mockLeftSplitLeaf.view as MockProxy<View>;
       mockView.getViewType.mockReturnValue(includeViewType);
 
-      const inputInfo = new InputInfo(editorTrigger, Mode.EditorList);
+      const inputInfo = new InputInfo(null, Mode.EditorList);
       const results = sut.getSuggestions(inputInfo);
 
-      expect(results).not.toBeNull();
-      expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(2);
 
       const resultLeaves = new Set(results.map((sugg: EditorSuggestion) => sugg.item));
@@ -214,7 +207,6 @@ describe('editorHandler', () => {
 
       expect(includeViewTypesSpy).toHaveBeenCalled();
       expect(mockView.getViewType).toHaveBeenCalled();
-      expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
       expect(mockRootSplitLeaf.getRoot).toHaveBeenCalled();
       expect(mockLeftSplitLeaf.getRoot).toHaveBeenCalled();
@@ -232,11 +224,9 @@ describe('editorHandler', () => {
       const mockView = mockRootSplitLeaf.view as MockProxy<View>;
       mockView.getViewType.mockReturnValue(excludeViewType);
 
-      const inputInfo = new InputInfo(editorTrigger, Mode.EditorList);
+      const inputInfo = new InputInfo(null, Mode.EditorList);
       const results = sut.getSuggestions(inputInfo);
 
-      expect(results).not.toBeNull();
-      expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(2);
 
       const resultLeaves = new Set(results.map((sugg: EditorSuggestion) => sugg.item));
@@ -247,7 +237,6 @@ describe('editorHandler', () => {
 
       expect(excludeViewTypesSpy).toHaveBeenCalled();
       expect(mockView.getViewType).toHaveBeenCalled();
-      expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockWorkspace.iterateAllLeaves).toHaveBeenCalled();
       expect(mockRootSplitLeaf.getRoot).toHaveBeenCalled();
       expect(mockLeftSplitLeaf.getRoot).toHaveBeenCalled();

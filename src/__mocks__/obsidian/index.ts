@@ -3,11 +3,9 @@ import { mock, mockFn } from 'jest-mock-extended';
 import {
   App,
   debounce,
-  fuzzySearch,
   Platform,
   Plugin,
   PluginManifest,
-  prepareQuery,
   renderResults,
   sortSearchResults,
   TFile,
@@ -18,6 +16,8 @@ import {
   parseLinktext,
   Component,
   MarkdownRenderer,
+  prepareFuzzySearch,
+  prepareSimpleSearch,
 } from 'obsidian';
 import {
   MockSetting,
@@ -29,7 +29,6 @@ import {
   MockExtraButtonComponent,
   MockSliderComponent,
 } from './mockSetting';
-import { makeFuzzyMatch, makePreparedQuery } from '@fixtures';
 
 const chance = new Chance();
 
@@ -75,13 +74,8 @@ const mockTFile = jest.fn<TFile, [basename?: string, extension?: string]>(
   },
 );
 
-const mockFuzzySearch = mockFn<typeof fuzzySearch>().mockImplementation((_q, _t) =>
-  makeFuzzyMatch(),
-);
-
-const mockPrepareQuery = mockFn<typeof prepareQuery>().mockImplementation((_query) =>
-  makePreparedQuery(),
-);
+const mockPrepareFuzzySearch = mockFn<typeof prepareFuzzySearch>();
+const mockPrepareSimpleSearch = mockFn<typeof prepareSimpleSearch>();
 
 const mockNormalizePath = mockFn<typeof normalizePath>().mockImplementation(
   (path) => path,
@@ -99,8 +93,8 @@ export {
   mockPlugin as Plugin,
   MockPluginSettingTab as PluginSettingTab,
   mockTFile as TFile,
-  mockPrepareQuery as prepareQuery,
-  mockFuzzySearch as fuzzySearch,
+  mockPrepareFuzzySearch as prepareFuzzySearch,
+  mockPrepareSimpleSearch as prepareSimpleSearch,
   mockSortSearchResults as sortSearchResults,
   mockRenderResults as renderResults,
   mockDebounce as debounce,

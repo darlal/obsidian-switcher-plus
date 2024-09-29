@@ -9,13 +9,13 @@ import {
 } from 'src/types';
 import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import {
-  fuzzySearch,
   SearchResult,
   sortSearchResults,
   WorkspaceLeaf,
   WorkspacesPluginInstance,
 } from 'obsidian';
 import { Handler } from './handler';
+import { Searcher } from 'src/search';
 
 export const WORKSPACE_PLUGIN_ID = 'workspaces';
 
@@ -48,8 +48,8 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
     const suggestions: WorkspaceSuggestion[] = [];
 
     if (inputInfo) {
-      inputInfo.buildSearchQuery();
-      const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
+      const { query, hasSearchTerm } = inputInfo.parsedInputQuery;
+      const searcher = Searcher.create(query);
       const items = this.getItems();
 
       items.forEach((item) => {
@@ -57,7 +57,7 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
         let match: SearchResult = null;
 
         if (hasSearchTerm) {
-          match = fuzzySearch(prepQuery, item.id);
+          ({ match } = searcher.searchWithFallback(item.id));
           shouldPush = !!match;
         }
 

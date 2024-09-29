@@ -1,23 +1,16 @@
-import { Mode, WorkspaceSuggestion, SuggestionType } from 'src/types';
+import { Mode, WorkspaceSuggestion, SuggestionType, SearchQuery } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { Handler, WorkspaceHandler, WORKSPACE_PLUGIN_ID } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
 import {
   App,
-  fuzzySearch,
   InstalledPlugin,
   InternalPlugins,
-  PreparedQuery,
-  prepareQuery,
   WorkspacesPluginInstance,
 } from 'obsidian';
-import {
-  makePreparedQuery,
-  makeFuzzyMatch,
-  workspaceTrigger,
-  makeWorkspaceSuggestion,
-} from '@fixtures';
+import { makeFuzzyMatch, workspaceTrigger, makeWorkspaceSuggestion } from '@fixtures';
 import { mock, MockProxy } from 'jest-mock-extended';
+import { Searcher } from 'src/search';
 
 function makeWorkspacesPluginInstall(): MockProxy<InstalledPlugin> {
   const mockInstance = mock<WorkspacesPluginInstance>({
@@ -167,31 +160,26 @@ describe('workspaceHandler', () => {
 
     test('with filter search term, it should return only matching suggestions for workspace mode', () => {
       const filterText = 'first';
-      const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
-      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
+      const inputInfo = new InputInfo(null, Mode.CommandList);
+      const parsedInputQuerySpy = jest
+        .spyOn(inputInfo, 'parsedInputQuery', 'get')
+        .mockReturnValue(mock<SearchQuery>({ hasSearchTerm: true, query: null }));
 
-      const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch();
-        return text.startsWith(filterText) ? match : null;
-      });
+      const searchSpy = jest
+        .spyOn(Searcher.prototype, 'executeSearch')
+        .mockImplementation((text) => {
+          return text.startsWith(filterText) ? makeFuzzyMatch() : null;
+        });
 
-      const inputInfo = new InputInfo(`${workspaceTrigger}${filterText}`);
       const results = sut.getSuggestions(inputInfo);
 
-      expect(results).not.toBeNull();
-      expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(1);
-
-      const onlyResult = results[0];
-      expect(onlyResult).toHaveProperty('type', SuggestionType.WorkspaceList);
-      expect(onlyResult.item.id).toBe(expectedWorkspaceIds[0]);
-
-      expect(mockFuzzySearch).toHaveBeenCalled();
-      expect(mockPrepareQuery).toHaveBeenCalled();
+      expect(results[0]).toHaveProperty('type', SuggestionType.WorkspaceList);
+      expect(results[0].item.id).toBe(expectedWorkspaceIds[0]);
       expect(mockInternalPlugins.getEnabledPluginById).toHaveBeenCalled();
 
-      mockFuzzySearch.mockReset();
+      searchSpy.mockRestore();
+      parsedInputQuerySpy.mockRestore();
     });
   });
 

@@ -1,4 +1,5 @@
 import { getInternalEnabledPluginById } from 'src/utils';
+import { Searcher } from 'src/search';
 import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import { CommandListFacetIds } from 'src/settings';
 import {
@@ -13,7 +14,6 @@ import {
   SearchResult,
   sortSearchResults,
   WorkspaceLeaf,
-  fuzzySearch,
   CommandPalettePluginInstance,
   Command,
   App,
@@ -53,8 +53,8 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     const suggestions: CommandSuggestion[] = [];
 
     if (inputInfo) {
-      inputInfo.buildSearchQuery();
-      const { hasSearchTerm, prepQuery } = inputInfo.searchQuery;
+      const { query, hasSearchTerm } = inputInfo.parsedInputQuery;
+      const searcher = Searcher.create(query);
       const itemsInfo = this.getItems(inputInfo, hasSearchTerm);
 
       itemsInfo.forEach((info) => {
@@ -62,7 +62,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
         let match: SearchResult = null;
 
         if (hasSearchTerm) {
-          match = fuzzySearch(prepQuery, info.cmd.name);
+          ({ match } = searcher.searchWithFallback(info.cmd.name));
           shouldPush = !!match;
         }
 

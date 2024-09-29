@@ -9,6 +9,7 @@ import {
   CalloutCache,
   SymbolIndicators,
   SymbolInfo,
+  SearchQuery,
 } from 'src/types';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import {
@@ -19,9 +20,6 @@ import {
 } from 'src/Handlers';
 import {
   WorkspaceLeaf,
-  PreparedQuery,
-  prepareQuery,
-  fuzzySearch,
   App,
   SearchResult,
   MarkdownView,
@@ -44,7 +42,6 @@ import {
   leftSplitEditorFixtures,
   symbolTrigger,
   headingsTrigger,
-  makePreparedQuery,
   makeFuzzyMatch,
   getHeadings,
   getTags,
@@ -61,8 +58,6 @@ import {
   symbolActiveTrigger,
   getCachedMetadata,
 } from '@fixtures';
-import { mock, MockProxy, mockClear, mockFn } from 'jest-mock-extended';
-import { Chance } from 'chance';
 import {
   CanvasData,
   CanvasFileData,
@@ -70,6 +65,9 @@ import {
   CanvasLinkData,
   CanvasTextData,
 } from 'obsidian/canvas';
+import { mock, MockProxy, mockClear, mockFn } from 'jest-mock-extended';
+import { Chance } from 'chance';
+import { Searcher } from 'src/search';
 
 const chance = new Chance();
 
@@ -315,8 +313,20 @@ describe('symbolHandler', () => {
   });
 
   describe('getSuggestions', () => {
-    const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
-    const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
+    const mockSearchQuery = mock<SearchQuery>();
+    let executeSearchSpy: jest.SpyInstance<SearchResult, [text: string]>;
+
+    beforeAll(() => {
+      executeSearchSpy = jest.spyOn(Searcher.prototype, 'executeSearch');
+    });
+
+    beforeEach(() => {
+      mockClear(mockSearchQuery);
+    });
+
+    afterAll(() => {
+      executeSearchSpy.mockRestore();
+    });
 
     test('with falsy input, it should return an empty array', async () => {
       const results = await sut.getSuggestions(null);
@@ -370,7 +380,6 @@ describe('symbolHandler', () => {
       const cached = Object.values(rootFixture.cachedMetadata).flat();
 
       expect(results).toHaveLength(cached.length);
-      expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockVault.cachedRead).toHaveBeenCalledWith(mockRootSplitLeaf.view.file);
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
         mockRootSplitLeaf.view.file,
@@ -432,7 +441,6 @@ describe('symbolHandler', () => {
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
         mockRootSplitLeaf.view.file,
       );
-      expect(mockPrepareQuery).toHaveBeenCalled();
 
       selectNearestHeadingSpy.mockReset();
       mockEditor.getCursor.mockReset();
@@ -476,32 +484,24 @@ describe('symbolHandler', () => {
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
         mockRootSplitLeaf.view.file,
       );
-      expect(mockPrepareQuery).toHaveBeenCalled();
 
       selectNearestHeadingSpy.mockReset();
     });
 
     test('with filter search term, it should return only matching symbol suggestions', async () => {
-      mockMetadataCache.getFileCache.mockReturnValueOnce(leftFixture.cachedMetadata);
-      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
-      mockFuzzySearch.mockImplementation(
-        (_q: PreparedQuery, text: string): SearchResult => {
-          const match = makeFuzzyMatch();
-          return text === 'tag1' || text === 'tag2' ? match : null;
-        },
-      );
-
       filterText = 'tag';
-      inputText = `${symbolTrigger}${filterText}`;
-      startIndex = 0;
-      const inputInfo = new InputInfo(inputText);
-      sut.validateCommand(inputInfo, startIndex, filterText, null, mockLeftSplitLeaf);
+      mockMetadataCache.getFileCache.mockReturnValueOnce(leftFixture.cachedMetadata);
+
+      executeSearchSpy.mockImplementation((text) => {
+        return text === 'tag1' || text === 'tag2' ? makeFuzzyMatch() : null;
+      });
+
+      const inputInfo = new InputInfo(`${symbolTrigger}${filterText}`);
+      sut.validateCommand(inputInfo, 0, filterText, null, mockLeftSplitLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       const results = await sut.getSuggestions(inputInfo);
 
-      expect(results).not.toBeNull();
-      expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(2);
       expect(results.every((sugg) => sugg.type === SuggestionType.SymbolList)).toBe(true);
 
@@ -512,10 +512,8 @@ describe('symbolHandler', () => {
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
         mockLeftSplitLeaf.view.file,
       );
-      expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(mockFuzzySearch).toHaveBeenCalled();
 
-      mockFuzzySearch.mockReset();
+      executeSearchSpy.mockReset();
     });
 
     test('with existing filter search term, it should continue refining suggestions for the previous target', async () => {
@@ -523,46 +521,36 @@ describe('symbolHandler', () => {
 
       // 1) setup first initial run
       filterText = 'tag';
-      inputText = `${symbolTrigger}${filterText}`;
-      startIndex = 0;
 
-      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
-
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch();
-        return text === 'tag1' || text === 'tag2' ? match : null;
+      executeSearchSpy.mockImplementation((text) => {
+        return text === 'tag1' || text === 'tag2' ? makeFuzzyMatch() : null;
       });
 
-      let inputInfo = new InputInfo(inputText);
+      let inputInfo = new InputInfo(`${symbolTrigger}${filterText}`);
 
-      sut.validateCommand(inputInfo, startIndex, filterText, null, mockLeftSplitLeaf);
+      sut.validateCommand(inputInfo, 0, filterText, null, mockLeftSplitLeaf);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
 
       let results = await sut.getSuggestions(inputInfo);
 
-      expect(results).not.toBeNull();
-      expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(2);
       expect(results.every((sugg) => sugg.type === SuggestionType.SymbolList)).toBe(true);
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
         mockLeftSplitLeaf.view.file,
       );
-      mockFuzzySearch.mockReset();
+
+      executeSearchSpy.mockReset();
 
       // 2) setup second run, which refines the filterText from the first run
       filterText = 'tag2';
-      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
 
-      mockFuzzySearch.mockImplementation((q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch([[0, 4]], -0.0104);
-        return text === q.query ? match : null;
+      executeSearchSpy.mockImplementation((text) => {
+        return text === filterText ? makeFuzzyMatch() : null;
       });
 
       const mockTempLeaf = makeLeaf();
       const mockTempLeafFile = mockTempLeaf.view.file;
-
-      inputText = `${symbolTrigger}${filterText}`;
-      inputInfo = new InputInfo(inputText);
+      inputInfo = new InputInfo(`${symbolTrigger}${filterText}`);
 
       // note the use of a different leaf than the first run
       sut.validateCommand(inputInfo, startIndex, filterText, null, mockTempLeaf);
@@ -570,8 +558,6 @@ describe('symbolHandler', () => {
 
       results = await sut.getSuggestions(inputInfo);
 
-      expect(results).not.toBeNull();
-      expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(1); // expect just 1 this time
       expect(results[0]).toHaveProperty('type', SuggestionType.SymbolList);
 
@@ -583,10 +569,9 @@ describe('symbolHandler', () => {
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
         mockLeftSplitLeaf.view.file,
       );
-      expect(mockPrepareQuery).toHaveBeenCalled();
 
       mockMetadataCache.getFileCache.mockReset();
-      mockFuzzySearch.mockReset();
+      executeSearchSpy.mockReset();
     });
 
     it('should not return suggestions for a symbol type that is disabled', async () => {
@@ -602,13 +587,10 @@ describe('symbolHandler', () => {
 
       const results = await sut.getSuggestions(inputInfo);
 
-      expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(0);
-
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
         mockRootSplitLeaf.view.file,
       );
-      expect(mockPrepareQuery).toHaveBeenCalled();
 
       isSymbolTypeEnabledSpy.mockRestore();
     });
@@ -626,13 +608,10 @@ describe('symbolHandler', () => {
 
       const results = await sut.getSuggestions(inputInfo);
 
-      expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(0);
-
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
         mockRootSplitLeaf.view.file,
       );
-      expect(mockPrepareQuery).toHaveBeenCalled();
 
       isSymbolTypeEnabledSpy.mockRestore();
     });
@@ -658,7 +637,6 @@ describe('symbolHandler', () => {
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
         mockRootSplitLeaf.view.file,
       );
-      expect(mockPrepareQuery).toHaveBeenCalled();
 
       excludeLinkSubTypesSpy.mockRestore();
     });
@@ -683,7 +661,6 @@ describe('symbolHandler', () => {
 
     it('should return suggestion for Headings', async () => {
       filterText = 'heading3';
-      mockPrepareQuery.mockReturnValueOnce(makePreparedQuery(filterText));
 
       const metadata = getCachedMetadata();
       mockMetadataCache.getFileCache.mockReturnValueOnce(metadata);
@@ -692,27 +669,23 @@ describe('symbolHandler', () => {
         ({ heading }) => heading === filterText,
       )[0];
 
-      mockFuzzySearch.mockImplementation((_q, text) => {
+      executeSearchSpy.mockImplementation((text) => {
         return text === filterText ? makeFuzzyMatch() : null;
       });
 
-      inputText = `${symbolTrigger}${filterText}`;
-      startIndex = 0;
-      const inputInfo = new InputInfo(inputText);
-      sut.validateCommand(inputInfo, startIndex, filterText, null, mockLeftSplitLeaf);
+      const inputInfo = new InputInfo(`${symbolTrigger}${filterText}`);
+      sut.validateCommand(inputInfo, 0, filterText, null, mockLeftSplitLeaf);
 
       const results = await sut.getSuggestions(inputInfo);
 
       expect(results).toHaveLength(1);
       expect(results.every((sugg) => sugg.type === SuggestionType.SymbolList)).toBe(true);
       expect(results[0].item.symbol).toEqual(expectedHeading);
-      expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
         mockLeftSplitLeaf.view.file,
       );
 
-      mockFuzzySearch.mockReset();
+      executeSearchSpy.mockReset();
     });
   });
 
@@ -790,22 +763,26 @@ describe('symbolHandler', () => {
       addIndicatorSpy.mockRestore();
     });
 
-    test('with symbolsInLineOrder enabled and no search term, it should indent symbols', async () => {
+    test('with symbolsInLineOrder enabled and no search term, it should indent symbols', () => {
       const settings = new SwitcherPlusSettings(null);
       jest.spyOn(settings, 'symbolsInLineOrder', 'get').mockReturnValue(true);
 
-      const inputInfo = new InputInfo(symbolTrigger);
-      const handler = new SymbolHandler(mockApp, settings);
       symbolSugg.item.indentLevel = 2;
+      const inputInfo = new InputInfo(symbolTrigger);
+      const parsedInputQuerySpy = jest
+        .spyOn(inputInfo, 'parsedInputQuery', 'get')
+        .mockReturnValue(mock<SearchQuery>({ hasSearchTerm: false }));
 
-      handler.validateCommand(inputInfo, 0, 'foo', null, mockRootSplitLeaf);
-      await handler.getSuggestions(inputInfo);
+      const handler = new SymbolHandler(mockApp, settings);
+      handler.inputInfo = inputInfo;
 
       handler.renderSuggestion(symbolSugg, mockParentEl);
 
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining([`qsp-symbol-l${symbolSugg.item.indentLevel}`]),
       );
+
+      parsedInputQuerySpy.mockRestore();
     });
 
     it('should render a canvas suggestion', () => {

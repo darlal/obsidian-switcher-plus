@@ -1,13 +1,12 @@
+import { Searcher } from 'src/search';
 import {
   App,
   BookmarksPluginFileItem,
   BookmarksPluginSearchItem,
   CachedMetadata,
-  fuzzySearch,
   MetadataCache,
-  PreparedQuery,
-  prepareQuery,
   renderResults,
+  SearchResult,
   TAbstractFile,
   TFile,
   TFolder,
@@ -24,7 +23,6 @@ import {
   makeFuzzyMatch,
   makeHeading,
   makeLoc,
-  makePreparedQuery,
   makeLeaf,
   makeHeadingSuggestion,
 } from '@fixtures';
@@ -40,6 +38,7 @@ import {
   BookmarksSuggestion,
   EditorSuggestion,
   SuggestionType,
+  SearchQuery,
 } from 'src/types';
 import {
   isAliasSuggestion,
@@ -48,7 +47,7 @@ import {
   isHeadingSuggestion,
   isUnresolvedSuggestion,
 } from 'src/utils';
-import { mock, MockProxy } from 'jest-mock-extended';
+import { mock, mockClear, MockProxy } from 'jest-mock-extended';
 
 function makeFileTree(expectedFile: TFile, parentFolderName = 'l2Folder2'): TFolder {
   const mockFolder = jest.fn<
@@ -77,6 +76,15 @@ function makeFileTree(expectedFile: TFile, parentFolderName = 'l2Folder2'): TFol
   return root;
 }
 
+function resetCurrentWorkspaceEnvList(inputInfo: InputInfo): void {
+  inputInfo.currentWorkspaceEnvList.openWorkspaceLeaves = new Set<WorkspaceLeaf>();
+  inputInfo.currentWorkspaceEnvList.openWorkspaceFiles = new Set<TFile>();
+  inputInfo.currentWorkspaceEnvList.nonFileBookmarks = new Set<BookmarksItemInfo>();
+  inputInfo.currentWorkspaceEnvList.mostRecentFiles = new Set<TFile>();
+  inputInfo.currentWorkspaceEnvList.attachmentFileExtensions = new Set<string>();
+  inputInfo.currentWorkspaceEnvList.fileBookmarks = new Map<TFile, BookmarksItemInfo[]>();
+}
+
 describe('headingsHandler', () => {
   let sut: HeadingsHandler;
   let mockApp: MockProxy<App>;
@@ -88,8 +96,6 @@ describe('headingsHandler', () => {
   let modeTriggerSpy: jest.SpyInstance;
   let settings: SwitcherPlusSettings;
   let headingSugg: HeadingSuggestion;
-  const mockPrepareQuery = jest.mocked<typeof prepareQuery>(prepareQuery);
-  const mockFuzzySearch = jest.mocked<typeof fuzzySearch>(fuzzySearch);
 
   beforeAll(() => {
     mockWorkspace = mock<Workspace>();
@@ -152,6 +158,38 @@ describe('headingsHandler', () => {
   });
 
   describe('getSuggestions', () => {
+    const filterText = 'foo';
+    let inputInfo: InputInfo;
+    const mockSearchQuery = mock<SearchQuery>();
+    let parsedInputQuerySpy: jest.SpyInstance<SearchQuery, []>;
+    let executeSearchSpy: jest.SpyInstance<SearchResult, [text: string]>;
+
+    beforeAll(() => {
+      executeSearchSpy = jest.spyOn(Searcher.prototype, 'executeSearch');
+
+      inputInfo = new InputInfo(null, Mode.HeadingsList);
+      parsedInputQuerySpy = jest
+        .spyOn(inputInfo, 'parsedInputQuery', 'get')
+        .mockReturnValue(mockSearchQuery);
+    });
+
+    beforeEach(() => {
+      mockClear(mockSearchQuery);
+      mockSearchQuery.hasSearchTerm = true;
+      mockSearchQuery.query = filterText;
+
+      executeSearchSpy.mockClear().mockImplementation((text) => {
+        return text.startsWith(filterText) ? makeFuzzyMatch() : null;
+      });
+
+      resetCurrentWorkspaceEnvList(inputInfo);
+    });
+
+    afterAll(() => {
+      parsedInputQuerySpy.mockRestore();
+      executeSearchSpy.mockRestore();
+    });
+
     test('with falsy input, it should return an empty array', () => {
       const results = sut.getSuggestions(null);
 
@@ -161,10 +199,7 @@ describe('headingsHandler', () => {
     });
 
     it('should respect the max result limit setting', () => {
-      const mockInputInfo = mock<InputInfo>({
-        mode: Mode.HeadingsList,
-        searchQuery: { hasSearchTerm: true },
-      });
+      mockSearchQuery.hasSearchTerm = true; // Ensure that .getItems() is called
 
       const suggs = [
         mock<FileSuggestion>(),
@@ -172,6 +207,7 @@ describe('headingsHandler', () => {
         mock<FileSuggestion>(),
         mock<FileSuggestion>(),
       ];
+
       const getItemsSpy = jest
         .spyOn(sut, 'getItems')
         .mockImplementationOnce((_f, _i, coll) => {
@@ -183,7 +219,7 @@ describe('headingsHandler', () => {
         .spyOn(settings, 'limit', 'get')
         .mockReturnValue(expectedLimit);
 
-      const results = sut.getSuggestions(mockInputInfo);
+      const results = sut.getSuggestions(inputInfo);
 
       expect(results).toHaveLength(expectedLimit);
 
@@ -197,10 +233,11 @@ describe('headingsHandler', () => {
       const leaf = makeLeaf();
       leaf.view.file = file1;
 
-      const inputInfo = new InputInfo(headingsTrigger, Mode.HeadingsList);
       inputInfo.currentWorkspaceEnvList.openWorkspaceLeaves = new Set([leaf]);
       inputInfo.currentWorkspaceEnvList.mostRecentFiles = new Set([file2]);
 
+      mockSearchQuery.hasSearchTerm = false; // Indicates no search term
+      executeSearchSpy.mockReturnValue(makeFuzzyMatch());
       mockMetadataCache.getFileCache.mockReturnValue({});
 
       const results = sut.getSuggestions(inputInfo);
@@ -216,59 +253,36 @@ describe('headingsHandler', () => {
       const expected = new TFile();
       const h1 = makeHeading('foo heading H1', 1, makeLoc(1));
       const h2 = makeHeading('foo heading H2', 2, makeLoc(2));
-      const filterText = 'foo';
 
-      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
       mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
 
       mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
         return f === expected ? { headings: [h1, h2] } : getCachedMetadata();
       });
 
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch();
-        return text.startsWith(filterText) ? match : null;
-      });
-
-      const inputInfo = new InputInfo(
-        `${headingsTrigger}${filterText}`,
-        Mode.HeadingsList,
-      );
-
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(2);
-
       expect(results.every((r) => isHeadingSuggestion(r))).toBe(true);
-
+      expect((results[0] as HeadingSuggestion).file).toBe(expected);
+      expect(mockVault.getRoot).toHaveBeenCalled();
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
+      expect(builtInSystemOptionsSpy).toHaveBeenCalled();
       expect(
         results.every((r: HeadingSuggestion) => r.item === h1 || r.item === h2),
       ).toBe(true);
 
-      const result = results[0] as HeadingSuggestion;
-      expect(result.file).toBe(expected);
-
-      expect(mockFuzzySearch).toHaveBeenCalled();
-      expect(mockPrepareQuery).toHaveBeenCalled();
-      expect(mockVault.getRoot).toHaveBeenCalled();
-      expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
-      expect(builtInSystemOptionsSpy).toHaveBeenCalled();
-
       mockMetadataCache.getFileCache.mockReset();
-      mockFuzzySearch.mockReset();
-      mockPrepareQuery.mockReset();
     });
 
     test('with filter search term, and searchAllHeadings set to false, it should return only matching suggestions using first H1 in file', () => {
       const expected = new TFile();
       const expectedHeading = makeHeading('foo heading H1', 1, makeLoc(1));
       const heading2 = makeHeading('foo heading H1', 1, makeLoc(2));
-      const filterText = 'foo';
 
       const searchAllHeadingsSpy = jest
         .spyOn(settings, 'searchAllHeadings', 'get')
         .mockReturnValue(false);
 
-      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
       mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
 
       mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
@@ -277,44 +291,26 @@ describe('headingsHandler', () => {
           : getCachedMetadata();
       });
 
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch();
-        return text.startsWith(filterText) ? match : null;
-      });
-
-      const inputInfo = new InputInfo(
-        `${headingsTrigger}${filterText}`,
-        Mode.HeadingsList,
-      );
-
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(1);
 
-      let result = results[0];
+      const result = results[0] as HeadingSuggestion;
       expect(isHeadingSuggestion(result)).toBe(true);
-
-      result = result as HeadingSuggestion;
       expect(result.file).toBe(expected);
       expect(result.item).toBe(expectedHeading);
 
-      expect(mockFuzzySearch).toHaveBeenCalled();
-      expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockVault.getRoot).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
 
       mockMetadataCache.getFileCache.mockReset();
-      mockFuzzySearch.mockReset();
-      mockPrepareQuery.mockReset();
       searchAllHeadingsSpy.mockRestore();
     });
 
     test("with filter search term, it should return matching suggestions using file name (leaf segment) when H1 doesn't exist", () => {
-      const filterText = 'foo';
       const expected = new TFile();
       expected.basename = `${filterText} filename`; // only filename matters for this
 
-      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
       mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
 
       mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
@@ -322,38 +318,21 @@ describe('headingsHandler', () => {
         return f === expected ? {} : getCachedMetadata();
       });
 
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch();
-        return text.startsWith(filterText) ? match : null;
-      });
-
-      const inputInfo = new InputInfo(
-        `${headingsTrigger}${filterText}`,
-        Mode.HeadingsList,
-      );
-
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(1);
 
       const result = results[0];
       expect(isFileSuggestion(result)).toBe(true);
       expect((result as FileSuggestion).file).toBe(expected);
-
-      expect(mockFuzzySearch).toHaveBeenCalled();
-      expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockVault.getRoot).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
 
       mockMetadataCache.getFileCache.mockReset();
-      mockFuzzySearch.mockReset();
-      mockPrepareQuery.mockReset();
     });
 
     test('with filter search term, it should return matching suggestions using file name (leaf segment) when H1 exist but does not match', () => {
-      const filterText = 'foo';
       const filename = `${filterText} filename`; // only filename matters for this test
-      const expectedMatch = makeFuzzyMatch();
 
       const expectedFile = new TFile();
       expectedFile.basename = filename;
@@ -362,35 +341,20 @@ describe('headingsHandler', () => {
         headings: [makeHeading("words that don't match", 1)],
       });
 
-      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
       mockVault.getRoot.mockReturnValueOnce(makeFileTree(expectedFile));
 
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        return text === filename ? expectedMatch : null;
-      });
-
-      const inputInfo = new InputInfo(
-        `${headingsTrigger}${filterText}`,
-        Mode.HeadingsList,
-      );
-
       const results = sut.getSuggestions(inputInfo);
+      expect(results).toHaveLength(1);
 
       const result = results[0] as FileSuggestion;
-      expect(results).toHaveLength(1);
       expect(isFileSuggestion(result)).toBe(true);
       expect(result.file).toBe(expectedFile);
-      expect(result.match).toBe(expectedMatch);
-      expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(expectedFile);
 
       mockMetadataCache.getFileCache.mockReset();
-      mockFuzzySearch.mockReset();
-      mockPrepareQuery.mockReset();
     });
 
     test('with shouldSearchFilenames enabled, it should return matching suggestions using file name even when there is an H1 match', () => {
-      const filterText = 'foo';
       const filename = `${filterText} filename`; // only filename matters for this
       const expectedFile = new TFile();
       expectedFile.basename = filename;
@@ -403,39 +367,24 @@ describe('headingsHandler', () => {
         headings: [makeHeading(filterText, 1)], // <-- ensure heading match
       });
 
-      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
       mockVault.getRoot.mockReturnValueOnce(makeFileTree(expectedFile));
 
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        return text === filterText || text === filename ? makeFuzzyMatch() : null;
-      });
-
-      const inputInfo = new InputInfo(
-        `${headingsTrigger}${filterText}`,
-        Mode.HeadingsList,
-      );
-
       const results = sut.getSuggestions(inputInfo);
+      expect(results).toHaveLength(2);
 
       const H1Sugg = results.find(isHeadingSuggestion);
       const fileSugg = results.find(isFileSuggestion);
-      expect(results).toHaveLength(2);
       expect(H1Sugg).not.toBeFalsy();
       expect(fileSugg).not.toBeFalsy();
       expect(fileSugg.file).toBe(expectedFile);
-      expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(expectedFile);
 
       mockMetadataCache.getFileCache.mockReset();
-      mockFuzzySearch.mockReset();
       shouldSearchFilenameSpy.mockRestore();
-      mockPrepareQuery.mockReset();
     });
 
     test('with filter search term, it should fallback match against file path when there is no H1 match and no match against the basename', () => {
-      const filterText = 'foo';
       const path = `path/${filterText}/bar`; // only path matters for this test
-      const expectedMatch = makeFuzzyMatch();
 
       const expectedFile = new TFile();
       expectedFile.path = path;
@@ -444,38 +393,26 @@ describe('headingsHandler', () => {
         headings: [makeHeading("words that don't match", 1)],
       });
 
-      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
       mockVault.getRoot.mockReturnValueOnce(makeFileTree(expectedFile));
 
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        return text === path ? expectedMatch : null;
+      executeSearchSpy.mockImplementation((text: string) => {
+        return text === path ? makeFuzzyMatch() : null;
       });
 
-      const inputInfo = new InputInfo(
-        `${headingsTrigger}${filterText}`,
-        Mode.HeadingsList,
-      );
-
       const results = sut.getSuggestions(inputInfo);
+      expect(results).toHaveLength(1);
 
       const result = results[0] as FileSuggestion;
-      expect(results).toHaveLength(1);
       expect(isFileSuggestion(result)).toBe(true);
       expect(result.file).toBe(expectedFile);
-      expect(result.match).toBe(expectedMatch);
-      expect(mockFuzzySearch).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(expectedFile);
 
       mockMetadataCache.getFileCache.mockReset();
-      mockFuzzySearch.mockReset();
-      mockPrepareQuery.mockReset();
     });
 
     test('with filter search term and shouldShowAlias set to true, it should match against aliases', () => {
       const expected = new TFile();
-      const filterText = 'foo';
 
-      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
       mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
       settings.shouldShowAlias = true;
 
@@ -490,47 +427,25 @@ describe('headingsHandler', () => {
         return f === expected ? fm : getCachedMetadata();
       });
 
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch();
-        return text.startsWith(filterText) ? match : null;
-      });
-
-      const inputInfo = new InputInfo(
-        `${headingsTrigger}${filterText}`,
-        Mode.HeadingsList,
-      );
-
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(1);
 
       const result = results[0];
       expect(isAliasSuggestion(result)).toBe(true);
       expect((result as AliasSuggestion).file).toBe(expected);
-
-      expect(mockFuzzySearch).toHaveBeenCalled();
-      expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockVault.getRoot).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
 
       settings.shouldShowAlias = false;
       mockMetadataCache.getFileCache.mockReset();
-      mockFuzzySearch.mockReset();
-      mockPrepareQuery.mockReset();
     });
 
     test('with filter search term and shouldSearchBookmarks enabled, it should match against bookmarks', () => {
       const expected = new TFile();
-      const filterText = 'foo';
 
-      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
       mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
       settings.shouldSearchBookmarks = true;
-
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch();
-        return text.startsWith(filterText) ? match : null;
-      });
 
       const fileBookmark = mock<BookmarksItemInfo>({
         item: mock<BookmarksPluginFileItem>(),
@@ -542,17 +457,13 @@ describe('headingsHandler', () => {
         bookmarkPath: filterText,
       });
 
-      const inputInfo = new InputInfo(
-        `${headingsTrigger}${filterText}`,
-        Mode.HeadingsList,
-      );
-
       inputInfo.currentWorkspaceEnvList.nonFileBookmarks = new Set([searchBookmark]);
       inputInfo.currentWorkspaceEnvList.fileBookmarks = new Map([
         [expected, [fileBookmark]],
       ]);
 
       const results = sut.getSuggestions(inputInfo);
+      expect(results).toHaveLength(2);
 
       const fileResult = results.find(
         (v: BookmarksSuggestion) => v.item === fileBookmark.item,
@@ -562,21 +473,13 @@ describe('headingsHandler', () => {
         (v: BookmarksSuggestion) => v.item === searchBookmark.item,
       );
 
-      expect(results).toHaveLength(2);
       expect(fileResult).not.toBeNull();
       expect(searchResult).not.toBeNull();
-      expect(mockFuzzySearch).toHaveBeenCalled();
-      expect(mockPrepareQuery).toHaveBeenCalled();
-
-      mockFuzzySearch.mockReset();
-      mockPrepareQuery.mockReset();
     });
 
     test('with filter search term and showExistingOnly set to false, it should match against unresolved linktext', () => {
       const expected = new TFile();
-      const filterText = 'foo';
 
-      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
       mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
 
       mockMetadataCache.unresolvedLinks[expected.path] = {
@@ -584,39 +487,22 @@ describe('headingsHandler', () => {
         'another link': 1,
       };
 
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch();
-        return text.startsWith(filterText) ? match : null;
-      });
-
-      const inputInfo = new InputInfo(
-        `${headingsTrigger}${filterText}`,
-        Mode.HeadingsList,
-      );
-
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(1);
 
       const result = results[0];
       expect(isUnresolvedSuggestion(result)).toBe(true);
       expect((result as UnresolvedSuggestion).linktext).toBe('foo link noexist');
-
-      expect(mockFuzzySearch).toHaveBeenCalled();
-      expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockVault.getRoot).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
 
-      mockFuzzySearch.mockReset();
-      mockPrepareQuery.mockReset();
       mockMetadataCache.unresolvedLinks = {};
     });
 
     test('with filter search term and strictHeadingsOnly enabled, it should not match against file name, or path when there is no H1', () => {
-      const filterText = 'foo';
       const expected = new TFile();
       expected.path = 'foo/path/to/filename.md'; // only path matters for this test
 
-      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
       mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
       mockMetadataCache.getFileCache.mockReturnValue({});
 
@@ -624,65 +510,40 @@ describe('headingsHandler', () => {
         .spyOn(settings, 'strictHeadingsOnly', 'get')
         .mockReturnValue(true);
 
-      const inputInfo = new InputInfo(
-        `${headingsTrigger}${filterText}`,
-        Mode.HeadingsList,
-      );
-
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(0);
-
-      expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockVault.getRoot).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
       expect(strictHeadingsOnlySpy).toHaveBeenCalled();
 
       mockMetadataCache.getFileCache.mockReset();
-      mockPrepareQuery.mockReset();
       strictHeadingsOnlySpy.mockRestore();
     });
 
     it('should not return suggestions from excluded folders', () => {
-      const filterText = 'foo';
       const excludedFolderName = 'ignored';
       const h1 = makeHeading('foo heading H1', 1, makeLoc(1));
       const expected = new TFile();
       expected.path = 'foo/path/to/foo filename.md';
 
-      mockPrepareQuery.mockReturnValue(makePreparedQuery(filterText));
       mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected, excludedFolderName));
 
       mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
         return f === expected ? { headings: [h1] } : {};
       });
 
-      mockFuzzySearch.mockImplementation((_q: PreparedQuery, text: string) => {
-        const match = makeFuzzyMatch();
-        return text.startsWith(filterText) ? match : null;
-      });
-
       const excludeFoldersSpy = jest
         .spyOn(settings, 'excludeFolders', 'get')
         .mockReturnValue([excludedFolderName]);
 
-      const inputInfo = new InputInfo(
-        `${headingsTrigger}${filterText}`,
-        Mode.HeadingsList,
-      );
-
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(0);
-
-      expect(mockFuzzySearch).toHaveBeenCalled();
-      expect(mockPrepareQuery).toHaveBeenCalled();
       expect(mockVault.getRoot).toHaveBeenCalled();
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
 
       mockMetadataCache.getFileCache.mockReset();
-      mockFuzzySearch.mockReset();
-      mockPrepareQuery.mockReset();
       excludeFoldersSpy.mockRestore();
     });
   });
@@ -993,26 +854,33 @@ describe('headingsHandler', () => {
   });
 
   describe('Facet Handling', () => {
+    let inputInfo: InputInfo;
     const fileData = [new TFile(), new TFile(), new TFile()];
-    const mockPrepQuery = makePreparedQuery();
-
-    const mockInputInfo = mock<InputInfo>({ mode: Mode.HeadingsList });
-    mockInputInfo.searchQuery.prepQuery = mockPrepQuery;
+    let parsedInputQuerySpy: jest.SpyInstance<SearchQuery, []>;
+    let executeSearchSpy: jest.SpyInstance<SearchResult, [text: string]>;
 
     beforeAll(() => {
-      mockFuzzySearch.mockReset();
+      executeSearchSpy = jest
+        .spyOn(Searcher.prototype, 'executeSearch')
+        .mockReturnValue(makeFuzzyMatch());
 
-      mockFuzzySearch.mockImplementation((q: PreparedQuery) => {
-        return q === mockPrepQuery ? makeFuzzyMatch() : null;
-      });
+      inputInfo = new InputInfo(null, Mode.HeadingsList);
+      parsedInputQuerySpy = jest
+        .spyOn(inputInfo, 'parsedInputQuery', 'get')
+        .mockReturnValue(mock<SearchQuery>({ hasSearchTerm: true, query: null }));
+    });
+
+    beforeEach(() => {
+      resetCurrentWorkspaceEnvList(inputInfo);
     });
 
     afterAll(() => {
-      mockFuzzySearch.mockReset();
+      parsedInputQuerySpy.mockRestore();
+      executeSearchSpy.mockRestore();
     });
 
     test('when faceted with .RecentFiles, .getSuggestionsForEditorsAndRecentFiles should return recent files but not WorkspaceLeaves', () => {
-      const { currentWorkspaceEnvList } = mockInputInfo;
+      const { currentWorkspaceEnvList } = inputInfo;
       const expectedFile = new TFile();
       const leaf = makeLeaf();
       currentWorkspaceEnvList.mostRecentFiles = new Set([expectedFile]);
@@ -1020,7 +888,7 @@ describe('headingsHandler', () => {
 
       const results: FileSuggestion[] = [];
       sut.getSuggestionsForEditorsAndRecentFiles(
-        mockInputInfo,
+        inputInfo,
         results,
         new Set<string>([HeadingsListFacetIds.RecentFiles]),
         {
@@ -1035,19 +903,17 @@ describe('headingsHandler', () => {
 
     test('when faceted with .Bookmarks, .getItems should return only BookmarksSuggestion', () => {
       const facetIds = new Set([HeadingsListFacetIds.Bookmarks]);
-
       const fileBookmark = mock<BookmarksItemInfo>({ item: { type: 'file' } });
-
       const searchBookmark = mock<BookmarksItemInfo>({ item: { type: 'search' } });
 
-      const { currentWorkspaceEnvList } = mockInputInfo;
+      const { currentWorkspaceEnvList } = inputInfo;
       currentWorkspaceEnvList.nonFileBookmarks = new Set([searchBookmark]);
       currentWorkspaceEnvList.fileBookmarks = new Map<TFile, BookmarksItemInfo[]>([
         [fileBookmark.file, [fileBookmark]],
       ]);
 
       const results: BookmarksSuggestion[] = [];
-      sut.getItems(fileData, mockInputInfo, results, facetIds, {
+      sut.getItems(fileData, inputInfo, results, facetIds, {
         headings: true,
         allHeadings: true,
         aliases: true,
@@ -1071,7 +937,7 @@ describe('headingsHandler', () => {
       expectedFile.extension = 'testExtension';
 
       const results: FileSuggestion[] = [];
-      sut.getItems([expectedFile, ...fileData], mockInputInfo, results, facetIds, {
+      sut.getItems([expectedFile, ...fileData], inputInfo, results, facetIds, {
         headings: true,
         allHeadings: true,
         aliases: true,
@@ -1092,7 +958,7 @@ describe('headingsHandler', () => {
       const expectedFile = new TFile();
 
       const results: FileSuggestion[] = [];
-      sut.getItems([expectedFile], mockInputInfo, results, facetIds, {
+      sut.getItems([expectedFile], inputInfo, results, facetIds, {
         headings: true,
         allHeadings: true,
         aliases: true,
@@ -1124,7 +990,7 @@ describe('headingsHandler', () => {
         .mockReturnValueOnce(mockMetadata);
 
       const results: HeadingSuggestion[] = [];
-      sut.getItems([expectedFile, ...fileData], mockInputInfo, results, facetIds, {
+      sut.getItems([expectedFile, ...fileData], inputInfo, results, facetIds, {
         headings: false, // Expect to be overriden by facet
         allHeadings: true,
         aliases: true,
@@ -1144,46 +1010,47 @@ describe('headingsHandler', () => {
   });
 
   describe('getSuggestionsForEditorsAndRecentFiles', () => {
+    let inputInfo: InputInfo;
     const fileData = [new TFile(), new TFile(), new TFile()];
-    const mockPrepQuery = makePreparedQuery();
-
-    const mockInputInfo = mock<InputInfo>({ mode: Mode.HeadingsList });
-    mockInputInfo.searchQuery.prepQuery = mockPrepQuery;
+    let parsedInputQuerySpy: jest.SpyInstance<SearchQuery, []>;
+    let executeSearchSpy: jest.SpyInstance<SearchResult, [text: string]>;
 
     beforeAll(() => {
-      mockFuzzySearch.mockReset();
+      executeSearchSpy = jest
+        .spyOn(Searcher.prototype, 'executeSearch')
+        .mockReturnValue(makeFuzzyMatch());
 
-      mockFuzzySearch.mockImplementation((q: PreparedQuery) => {
-        return q === mockPrepQuery ? makeFuzzyMatch() : null;
-      });
+      inputInfo = new InputInfo(null, Mode.HeadingsList);
+      parsedInputQuerySpy = jest
+        .spyOn(inputInfo, 'parsedInputQuery', 'get')
+        .mockReturnValue(mock<SearchQuery>({ hasSearchTerm: true, query: null }));
+    });
+
+    beforeEach(() => {
+      resetCurrentWorkspaceEnvList(inputInfo);
     });
 
     afterAll(() => {
-      mockFuzzySearch.mockReset();
+      parsedInputQuerySpy.mockRestore();
+      executeSearchSpy.mockRestore();
     });
 
     it('should return heading suggestions for recent files', () => {
       const expectedFiles = new Set(fileData);
-      mockInputInfo.currentWorkspaceEnvList.mostRecentFiles = expectedFiles;
+      inputInfo.currentWorkspaceEnvList.mostRecentFiles = expectedFiles;
 
       mockMetadataCache.getFileCache.mockReturnValue(getCachedMetadata());
 
       const results: (HeadingSuggestion | FileSuggestion)[] = [];
-      sut.getSuggestionsForEditorsAndRecentFiles(
-        mockInputInfo,
-        results,
-        new Set<string>(),
-        {
-          editors: false,
-          recentFiles: true,
-        },
-      );
+      sut.getSuggestionsForEditorsAndRecentFiles(inputInfo, results, new Set<string>(), {
+        editors: false,
+        recentFiles: true,
+      });
 
       expect(results).toHaveLength(fileData.length);
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(results.every((sugg) => expectedFiles.has(sugg.file))).toBe(true);
       expect(results.every((sugg) => isHeadingSuggestion(sugg))).toBe(true);
-
       expect(results.every((sugg) => sugg.isRecent)).toBe(true);
 
       mockMetadataCache.getFileCache.mockReset();
@@ -1192,25 +1059,19 @@ describe('headingsHandler', () => {
     it('should return file suggestions for recent files without headings', () => {
       const results: (HeadingSuggestion | FileSuggestion)[] = [];
       const expectedFiles = new Set(fileData);
-      mockInputInfo.currentWorkspaceEnvList.mostRecentFiles = expectedFiles;
+      inputInfo.currentWorkspaceEnvList.mostRecentFiles = expectedFiles;
 
       mockMetadataCache.getFileCache.mockReturnValue({});
 
-      sut.getSuggestionsForEditorsAndRecentFiles(
-        mockInputInfo,
-        results,
-        new Set<string>(),
-        {
-          editors: false,
-          recentFiles: true,
-        },
-      );
+      sut.getSuggestionsForEditorsAndRecentFiles(inputInfo, results, new Set<string>(), {
+        editors: false,
+        recentFiles: true,
+      });
 
       expect(results).toHaveLength(fileData.length);
       expect(mockMetadataCache.getFileCache).toHaveBeenCalled();
       expect(results.every((sugg) => expectedFiles.has(sugg.file))).toBe(true);
       expect(results.every((sugg) => isFileSuggestion(sugg))).toBe(true);
-
       expect(results.every((sugg) => sugg.isRecent)).toBe(true);
 
       mockMetadataCache.getFileCache.mockReset();
@@ -1218,21 +1079,19 @@ describe('headingsHandler', () => {
 
     it('should return editor suggestions with optional indicator', () => {
       const leaf = makeLeaf();
-      mockInputInfo.currentWorkspaceEnvList.openWorkspaceLeaves = new Set<WorkspaceLeaf>([
+      inputInfo.currentWorkspaceEnvList.openWorkspaceLeaves = new Set<WorkspaceLeaf>([
         leaf,
       ]);
 
-      mockInputInfo.currentWorkspaceEnvList.openWorkspaceFiles = new Set<TFile>([
+      inputInfo.currentWorkspaceEnvList.openWorkspaceFiles = new Set<TFile>([
         leaf.view.file,
       ]);
 
       const results: EditorSuggestion[] = [];
-      sut.getSuggestionsForEditorsAndRecentFiles(
-        mockInputInfo,
-        results,
-        new Set<string>(),
-        { editors: true, recentFiles: false },
-      );
+      sut.getSuggestionsForEditorsAndRecentFiles(inputInfo, results, new Set<string>(), {
+        editors: true,
+        recentFiles: false,
+      });
 
       expect(results).toHaveLength(1);
       expect(results.every((sugg) => sugg.isOpenInEditor)).toBe(true);

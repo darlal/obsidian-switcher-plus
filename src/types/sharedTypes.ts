@@ -6,7 +6,6 @@ import {
   FuzzyMatch,
   HeadingCache,
   LinkCache,
-  PreparedQuery,
   TagCache,
   TFile,
   WorkspaceLeaf,
@@ -289,7 +288,7 @@ export interface FacetSettingsData {
 
 export interface SearchQuery {
   hasSearchTerm: boolean;
-  prepQuery: PreparedQuery;
+  query: string;
 }
 
 export interface SearchResultWithFallback {
