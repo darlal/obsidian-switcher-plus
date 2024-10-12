@@ -537,6 +537,45 @@ describe('generalSettingsTabSection', () => {
       config.renderMarkdownContentInSuggestions.renderHeadings = false;
       addToggleSettingSpy.mockReset();
     });
+
+    describe('showQuickOpen', () => {
+      type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
+      let toggleSettingOnChangeFn: addToggleSettingArgs[5];
+      let saveSettingsSpy: jest.SpyInstance;
+
+      beforeAll(() => {
+        saveSettingsSpy = jest.spyOn(config, 'saveSettings');
+      });
+
+      afterAll(() => {
+        saveSettingsSpy.mockRestore();
+      });
+
+      it('should save changes to the enable QuickOpen setting', () => {
+        const initialValue = false;
+        const finalValue = true;
+
+        config.quickOpen.isEnabled = initialValue;
+        addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+          if (args[1] === 'Enable quick open hotkeys for top results') {
+            toggleSettingOnChangeFn = args[5];
+          }
+
+          return mock<Setting>();
+        });
+
+        sut.showQuickOpen(mockContainerEl, config);
+
+        // trigger the change/save
+        toggleSettingOnChangeFn(finalValue, config);
+
+        expect(saveSettingsSpy).toHaveBeenCalled();
+        expect(config.quickOpen.isEnabled).toBe(finalValue);
+
+        config.quickOpen.isEnabled = false;
+        addToggleSettingSpy.mockReset();
+      });
+    });
   });
 
   describe('showInsertLinkInEditor', () => {

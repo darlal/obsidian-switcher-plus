@@ -89,6 +89,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
 
     this.showResetFacetEachSession(containerEl, config);
     this.showRenderMarkdownContentAsHTML(containerEl, config);
+    this.showQuickOpen(containerEl, config);
   }
 
   showPreferredSourceForTitle(
@@ -353,5 +354,19 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       },
     );
     setting.setClass('qsp-setting-item-indent');
+  }
+
+  showQuickOpen(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
+    this.addToggleSetting(
+      containerEl,
+      'Enable quick open hotkeys for top results',
+      'When enabled, hotkeys will be defined for each of the top N results displayed in the Switcher. These hotkeys can be used to quickly open the associated suggestion directly. when disabled, no hotkeys are defined.',
+      config.quickOpen.isEnabled,
+      null,
+      (value, config) => {
+        config.quickOpen.isEnabled = value;
+        config.save();
+      },
+    );
   }
 }
