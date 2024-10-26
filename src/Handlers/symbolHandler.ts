@@ -175,7 +175,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       if (item.symbolType !== SymbolType.CanvasNode) {
         openState.eState = this.constructMDFileNavigationState(
           item as SymbolInfoExcludingCanvasNodes,
-        ).eState as Record<string, unknown>;
+        ).eState;
       }
 
       this.navigateToLeafOrOpenFileAsync(

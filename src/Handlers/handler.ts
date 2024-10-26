@@ -385,17 +385,20 @@ export abstract class Handler<T> {
    * @param  {Record<string, unknown>} eState?
    * @returns void
    */
-  activateLeaf(leaf: WorkspaceLeaf, eState?: Record<string, unknown>): void {
+  async activateLeaf(
+    leaf: WorkspaceLeaf,
+    eState?: Record<string, unknown>,
+  ): Promise<void> {
     const { workspace } = this.app;
-    const isInSidePanel = !this.isMainPanelLeaf(leaf);
-    const state = { focus: true, ...eState };
 
-    if (isInSidePanel) {
-      workspace.revealLeaf(leaf);
+    try {
+      await workspace.revealLeaf(leaf);
+      workspace.setActiveLeaf(leaf, { focus: true });
+      leaf.view.setEphemeralState({ focus: true, ...eState });
+    } catch (err) {
+      const title = leaf?.getDisplayText();
+      console.log(`Switcher++: error activating WorkspaceLeaf with title: ${title}`, err);
     }
-
-    workspace.setActiveLeaf(leaf, { focus: true });
-    leaf.view.setEphemeralState(state);
   }
 
   /**
@@ -563,8 +566,8 @@ export abstract class Handler<T> {
     openState = openState ?? { active: true, eState: { active: true, focus: true } };
 
     if (leaf && navType === false) {
-      const eState = openState?.eState as Record<string, unknown>;
-      this.activateLeaf(leaf, eState);
+      const eState = openState?.eState;
+      await this.activateLeaf(leaf, eState);
     } else {
       await this.openFileInLeaf(file, navType, openState, splitDirection);
     }

@@ -621,25 +621,24 @@ describe('Handler', () => {
     const mockLeaf = makeLeaf();
     const mockView = mockLeaf.view as MockProxy<View>;
 
-    it('should activate main panel leaf', () => {
-      mockLeaf.getRoot.mockReturnValueOnce(mockWorkspace.rootSplit);
+    it('should activate a WorkspaceLeaf', async () => {
+      await sut.activateLeaf(mockLeaf);
 
-      sut.activateLeaf(mockLeaf);
-
-      expect(mockLeaf.getRoot).toHaveBeenCalled();
+      expect(mockWorkspace.revealLeaf).toHaveBeenCalledWith(mockLeaf);
       expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, { focus: true });
       expect(mockView.setEphemeralState).toHaveBeenCalled();
     });
 
-    it('should activate side panel leaf', () => {
-      mockLeaf.getRoot.mockReturnValueOnce(mockWorkspace.rightSplit);
+    it('should log errors to the console when it fails to reveal a WorkspaceLeaf', async () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const errorMsg = 'RevealLeaf unit test error';
+      mockWorkspace.revealLeaf.mockRejectedValueOnce(errorMsg);
 
-      sut.activateLeaf(mockLeaf);
+      await sut.activateLeaf(mockLeaf);
 
-      expect(mockLeaf.getRoot).toHaveBeenCalled();
-      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, { focus: true });
-      expect(mockView.setEphemeralState).toHaveBeenCalled();
-      expect(mockWorkspace.revealLeaf).toHaveBeenCalledWith(mockLeaf);
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
+
+      consoleLogSpy.mockRestore();
     });
   });
 

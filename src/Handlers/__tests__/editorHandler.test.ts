@@ -22,7 +22,7 @@ import {
   makeFuzzyMatch,
 } from '@fixtures';
 import { EditorHandler, Handler } from 'src/Handlers';
-import { mock, MockProxy } from 'jest-mock-extended';
+import { mock, mockFn, MockProxy } from 'jest-mock-extended';
 import { Searcher } from 'src/search';
 
 function makeLeafWithRoot(text: string, root: WorkspaceItem): MockProxy<WorkspaceLeaf> {
@@ -45,6 +45,7 @@ describe('editorHandler', () => {
       rootSplit: mock<WorkspaceSplit>(),
       leftSplit: mock<WorkspaceSplit>(),
       rightSplit: mock<WorkspaceSplit>(),
+      revealLeaf: mockFn().mockResolvedValue(null),
     });
 
     settings = new SwitcherPlusSettings(null);

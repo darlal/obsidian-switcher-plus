@@ -99,7 +99,10 @@ describe('symbolHandler', () => {
     mockMetadataCache = mock<MetadataCache>();
     mockMetadataCache.getFileCache.mockImplementation((_f) => rootFixture.cachedMetadata);
 
-    mockWorkspace = mock<Workspace>();
+    mockWorkspace = mock<Workspace>({
+      revealLeaf: mockFn().mockResolvedValue(null),
+    });
+
     mockVault = mock<Vault>();
     mockApp = mock<App>({
       workspace: mockWorkspace,

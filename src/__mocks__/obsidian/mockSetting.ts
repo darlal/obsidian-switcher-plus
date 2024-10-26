@@ -333,6 +333,9 @@ export class MockSliderComponent implements SliderComponent {
     return this;
   }
 
+  setInstant(instant: boolean): this {
+    throw new Error('Method not implemented.');
+  }
   setDisabled(disabled: boolean): this {
     throw new Error('Method not implemented.');
   }
