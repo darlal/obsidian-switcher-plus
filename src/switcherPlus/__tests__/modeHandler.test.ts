@@ -80,6 +80,7 @@ import {
   makeEscapedSourcedCommandInputFixture,
   vaultTrigger,
   makeVaultSuggestion,
+  makeLeafDeferred,
 } from '@fixtures';
 
 const chance = new Chance();
@@ -1139,6 +1140,22 @@ describe('modeHandler', () => {
       editorSpy.mockRestore();
       bookmarksSpy.mockRestore();
       recentSpy.mockRestore();
+    });
+
+    test('.openWorkspaceFiles should include files from deferred views', () => {
+      const inputInfo = new InputInfo();
+      const mockFile = new TFile();
+      const editorSpy = jest
+        .spyOn(EditorHandler.prototype, 'getItems')
+        .mockReturnValueOnce([makeLeafDeferred({ file: mockFile })]);
+
+      sut.addWorkspaceEnvLists(inputInfo);
+
+      expect(inputInfo.currentWorkspaceEnvList).toMatchObject({
+        openWorkspaceFiles: new Set([mockFile]),
+      });
+
+      editorSpy.mockRestore();
     });
   });
 

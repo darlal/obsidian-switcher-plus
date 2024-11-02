@@ -13,6 +13,7 @@ import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 import { MetadataCache, sortSearchResults, TFile, WorkspaceLeaf } from 'obsidian';
 import { Handler } from './handler';
 import { Searcher } from 'src/search';
+import { getTFileFromLeaf } from 'src/utils';
 
 export class EditorHandler extends Handler<EditorSuggestion> {
   getCommandString(_sessionOpts?: SessionOpts): string {
@@ -45,7 +46,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
       const items = this.getItems();
 
       items.forEach((item) => {
-        const file = item.view?.file;
+        const file = getTFileFromLeaf(item);
         let shouldPush = true;
         let result: SearchResultWithFallback = { matchType: MatchType.None, match: null };
 

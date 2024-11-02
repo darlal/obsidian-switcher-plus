@@ -40,9 +40,11 @@ import { SwitcherPlusSettings } from 'src/settings';
 import {
   ComponentManager,
   getTFileByPath,
+  leafHasLoadedViewOfType,
   isEditorSuggestion,
   isHeadingSuggestion,
   stripMDExtensionFromPath,
+  getTFileFromLeaf,
 } from 'src/utils';
 
 export abstract class Handler<T> {
@@ -121,14 +123,11 @@ export abstract class Handler<T> {
     let cursor: EditorPosition = null;
 
     if (leaf) {
-      const { view } = leaf;
-
-      const viewType = view.getViewType();
-      file = view.file;
-      cursor = this.getCursorPosition(view);
+      file = getTFileFromLeaf(leaf);
+      cursor = this.getCursorPosition(leaf);
 
       // determine if the current active editor pane is valid
-      const isCurrentEditorValid = !excludeViewTypes.includes(viewType);
+      const isCurrentEditorValid = !excludeViewTypes.includes(leaf.view.getViewType());
 
       // whether or not the current active editor can be used as the target for
       // symbol search
@@ -150,7 +149,7 @@ export abstract class Handler<T> {
     }
 
     // Get the cursor information to support `selectNearestHeading`
-    const cursor = this.getCursorPosition(leaf?.view);
+    const cursor = this.getCursorPosition(leaf);
 
     return { ...info, leaf, cursor };
   }
@@ -184,19 +183,18 @@ export abstract class Handler<T> {
   }
 
   /**
-   * Retrieves the position of the cursor, given that view is in a Mode that supports cursors.
-   * @param  {View} view
+   * Retrieves the position of the cursor, given that view is in a mode that supports cursors.
+   * @param  {WorkspaceLeaf} leaf
    * @returns EditorPosition
    */
-  getCursorPosition(view: View): EditorPosition {
+  getCursorPosition(leaf: WorkspaceLeaf): EditorPosition {
     let cursor: EditorPosition = null;
 
-    if (view?.getViewType() === 'markdown') {
-      const md = view as MarkdownView;
+    if (leafHasLoadedViewOfType(leaf, 'markdown')) {
+      const md = leaf.view as MarkdownView;
 
       if (md.getMode() !== 'preview') {
-        const { editor } = md;
-        cursor = editor.getCursor('head');
+        cursor = md.editor.getCursor('head');
       }
     }
 
@@ -279,7 +277,7 @@ export abstract class Handler<T> {
           if (hasSourceLeaf && (shouldIncludeRefViews || !isSourceRefView)) {
             val = candidateLeaf === leaf;
           } else {
-            val = candidateLeaf.view.file === file;
+            val = getTFileFromLeaf(candidateLeaf) === file;
           }
         }
       }

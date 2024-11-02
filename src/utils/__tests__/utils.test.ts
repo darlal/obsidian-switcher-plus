@@ -13,6 +13,8 @@ import {
   matcherFnForRegExList,
   getLinkType,
   generateMarkdownLink,
+  leafHasLoadedViewOfType,
+  getTFileFromLeaf,
 } from 'src/utils';
 import {
   getTags,
@@ -23,6 +25,8 @@ import {
   makeFileSuggestion,
   makeHeading,
   makeHeadingSuggestion,
+  makeLeaf,
+  makeLeafDeferred,
   makeLink,
   makeRelatedItemsSuggestion,
   makeSymbolSuggestion,
@@ -433,7 +437,7 @@ describe('utils', () => {
 
       mockParseLinktext.mockReturnValueOnce({ path: destFilePath, subpath });
 
-      mockVault.getAbstractFileByPath
+      mockVault.getFileByPath
         .calledWith(destFilePath)
         .mockReturnValueOnce(refCacheDestFile);
 
@@ -457,7 +461,7 @@ describe('utils', () => {
 
       mockParseLinktext.mockReturnValueOnce({ path, subpath: '' });
 
-      mockVault.getAbstractFileByPath.calledWith(path).mockReturnValueOnce(null);
+      mockVault.getFileByPath.calledWith(path).mockReturnValueOnce(null);
 
       const result = generateMarkdownLink(
         mockFileManager,
@@ -467,7 +471,7 @@ describe('utils', () => {
       );
 
       expect(mockFileManager.generateMarkdownLink).not.toHaveBeenCalled();
-      expect(mockVault.getAbstractFileByPath).toHaveBeenCalledWith(path);
+      expect(mockVault.getFileByPath).toHaveBeenCalledWith(path);
       expect(result).toBe(`[[${link}]]`);
     });
 
@@ -491,6 +495,51 @@ describe('utils', () => {
 
       expect(result).toBe(original);
       expect(mockFileManager.generateMarkdownLink).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getTFileFromLeaf', () => {
+    it('should not throw on falsy input', () => {
+      expect(() => getTFileFromLeaf(null)).not.toThrow();
+    });
+
+    test('when the view is deferred, it should return the associated TFile', () => {
+      const mockFile = new TFile();
+      const mockLeaf = makeLeafDeferred({ file: mockFile });
+
+      const result = getTFileFromLeaf(mockLeaf);
+
+      expect(result).toBe(mockFile);
+      expect((mockLeaf.app.vault as MockProxy<Vault>).getFileByPath).toHaveBeenCalledWith(
+        mockFile.path,
+      );
+    });
+
+    test('when the view is loaded, it should return the associated TFile', () => {
+      const mockFile = new TFile();
+      const mockLeaf = makeLeaf(mockFile);
+
+      const result = getTFileFromLeaf(mockLeaf);
+
+      expect(result).toEqual(mockFile);
+    });
+  });
+
+  describe('leafHasLoadedViewOfType', () => {
+    it('should return true if the view is not deferred and has the expected type', () => {
+      const mockLeaf = makeLeaf();
+
+      const result = leafHasLoadedViewOfType(mockLeaf, 'markdown');
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false if the view is deferred', () => {
+      const mockLeaf = makeLeafDeferred();
+
+      const result = leafHasLoadedViewOfType(mockLeaf, 'markdown');
+
+      expect(result).toBe(false);
     });
   });
 });

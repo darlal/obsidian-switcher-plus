@@ -228,7 +228,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
   }
 
   zoomToCanvasNode(view: View, nodeData: CanvasNodeData): void {
-    if (SymbolHandler.isCanvasView(view)) {
+    if (SymbolHandler.isCanvasView(view) && nodeData) {
       const canvas = view.canvas;
       const node = canvas.nodes.get(nodeData.id);
 

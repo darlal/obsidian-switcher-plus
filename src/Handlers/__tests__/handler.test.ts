@@ -19,7 +19,6 @@ import {
   Vault,
   Keymap,
   renderResults,
-  TAbstractFile,
   FileView,
   SearchMatchPart,
   MarkdownRenderer,
@@ -31,6 +30,7 @@ import {
   makeFuzzyMatch,
   makeFileSuggestion,
   makeHeadingSuggestion,
+  makeLeafDeferred,
 } from '@fixtures';
 import {
   AnySuggestion,
@@ -137,20 +137,16 @@ describe('Handler', () => {
     it('should return TargetInfo for a markdown WorkspaceLeaf', () => {
       const mockFile = new TFile();
       const mockCursorPos = mock<EditorPosition>();
-      const mockView = mock<MarkdownView>({
-        file: mockFile,
-      });
+      const mockLeaf = makeLeaf(mockFile);
 
-      mockView.getViewType.mockReturnValueOnce('markdown');
-      const getCursorPosSpy = jest.spyOn(sut, 'getCursorPosition');
-      getCursorPosSpy.mockReturnValueOnce(mockCursorPos);
-
-      const mockLeaf = mock<WorkspaceLeaf>({ view: mockView });
+      const getCursorPosSpy = jest
+        .spyOn(sut, 'getCursorPosition')
+        .mockReturnValueOnce(mockCursorPos);
 
       const result = sut.getEditorInfo(mockLeaf);
 
-      expect(mockView.getViewType).toHaveBeenCalled();
-      expect(getCursorPosSpy).toHaveBeenCalledWith(mockView);
+      expect((mockLeaf.view as MockProxy<MarkdownView>).getViewType).toHaveBeenCalled();
+      expect(getCursorPosSpy).toHaveBeenCalledWith(mockLeaf);
       expect(result).toEqual(
         expect.objectContaining({
           isValidSource: true,
@@ -162,6 +158,23 @@ describe('Handler', () => {
       );
 
       getCursorPosSpy.mockRestore();
+    });
+
+    test('.isValidSource should be true for for a markdown WorkspaceLeaf that is deferred', () => {
+      const mockFile = new TFile();
+      const mockLeaf = makeLeafDeferred({ file: mockFile });
+
+      const result = sut.getEditorInfo(mockLeaf);
+
+      expect(jest.mocked(mockLeaf.app.vault).getFileByPath).toHaveBeenCalledWith(
+        mockFile.path,
+      );
+
+      expect(result).toMatchObject({
+        isValidSource: true,
+        leaf: mockLeaf,
+        file: mockFile,
+      });
     });
   });
 
@@ -183,15 +196,12 @@ describe('Handler', () => {
     it('should return TargetInfo for EditorSuggestion using active workspace leaf', () => {
       const mockFile = new TFile();
       const mockCursorPos = mock<EditorPosition>();
-      const mockView = mock<MarkdownView>({
-        file: mockFile,
-      });
 
       const getCursorPosSpy = jest
         .spyOn(sut, 'getCursorPosition')
         .mockReturnValueOnce(mockCursorPos);
 
-      const mockLeaf = mock<WorkspaceLeaf>({ view: mockView });
+      const mockLeaf = makeLeaf(mockFile);
       const sugg = makeEditorSuggestion(mockLeaf, mockFile);
 
       // set as active leaf
@@ -202,7 +212,7 @@ describe('Handler', () => {
       const result = sut.getSuggestionInfo(sugg);
 
       expect(getActiveLeafSpy).toHaveBeenCalled();
-      expect(getCursorPosSpy).toHaveBeenCalledWith(mockView);
+      expect(getCursorPosSpy).toHaveBeenCalledWith(mockLeaf);
       expect(result).toEqual(
         expect.objectContaining({
           isValidSource: true,
@@ -221,12 +231,12 @@ describe('Handler', () => {
   describe('getCursorPosition', () => {
     let mockView: MockProxy<MarkdownView>;
     let mockEditor: MockProxy<Editor>;
+    let mockLeaf: MockProxy<WorkspaceLeaf>;
 
     beforeAll(() => {
-      mockEditor = mock<Editor>();
-      mockView = mock<MarkdownView>({
-        editor: mockEditor,
-      });
+      mockLeaf = makeLeaf();
+      mockView = mockLeaf.view as MockProxy<MarkdownView>;
+      mockEditor = mockView.editor as MockProxy<Editor>;
     });
 
     it('should not throw on falsy input', () => {
@@ -241,7 +251,7 @@ describe('Handler', () => {
 
     it('should return null for view type that is not markdown', () => {
       mockView.getViewType.mockReturnValueOnce('not markdown');
-      const result = sut.getCursorPosition(mockView);
+      const result = sut.getCursorPosition(mockLeaf);
 
       expect(result).toBe(null);
       expect(mockView.getViewType).toHaveBeenCalled();
@@ -251,7 +261,7 @@ describe('Handler', () => {
       mockView.getViewType.mockReturnValueOnce('markdown');
       mockView.getMode.mockReturnValueOnce('preview');
 
-      const result = sut.getCursorPosition(mockView);
+      const result = sut.getCursorPosition(mockLeaf);
 
       expect(result).toBe(null);
       expect(mockView.getMode).toHaveBeenCalled();
@@ -264,7 +274,7 @@ describe('Handler', () => {
       mockView.getMode.mockReturnValueOnce('source');
       mockEditor.getCursor.mockReturnValueOnce(mockCursorPos);
 
-      const result = sut.getCursorPosition(mockView);
+      const result = sut.getCursorPosition(mockLeaf);
 
       expect(result).toBe(mockCursorPos);
       expect(mockView.getViewType).toHaveBeenCalled();
@@ -1043,6 +1053,24 @@ describe('Handler', () => {
       getOpenLeavesSpy.mockRestore();
     });
 
+    it('should match a leaf that is deferred', () => {
+      const file = new TFile();
+      const mockDeferredLeaf = makeLeafDeferred({ file });
+
+      const getOpenLeavesSpy = jest
+        .spyOn(sut, 'getOpenLeaves')
+        .mockReturnValueOnce([mockLeaf, mockDeferredLeaf]);
+
+      const result = sut.findMatchingLeaf(file);
+
+      expect(result.leaf).toEqual(mockDeferredLeaf);
+      expect(
+        jest.mocked<Vault>(mockDeferredLeaf.app.vault).getFileByPath,
+      ).toHaveBeenCalledWith(file.path);
+
+      getOpenLeavesSpy.mockRestore();
+    });
+
     it('should match using a reference WorkspaceLeaf as a source', () => {
       const mockFile = mockView.file;
       const mockRefLeaf = makeLeaf(mockFile);
@@ -1792,11 +1820,9 @@ describe('Handler', () => {
   });
 
   describe('getTFileByPath', () => {
-    it('returns a TFile by path', () => {
+    it('should return a TFile by path', () => {
       const mockFile = new TFile();
-      mockVault.getAbstractFileByPath
-        .calledWith(mockFile.path)
-        .mockReturnValueOnce(mockFile);
+      mockVault.getFileByPath.calledWith(mockFile.path).mockReturnValueOnce(mockFile);
 
       const result = sut.getTFileByPath(mockFile.path);
 
@@ -1806,18 +1832,9 @@ describe('Handler', () => {
     });
 
     it('returns null if a TFile is not found', () => {
-      const abstractFile: TAbstractFile = {
-        vault: mockVault,
-        path: 'path/to/itemname',
-        name: 'itemname',
-        parent: mock<TFolder>(),
-      };
+      mockVault.getFileByPath.mockReturnValueOnce(null);
 
-      mockVault.getAbstractFileByPath
-        .calledWith(abstractFile.path)
-        .mockReturnValueOnce(abstractFile);
-
-      const result = sut.getTFileByPath(abstractFile.path);
+      const result = sut.getTFileByPath('does not exist');
 
       expect(result).toBe(null);
 

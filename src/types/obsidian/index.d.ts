@@ -140,6 +140,7 @@ declare module 'obsidian' {
   }
 
   export interface WorkspaceLeaf {
+    app: App;
     activeTime: number;
   }
 

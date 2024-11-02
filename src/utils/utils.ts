@@ -12,6 +12,7 @@ import {
   parseLinktext,
   Vault,
   normalizePath,
+  WorkspaceLeaf,
 } from 'obsidian';
 import {
   SymbolSuggestion,
@@ -205,11 +206,35 @@ export function getLinkType(linkCache: LinkCache): LinkType {
  * @returns TFile
  */
 export function getTFileByPath(path: string, vault: Vault): TFile | null {
-  let file: TFile = null;
-  const abstractItem = vault.getAbstractFileByPath(path);
+  return vault?.getFileByPath(path);
+}
 
-  if (isTFile(abstractItem)) {
-    file = abstractItem;
+/**
+ * Returns the underlying source file associated with the view of leaf. If leaf is
+ * deferred, it will retrieve the source file from view state without loading the view.
+ *
+ * @export
+ * @param {WorkspaceLeaf} leaf
+ * @returns {(TFile | null)}
+ */
+export function getTFileFromLeaf(leaf: WorkspaceLeaf): TFile | null {
+  let file: TFile = null;
+
+  if (!leaf) {
+    return file;
+  }
+
+  if (leaf.isDeferred) {
+    // Oct 2024: Obsidian 1.7.4 deferred views contain view state that includes the
+    // source file path for the view.
+    const filepath = leaf.getViewState()?.state?.file as string;
+
+    if (filepath) {
+      file = getTFileByPath(filepath, leaf.app?.vault);
+    }
+  } else if (leaf.view?.file) {
+    // If the leaf is not deferred then the file object is directly accessible from the View.
+    file = leaf.view.file;
   }
 
   return file;
@@ -387,4 +412,17 @@ function generateMarkdownLinkForReferenceCache(
   }
 
   return linkStr;
+}
+
+/**
+ * Returns true if leaf has a view that is currently loaded (not deferred), and view has
+ * a type that matches viewType. Otherwise, false.
+ *
+ * @export
+ * @param {WorkspaceLeaf} leaf
+ * @param {string} viewType
+ * @returns {boolean}
+ */
+export function leafHasLoadedViewOfType(leaf: WorkspaceLeaf, viewType: string): boolean {
+  return leaf?.view?.getViewType() === viewType && !leaf.isDeferred;
 }

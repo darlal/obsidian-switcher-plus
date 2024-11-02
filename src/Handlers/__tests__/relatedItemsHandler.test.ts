@@ -218,10 +218,6 @@ describe('relatedItemsHandler', () => {
       const inputInfo = new InputInfo('', Mode.BookmarksList);
       const sugg = makeBookmarkedFileSuggestion({ file: targetFile });
 
-      (mockApp.vault as MockProxy<Vault>).getAbstractFileByPath
-        .calledWith(targetFile.path)
-        .mockReturnValueOnce(targetFile);
-
       sut.validateCommand(inputInfo, 0, '', sugg, null);
 
       expect(inputInfo.mode).toBe(Mode.RelatedItemsList);

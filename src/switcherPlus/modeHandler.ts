@@ -21,6 +21,7 @@ import {
   isOfType,
   isTFile,
   ComponentManager,
+  getTFileFromLeaf,
 } from 'src/utils';
 import {
   Mode,
@@ -623,7 +624,7 @@ export class ModeHandler {
 
       // Create a Set containing the files from all the open editors
       const openEditorFilesSet = openEditors
-        .map((leaf) => leaf?.view?.file)
+        .map((leaf) => getTFileFromLeaf(leaf))
         .filter((file) => !!file)
         .reduce((collection, file) => collection.add(file), new Set<TFile>());
 

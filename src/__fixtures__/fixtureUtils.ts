@@ -1,6 +1,7 @@
-import { mock, MockProxy } from 'jest-mock-extended';
+import { mock, mockFn, MockProxy } from 'jest-mock-extended';
 import { Chance } from 'chance';
 import {
+  App,
   BookmarksPluginFileItem,
   BookmarksPluginFolderItem,
   BookmarksPluginGroupItem,
@@ -11,6 +12,9 @@ import {
   SearchMatches,
   SearchResult,
   TFile,
+  Vault,
+  View,
+  ViewState,
   WorkspaceLeaf,
 } from 'obsidian';
 
@@ -35,13 +39,45 @@ export function makeLeaf(sourceFile?: TFile): MockProxy<WorkspaceLeaf> {
   const mockView = mock<MarkdownView>({
     file: sourceFile ?? new TFile(),
     editor: mock<Editor>(),
+    getViewType: mockFn().mockReturnValue('markdown'),
   });
-
-  mockView.getViewType.mockReturnValue('markdown');
 
   return mock<WorkspaceLeaf>({
     view: mockView,
+    isDeferred: false,
   });
+}
+
+/**
+ * Returns a WorkspaceLeaf that is marked as deferred along with associated View, and
+ * ViewState.
+ *
+ * @export
+ * @param {?{ file?: TFile }} [options]
+ * @returns {MockProxy<WorkspaceLeaf>}
+ */
+export function makeLeafDeferred(options?: { file?: TFile }): MockProxy<WorkspaceLeaf> {
+  options = Object.assign({ file: new TFile() }, options);
+
+  const mockGetFileByPath = mockFn<Vault['getFileByPath']>()
+    .calledWith(options.file.path)
+    .mockReturnValue(options.file);
+
+  const mockDeferredLeaf = mock<WorkspaceLeaf>({
+    isDeferred: true,
+    // Deferred leaves contain ViewState with the path of the underlying file.
+    getViewState: () => mock<ViewState>({ state: { file: options.file.path } }),
+    // Deferred views still report their materialized ViewType
+    view: mock<View>({ getViewType: () => 'markdown' }),
+    app: mock<App>({
+      vault: mock<Vault>({
+        // The file path from ViewState is resolved to a TFile using getFileByPath
+        getFileByPath: mockGetFileByPath,
+      }),
+    }),
+  });
+
+  return mockDeferredLeaf;
 }
 
 export function makeBookmarksPluginFileItem(

@@ -161,7 +161,7 @@ describe('bookmarksHandler', () => {
 
   describe('getSuggestions', () => {
     beforeAll(() => {
-      mockVault.getAbstractFileByPath.mockImplementation((path) => {
+      mockVault.getFileByPath.mockImplementation((path) => {
         let file: TFile = null;
 
         if (expectedBookmarkedFilePaths.includes(path)) {
@@ -295,9 +295,7 @@ describe('bookmarksHandler', () => {
 
       const tFile = new TFile();
       tFile.path = leafBookmark.path;
-      mockVault.getAbstractFileByPath
-        .calledWith(leafBookmark.path)
-        .mockReturnValueOnce(tFile);
+      mockVault.getFileByPath.calledWith(leafBookmark.path).mockReturnValueOnce(tFile);
 
       const { allBookmarks } = sut.getItems(null);
 

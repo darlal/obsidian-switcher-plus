@@ -20,6 +20,7 @@ import {
   makeEditorSuggestion,
   makeHeading,
   makeFuzzyMatch,
+  makeLeafDeferred,
 } from '@fixtures';
 import { EditorHandler, Handler } from 'src/Handlers';
 import { mock, mockFn, MockProxy } from 'jest-mock-extended';
@@ -132,6 +133,25 @@ describe('editorHandler', () => {
       const results = sut.getSuggestions(inputInfo);
 
       expect(results.every((v) => v.file !== null)).toBe(true);
+    });
+
+    test('that EditorSuggestion has a file property for a deferred WorkspaceLeaf', () => {
+      const inputInfo = new InputInfo(null, Mode.EditorList);
+      const file = new TFile();
+      const mockDeferredLeaf = makeLeafDeferred({ file });
+
+      const getOpenLeavesSpy = jest
+        .spyOn(sut, 'getOpenLeaves')
+        .mockReturnValueOnce([mockDeferredLeaf]);
+
+      const results = sut.getSuggestions(inputInfo);
+
+      expect(results[0].file).toBe(file);
+      expect(jest.mocked(mockDeferredLeaf.app.vault).getFileByPath).toHaveBeenCalledWith(
+        file.path,
+      );
+
+      getOpenLeavesSpy.mockRestore();
     });
 
     test('with default settings, it should return suggestions for editor mode', () => {

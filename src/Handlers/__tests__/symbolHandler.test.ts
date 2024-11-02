@@ -220,10 +220,6 @@ describe('symbolHandler', () => {
       const targetFile = new TFile();
       const sugg = makeBookmarkedFileSuggestion({ file: targetFile });
 
-      mockVault.getAbstractFileByPath
-        .calledWith(targetFile.path)
-        .mockReturnValueOnce(targetFile);
-
       const inputInfo = new InputInfo('', Mode.BookmarksList);
       sut.validateCommand(inputInfo, 0, '', sugg, null);
 
@@ -807,10 +803,21 @@ describe('symbolHandler', () => {
   });
 
   describe('onChooseSuggestion', () => {
+    let navigateToLeafOrOpenFileSpy: jest.SpyInstance;
+
     beforeAll(() => {
       const fileContainerLeaf = makeLeaf();
       fileContainerLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValue(fileContainerLeaf);
+
+      navigateToLeafOrOpenFileSpy = jest.spyOn(
+        SymbolHandler.prototype,
+        'navigateToLeafOrOpenFileAsync',
+      );
+    });
+
+    afterAll(() => {
+      navigateToLeafOrOpenFileSpy.mockRestore();
     });
 
     const getExpectedEphemeralState = (
@@ -850,15 +857,12 @@ describe('symbolHandler', () => {
         symbolSugg.item as SymbolInfoExcludingCanvasNodes,
       );
 
-      const navigateToLeafOrOpenFileSpy = jest.spyOn(
-        Handler.prototype,
-        'navigateToLeafOrOpenFileAsync',
-      );
-
       const inputInfo = new InputInfo(symbolTrigger);
       sut.validateCommand(inputInfo, 0, '', null, mockLeaf);
       await sut.getSuggestions(inputInfo);
       expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      navigateToLeafOrOpenFileSpy.mockResolvedValueOnce(null);
 
       sut.onChooseSuggestion(symbolSugg, mockEvt);
 
@@ -871,7 +875,7 @@ describe('symbolHandler', () => {
         Mode.SymbolList,
       );
 
-      navigateToLeafOrOpenFileSpy.mockRestore();
+      navigateToLeafOrOpenFileSpy.mockReset();
     });
 
     it('should center the chosen canvas node in the viewport', async () => {
@@ -897,6 +901,7 @@ describe('symbolHandler', () => {
       );
 
       const mockLeaf = mock<WorkspaceLeaf>({
+        isDeferred: false,
         view: mockCanvasView,
       });
 
@@ -904,9 +909,7 @@ describe('symbolHandler', () => {
         .spyOn(SymbolHandler.prototype, 'getActiveLeaf')
         .mockReturnValueOnce(mockLeaf);
 
-      const navigateToLeafOrOpenFileSpy = jest
-        .spyOn(SymbolHandler.prototype, 'navigateToLeafOrOpenFileAsync')
-        .mockReturnValueOnce(promise);
+      navigateToLeafOrOpenFileSpy.mockReturnValueOnce(promise);
 
       sut.validateCommand(inputInfo, 0, '', null, mockLeaf);
       await sut.getSuggestions(inputInfo);
@@ -917,7 +920,7 @@ describe('symbolHandler', () => {
       expect(mockCanvasView.canvas.selectOnly).toHaveBeenCalledWith(mockCanvasNodeEl);
       expect(mockCanvasView.canvas.zoomToSelection).toHaveBeenCalled();
 
-      navigateToLeafOrOpenFileSpy.mockRestore();
+      navigateToLeafOrOpenFileSpy.mockReset();
       getActiveLeafSpy.mockRestore();
     });
 
@@ -932,9 +935,7 @@ describe('symbolHandler', () => {
       sut.validateCommand(inputInfo, 0, '', null, makeLeaf(mockFile));
       await sut.getSuggestions(inputInfo);
 
-      const navigateToLeafOrOpenFileSpy = jest
-        .spyOn(SymbolHandler.prototype, 'navigateToLeafOrOpenFileAsync')
-        .mockReturnValueOnce(rejectedPromise);
+      navigateToLeafOrOpenFileSpy.mockReturnValueOnce(rejectedPromise);
 
       sut.onChooseSuggestion(canvasSugg, null);
 
@@ -949,7 +950,7 @@ describe('symbolHandler', () => {
         errorMsg,
       );
 
-      navigateToLeafOrOpenFileSpy.mockRestore();
+      navigateToLeafOrOpenFileSpy.mockReset();
       consoleLogSpy.mockRestore();
     });
   });
