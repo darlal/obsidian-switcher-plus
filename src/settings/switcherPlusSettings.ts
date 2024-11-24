@@ -10,6 +10,7 @@ import {
   MobileLauncherConfig,
   Mode,
   NavigationKeysConfig,
+  OpenDefaultAppConfig,
   PathDisplayFormat,
   QuickOpenConfig,
   RelationType,
@@ -152,6 +153,11 @@ export class SwitcherPlusSettings {
         isEnabled: true,
         modifiers: ['Alt'],
         keyList: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+      },
+      openDefaultApp: {
+        isEnabled: true,
+        openInDefaultAppKeys: { modifiers: ['Shift', 'Ctrl'], key: 'o' },
+        excludeFileExtensions: [],
       },
     };
   }
@@ -690,6 +696,14 @@ export class SwitcherPlusSettings {
 
   set quickOpen(value: QuickOpenConfig) {
     this.data.quickOpen = value;
+  }
+
+  get openDefaultApp(): OpenDefaultAppConfig {
+    return this.data.openDefaultApp;
+  }
+
+  set openDefaultApp(value: OpenDefaultAppConfig) {
+    this.data.openDefaultApp = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

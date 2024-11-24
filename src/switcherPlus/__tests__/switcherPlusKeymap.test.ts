@@ -42,8 +42,14 @@ import {
   SuggestionType,
   SymbolType,
   QuickOpenConfig,
+  FileSuggestion,
 } from 'src/types';
-import { makeHeading, makeHeadingSuggestion, makeSymbolSuggestion } from '@fixtures';
+import {
+  makeFileSuggestion,
+  makeHeading,
+  makeHeadingSuggestion,
+  makeSymbolSuggestion,
+} from '@fixtures';
 
 jest.mock('src/utils', () => {
   return {
@@ -1528,6 +1534,66 @@ describe('SwitcherPlusKeymap', () => {
         heading.heading,
         file.path,
       );
+    });
+  });
+
+  describe('Open file in default app', () => {
+    let sut: SwitcherPlusKeymap;
+    const mockFile = new TFile();
+    let mockFileSugg: MockProxy<FileSuggestion>;
+
+    beforeAll(() => {
+      mockFileSugg = makeFileSuggestion(mockFile);
+
+      const mockChooserLocal = mock<Chooser<FileSuggestion>>({
+        values: [mockFileSugg],
+        selectedItem: 0,
+      });
+
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooserLocal,
+        mockModal,
+        config,
+      );
+    });
+
+    afterEach(() => {
+      mockApp.openWithDefaultApp.mockClear();
+    });
+
+    it('should open a file in the default system registered app', () => {
+      mockApp.openWithDefaultApp.mockResolvedValueOnce(null);
+
+      sut.openDefaultApp(null, null);
+
+      expect(mockApp.openWithDefaultApp).toHaveBeenCalledWith(mockFile.path);
+    });
+
+    test('file extensions that have been excluded should not be opened in the default app', () => {
+      config.openDefaultApp.excludeFileExtensions.push(mockFile.extension);
+
+      sut.openDefaultApp(null, null);
+
+      expect(mockApp.openWithDefaultApp).not.toHaveBeenCalled();
+
+      config.openDefaultApp.excludeFileExtensions.pop();
+    });
+
+    it('should log errors to the console when the default app cannot be opened', async () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      const errorMsg = 'openDefaultApp unit test error';
+      const rejectedPromise = Promise.reject(errorMsg);
+      mockApp.openWithDefaultApp.mockReturnValueOnce(rejectedPromise);
+
+      sut.openDefaultApp(null, null);
+
+      await expect(rejectedPromise).rejects.toBeTruthy();
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
+
+      consoleLogSpy.mockRestore();
     });
   });
 });

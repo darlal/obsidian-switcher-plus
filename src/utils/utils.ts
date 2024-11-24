@@ -354,7 +354,7 @@ function sanitizeStringForLinkSubpath(
  * @param  {AnySuggestion} sugg
  * @returns TFile|null
  */
-function getDestinationFileForSuggestion(sugg: AnySuggestion): TFile | null {
+export function getDestinationFileForSuggestion(sugg: AnySuggestion): TFile | null {
   let destFile: TFile = null;
   const fileSuggTypes = [
     SuggestionType.Alias,
@@ -366,8 +366,8 @@ function getDestinationFileForSuggestion(sugg: AnySuggestion): TFile | null {
     SuggestionType.File,
   ];
 
-  if (fileSuggTypes.includes(sugg.type)) {
-    // for file based suggestions, get the destination file
+  if (fileSuggTypes.includes(sugg?.type)) {
+    // For file based suggestions, get the destination file
     destFile = (sugg as { file: TFile }).file;
   }
 

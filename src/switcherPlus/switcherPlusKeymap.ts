@@ -1,5 +1,6 @@
 import { SwitcherPlusSettings } from 'src/settings';
 import {
+  getDestinationFileForSuggestion,
   generateMarkdownLink,
   isHeadingCache,
   isHeadingSuggestion,
@@ -869,6 +870,38 @@ export class SwitcherPlusKeymap {
     return false;
   }
 
+  /**
+   * Triggers the system default app associated with the file extension of the
+   * currently selected suggestion.
+   *
+   * @param {KeyboardEvent} _evt
+   * @param {KeymapContext} _ctx
+   * @returns {false}
+   */
+  openDefaultApp(_evt: KeyboardEvent, _ctx: KeymapContext): false {
+    const {
+      app,
+      config: {
+        openDefaultApp: { excludeFileExtensions },
+      },
+      chooser,
+    } = this;
+
+    const selectedSugg = chooser.values?.[chooser.selectedItem];
+    const suggFile = getDestinationFileForSuggestion(selectedSugg);
+
+    if (suggFile && !excludeFileExtensions.includes(suggFile.extension)) {
+      // The file extension is not excluded try to launch the default app
+      const message = `Switcher++: error opening file (${suggFile.path}) in default app. `;
+      app.openWithDefaultApp(suggFile.path).catch((reason) => {
+        console.log(message, reason);
+      });
+    }
+
+    // Return false to prevent default
+    return false;
+  }
+
   useSelectedItem(evt: KeyboardEvent, _ctx: KeymapContext): false {
     this.chooser.useSelectedItem(evt);
     return false; // Return false to prevent default.
@@ -1120,6 +1153,16 @@ export class SwitcherPlusKeymap {
       renderMarkdownContentInSuggestions.toggleContentRenderingKeys,
       this.toggleMarkdownContentRendering.bind(this),
       renderMarkdownContentInSuggestions.isEnabled,
+    );
+
+    // Open default app associated with file extension
+    const { openDefaultApp } = config;
+    this.createCustomKeymap(
+      'open default app',
+      customFileBasedModes,
+      openDefaultApp.openInDefaultAppKeys,
+      this.openDefaultApp.bind(this),
+      openDefaultApp.isEnabled,
     );
   }
 }

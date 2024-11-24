@@ -153,6 +153,11 @@ function getDefaultSettingsData(): SettingsData {
       modifiers: ['Alt'],
       keyList: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
     },
+    openDefaultApp: {
+      isEnabled: true,
+      openInDefaultAppKeys: { modifiers: ['Shift', 'Ctrl'], key: 'o' },
+      excludeFileExtensions: [],
+    },
   };
 
   return data;
@@ -300,6 +305,14 @@ function getTransientSettingsData(): SettingsData {
       isEnabled: true,
       modifiers: chance.pickset(['Alt', 'Ctrl'], 1),
       keyList: [chance.letter()],
+    },
+    openDefaultApp: {
+      isEnabled: chance.bool(),
+      openInDefaultAppKeys: {
+        modifiers: chance.pickset(['Alt', 'Ctrl'], 1),
+        key: chance.letter(),
+      },
+      excludeFileExtensions: [],
     },
   };
 

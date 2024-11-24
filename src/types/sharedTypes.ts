@@ -381,6 +381,25 @@ export type QuickOpenConfig = {
   keyList: string[];
 };
 
+export type OpenDefaultAppConfig = {
+  /**
+   * Whether or not the feature is turned on.
+   */
+  isEnabled: boolean;
+  /**
+   * Key combination that triggers the default app for the file type.
+   *
+   * @type {Hotkey}
+   */
+  openInDefaultAppKeys: Hotkey;
+  /**
+   * List of file types for which this feature should be deactivated.
+   *
+   * @type {string[]}
+   */
+  excludeFileExtensions: string[];
+};
+
 export interface SettingsData {
   version: string;
   onOpenPreferNewTab: boolean;
@@ -470,6 +489,10 @@ export interface SettingsData {
    * Configuration for mapping hotkeys to select nth items from the suggestion list
    */
   quickOpen: QuickOpenConfig;
+  /**
+   * Configuration for opening the system default app associated with a file type.
+   */
+  openDefaultApp: OpenDefaultAppConfig;
 }
 
 export type SessionOpts = {

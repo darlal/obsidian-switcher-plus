@@ -116,6 +116,7 @@ declare module 'obsidian' {
       openTabById(id: string): SettingsTab;
     };
     openVaultChooser(): void;
+    openWithDefaultApp(path: string): Promise<void>;
   }
 
   export interface Chooser<T> {
