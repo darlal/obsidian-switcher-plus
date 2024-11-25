@@ -1,12 +1,4 @@
-jest.mock('electron', () => {
-  return {
-    ipcRenderer: {
-      sendSync: jest.fn(),
-    },
-  };
-});
-
-import { ipcRenderer } from 'electron';
+import { IpcRenderer } from 'electron';
 import { Mode, SuggestionType, MatchType, SearchQuery } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { Handler, VaultHandler, VaultData } from 'src/Handlers';
@@ -18,14 +10,14 @@ import {
   vaultTrigger,
   makeVaultSuggestion,
 } from '@fixtures';
-import { mock, MockProxy } from 'jest-mock-extended';
+import { mock, mockFn, MockProxy } from 'jest-mock-extended';
 import { Searcher } from 'src/search';
 
 describe('vaultHandler', () => {
   let settings: SwitcherPlusSettings;
   let mockApp: MockProxy<App>;
   let sut: VaultHandler;
-  const mockedIpcRenderer = jest.mocked<typeof ipcRenderer>(ipcRenderer);
+  const mockIpcRenderer = mock<IpcRenderer>();
   const mockPlatform = jest.mocked<typeof Platform>(Platform);
 
   const vaultData: VaultData = {
@@ -37,9 +29,18 @@ describe('vaultHandler', () => {
     settings = new SwitcherPlusSettings(null);
     jest.spyOn(settings, 'vaultListCommand', 'get').mockReturnValue(vaultTrigger);
 
+    // Used when the electron module is dynamically loaded on desktop platforms
+    window.require = mockFn<(typeof window)['require']>().mockReturnValue({
+      ipcRenderer: mockIpcRenderer,
+    });
+
     mockApp = mock<App>();
 
     sut = new VaultHandler(mockApp, settings);
+  });
+
+  afterAll(() => {
+    delete window['require'];
   });
 
   describe('getCommandString', () => {
@@ -71,8 +72,8 @@ describe('vaultHandler', () => {
   });
 
   describe('getSuggestions', () => {
-    afterEach(() => {
-      mockedIpcRenderer.sendSync.mockClear();
+    beforeEach(() => {
+      mockIpcRenderer.sendSync.mockClear();
     });
 
     test('with falsy input, it should return an empty array', () => {
@@ -83,22 +84,39 @@ describe('vaultHandler', () => {
       expect(results).toHaveLength(0);
     });
 
-    test('.getItems() should log errors to the console', () => {
+    test('.getVaultListDataOnDesktop() should log errors to the console', () => {
+      mockPlatform.isDesktop = true;
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
-      const error = new Error('getItems unit test error');
-      mockedIpcRenderer.sendSync.mockImplementationOnce(() => {
+      const error = new Error('vaultHandler.getVaultListDataOnDesktop unit test error');
+      mockIpcRenderer.sendSync.mockImplementationOnce(() => {
         throw error;
       });
 
-      sut.getItems();
+      sut.getVaultListDataOnDesktop();
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        'Switcher++: error retrieving list of available vaults. ',
-        error,
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), error);
 
       consoleLogSpy.mockRestore();
+    });
+
+    test('.getItems() should log errors to the console', () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      const error = new Error('vaultHandler.getItems unit test error');
+      const getVaultListDataSpy = jest
+        .spyOn(sut, 'getVaultListDataOnDesktop')
+        .mockImplementationOnce(() => {
+          throw error;
+        });
+
+      sut.getItems();
+
+      expect(getVaultListDataSpy).toHaveBeenCalled();
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), error);
+
+      consoleLogSpy.mockRestore();
+      getVaultListDataSpy.mockRestore();
     });
 
     test('on mobile platforms, it should return the open vault chooser marker', () => {
@@ -113,8 +131,9 @@ describe('vaultHandler', () => {
     });
 
     test('with default settings, it should return suggestions for vault list mode', () => {
+      mockPlatform.isDesktop = true;
       const inputInfo = new InputInfo(vaultTrigger);
-      mockedIpcRenderer.sendSync.mockReturnValueOnce(vaultData);
+      mockIpcRenderer.sendSync.mockReturnValueOnce(vaultData);
 
       const results = sut.getSuggestions(inputInfo);
 
@@ -127,10 +146,11 @@ describe('vaultHandler', () => {
       expect(results).toHaveLength(2);
       expect(areAllFound).toBe(true);
       expect(results.every((sugg) => sugg.type === SuggestionType.VaultList)).toBe(true);
-      expect(mockedIpcRenderer.sendSync).toHaveBeenCalledWith('vault-list');
+      expect(mockIpcRenderer.sendSync).toHaveBeenCalledWith('vault-list');
     });
 
     test('with filter search term, it should return only matching suggestions for vault list mode', () => {
+      mockPlatform.isDesktop = true;
       const inputInfo = new InputInfo(null, Mode.VaultList);
       const parsedInputQuerySpy = jest
         .spyOn(inputInfo, 'parsedInputQuery', 'get')
@@ -147,12 +167,12 @@ describe('vaultHandler', () => {
           return text.endsWith(filterText) ? makeFuzzyMatch() : null;
         });
 
-      mockedIpcRenderer.sendSync.mockReturnValueOnce(vaultData);
+      mockIpcRenderer.sendSync.mockReturnValueOnce(vaultData);
 
       const results = sut.getSuggestions(inputInfo);
       expect(results).toHaveLength(1);
       expect(results[0].pathSegments.path).toBe(expectedItem.path);
-      expect(mockedIpcRenderer.sendSync).toHaveBeenCalledWith('vault-list');
+      expect(mockIpcRenderer.sendSync).toHaveBeenCalledWith('vault-list');
 
       searchSpy.mockRestore();
       parsedInputQuerySpy.mockRestore();
@@ -227,20 +247,47 @@ describe('vaultHandler', () => {
       expect(() => sut.onChooseSuggestion(null, null)).not.toThrow();
     });
 
+    test('.openVaultOnDesktop() should do nothing on non-desktop platforms', () => {
+      mockPlatform.isDesktop = false;
+      mockIpcRenderer.sendSync.mockClear();
+
+      sut.openVaultOnDesktop(null);
+
+      expect(mockIpcRenderer.sendSync).not.toHaveBeenCalled();
+
+      mockPlatform.isDesktop = true;
+    });
+
+    test('.openVaultOnDesktop() should log errors to the console', () => {
+      mockPlatform.isDesktop = true;
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      const error = new Error('vaultHandler.openVaultOnDesktop unit test error');
+      mockIpcRenderer.sendSync.mockImplementationOnce(() => {
+        throw error;
+      });
+
+      sut.openVaultOnDesktop(null);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), error);
+
+      consoleLogSpy.mockRestore();
+    });
+
     it('should open the vault on desktop platforms', () => {
       mockPlatform.isDesktop = true;
       const sugg = makeVaultSuggestion();
 
       sut.onChooseSuggestion(sugg, null);
 
-      expect(mockedIpcRenderer.sendSync).toHaveBeenCalledWith(
+      expect(mockIpcRenderer.sendSync).toHaveBeenCalledWith(
         'vault-open',
         sugg.pathSegments.path,
         false,
       );
 
       mockPlatform.isDesktop = false;
-      mockedIpcRenderer.sendSync.mockClear();
+      mockIpcRenderer.sendSync.mockClear();
     });
 
     it('should launch the vault chooser on mobile platforms', () => {

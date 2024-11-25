@@ -1,4 +1,3 @@
-import { ipcRenderer } from 'electron';
 import { filenameFromPath } from 'src/utils';
 import {
   AnySuggestion,
@@ -57,9 +56,7 @@ export class VaultHandler extends Handler<VaultSuggestion> {
     if (inputInfo) {
       const { query, hasSearchTerm } = inputInfo.parsedInputQuery;
       const searcher = Searcher.create(query);
-      const items = Platform.isDesktop
-        ? this.getItems()
-        : [this.mobileVaultChooserMarker];
+      const items = this.getItems();
 
       items.forEach((item) => {
         let shouldPush = true;
@@ -126,12 +123,8 @@ export class VaultHandler extends Handler<VaultSuggestion> {
     let handled = false;
     if (sugg) {
       if (Platform.isDesktop) {
-        // 12/8/23: "vault-open" is the Obsidian defined channel for open a vault
-        handled = ipcRenderer.sendSync(
-          'vault-open',
-          sugg.pathSegments?.path,
-          false, // true to create if it doesn't exist
-        ) as boolean;
+        this.openVaultOnDesktop(sugg.pathSegments?.path);
+        handled = true;
       } else if (sugg === this.mobileVaultChooserMarker) {
         // It's the mobile app context, show the vault chooser
         this.app.openVaultChooser();
@@ -145,12 +138,10 @@ export class VaultHandler extends Handler<VaultSuggestion> {
   getItems(): VaultSuggestion[] {
     const items: VaultSuggestion[] = [];
 
-    try {
-      // 12/8/23: "vault-list" is the Obsidian defined channel for retrieving
-      // the vault list
-      const vaultData = ipcRenderer.sendSync('vault-list') as VaultData;
+    if (Platform.isDesktop) {
+      try {
+        const vaultData = this.getVaultListDataOnDesktop();
 
-      if (vaultData) {
         for (const [id, { path, open }] of Object.entries(vaultData)) {
           const basename = filenameFromPath(path);
           const sugg: VaultSuggestion = {
@@ -163,13 +154,61 @@ export class VaultHandler extends Handler<VaultSuggestion> {
 
           items.push(sugg);
         }
+      } catch (err) {
+        console.log('Switcher++: error parsing vault data. ', err);
       }
-    } catch (err) {
-      console.log('Switcher++: error retrieving list of available vaults. ', err);
+    } else {
+      items.push(this.mobileVaultChooserMarker);
     }
 
     return items.sort((a, b) =>
       a.pathSegments.basename.localeCompare(b.pathSegments.basename),
     );
+  }
+
+  /**
+   * Instructs Obsidian to open the vault at vaultPath. This should only be called
+   * Desktop Platforms.
+   *
+   * @param {string} vaultPath
+   */
+  openVaultOnDesktop(vaultPath: string): void {
+    if (!Platform.isDesktop) {
+      return;
+    }
+
+    try {
+      const ipcRenderer = window.require('electron').ipcRenderer;
+
+      // 12/8/23: "vault-open" is the Obsidian defined channel for opening a vault
+      ipcRenderer.sendSync(
+        'vault-open',
+        vaultPath,
+        false, // true to create if it doesn't exist
+      );
+    } catch (error) {
+      console.log(`Switcher++: error opening vault with path: ${vaultPath} `, error);
+    }
+  }
+
+  /**
+   * Retrieves the list of available vaults that can be opened. This should only be
+   * called on Desktop Platforms.
+   *
+   * @returns {VaultData}
+   */
+  getVaultListDataOnDesktop(): VaultData {
+    let data: VaultData = null;
+
+    if (Platform.isDesktop) {
+      try {
+        const ipcRenderer = window.require('electron').ipcRenderer;
+        data = ipcRenderer.sendSync('vault-list') as VaultData;
+      } catch (error) {
+        console.log('Switcher++: error retrieving list of available vaults. ', error);
+      }
+    }
+
+    return data;
   }
 }
