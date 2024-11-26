@@ -18,6 +18,7 @@ import {
   MarkdownRenderer,
   prepareFuzzySearch,
   prepareSimpleSearch,
+  stripHeadingForLink,
 } from 'obsidian';
 import {
   MockSetting,
@@ -86,6 +87,9 @@ const mockRenderResults = mockFn<typeof renderResults>().mockImplementation();
 const mockDebounce = mockFn<typeof debounce>().mockImplementation();
 const mockSetIcon = mockFn<typeof setIcon>().mockImplementation();
 const mockParseLinktext = mockFn<typeof parseLinktext>().mockImplementation();
+const mockStripHeadingForLink = mockFn<typeof stripHeadingForLink>().mockImplementation(
+  (heading) => heading,
+);
 
 export {
   mockPlatform as Platform,
@@ -101,6 +105,7 @@ export {
   mockNormalizePath as normalizePath,
   mockSetIcon as setIcon,
   mockParseLinktext as parseLinktext,
+  mockStripHeadingForLink as stripHeadingForLink,
   mockKeymap as Keymap,
   mockMarkdownRenderer as MarkdownRenderer,
   mockComponent as Component,

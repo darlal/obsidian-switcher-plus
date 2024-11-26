@@ -13,6 +13,7 @@ import {
   Vault,
   normalizePath,
   WorkspaceLeaf,
+  stripHeadingForLink,
 } from 'obsidian';
 import {
   SymbolSuggestion,
@@ -346,12 +347,7 @@ function sanitizeStringForLinkSubpath(
   input: string,
   useInputAsAlias: boolean,
 ): { subpath: string; alias: string | null } {
-  // May 2024: shamelessly borrowed from Obsidian
-  const illegalLinkCharsRegex = /([:#|^\\\r\n]|%%|\[\[|]])/g;
-  const sanitizedInput = input
-    .replace(illegalLinkCharsRegex, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const sanitizedInput = stripHeadingForLink(input);
 
   return {
     subpath: `#${sanitizedInput}`,
