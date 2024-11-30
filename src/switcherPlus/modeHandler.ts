@@ -22,6 +22,7 @@ import {
   isTFile,
   ComponentManager,
   getTFileFromLeaf,
+  getSourcedModes,
 } from 'src/utils';
 import {
   Mode,
@@ -614,8 +615,7 @@ export class ModeHandler {
   }
 
   getSourcedHandlers(): Handler<AnySuggestion>[] {
-    const sourcedModes = [Mode.RelatedItemsList, Mode.SymbolList];
-    return sourcedModes.map((v) => this.getHandler(v));
+    return getSourcedModes().map((v) => this.getHandler(v));
   }
 
   addWorkspaceEnvLists(inputInfo: InputInfo): InputInfo {

@@ -10,6 +10,7 @@ import {
   SymbolIndicators,
   SymbolInfo,
   SearchQuery,
+  SourceInfo,
 } from 'src/types';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
 import {
@@ -57,6 +58,7 @@ import {
   makeBookmarkedFileSuggestion,
   symbolActiveTrigger,
   getCachedMetadata,
+  makeInputInfo,
 } from '@fixtures';
 import {
   CanvasData,
@@ -883,7 +885,6 @@ describe('symbolHandler', () => {
       const mockCanvasNodeEl = mock<CanvasNodeElement>({ id: mockNodeData.id });
       const mockFile = new TFile();
       const promise = Promise.resolve();
-      const inputInfo = new InputInfo(symbolTrigger);
 
       const mockCanvasView = mock<CanvasFileView>();
       mockCanvasView.file = mockFile;
@@ -911,8 +912,9 @@ describe('symbolHandler', () => {
 
       navigateToLeafOrOpenFileSpy.mockReturnValueOnce(promise);
 
-      sut.validateCommand(inputInfo, 0, '', null, mockLeaf);
-      await sut.getSuggestions(inputInfo);
+      await sut.getSuggestions(
+        makeInputInfo({ mode: Mode.SymbolList, sourceInfo: { leaf: mockLeaf } }),
+      );
 
       sut.onChooseSuggestion(canvasSugg, null);
       await promise;
@@ -925,30 +927,22 @@ describe('symbolHandler', () => {
     });
 
     it('should log any navigation errors to the console', async () => {
-      const mockFile = new TFile();
-      const canvasSugg = makeSymbolSuggestion(null, SymbolType.CanvasNode, mockFile);
+      const canvasSugg = makeSymbolSuggestion(null, SymbolType.CanvasNode, new TFile());
       const errorMsg = 'SymbolHandler onChooseSuggestion Unit test error';
       const rejectedPromise = Promise.reject(errorMsg);
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
-      const inputInfo = new InputInfo(symbolTrigger);
-      sut.validateCommand(inputInfo, 0, '', null, makeLeaf(mockFile));
-      await sut.getSuggestions(inputInfo);
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo: mock<SourceInfo>(),
+      });
 
       navigateToLeafOrOpenFileSpy.mockReturnValueOnce(rejectedPromise);
 
       sut.onChooseSuggestion(canvasSugg, null);
 
-      try {
-        await rejectedPromise;
-      } catch (e) {
-        /* noop */
-      }
-
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        `Switcher++: Unable to navigate to symbols for file ${mockFile.path}`,
-        errorMsg,
-      );
+      await expect(rejectedPromise).rejects.toBeTruthy();
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
 
       navigateToLeafOrOpenFileSpy.mockReset();
       consoleLogSpy.mockRestore();

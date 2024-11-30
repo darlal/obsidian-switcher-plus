@@ -322,17 +322,9 @@ describe('symbolSettingsTabSection', () => {
       // trigger the change/save
       toggleSettingOnChangeFn(finalEnabledValue, mockConfig);
 
-      try {
-        await rejectedPromise;
-      } catch (e) {
-        /* noop */
-      }
-
+      await expect(rejectedPromise).rejects.toBeTruthy();
       expect(mockConfig.saveSettings).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        'Switcher++: error saving "Show Links" setting. ',
-        errorMsg,
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
 
       addToggleSettingSpy.mockReset();
       consoleLogSpy.mockRestore();

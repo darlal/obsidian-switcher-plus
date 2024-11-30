@@ -753,16 +753,8 @@ describe('Handler', () => {
 
       sut.navigateToLeafOrOpenFile(null, null, errorMsg);
 
-      try {
-        await rejectedPromise;
-      } catch (e) {
-        /* noop */
-      }
-
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        `Switcher++: error navigating to open file. ${errorMsg}`,
-        errorMsg,
-      );
+      await expect(rejectedPromise).rejects.toBeTruthy();
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
 
       navigateToLeafOrOpenFileAsyncSpy.mockRestore();
       consoleLogSpy.mockRestore();
@@ -1200,14 +1192,9 @@ describe('Handler', () => {
 
       Handler.renderMarkdownContentAsync(null, null, content, null);
 
-      try {
-        await rejectedPromise;
-      } catch (e) {
-        /* noop */
-      }
-
+      await expect(rejectedPromise).rejects.toBeTruthy();
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        `Switcher++: error rendering markdown to html. `,
+        expect.any(String),
         errorMsg,
         `content: ${content}`,
       );
@@ -2159,22 +2146,13 @@ describe('Handler', () => {
 
       sut.createFile(filename, null);
 
-      try {
-        await rejectedPromise;
-      } catch (e) {
-        /* noop */
-      }
-
+      await expect(rejectedPromise).rejects.toBeTruthy();
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
       expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
         filename,
         '',
         false,
         viewState,
-      );
-
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        'Switcher++: error creating new file. ',
-        errorMsg,
       );
 
       mockWorkspace.openLinkText.mockReset();

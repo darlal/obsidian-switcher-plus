@@ -33,7 +33,7 @@ import { Searcher, StringSearcher } from 'src/search';
 export class RelatedItemsHandler extends Handler<
   RelatedItemsSuggestion | UnresolvedSuggestion
 > {
-  private inputInfo: InputInfo;
+  inputInfo: InputInfo;
 
   getCommandString(sessionOpts?: SessionOpts): string {
     const { settings } = this;

@@ -194,7 +194,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
         },
         (reason) => {
           console.log(
-            `Switcher++: Unable to navigate to symbols for file ${file.path}`,
+            `Switcher++: Unable to navigate to symbols for file ${file?.path}`,
             reason,
           );
         },

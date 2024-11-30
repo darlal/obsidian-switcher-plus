@@ -458,17 +458,15 @@ describe('commandHandler', () => {
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
       mockGetDefaultHotkeys.mockReturnValueOnce([mock<Hotkey>()]);
+
+      const error = new Error('renderHotkeyForCommand unit test error');
       mockPrintHotkeyForCommand.mockImplementationOnce(() => {
-        throw new Error('renderHotkeyForCommand unit test error');
+        throw error;
       });
 
       sut.renderHotkeyForCommand(id, mockApp, null);
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.any(String),
-        id,
-        expect.anything(),
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), id, error);
 
       consoleLogSpy.mockRestore();
     });

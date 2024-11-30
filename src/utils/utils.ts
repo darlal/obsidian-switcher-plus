@@ -120,6 +120,17 @@ export function getModeNames(): Array<keyof typeof Mode> {
     .sort() as Array<keyof typeof Mode>;
 }
 
+/**
+ * Returns an array of Modes that operate on specific, named source files, such
+ * as Symbol/RelatedItems modes
+ *
+ * @export
+ * @returns {Mode[]}
+ */
+export function getSourcedModes(): Mode[] {
+  return [Mode.RelatedItemsList, Mode.SymbolList];
+}
+
 export function stripMDExtensionFromPath(file: TFile): string {
   let retVal: string = null;
 

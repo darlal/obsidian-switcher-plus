@@ -2,8 +2,9 @@ import SwitcherPlusPlugin from 'src/main';
 import { createSwitcherPlus, ModeHandler } from 'src/switcherPlus';
 import { getSystemSwitcherInstance } from 'src/utils';
 import { mock, mockClear, MockProxy } from 'jest-mock-extended';
-import { App, Chooser, QuickSwitcherPluginInstance } from 'obsidian';
+import { App, Chooser, QuickSwitcherPluginInstance, Scope } from 'obsidian';
 import { Chance } from 'chance';
+import { SwitcherPlusSettings } from 'src/settings';
 import {
   AnySuggestion,
   Mode,
@@ -13,17 +14,34 @@ import {
 } from 'src/types';
 
 jest.mock('src/switcherPlus/switcherPlusKeymap');
-jest.mock('src/utils/utils');
+jest.mock('src/utils', () => {
+  return {
+    __esModule: true,
+    ...jest.requireActual<typeof import('src/utils')>('src/utils'),
+
+    // This needs to be mocked since at test time access to the actual Obsidian builtin
+    // system switcher is not available.
+    getSystemSwitcherInstance: jest.fn(),
+  };
+});
 
 const chance = new Chance();
 const mockChooser = mock<Chooser<AnySuggestion>>();
+const mockScope = mock<Scope>({ keys: [] });
+const mockModalEl = mock<HTMLElement>({
+  createDiv: jest.fn(),
+});
 
 class MockSystemSwitcherModal {
   protected chooser: Chooser<AnySuggestion>;
+  scope: Scope;
+  modalEl: HTMLElement;
   inputEl: HTMLInputElement;
 
   constructor() {
     this.chooser = mockChooser;
+    this.scope = mockScope;
+    this.modalEl = mockModalEl;
   }
   updateSuggestions(): void {
     /* noop */
@@ -68,6 +86,13 @@ describe('switcherPlus', () => {
   beforeAll(() => {
     mockApp = mock<App>();
     mockPlugin = mock<SwitcherPlusPlugin>({ app: mockApp });
+
+    const config = new SwitcherPlusSettings(mockPlugin);
+    mockPlugin.options = config;
+
+    // Disable these two setting so that state isn't store between tests
+    config.preserveCommandPaletteLastInput = false;
+    config.preserveQuickSwitcherLastInput = false;
   });
 
   describe('createSwitcherPlus', () => {
@@ -155,10 +180,9 @@ describe('switcherPlus', () => {
     });
 
     it('should forward to ModeHandler to get suggestions', () => {
-      const insertCmdStringSpy = jest.spyOn(
-        ModeHandler.prototype,
-        'insertSessionOpenModeOrLastInputString',
-      );
+      const insertCmdStringSpy = jest
+        .spyOn(ModeHandler.prototype, 'insertSessionOpenModeOrLastInputString')
+        .mockReturnValueOnce();
 
       const mhUpdateSuggestionsSpy = jest
         .spyOn(ModeHandler.prototype, 'updateSuggestions')

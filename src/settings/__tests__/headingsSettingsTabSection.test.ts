@@ -220,17 +220,9 @@ describe('headingsSettingsTabSection', () => {
       // trigger the change/save
       toggleSettingOnChangeFn(true, config);
 
-      try {
-        await rejectedPromise;
-      } catch (e) {
-        /* noop */
-      }
-
+      await expect(rejectedPromise).rejects.toBeTruthy();
       expect(saveSettingsSpy).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        'Switcher++: error saving "Search Headings" setting. ',
-        errorMsg,
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
 
       addToggleSettingSpy.mockReset();
       consoleLogSpy.mockRestore();

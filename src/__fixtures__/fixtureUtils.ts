@@ -1,5 +1,8 @@
 import { mock, mockFn, MockProxy } from 'jest-mock-extended';
+import { InputInfo, ParsedCommand, SourcedParsedCommand } from 'src/switcherPlus';
 import { Chance } from 'chance';
+import { Mode, SourceInfo } from 'src/types';
+import { getSourcedModes } from 'src/utils';
 import {
   App,
   BookmarksPluginFileItem,
@@ -126,4 +129,49 @@ export function makeCommandItem(options?: { id?: string; name?: string }): Comma
     id: options?.id ?? chance.word(),
     name: options?.name ?? chance.word(),
   };
+}
+
+/**
+ * Returns a non-mocked InputInfo object with the specified parameters
+ *
+ * @export
+ * @param {?{
+ *   inputText?: string;
+ *   mode?: Mode;
+ *   parsedCommand?: Partial<ParsedCommand>;
+ *   sourceInfo?: Partial<SourceInfo>;
+ * }} [options]
+ * @returns {InputInfo}
+ */
+export function makeInputInfo(options?: {
+  inputText?: string;
+  mode?: Mode;
+  parsedCommand?: Partial<ParsedCommand>;
+  sourceInfo?: Partial<SourceInfo>;
+}): InputInfo {
+  options = Object.assign({}, options);
+
+  const mode = options.mode ?? Mode.Standard;
+  const inputInfo = new InputInfo(options.inputText ?? '', mode);
+
+  // Update the parsedCommand property with passed in params
+  const parsedCommand = inputInfo.parsedCommand(mode);
+  Object.assign(parsedCommand, options.parsedCommand);
+
+  // For sourced modes, add the SourcedInfo
+  if (getSourcedModes().includes(mode)) {
+    const sourceInfo: SourceInfo = {
+      file: null,
+      leaf: null,
+      suggestion: null,
+      isValidSource: null,
+    };
+
+    (parsedCommand as SourcedParsedCommand).source = Object.assign(
+      sourceInfo,
+      options.sourceInfo,
+    );
+  }
+
+  return inputInfo;
 }

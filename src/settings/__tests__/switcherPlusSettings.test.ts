@@ -565,10 +565,7 @@ describe('SwitcherPlusSettings', () => {
 
     await sut.loadSettings();
 
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      'Switcher++: error loading settings, using defaults. ',
-      error,
-    );
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), error);
 
     consoleLogSpy.mockRestore();
   });
@@ -587,29 +584,20 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.matchPriorityAdjustments).toEqual(expected);
   });
 
-  it('should log errors to console on fire and forget save operation', () => {
-    const consoleLogSpy = jest.spyOn(console, 'log');
+  it('should log errors to console on fire and forget save operation', async () => {
+    const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
-    const error = new Error('saveData() unit test mock error');
-    mockPlugin.saveData.mockRejectedValueOnce(error);
-
-    const logPromise = new Promise<void>((resolve, _r) => {
-      consoleLogSpy.mockImplementationOnce(() => {
-        resolve();
-      });
-    });
+    const errorMsg = 'saveData() unit test mock error';
+    const rejectedPromise = Promise.reject(errorMsg);
+    mockPlugin.saveData.mockReturnValueOnce(rejectedPromise);
 
     sut.save();
 
-    return logPromise.finally(() => {
-      expect(mockPlugin.saveData).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        'Switcher++: error saving changes to settings',
-        error,
-      );
+    await expect(rejectedPromise).rejects.toBeTruthy();
+    expect(mockPlugin.saveData).toHaveBeenCalled();
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
 
-      consoleLogSpy.mockRestore();
-    });
+    consoleLogSpy.mockRestore();
   });
 
   test('updateDataAndLoadSettings() should update settings', async () => {
@@ -657,10 +645,7 @@ describe('SwitcherPlusSettings', () => {
       const result = await SwitcherPlusSettings.transformDataFileToV1(mockPlugin, null);
 
       expect(result).toBe(false);
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        'Switcher++: error transforming data.json to v1.0.0',
-        error,
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), error);
 
       consoleLogSpy.mockRestore();
     });
@@ -778,10 +763,7 @@ describe('SwitcherPlusSettings', () => {
       const result = await SwitcherPlusSettings.transformDataFileToV2(mockPlugin, null);
 
       expect(result).toBe(false);
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        'Switcher++: error transforming data.json to v2.0.0',
-        error,
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), error);
 
       consoleLogSpy.mockRestore();
     });

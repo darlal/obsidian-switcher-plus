@@ -138,9 +138,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     containerEl: HTMLElement,
     config: SwitcherPlusSettings,
   ): void {
-    const modeNames = Object.values(Mode)
-      .filter((v) => isNaN(Number(v)))
-      .sort();
+    const modeNames = getModeNames();
     const modeNamesStr = modeNames.join(' ');
     const desc = `Display an icon in the ribbon menu to launch specific modes. Add one mode per line. Available modes: ${modeNamesStr}`;
 
@@ -155,7 +153,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
           .filter((v) => v.length > 0);
 
         const invalidValues = Array.from(new Set(values)).filter(
-          (v) => !modeNames.includes(v),
+          (v) => !(modeNames as string[]).includes(v),
         );
 
         if (invalidValues.length) {

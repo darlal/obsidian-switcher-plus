@@ -142,7 +142,7 @@ describe('headingsHandler', () => {
 
   describe('validateCommand', () => {
     it('should validate parsed input for headings mode', () => {
-      const filterText = 'foo';
+      const filterText = 'filterText';
       const inputText = `${headingsTrigger}${filterText}`;
       const startIndex = headingsTrigger.length;
       const inputInfo = new InputInfo(inputText);
@@ -158,7 +158,7 @@ describe('headingsHandler', () => {
   });
 
   describe('getSuggestions', () => {
-    const filterText = 'foo';
+    const filterText = 'filterText';
     let inputInfo: InputInfo;
     const mockSearchQuery = mock<SearchQuery>();
     let parsedInputQuerySpy: jest.SpyInstance<SearchQuery, []>;
@@ -251,8 +251,8 @@ describe('headingsHandler', () => {
 
     test('with filter search term, it should return matching suggestions for all headings', () => {
       const expected = new TFile();
-      const h1 = makeHeading('foo heading H1', 1, makeLoc(1));
-      const h2 = makeHeading('foo heading H2', 2, makeLoc(2));
+      const h1 = makeHeading(`${filterText} heading H1`, 1, makeLoc(1));
+      const h2 = makeHeading(`${filterText} heading H2`, 2, makeLoc(2));
 
       mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
 
@@ -276,8 +276,8 @@ describe('headingsHandler', () => {
 
     test('with filter search term, and searchAllHeadings set to false, it should return only matching suggestions using first H1 in file', () => {
       const expected = new TFile();
-      const expectedHeading = makeHeading('foo heading H1', 1, makeLoc(1));
-      const heading2 = makeHeading('foo heading H1', 1, makeLoc(2));
+      const expectedHeading = makeHeading(`${filterText} heading H1`, 1, makeLoc(1));
+      const heading2 = makeHeading(`${filterText} heading H1`, 1, makeLoc(2));
 
       const searchAllHeadingsSpy = jest
         .spyOn(settings, 'searchAllHeadings', 'get')
@@ -418,7 +418,7 @@ describe('headingsHandler', () => {
 
       const fm: CachedMetadata = {
         frontmatter: {
-          aliases: ['bar', 'foo'],
+          aliases: ['bar', filterText],
           position: null,
         },
       };
@@ -479,11 +479,12 @@ describe('headingsHandler', () => {
 
     test('with filter search term and showExistingOnly set to false, it should match against unresolved linktext', () => {
       const expected = new TFile();
+      const expectedLinkText = `${filterText} link noexist`;
 
       mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
 
       mockMetadataCache.unresolvedLinks[expected.path] = {
-        'foo link noexist': 1,
+        [expectedLinkText]: 1,
         'another link': 1,
       };
 
@@ -492,7 +493,7 @@ describe('headingsHandler', () => {
 
       const result = results[0];
       expect(isUnresolvedSuggestion(result)).toBe(true);
-      expect((result as UnresolvedSuggestion).linktext).toBe('foo link noexist');
+      expect((result as UnresolvedSuggestion).linktext).toBe(expectedLinkText);
       expect(mockVault.getRoot).toHaveBeenCalled();
       expect(builtInSystemOptionsSpy).toHaveBeenCalled();
 

@@ -1,4 +1,5 @@
 import { TFile, WorkspaceLeaf } from 'obsidian';
+import { getModeNames, getSourcedModes } from 'src/utils';
 import { Mode, SourceInfo, SearchQuery, SessionOpts, BookmarksItemInfo } from 'src/types';
 
 export interface WorkspaceEnvList {
@@ -24,7 +25,7 @@ export class InputInfo {
   private parsedCommands: Record<Mode, ParsedCommand>;
   private _inputTextSansEscapeChar: string = null;
 
-  private static get defaultParsedCommand(): ParsedCommand {
+  static get defaultParsedCommand(): ParsedCommand {
     return {
       isValidated: false,
       index: -1,
@@ -65,31 +66,24 @@ export class InputInfo {
     sessionOpts?: SessionOpts,
   ) {
     this.sessionOpts = sessionOpts ?? {};
-    const symbolListCmd: SourcedParsedCommand = {
-      ...InputInfo.defaultParsedCommand,
-      source: null,
-    };
 
-    const relatedItemsListCmd: SourcedParsedCommand = {
-      ...InputInfo.defaultParsedCommand,
-      source: null,
-    };
-
+    const sourcedModes = getSourcedModes();
     const parsedCmds = {} as Record<Mode, ParsedCommand>;
     this.parsedCommands = parsedCmds;
-    parsedCmds[Mode.SymbolList] = symbolListCmd;
-    parsedCmds[Mode.RelatedItemsList] = relatedItemsListCmd;
 
-    [
-      Mode.Standard,
-      Mode.EditorList,
-      Mode.WorkspaceList,
-      Mode.HeadingsList,
-      Mode.BookmarksList,
-      Mode.CommandList,
-      Mode.VaultList,
-    ].forEach((mode) => {
-      parsedCmds[mode] = InputInfo.defaultParsedCommand;
+    // Initialize .parsedCommands with an object for each mode
+    getModeNames().forEach((modeName) => {
+      const modeValue = Mode[modeName];
+
+      if (sourcedModes.includes(modeValue)) {
+        // Initialize the additional properties for sourced commands.
+        (this.parsedCommands[modeValue] as SourcedParsedCommand) = {
+          ...InputInfo.defaultParsedCommand,
+          source: null,
+        };
+      } else {
+        this.parsedCommands[modeValue] = InputInfo.defaultParsedCommand;
+      }
     });
   }
 
