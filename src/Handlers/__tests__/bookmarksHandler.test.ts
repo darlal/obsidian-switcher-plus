@@ -2,7 +2,13 @@ import { SwitcherPlusSettings } from 'src/settings';
 import { mock, MockProxy, mockReset } from 'jest-mock-extended';
 import { BookmarksHandler, BOOKMARKS_PLUGIN_ID } from 'src/Handlers';
 import { InputInfo } from 'src/switcherPlus';
-import { Mode, SearchQuery, SuggestionType } from 'src/types';
+import {
+  BookmarksItemInfo,
+  MatchType,
+  Mode,
+  SearchQuery,
+  SuggestionType,
+} from 'src/types';
 import { Searcher } from 'src/search';
 import {
   makeFuzzyMatch,
@@ -12,6 +18,8 @@ import {
   makeBookmarksPluginGroupItem,
   makeBookmarksPluginSearchItem,
   makeHeading,
+  makeInputInfo,
+  makeBookmarkedFileSuggestion,
 } from '@fixtures';
 import {
   App,
@@ -115,8 +123,19 @@ describe('bookmarksHandler', () => {
     expect(sut.renderSuggestion(null, null)).toBe(false);
   });
 
-  test('onChooseSuggestion() should return false', () => {
-    expect(sut.onChooseSuggestion(null, null)).toBe(false);
+  test('onChooseSuggestion() should open the associated file for FileBookmarks', () => {
+    const sugg = makeBookmarkedFileSuggestion();
+    const mockEvt = mock<KeyboardEvent>();
+
+    const navigateSpy = jest
+      .spyOn(BookmarksHandler.prototype, 'navigateToLeafOrOpenFile')
+      .mockReturnValueOnce();
+
+    sut.onChooseSuggestion(sugg, mockEvt);
+
+    expect(navigateSpy).toHaveBeenCalledWith(mockEvt, sugg.file, expect.any(String));
+
+    navigateSpy.mockRestore();
   });
 
   describe('getCommandString', () => {
@@ -369,6 +388,44 @@ describe('bookmarksHandler', () => {
       expect(result).toBe(titleText);
 
       getFirstH1Spy.mockRestore();
+    });
+  });
+
+  describe('addPropertiesToStandardSuggestions', () => {
+    const mockFile = new TFile();
+    const inputInfo = makeInputInfo();
+    inputInfo.currentWorkspaceEnvList.openWorkspaceFiles = new Set([mockFile]);
+    inputInfo.currentWorkspaceEnvList.mostRecentFiles = new Set([mockFile]);
+    inputInfo.currentWorkspaceEnvList.fileBookmarks = new Map<TFile, BookmarksItemInfo[]>(
+      [[mockFile, []]],
+    );
+
+    it('should set extra properties on Bookmark suggestions', () => {
+      const sugg = makeBookmarkedFileSuggestion({
+        file: mockFile,
+        bookmarkPath: mockFile.path,
+        match: makeFuzzyMatch(),
+      });
+
+      // Note: purposefully unset the file property, because the core switcher does not provide a value for this property, unlike Files/Alias suggestions
+      sugg.file = null;
+
+      const getTFileByPathSpy = jest
+        .spyOn(BookmarksHandler.prototype, 'getTFileByPath')
+        .mockReturnValueOnce(mockFile);
+
+      sut.addPropertiesToStandardSuggestions(inputInfo.currentWorkspaceEnvList, sugg);
+
+      expect(sugg).toMatchObject({
+        ...sugg,
+        matchType: MatchType.Primary,
+        matchText: mockFile.path,
+        isOpenInEditor: true,
+        isRecent: true,
+        isBookmarked: true,
+      });
+
+      getTFileByPathSpy.mockRestore();
     });
   });
 });

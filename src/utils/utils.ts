@@ -29,6 +29,7 @@ import {
   SuggestionType,
   CalloutCache,
   Mode,
+  BookmarksSuggestion,
 } from 'src/types';
 
 export function isOfType<T>(
@@ -70,6 +71,10 @@ export function isAliasSuggestion(obj: unknown): obj is AliasSuggestion {
 
 export function isUnresolvedSuggestion(obj: unknown): obj is UnresolvedSuggestion {
   return isOfType<UnresolvedSuggestion>(obj, 'type', SuggestionType.Unresolved);
+}
+
+export function isBookmarksSuggestion(obj: unknown): obj is BookmarksSuggestion {
+  return isOfType<BookmarksSuggestion>(obj, 'type', SuggestionType.Bookmark);
 }
 
 export function isSystemSuggestion(obj: unknown): obj is AnySystemSuggestion {

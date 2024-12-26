@@ -128,7 +128,7 @@ describe('standardExHandler', () => {
     it('should set extra properties on alias suggestions', () => {
       const sugg = makeAliasSuggestion(mockFile);
 
-      sut.addPropertiesToStandardSuggestions(inputInfo, sugg);
+      sut.addPropertiesToStandardSuggestions(inputInfo.currentWorkspaceEnvList, sugg);
 
       expect(sugg).toMatchObject({
         ...sugg,
@@ -143,7 +143,7 @@ describe('standardExHandler', () => {
     it('should set extra properties on file suggestions', () => {
       const sugg = makeFileSuggestion(mockFile);
 
-      sut.addPropertiesToStandardSuggestions(inputInfo, sugg);
+      sut.addPropertiesToStandardSuggestions(inputInfo.currentWorkspaceEnvList, sugg);
 
       expect(sugg).toMatchObject({
         ...sugg,

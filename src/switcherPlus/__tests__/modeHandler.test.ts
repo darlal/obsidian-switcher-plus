@@ -856,33 +856,6 @@ describe('modeHandler', () => {
       createNoteSpy.mockRestore();
     });
 
-    test('with overrideStandardModeBehaviors enabled, renderSuggestion should use the StandardExHandler', () => {
-      mockSettings.overrideStandardModeBehaviors = true;
-      const sugg = makeFileSuggestion();
-      const mockParentEl = mock<HTMLElement>();
-
-      const addPropsSpy = jest
-        .spyOn(StandardExHandler.prototype, 'addPropertiesToStandardSuggestions')
-        .mockImplementation();
-
-      const renderSuggestionSpy = jest
-        .spyOn(StandardExHandler.prototype, 'renderSuggestion')
-        .mockReturnValue(true);
-
-      sut.updateSuggestions(chance.word(), mockChooser, null);
-
-      const handled = sut.renderSuggestion(sugg, mockParentEl);
-
-      expect(renderSuggestionSpy).toHaveBeenCalledWith(sugg, mockParentEl);
-      expect(addPropsSpy).toHaveBeenCalled();
-      expect(handled).toBe(true);
-
-      renderSuggestionSpy.mockRestore();
-      addPropsSpy.mockRestore();
-      mockClear(mockChooser);
-      mockSettings.overrideStandardModeBehaviors = false;
-    });
-
     test.each([makeFileSuggestion()])(
       'renderSuggestion should use the StandardExHandler when in Headings mode for File Suggestions',
       (sugg) => {
@@ -1345,6 +1318,44 @@ describe('modeHandler', () => {
       expect(mockModal).toHaveProperty('allowCreateNewFile', false);
       expect(mockModal.createButtonEl.detach).toHaveBeenCalled();
       expect(result).toBe(true);
+    });
+  });
+
+  describe('addPropertiesToStandardSuggestions', () => {
+    let sut: ModeHandler;
+
+    beforeAll(() => {
+      sut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
+    });
+
+    test('with overrideStandardModeBehaviors enabled, it should add properties to a Standard mode file suggestion', () => {
+      mockSettings.overrideStandardModeBehaviors = true;
+      const sugg = makeFileSuggestion();
+      const addPropsSpy = jest
+        .spyOn(StandardExHandler.prototype, 'addPropertiesToStandardSuggestions')
+        .mockImplementation();
+
+      sut.addPropertiesToStandardSuggestions([sugg], mockSettings);
+
+      expect(addPropsSpy).toHaveBeenCalled();
+
+      addPropsSpy.mockRestore();
+      mockSettings.overrideStandardModeBehaviors = false;
+    });
+
+    test('with overrideStandardModeBehaviors enabled, it should add properties to a Standard mode bookmark suggestion', () => {
+      mockSettings.overrideStandardModeBehaviors = true;
+      const sugg = makeBookmarkedFileSuggestion();
+      const addPropsSpy = jest
+        .spyOn(BookmarksHandler.prototype, 'addPropertiesToStandardSuggestions')
+        .mockImplementation();
+
+      sut.addPropertiesToStandardSuggestions([sugg], mockSettings);
+
+      expect(addPropsSpy).toHaveBeenCalled();
+
+      addPropsSpy.mockRestore();
+      mockSettings.overrideStandardModeBehaviors = false;
     });
   });
 });
