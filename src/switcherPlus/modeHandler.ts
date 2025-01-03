@@ -298,7 +298,7 @@ export class ModeHandler {
   renderSuggestion(sugg: AnySuggestion, parentEl: HTMLElement): boolean {
     const {
       inputInfo,
-      settings: { overrideStandardModeBehaviors },
+      settings: { overrideStandardModeRendering },
     } = this;
     const { mode } = inputInfo;
     const isHeadingMode = mode === Mode.HeadingsList;
@@ -315,7 +315,7 @@ export class ModeHandler {
         handled = true;
       }
     } else if (!systemBehaviorPreferred.has(sugg.type)) {
-      if (overrideStandardModeBehaviors || isHeadingMode || isExSuggestion(sugg)) {
+      if (overrideStandardModeRendering || isHeadingMode || isExSuggestion(sugg)) {
         // when overriding standard mode, or, in Headings mode, StandardExHandler should
         // handle rendering for FileSuggestion and Alias suggestion
         const handler = this.getHandler(sugg);
@@ -708,7 +708,10 @@ export class ModeHandler {
     suggestions: AnySuggestion[],
     config: SwitcherPlusSettings,
   ): void {
-    if (!suggestions || !config.overrideStandardModeBehaviors) {
+    if (
+      !suggestions ||
+      !(config.overrideStandardModeBehaviors || config.overrideStandardModeRendering)
+    ) {
       return;
     }
 

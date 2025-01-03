@@ -881,6 +881,23 @@ describe('modeHandler', () => {
       },
     );
 
+    test('with overrideStandardModeRendering enabled, renderSuggestion() should use the StandardExHandler', () => {
+      mockSettings.overrideStandardModeRendering = true;
+      const sugg = makeFileSuggestion();
+
+      const renderSuggestionSpy = jest
+        .spyOn(StandardExHandler.prototype, 'renderSuggestion')
+        .mockImplementation();
+
+      sut.renderSuggestion(sugg, null);
+
+      expect(renderSuggestionSpy).toHaveBeenCalledWith(sugg, null);
+
+      renderSuggestionSpy.mockRestore();
+
+      mockSettings.overrideStandardModeRendering = false;
+    });
+
     test('with overrideStandardModeBehaviors enabled, onChooseSuggestion should use the StandardExHandler', () => {
       mockSettings.overrideStandardModeBehaviors = true;
       const sugg = makeFileSuggestion();
@@ -1328,20 +1345,23 @@ describe('modeHandler', () => {
       sut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
     });
 
-    test('with overrideStandardModeBehaviors enabled, it should add properties to a Standard mode file suggestion', () => {
-      mockSettings.overrideStandardModeBehaviors = true;
-      const sugg = makeFileSuggestion();
-      const addPropsSpy = jest
-        .spyOn(StandardExHandler.prototype, 'addPropertiesToStandardSuggestions')
-        .mockImplementation();
+    test.each([makeFileSuggestion(), makeAliasSuggestion()])(
+      'with overrideStandardModeRendering enabled, it should add properties to a supported Standard mode suggestion',
+      (sugg) => {
+        mockSettings.overrideStandardModeBehaviors = false;
+        mockSettings.overrideStandardModeRendering = true;
+        const addPropsSpy = jest
+          .spyOn(StandardExHandler.prototype, 'addPropertiesToStandardSuggestions')
+          .mockImplementation();
 
-      sut.addPropertiesToStandardSuggestions([sugg], mockSettings);
+        sut.addPropertiesToStandardSuggestions([sugg], mockSettings);
 
-      expect(addPropsSpy).toHaveBeenCalled();
+        expect(addPropsSpy).toHaveBeenCalled();
 
-      addPropsSpy.mockRestore();
-      mockSettings.overrideStandardModeBehaviors = false;
-    });
+        addPropsSpy.mockRestore();
+        mockSettings.overrideStandardModeRendering = false;
+      },
+    );
 
     test('with overrideStandardModeBehaviors enabled, it should add properties to a Standard mode bookmark suggestion', () => {
       mockSettings.overrideStandardModeBehaviors = true;

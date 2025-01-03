@@ -69,6 +69,7 @@ function getDefaultSettingsData(): SettingsData {
     enabledRelatedItems: Object.values(RelationType),
     showOptionalIndicatorIcons: true,
     overrideStandardModeBehaviors: true,
+    overrideStandardModeRendering: true,
     enabledRibbonCommands: [
       Mode[Mode.HeadingsList] as keyof typeof Mode,
       Mode[Mode.SymbolList] as keyof typeof Mode,
@@ -219,6 +220,7 @@ function getTransientSettingsData(): SettingsData {
     enabledRelatedItems: chance.pickset(Object.values(RelationType), 2),
     showOptionalIndicatorIcons: chance.bool(),
     overrideStandardModeBehaviors: chance.bool(),
+    overrideStandardModeRendering: chance.bool(),
     enabledRibbonCommands,
     fileExtAllowList: [],
     matchPriorityAdjustments: {

@@ -70,6 +70,7 @@ export class SwitcherPlusSettings {
       enabledRelatedItems: Object.values(RelationType),
       showOptionalIndicatorIcons: true,
       overrideStandardModeBehaviors: true,
+      overrideStandardModeRendering: true,
       enabledRibbonCommands: [
         Mode[Mode.HeadingsList] as keyof typeof Mode,
         Mode[Mode.SymbolList] as keyof typeof Mode,
@@ -518,6 +519,14 @@ export class SwitcherPlusSettings {
 
   set overrideStandardModeBehaviors(value: boolean) {
     this.data.overrideStandardModeBehaviors = value;
+  }
+
+  get overrideStandardModeRendering(): boolean {
+    return this.data.overrideStandardModeRendering;
+  }
+
+  set overrideStandardModeRendering(value: boolean) {
+    this.data.overrideStandardModeRendering = value;
   }
 
   get enabledRibbonCommands(): Array<keyof typeof Mode> {

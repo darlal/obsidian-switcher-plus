@@ -71,10 +71,22 @@ describe('generalSettingsTabSection', () => {
 
       expect(addToggleSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
-        'Override Standard mode behavior',
+        'Override Standard mode file open behavior',
         expect.any(String),
         config.overrideStandardModeBehaviors,
         'overrideStandardModeBehaviors',
+      );
+    });
+
+    it('should show the overrideStandardModeRendering setting', () => {
+      sut.display(mockContainerEl);
+
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
+        mockContainerEl,
+        'Override Standard mode rendering',
+        expect.any(String),
+        config.overrideStandardModeRendering,
+        'overrideStandardModeRendering',
       );
     });
 

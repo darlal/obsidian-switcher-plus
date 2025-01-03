@@ -439,6 +439,7 @@ export interface SettingsData {
   enabledRelatedItems: RelationType[];
   showOptionalIndicatorIcons: boolean;
   overrideStandardModeBehaviors: boolean;
+  overrideStandardModeRendering: boolean;
   enabledRibbonCommands: Array<keyof typeof Mode>;
   fileExtAllowList: Array<string>;
   matchPriorityAdjustments: {

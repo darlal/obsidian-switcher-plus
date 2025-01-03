@@ -40,10 +40,18 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
 
     this.addToggleSetting(
       containerEl,
-      'Override Standard mode behavior',
-      'When enabled, Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to inject custom behavior.',
+      'Override Standard mode file open behavior',
+      'When enabled, Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to inject custom file open behavior.',
       config.overrideStandardModeBehaviors,
       'overrideStandardModeBehaviors',
+    );
+
+    this.addToggleSetting(
+      containerEl,
+      'Override Standard mode rendering',
+      'When enabled, Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to render suggestions as multi-line.',
+      config.overrideStandardModeRendering,
+      'overrideStandardModeRendering',
     );
 
     this.addToggleSetting(
