@@ -112,6 +112,14 @@ export interface ModeDispatcher {
   onOpen(): void;
   onClose(): void;
   insertSessionOpenModeOrLastInputString(inputEl: HTMLInputElement): void;
+  /**
+   * If the underlying InputInfo contains a version of the input string that has
+   * been stripped of the custom mode escape char, it returns that. Otherwise, it return
+   * input.
+   *
+   * @param {string} input
+   * @returns {string}
+   */
   inputTextForStandardMode(input: string): string;
   /**
    * Identifies the appropriate Handler and delegates the execution of sugg
@@ -161,6 +169,23 @@ export interface ModeDispatcher {
     chooser: Chooser<AnySuggestion>,
     SessionOpts?: SessionOpts,
   ): void;
+
+  /**
+   * Returns relevant InputInfo properties to be used for triggering fulltext search.
+   * The file property is only returned when the mode is a Sourced command mode
+   * scope to a file.
+   *
+   * @returns {{
+   *     mode: Mode;
+   *     parsedInput: string;
+   *     file?: TFile;
+   *   }}
+   */
+  inputTextForFulltextSearch(): {
+    mode: Mode;
+    parsedInput: string;
+    file?: TFile;
+  };
 }
 
 export type CalloutCache = SectionCache & {
@@ -456,6 +481,19 @@ export type OpenDefaultAppConfig = {
   excludeFileExtensions: string[];
 };
 
+export type FulltextSearchConfig = {
+  /**
+   * Whether or not the feature is turned on.
+   */
+  isEnabled: boolean;
+  /**
+   * Key combination that triggers the search command.
+   *
+   * @type {Hotkey}
+   */
+  searchKeys: Hotkey;
+};
+
 export interface SettingsData {
   version: string;
   onOpenPreferNewTab: boolean;
@@ -550,6 +588,10 @@ export interface SettingsData {
    * Configuration for opening the system default app associated with a file type.
    */
   openDefaultApp: OpenDefaultAppConfig;
+  /**
+   * Configuration for triggerring fulltext search.
+   */
+  fulltextSearch: FulltextSearchConfig;
 }
 
 export type SessionOpts = {

@@ -52,6 +52,12 @@ export class InputInfo {
     };
   }
 
+  /**
+   * If it exists, returns a version of inputText that has been stripped of the
+   * custom mode escape command char. Otherwise, returns raw inputText.
+   *
+   * @type {string}
+   */
   get inputTextSansEscapeChar(): string {
     return this._inputTextSansEscapeChar ?? this.inputText;
   }
@@ -68,8 +74,7 @@ export class InputInfo {
     this.sessionOpts = sessionOpts ?? {};
 
     const sourcedModes = getSourcedModes();
-    const parsedCmds = {} as Record<Mode, ParsedCommand>;
-    this.parsedCommands = parsedCmds;
+    this.parsedCommands = {} as Record<Mode, ParsedCommand>;
 
     // Initialize .parsedCommands with an object for each mode
     getModeNames().forEach((modeName) => {

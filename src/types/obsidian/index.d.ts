@@ -54,6 +54,10 @@ declare module 'obsidian' {
     setActiveWorkspace(id: string): void;
   }
 
+  export interface GlobalSearchPluginInstance extends PluginInstance {
+    openGlobalSearch(query: string): void;
+  }
+
   export interface QuickSwitcherOptions {
     showAllFileTypes: boolean;
     showAttachments: boolean;

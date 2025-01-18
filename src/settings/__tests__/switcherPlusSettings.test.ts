@@ -159,6 +159,10 @@ function getDefaultSettingsData(): SettingsData {
       openInDefaultAppKeys: { modifiers: ['Shift', 'Ctrl'], key: 'o' },
       excludeFileExtensions: [],
     },
+    fulltextSearch: {
+      isEnabled: true,
+      searchKeys: { modifiers: ['Mod', 'Shift'], key: 'f' },
+    },
   };
 
   return data;
@@ -315,6 +319,10 @@ function getTransientSettingsData(): SettingsData {
         key: chance.letter(),
       },
       excludeFileExtensions: [],
+    },
+    fulltextSearch: {
+      isEnabled: chance.bool(),
+      searchKeys: { modifiers: chance.pickset(['Alt', 'Ctrl'], 1), key: chance.letter() },
     },
   };
 

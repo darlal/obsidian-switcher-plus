@@ -1,5 +1,5 @@
 import { SwitcherPlusKeymap } from './switcherPlusKeymap';
-import { InputInfo } from './inputInfo';
+import { InputInfo, SourcedParsedCommand } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
   Handler,
@@ -425,6 +425,15 @@ export class ModeHandler implements ModeDispatcher {
     }
   }
 
+  /**
+   * Searches inputInfo, if cmdStr is found with a preceding escapeChar, then
+   * escapeCmdChar is stripped out. The result string is saved to .inputTextSansEscapeChar
+   *
+   * @param {InputInfo} inputInfo
+   * @param {string} escapeCmdChar
+   * @param {string} cmdStr
+   * @returns {string} InputText with escapeCmdChar stripped out
+   */
   removeEscapeCommandCharFromInput(
     inputInfo: InputInfo,
     escapeCmdChar: string,
@@ -581,7 +590,7 @@ export class ModeHandler implements ModeDispatcher {
     }
   }
 
-  private static getActiveSuggestion(chooser: Chooser<AnySuggestion>): AnySuggestion {
+  static getActiveSuggestion(chooser: Chooser<AnySuggestion>): AnySuggestion {
     let activeSuggestion: AnySuggestion = null;
 
     if (chooser?.values) {
@@ -700,6 +709,34 @@ export class ModeHandler implements ModeDispatcher {
     }
 
     return searchText;
+  }
+
+  inputTextForFulltextSearch(): {
+    mode: Mode;
+    parsedInput: string;
+    file?: TFile;
+  } {
+    const { inputInfo } = this;
+    const mode = inputInfo.mode;
+    let file: TFile = null;
+
+    // .inputTextSansEscapeChar holds a version of inputText that is
+    // suitable for Standard mode. This covers the case when the mode is Standard
+    //  and inputText is needed for global search.
+    let parsedInput = inputInfo.inputTextSansEscapeChar;
+
+    if (mode !== Mode.Standard) {
+      // Custom modes contain the filtered text that can be retrieved directly
+      // from the ParsedCommand.
+      const cmd = inputInfo.parsedCommand();
+      parsedInput = cmd.parsedInput;
+
+      if (getSourcedModes().includes(mode)) {
+        file = (cmd as SourcedParsedCommand).source?.file;
+      }
+    }
+
+    return { mode, parsedInput, file };
   }
 
   addPropertiesToStandardSuggestions(

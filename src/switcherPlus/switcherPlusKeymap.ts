@@ -5,6 +5,7 @@ import {
   isHeadingCache,
   isHeadingSuggestion,
   isSymbolSuggestion,
+  getSystemGlobalSearchInstance,
 } from 'src/utils';
 import {
   AnySuggestion,
@@ -128,6 +129,7 @@ export class SwitcherPlusKeymap {
     this.registerEditorTabBindings(scope);
     this.registerCloseWhenEmptyBindings(scope, config);
     this.registerQuickOpenBindings(scope, config);
+    this.registerFulltextSearchBindings(scope, config);
     this.renderModeTriggerInstructions(modal.modalEl, config);
 
     this.standardInstructionsEl =
@@ -290,6 +292,50 @@ export class SwitcherPlusKeymap {
         this.useSelectedItem(evt, ctx);
       }
     }
+
+    return false; // Return false to prevent default.
+  }
+
+  /**
+   * Registers the hotkeys for triggering a fulltext search
+   *
+   * @param {Scope} scope
+   * @param {SwitcherPlusSettings} config
+   */
+  registerFulltextSearchBindings(scope: Scope, config: SwitcherPlusSettings): void {
+    const { isEnabled, searchKeys } = config.fulltextSearch;
+
+    if (isEnabled) {
+      // The global-search plugin has to be enabled for the trigger to work. This call
+      // returns a falsy value if the plugin is not enabled.
+      const searchPlugin = getSystemGlobalSearchInstance(this.app);
+
+      if (searchPlugin) {
+        scope.register(
+          searchKeys.modifiers,
+          searchKeys.key,
+          this.LaunchSystemGlobalSearch.bind(this),
+        );
+      }
+    }
+  }
+
+  LaunchSystemGlobalSearch(_evt: KeyboardEvent, _ctx: KeymapContext): false {
+    const { parsedInput, file } = this.modal.exMode.inputTextForFulltextSearch();
+    let pathOperator = '';
+
+    if (file) {
+      // When file is non-null that means the current mode is a sourced mode scope to
+      // file, so add a path operator for the text search.
+      // Note: the trailing space is not required, but is only there to visually
+      // separate path from search term
+      pathOperator = `path:"${file.path}" `;
+    }
+
+    this.modal.close();
+    getSystemGlobalSearchInstance(this.app)?.openGlobalSearch(
+      `${pathOperator}${parsedInput}`,
+    );
 
     return false; // Return false to prevent default.
   }
@@ -1055,14 +1101,21 @@ export class SwitcherPlusKeymap {
       Mode.SymbolList,
     ];
 
+    const allCustomModes = [
+      Mode.CommandList,
+      Mode.VaultList,
+      Mode.WorkspaceList,
+      ...customFileBasedModes,
+    ];
+
     // Display instructions for opening top nth suggestions using a dedicated hotkey
-    const { quickOpen } = this.config;
+    const { quickOpen } = config;
     const openKeyList = quickOpen?.keyList;
     if (openKeyList?.length) {
       const quickOpenKeyStr = `${openKeyList[0]}~${openKeyList[openKeyList.length - 1]}`;
       this.createCustomKeymap(
         'open nth item',
-        [Mode.CommandList, Mode.VaultList, Mode.WorkspaceList, ...customFileBasedModes],
+        allCustomModes,
         { modifiers: quickOpen.modifiers, key: quickOpenKeyStr },
         null,
         quickOpen.isEnabled,
@@ -1163,6 +1216,17 @@ export class SwitcherPlusKeymap {
       openDefaultApp.openInDefaultAppKeys,
       this.openDefaultApp.bind(this),
       openDefaultApp.isEnabled,
+    );
+
+    // Trigger fulltext search
+    const { fulltextSearch } = config;
+    this.createCustomKeymap(
+      'fulltext search',
+      allCustomModes,
+      fulltextSearch.searchKeys,
+      null,
+      fulltextSearch.isEnabled,
+      true,
     );
   }
 }

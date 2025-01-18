@@ -235,6 +235,64 @@ describe('modeHandler', () => {
     expect(result).toBe(expectedInput);
   });
 
+  describe('retrieving input text for fulltext search', () => {
+    const mockKeymap = mock<SwitcherPlusKeymap>();
+    const mockChooser = mock<Chooser<AnySuggestion>>();
+    let sut: ModeHandler;
+
+    beforeAll(() => {
+      sut = new ModeHandler(mockApp, mockSettings, mockKeymap);
+    });
+
+    it('should return input text without mode escape char in standard mode', () => {
+      const input = `${escapeCmdCharTrigger}${editorTrigger}`;
+      const expectedInput = `${editorTrigger}`;
+
+      sut.updateSuggestions(input, mockChooser, null);
+
+      expect(sut.inputTextForFulltextSearch()).toMatchObject({
+        mode: Mode.Standard,
+        parsedInput: expectedInput,
+      });
+    });
+
+    test('In custom modes, it should return the filter text without the mode trigger string', () => {
+      const filterText = chance.word();
+      const input = `${headingsTrigger}${filterText}`;
+
+      sut.updateSuggestions(input, mockChooser, null);
+
+      expect(sut.inputTextForFulltextSearch()).toMatchObject({
+        mode: Mode.HeadingsList,
+        parsedInput: filterText,
+      });
+    });
+
+    test('In sourced modes, it should return the filter text along with the associated sourced file', () => {
+      const filterText = chance.word();
+      const input = `${symbolTrigger}${filterText}`;
+      const mockFile = new TFile();
+
+      const getActiveSuggestionSpy = jest
+        .spyOn(ModeHandler, 'getActiveSuggestion')
+        .mockReturnValueOnce(makeFileSuggestion(mockFile));
+
+      // Not necessary for this test
+      const getSuggestionSpy = jest.spyOn(sut, 'getSuggestions').mockReturnValueOnce();
+
+      sut.updateSuggestions(input, mockChooser, null);
+
+      expect(sut.inputTextForFulltextSearch()).toMatchObject({
+        mode: Mode.SymbolList,
+        parsedInput: filterText,
+        file: mockFile,
+      });
+
+      getActiveSuggestionSpy.mockRestore();
+      getSuggestionSpy.mockRestore();
+    });
+  });
+
   describe('opening and closing the modal', () => {
     const mockKeymap = mock<SwitcherPlusKeymap>();
     let sut: ModeHandler;

@@ -5,6 +5,7 @@ import { getFacetMap } from './facetConstants';
 import { merge } from 'ts-deepmerge';
 import {
   FacetSettingsData,
+  FulltextSearchConfig,
   InsertLinkConfig,
   MatchPriorityData,
   MobileLauncherConfig,
@@ -159,6 +160,10 @@ export class SwitcherPlusSettings {
         isEnabled: true,
         openInDefaultAppKeys: { modifiers: ['Shift', 'Ctrl'], key: 'o' },
         excludeFileExtensions: [],
+      },
+      fulltextSearch: {
+        isEnabled: true,
+        searchKeys: { modifiers: ['Mod', 'Shift'], key: 'f' },
       },
     };
   }
@@ -713,6 +718,14 @@ export class SwitcherPlusSettings {
 
   set openDefaultApp(value: OpenDefaultAppConfig) {
     this.data.openDefaultApp = value;
+  }
+
+  get fulltextSearch(): FulltextSearchConfig {
+    return this.data.fulltextSearch;
+  }
+
+  set fulltextSearch(value: FulltextSearchConfig) {
+    this.data.fulltextSearch = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

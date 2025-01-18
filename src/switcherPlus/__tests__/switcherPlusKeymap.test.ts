@@ -1,7 +1,7 @@
 import { Chance } from 'chance';
 import { SwitcherPlusSettings } from 'src/settings';
 import { CustomKeymapInfo, SwitcherPlusKeymap } from 'src/switcherPlus';
-import { generateMarkdownLink } from 'src/utils';
+import { generateMarkdownLink, getSystemGlobalSearchInstance } from 'src/utils';
 import { CommandHandler, Handler } from 'src/Handlers';
 import {
   MockProxy,
@@ -29,6 +29,8 @@ import {
   CommandPalettePluginInstance,
   renderResults,
   Platform,
+  InternalPlugins,
+  GlobalSearchPluginInstance,
 } from 'obsidian';
 import {
   AnySuggestion,
@@ -43,6 +45,7 @@ import {
   SymbolType,
   QuickOpenConfig,
   FileSuggestion,
+  ModeDispatcher,
 } from 'src/types';
 import {
   makeFileSuggestion,
@@ -56,6 +59,7 @@ jest.mock('src/utils', () => {
     __esModule: true,
     ...jest.requireActual<typeof import('src/utils')>('src/utils'),
     generateMarkdownLink: jest.fn(),
+    getSystemGlobalSearchInstance: jest.fn(),
   };
 });
 
@@ -87,10 +91,12 @@ describe('SwitcherPlusKeymap', () => {
     createDiv: () => createInstructionsContainerElFn(),
   });
 
-  const mockModal = mock<SwitcherPlus>({ modalEl: mockModalEl });
+  const mockExMode = mock<ModeDispatcher>();
+  const mockModal = mock<SwitcherPlus>({ modalEl: mockModalEl, exMode: mockExMode });
 
   const mockApp = mock<App>({
     workspace: mockWorkspace,
+    internalPlugins: mock<InternalPlugins>(),
   });
 
   describe('Platform specific properties', () => {
@@ -286,6 +292,66 @@ describe('SwitcherPlusKeymap', () => {
       });
 
       expect(mockScope.register.mock.calls).toEqual(expect.arrayContaining(expected));
+    });
+  });
+
+  describe('Launching fulltext search', () => {
+    let sut: SwitcherPlusKeymap;
+    let mockGlobalSearchPluginInstance: MockProxy<GlobalSearchPluginInstance>;
+
+    const mockGetGlobalSearchPlugin = jest.mocked<typeof getSystemGlobalSearchInstance>(
+      getSystemGlobalSearchInstance,
+    );
+
+    beforeAll(() => {
+      sut = new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, config);
+
+      mockGlobalSearchPluginInstance = mock<GlobalSearchPluginInstance>();
+      mockGetGlobalSearchPlugin.mockReturnValue(mockGlobalSearchPluginInstance);
+    });
+
+    it('should register the hotkey to trigger fulltext search', () => {
+      mockReset(mockScope);
+
+      sut.registerFulltextSearchBindings(mockScope, config);
+
+      const { searchKeys } = config.fulltextSearch;
+      expect(mockScope.register).toHaveBeenCalledWith(
+        expect.arrayContaining(searchKeys.modifiers),
+        searchKeys.key,
+        expect.any(Function),
+      );
+    });
+
+    it('should trigger the system global search with the input text', () => {
+      const parsedInput = chance.word();
+      mockExMode.inputTextForFulltextSearch.mockReturnValueOnce({
+        mode: Mode.Standard,
+        parsedInput,
+      });
+
+      sut.LaunchSystemGlobalSearch(null, null);
+
+      expect(mockGlobalSearchPluginInstance.openGlobalSearch).toHaveBeenCalledWith(
+        parsedInput,
+      );
+    });
+
+    it('should trigger the system global search with input text and a file path operator when an associated sourced mode file is available', () => {
+      const file = new TFile();
+      const parsedInput = chance.word();
+      mockExMode.inputTextForFulltextSearch.mockReturnValueOnce({
+        mode: Mode.SymbolList,
+        parsedInput,
+        file,
+      });
+
+      sut.LaunchSystemGlobalSearch(null, null);
+
+      const expectedText = `path:"${file.path}" ${parsedInput}`;
+      expect(mockGlobalSearchPluginInstance.openGlobalSearch).toHaveBeenCalledWith(
+        expectedText,
+      );
     });
   });
 

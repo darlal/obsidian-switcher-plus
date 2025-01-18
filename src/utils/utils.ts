@@ -14,6 +14,7 @@ import {
   normalizePath,
   WorkspaceLeaf,
   stripHeadingForLink,
+  GlobalSearchPluginInstance,
 } from 'obsidian';
 import {
   SymbolSuggestion,
@@ -116,6 +117,10 @@ export function getInternalEnabledPluginById(app: App, id: string): PluginInstan
 export function getSystemSwitcherInstance(app: App): QuickSwitcherPluginInstance {
   const plugin = getInternalPluginById(app, 'switcher');
   return plugin?.instance as QuickSwitcherPluginInstance;
+}
+
+export function getSystemGlobalSearchInstance(app: App): GlobalSearchPluginInstance {
+  return getInternalEnabledPluginById(app, 'global-search') as GlobalSearchPluginInstance;
 }
 /**
  * @returns Array The string names for all the available Modes.
