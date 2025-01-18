@@ -9,6 +9,7 @@ import {
   AnySuggestion,
   Mode,
   SessionOpts,
+  ModeDispatcher,
 } from 'src/types';
 
 interface SystemSwitcherConstructor extends SystemSwitcher {
@@ -27,7 +28,10 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
   }
 
   const SwitcherPlusModal = class extends SystemSwitcherModal implements SwitcherPlus {
-    private exMode: ModeHandler;
+    private _exMode: ModeDispatcher;
+    get exMode(): ModeDispatcher {
+      return this._exMode;
+    }
 
     constructor(
       app: App,
@@ -44,7 +48,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
         this,
         options,
       );
-      this.exMode = new ModeHandler(app, options, exKeymap);
+      this._exMode = new ModeHandler(app, options, exKeymap);
     }
 
     openInMode(mode: Mode, sessionOpts?: SessionOpts): void {
