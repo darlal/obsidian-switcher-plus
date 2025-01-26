@@ -762,6 +762,8 @@ describe('Handler', () => {
   });
 
   describe('openFileInLeaf', () => {
+    mockWorkspace = mock<Workspace>();
+
     it('should load a file in an existing leaf', async () => {
       const navType = false;
       const mockLeaf = makeLeaf();
@@ -771,7 +773,7 @@ describe('Handler', () => {
       mockLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      await sut.openFileInLeaf(mockFile, navType, openState);
+      await Handler.openFileInLeaf(mockFile, navType, mockWorkspace, openState);
 
       expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType);
       expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
@@ -786,7 +788,7 @@ describe('Handler', () => {
       mockLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      await sut.openFileInLeaf(mockFile, navType, openState);
+      await Handler.openFileInLeaf(mockFile, navType, mockWorkspace, openState);
 
       expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType);
       expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
@@ -801,7 +803,7 @@ describe('Handler', () => {
       mockLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      await sut.openFileInLeaf(mockFile, navType, openState);
+      await Handler.openFileInLeaf(mockFile, navType, mockWorkspace, openState);
 
       expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType);
       expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
@@ -816,7 +818,13 @@ describe('Handler', () => {
       mockLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      await sut.openFileInLeaf(mockFile, navType, openState, 'horizontal');
+      await Handler.openFileInLeaf(
+        mockFile,
+        navType,
+        mockWorkspace,
+        openState,
+        'horizontal',
+      );
 
       expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType, 'horizontal');
       expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
@@ -831,7 +839,7 @@ describe('Handler', () => {
       mockLeaf.openFile.mockResolvedValueOnce();
       mockWorkspace.getLeaf.mockReturnValueOnce(mockLeaf);
 
-      await sut.openFileInLeaf(mockFile, navType, openState);
+      await Handler.openFileInLeaf(mockFile, navType, mockWorkspace, openState);
 
       expect(mockWorkspace.getLeaf).toHaveBeenCalledWith(navType);
       expect(mockLeaf.openFile).toHaveBeenCalledWith(mockFile, openState);
@@ -924,9 +932,7 @@ describe('Handler', () => {
 
     beforeAll(() => {
       activateLeafSpy = jest.spyOn(Handler.prototype, 'activateLeaf');
-      openFileInLeafSpy = jest
-        .spyOn(Handler.prototype, 'openFileInLeaf')
-        .mockResolvedValue();
+      openFileInLeafSpy = jest.spyOn(Handler, 'openFileInLeaf').mockResolvedValue();
     });
 
     beforeEach(() => {
@@ -948,6 +954,7 @@ describe('Handler', () => {
       expect(openFileInLeafSpy).toHaveBeenCalledWith(
         file,
         navType,
+        mockWorkspace,
         defaultOpenViewState,
         undefined,
       );
@@ -962,6 +969,7 @@ describe('Handler', () => {
       expect(openFileInLeafSpy).toHaveBeenCalledWith(
         file,
         navType,
+        mockWorkspace,
         defaultOpenViewState,
         undefined,
       );
@@ -989,6 +997,7 @@ describe('Handler', () => {
       expect(openFileInLeafSpy).toHaveBeenCalledWith(
         file,
         navType,
+        mockWorkspace,
         defaultOpenViewState,
         undefined,
       );
@@ -1003,6 +1012,7 @@ describe('Handler', () => {
       expect(openFileInLeafSpy).toHaveBeenCalledWith(
         file,
         navType,
+        mockWorkspace,
         defaultOpenViewState,
         undefined,
       );

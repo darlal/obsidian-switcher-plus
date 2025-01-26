@@ -442,20 +442,24 @@ export abstract class Handler<T extends AnySuggestion> {
 
   /**
    * Loads a file into a WorkspaceLeaf based on navType
-   * @param  {TFile} file
-   * @param  {PaneType|boolean} navType
-   * @param  {OpenViewState} openState?
-   * @param  {SplitDirection} splitDirection if navType is 'split', the direction to
-   * open the split. Defaults to 'vertical'
-   * @returns void
+   *
+   * @static
+   * @async
+   * @param {TFile} file
+   * @param {(PaneType | boolean)} navType
+   * @param {Workspace} workspace
+   * @param {?OpenViewState} [openState]
+   * @param {SplitDirection} [splitDirection='vertical'] if navType is 'split', the
+   * direction to open the split. Defaults to 'vertical'
+   * @returns {Promise<void>}
    */
-  async openFileInLeaf(
+  static async openFileInLeaf(
     file: TFile,
     navType: PaneType | boolean,
+    workspace: Workspace,
     openState?: OpenViewState,
     splitDirection: SplitDirection = 'vertical',
   ): Promise<void> {
-    const { workspace } = this.app;
     const leaf =
       navType === 'split'
         ? workspace.getLeaf(navType, splitDirection)
@@ -569,7 +573,13 @@ export abstract class Handler<T extends AnySuggestion> {
       const eState = openState?.eState;
       await this.activateLeaf(leaf, eState);
     } else {
-      await this.openFileInLeaf(file, navType, openState, splitDirection);
+      await Handler.openFileInLeaf(
+        file,
+        navType,
+        this.app.workspace,
+        openState,
+        splitDirection,
+      );
     }
   }
 
