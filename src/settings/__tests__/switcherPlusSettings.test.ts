@@ -163,6 +163,27 @@ function getDefaultSettingsData(): SettingsData {
       isEnabled: true,
       searchKeys: { modifiers: ['Mod', 'Shift'], key: 'f' },
     },
+    openInBackground: {
+      isEnabled: true,
+      openKeys: [
+        {
+          openType: 'tab',
+          hotkey: { modifiers: ['Mod', 'Shift'], key: 't' },
+        },
+        {
+          openType: 'vertical',
+          hotkey: null,
+        },
+        {
+          openType: 'horizontal',
+          hotkey: null,
+        },
+        {
+          openType: 'window',
+          hotkey: null,
+        },
+      ],
+    },
   };
 
   return data;
@@ -323,6 +344,15 @@ function getTransientSettingsData(): SettingsData {
     fulltextSearch: {
       isEnabled: chance.bool(),
       searchKeys: { modifiers: chance.pickset(['Alt', 'Ctrl'], 1), key: chance.letter() },
+    },
+    openInBackground: {
+      isEnabled: chance.bool(),
+      openKeys: [
+        {
+          openType: 'tab',
+          hotkey: { modifiers: chance.pickset(['Alt', 'Ctrl'], 1), key: chance.letter() },
+        },
+      ],
     },
   };
 

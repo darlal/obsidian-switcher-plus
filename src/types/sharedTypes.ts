@@ -16,7 +16,7 @@ import {
   BookmarksPluginItem,
   Hotkey,
 } from 'obsidian';
-import type { SuggestModal } from 'obsidian';
+import type { PaneType, SplitDirection, SuggestModal } from 'obsidian';
 import { PickKeys, WritableKeys } from 'ts-essentials';
 import { AllCanvasNodeData } from 'obsidian/canvas';
 
@@ -186,6 +186,20 @@ export interface ModeDispatcher {
     parsedInput: string;
     file?: TFile;
   };
+
+  /**
+   * Opens the file associated with sugg in the background using the specified
+   * pane configuration.
+   *
+   * @param {AnySuggestion} sugg
+   * @param {PaneType} paneType
+   * @param {SplitDirection} splitDirection
+   */
+  openSuggestionInBackground(
+    sugg: AnySuggestion,
+    paneType: PaneType,
+    splitDirection: SplitDirection,
+  ): void;
 }
 
 export type CalloutCache = SectionCache & {
@@ -494,6 +508,27 @@ export type FulltextSearchConfig = {
   searchKeys: Hotkey;
 };
 
+export type BackgroundOpenNavType = SplitDirection | Exclude<PaneType, 'split'>;
+export type OpenInBackgroundConfig = {
+  /**
+   * Whether or not the feature is turned on.
+   */
+  isEnabled: boolean;
+
+  /**
+   * Key combinations that triggers the different types of open in background
+   *
+   * @type {Array<{
+   *     openType: BackgroundOpenNavType;
+   *     hotkey: Hotkey;
+   *   }>}
+   */
+  openKeys: Array<{
+    openType: BackgroundOpenNavType;
+    hotkey: Hotkey;
+  }>;
+};
+
 export interface SettingsData {
   version: string;
   onOpenPreferNewTab: boolean;
@@ -589,9 +624,13 @@ export interface SettingsData {
    */
   openDefaultApp: OpenDefaultAppConfig;
   /**
-   * Configuration for triggerring fulltext search.
+   * Configuration for triggering fulltext search.
    */
   fulltextSearch: FulltextSearchConfig;
+  /**
+   * Configuration for opening files in the background (unfocused)
+   */
+  openInBackground: OpenInBackgroundConfig;
 }
 
 export type SessionOpts = {

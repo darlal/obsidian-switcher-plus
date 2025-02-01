@@ -1217,12 +1217,16 @@ export abstract class Handler<T extends AnySuggestion> {
    * sugg in an editor.
    *
    * @param {?T} [sugg]
+   * @param {?{ active?: boolean; focus?: boolean }} [options]
    * @returns {OpenViewState}
    */
-  getOpenViewState(sugg?: T): OpenViewState {
+  getOpenViewState(
+    sugg?: T,
+    options?: { active?: boolean; focus?: boolean },
+  ): OpenViewState {
     const activeLinePos = this.getPreferredViewLinePosition(sugg);
     const { eState } = this.getOpenViewLinePositionState(activeLinePos);
-    const activeState = this.getOpenViewActiveState();
+    const activeState = this.getOpenViewActiveState(options);
     Object.assign(activeState.eState, eState);
 
     return activeState;

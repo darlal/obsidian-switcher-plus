@@ -1436,4 +1436,44 @@ describe('modeHandler', () => {
       mockSettings.overrideStandardModeBehaviors = false;
     });
   });
+
+  describe('openSuggestionInBackground', () => {
+    let sut: ModeHandler;
+    const sugg = makeFileSuggestion();
+
+    beforeAll(() => {
+      sut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
+    });
+
+    it('should log errors to the console if the destination file cannot be found', () => {
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      sut.openSuggestionInBackground(null, null, null);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Switcher++: error cannot open in background'),
+        null,
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should log errors to the console of the destination file fails to open in a WorkspaceLeaf', async () => {
+      const errorMsg = '.openSuggestionInBackground() fail open unit test error';
+      const rejectedPromise = Promise.reject(errorMsg);
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      const openFileInLeafSpy = jest
+        .spyOn(Handler, 'openFileInLeaf')
+        .mockReturnValueOnce(rejectedPromise);
+
+      sut.openSuggestionInBackground(sugg, 'tab', 'vertical');
+
+      await expect(rejectedPromise).rejects.toBe(errorMsg);
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
+
+      openFileInLeafSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+    });
+  });
 });

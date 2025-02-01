@@ -25,6 +25,7 @@ import {
   isBookmarksSuggestion,
   isFileSuggestion,
   isAliasSuggestion,
+  getDestinationFileForSuggestion,
 } from 'src/utils';
 import {
   Mode,
@@ -46,6 +47,8 @@ import {
   TFile,
   ViewRegistry,
   Platform,
+  PaneType,
+  SplitDirection,
 } from 'obsidian';
 
 const lastInputInfoByMode = {} as Record<Mode, InputInfo>;
@@ -765,6 +768,46 @@ export class ModeHandler implements ModeDispatcher {
         handler.addPropertiesToStandardSuggestions(currentWorkspaceEnvList, sugg);
       }
     }
+  }
+
+  /**
+   * Gets the file associated with sugg and generates the ViewState to open it.
+   *
+   * @param {AnySuggestion} sugg
+   * @param {PaneType} paneType
+   * @param {SplitDirection} splitDirection
+   */
+  openSuggestionInBackground(
+    sugg: AnySuggestion,
+    paneType: PaneType,
+    splitDirection: SplitDirection,
+  ): void {
+    const destFile = getDestinationFileForSuggestion(sugg);
+    if (!destFile) {
+      console.log(
+        `Switcher++: error cannot open in background. The selected suggestion object does not seem to have an associated file. Suggestion obj: `,
+        sugg,
+      );
+      return;
+    }
+
+    const openState = this.getHandler(sugg)?.getOpenViewState(sugg, {
+      active: false,
+      focus: false,
+    });
+
+    Handler.openFileInLeaf(
+      destFile,
+      paneType,
+      this.app.workspace,
+      openState,
+      splitDirection,
+    ).catch((reason) => {
+      console.log(
+        `Switcher++: error opening file (${destFile?.path}) in background. `,
+        reason,
+      );
+    });
   }
 
   private getHandler(kind: Mode | AnySuggestion | string): Handler<AnySuggestion> {

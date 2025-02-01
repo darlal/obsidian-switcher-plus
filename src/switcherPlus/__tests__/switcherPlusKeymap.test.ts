@@ -46,6 +46,8 @@ import {
   QuickOpenConfig,
   FileSuggestion,
   ModeDispatcher,
+  HeadingSuggestion,
+  OpenInBackgroundConfig,
 } from 'src/types';
 import {
   makeFileSuggestion,
@@ -1323,7 +1325,7 @@ describe('SwitcherPlusKeymap', () => {
     });
 
     afterAll(() => {
-      mockConfig.quickOpen = null;
+      mockReset(mockConfig.quickOpen);
     });
 
     afterEach(() => {
@@ -1372,6 +1374,80 @@ describe('SwitcherPlusKeymap', () => {
         expect.objectContaining({
           cls: ['suggestion-hotkey', 'qsp-quick-open-hotkey'],
         }),
+      );
+    });
+  });
+
+  describe('Open in background Hotkey handling', () => {
+    let sut: SwitcherPlusKeymap;
+    let mockChooserLocal: MockProxy<Chooser<HeadingSuggestion>>;
+    let mockOpenInBackConfig: OpenInBackgroundConfig;
+
+    beforeAll(() => {
+      mockChooserLocal = mock<Chooser<HeadingSuggestion>>();
+      mockOpenInBackConfig = mock<OpenInBackgroundConfig>({
+        isEnabled: true,
+        openKeys: [
+          {
+            hotkey: { modifiers: ['Alt'], key: 't' },
+          },
+        ],
+      });
+
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooserLocal,
+        mockModal,
+        mockConfig,
+      );
+
+      mockConfig.openInBackground = mockOpenInBackConfig;
+      mockReset(mockScope);
+    });
+
+    afterAll(() => {
+      mockReset(mockConfig.openInBackground);
+    });
+
+    afterEach(() => {
+      mockReset(mockScope);
+    });
+
+    it('should register the configured hotkeys', () => {
+      sut.registerOpenInBackgroundBindings(mockScope, mockConfig);
+
+      const hotkey = mockOpenInBackConfig.openKeys[0].hotkey;
+      expect(mockScope.register).toHaveBeenCalledWith(
+        hotkey.modifiers,
+        hotkey.key,
+        expect.any(Function),
+      );
+    });
+
+    test('.openInBackground() should open a suggestion in a new tab', () => {
+      mockChooserLocal.values = [mock<HeadingSuggestion>()];
+      mockChooserLocal.selectedItem = 0;
+
+      sut.openInBackground(mockChooserLocal, 'tab');
+
+      expect(mockExMode.openSuggestionInBackground).toHaveBeenCalledWith(
+        mockChooserLocal.values[0],
+        'tab',
+        'vertical',
+      );
+    });
+
+    test('.openInBackground() should open a suggestion in a new split pane', () => {
+      mockChooserLocal.values = [mock<HeadingSuggestion>()];
+      mockChooserLocal.selectedItem = 0;
+
+      sut.openInBackground(mockChooserLocal, 'vertical');
+
+      expect(mockExMode.openSuggestionInBackground).toHaveBeenCalledWith(
+        mockChooserLocal.values[0],
+        'split',
+        'vertical',
       );
     });
   });

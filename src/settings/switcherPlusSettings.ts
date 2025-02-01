@@ -12,6 +12,7 @@ import {
   Mode,
   NavigationKeysConfig,
   OpenDefaultAppConfig,
+  OpenInBackgroundConfig,
   PathDisplayFormat,
   QuickOpenConfig,
   RelationType,
@@ -164,6 +165,27 @@ export class SwitcherPlusSettings {
       fulltextSearch: {
         isEnabled: true,
         searchKeys: { modifiers: ['Mod', 'Shift'], key: 'f' },
+      },
+      openInBackground: {
+        isEnabled: true,
+        openKeys: [
+          {
+            openType: 'tab',
+            hotkey: { modifiers: ['Mod', 'Shift'], key: 't' },
+          },
+          {
+            openType: 'vertical',
+            hotkey: null,
+          },
+          {
+            openType: 'horizontal',
+            hotkey: null,
+          },
+          {
+            openType: 'window',
+            hotkey: null,
+          },
+        ],
       },
     };
   }
@@ -726,6 +748,14 @@ export class SwitcherPlusSettings {
 
   set fulltextSearch(value: FulltextSearchConfig) {
     this.data.fulltextSearch = value;
+  }
+
+  get openInBackground(): OpenInBackgroundConfig {
+    return this.data.openInBackground;
+  }
+
+  set openInBackground(value: OpenInBackgroundConfig) {
+    this.data.openInBackground = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

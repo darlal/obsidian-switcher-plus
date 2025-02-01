@@ -9,12 +9,14 @@ import {
 } from 'src/utils';
 import {
   AnySuggestion,
+  BackgroundOpenNavType,
   CommandSuggestion,
   Facet,
   FacetSettingsData,
   InsertLinkConfig,
   KeymapConfig,
   Mode,
+  ModeDispatcher,
   NavigationKeysConfig,
   SwitcherPlus,
 } from 'src/types';
@@ -34,6 +36,8 @@ import {
   KeymapEventListener,
   HeadingCache,
   TFile,
+  PaneType,
+  SplitDirection,
 } from 'obsidian';
 import { CommandHandler, HeadingsHandler } from 'src/Handlers';
 
@@ -73,6 +77,24 @@ const KEYS_DISPLAY_STR_MAC: Record<string, string> = {
   Alt: '⌥',
   Shift: '⇧',
 };
+
+/**
+ * Custom modes that rely on an underlying source file being present.
+ */
+const MODES_CUSTOM_FILE_BASED = [
+  Mode.EditorList,
+  Mode.HeadingsList,
+  Mode.RelatedItemsList,
+  Mode.BookmarksList,
+  Mode.SymbolList,
+];
+
+const MODES_CUSTOM_ALL = [
+  Mode.CommandList,
+  Mode.VaultList,
+  Mode.WorkspaceList,
+  ...MODES_CUSTOM_FILE_BASED,
+];
 
 export type CustomKeymapInfo = Hotkey &
   Instruction & {
@@ -116,6 +138,10 @@ export class SwitcherPlusKeymap {
     return Platform.isMacOS ? KEYS_DISPLAY_STR_MAC : KEYS_DISPLAY_STR;
   }
 
+  get exModeHandler(): ModeDispatcher {
+    return this.modal?.exMode;
+  }
+
   constructor(
     public app: App,
     public readonly scope: Scope,
@@ -123,20 +149,14 @@ export class SwitcherPlusKeymap {
     private modal: SwitcherPlus,
     private config: SwitcherPlusSettings,
   ) {
-    this.initKeysInfo();
-    this.removeDefaultTabKeyBinding(scope, config);
-    this.registerNavigationBindings(scope, config.navigationKeys);
-    this.registerEditorTabBindings(scope);
-    this.registerCloseWhenEmptyBindings(scope, config);
-    this.registerQuickOpenBindings(scope, config);
-    this.registerFulltextSearchBindings(scope, config);
+    this.initKeysInfo(config, scope);
     this.renderModeTriggerInstructions(modal.modalEl, config);
 
     this.standardInstructionsEl =
       modal.modalEl.querySelector<HTMLElement>('.prompt-instructions');
   }
 
-  initKeysInfo(): void {
+  initKeysInfo(config: SwitcherPlusSettings, scope: Scope): void {
     // standard mode keys that are registered by default, and
     // should be unregistered in custom modes, then re-registered in standard mode.
     // Note: these won't have the eventListener when they are defined here, since
@@ -145,6 +165,13 @@ export class SwitcherPlusKeymap {
     this.standardKeysInfo.push(...standardKeysInfo);
 
     this.addCustomKeymaps(this.config);
+    this.removeDefaultTabKeyBinding(scope, config);
+    this.registerNavigationBindings(scope, config.navigationKeys);
+    this.registerEditorTabBindings(scope);
+    this.registerCloseWhenEmptyBindings(scope, config);
+    this.registerQuickOpenBindings(scope, config);
+    this.registerFulltextSearchBindings(scope, config);
+    this.registerOpenInBackgroundBindings(scope, config);
   }
 
   removeDefaultTabKeyBinding(scope: Scope, config: SwitcherPlusSettings): void {
@@ -338,6 +365,79 @@ export class SwitcherPlusKeymap {
     );
 
     return false; // Return false to prevent default.
+  }
+
+  /**
+   * Registers the configured hotkeys for opening files in the background. Loops through
+   * the hotkeys specified for each background navigation type and adds the hotkey
+   * to the custom keymap list.
+   *
+   * @param {Scope} scope
+   * @param {SwitcherPlusSettings} config
+   */
+  registerOpenInBackgroundBindings(scope: Scope, config: SwitcherPlusSettings): void {
+    const {
+      openInBackground: { isEnabled, openKeys },
+    } = config;
+
+    if (isEnabled) {
+      // Map each navType to its associated purpose descriptor string
+      const purposeDescriptions: Partial<Record<BackgroundOpenNavType, string>> = {
+        tab: 'open in background tab',
+        vertical: 'open in background to the right',
+        horizontal: 'open in background below',
+        window: 'open in background window',
+      };
+
+      openKeys
+        // Remove all definitions that doesn't include a hotkey
+        ?.filter((openKey) => openKey.hotkey)
+        .forEach(({ openType, hotkey }) => {
+          scope.register(hotkey.modifiers, hotkey.key, () =>
+            this.openInBackground(this.chooser, openType),
+          );
+
+          // Add it to the custom keymap list so it gets rendered as instructions only
+          this.createCustomKeymap(
+            purposeDescriptions[openType],
+            MODES_CUSTOM_ALL,
+            hotkey,
+            null,
+            true,
+            true,
+          );
+        });
+    }
+  }
+
+  /**
+   * Extracts the currently selected suggestion and forwards to modeHandler to open
+   * using the specified navigation type.
+   *
+   * @param {Chooser<AnySuggestion>} chooser
+   * @param {BackgroundOpenNavType} navType key of SplitDirection or
+   * PaneType (excluding 'split')
+   * @returns {false}
+   */
+  openInBackground(
+    chooser: Chooser<AnySuggestion>,
+    navType: BackgroundOpenNavType,
+  ): false {
+    let paneType: PaneType;
+    let splitDirection: SplitDirection = 'vertical';
+
+    if (navType === 'vertical' || navType === 'horizontal') {
+      paneType = 'split';
+      splitDirection = navType;
+    } else {
+      paneType = navType;
+    }
+
+    const sugg = chooser?.values?.[chooser.selectedItem];
+    this.exModeHandler.openSuggestionInBackground(sugg, paneType, splitDirection);
+
+    // Return false to prevent default
+    return false;
   }
 
   /**
@@ -1092,22 +1192,6 @@ export class SwitcherPlusKeymap {
    * @param {SwitcherPlusSettings} config
    */
   addCustomKeymaps(config: SwitcherPlusSettings): void {
-    // Custom modes that rely on an underlying source file being present.
-    const customFileBasedModes = [
-      Mode.EditorList,
-      Mode.HeadingsList,
-      Mode.RelatedItemsList,
-      Mode.BookmarksList,
-      Mode.SymbolList,
-    ];
-
-    const allCustomModes = [
-      Mode.CommandList,
-      Mode.VaultList,
-      Mode.WorkspaceList,
-      ...customFileBasedModes,
-    ];
-
     // Display instructions for opening top nth suggestions using a dedicated hotkey
     const { quickOpen } = config;
     const openKeyList = quickOpen?.keyList;
@@ -1115,7 +1199,7 @@ export class SwitcherPlusKeymap {
       const quickOpenKeyStr = `${openKeyList[0]}~${openKeyList[openKeyList.length - 1]}`;
       this.createCustomKeymap(
         'open nth item',
-        allCustomModes,
+        MODES_CUSTOM_ALL,
         { modifiers: quickOpen.modifiers, key: quickOpenKeyStr },
         null,
         quickOpen.isEnabled,
@@ -1126,7 +1210,7 @@ export class SwitcherPlusKeymap {
     // Builtin keymap to open file in a new tab.
     this.createCustomKeymap(
       'open in new tab',
-      customFileBasedModes,
+      MODES_CUSTOM_FILE_BASED,
       { modifiers: ['Mod'], key: 'Enter' },
       null,
       true,
@@ -1136,7 +1220,7 @@ export class SwitcherPlusKeymap {
     // Open file in new tab, in a pane on the right hand side.
     this.createCustomKeymap(
       'open to the right',
-      customFileBasedModes,
+      MODES_CUSTOM_FILE_BASED,
       { modifiers: ['Mod'], key: '\\' },
       null,
       true,
@@ -1146,7 +1230,7 @@ export class SwitcherPlusKeymap {
     // Open file in a new tab, in a pane below the current pane.
     this.createCustomKeymap(
       'open below',
-      customFileBasedModes,
+      MODES_CUSTOM_FILE_BASED,
       { modifiers: ['Mod', 'Shift'], key: '\\' },
       null,
       true,
@@ -1156,7 +1240,7 @@ export class SwitcherPlusKeymap {
     // Open file in a new Obsidian window.
     this.createCustomKeymap(
       'open in new window',
-      customFileBasedModes,
+      MODES_CUSTOM_FILE_BASED,
       { modifiers: ['Mod'], key: 'o' },
       null,
       true,
@@ -1212,7 +1296,7 @@ export class SwitcherPlusKeymap {
     const { openDefaultApp } = config;
     this.createCustomKeymap(
       'open default app',
-      customFileBasedModes,
+      MODES_CUSTOM_FILE_BASED,
       openDefaultApp.openInDefaultAppKeys,
       this.openDefaultApp.bind(this),
       openDefaultApp.isEnabled,
@@ -1222,7 +1306,7 @@ export class SwitcherPlusKeymap {
     const { fulltextSearch } = config;
     this.createCustomKeymap(
       'fulltext search',
-      allCustomModes,
+      MODES_CUSTOM_ALL,
       fulltextSearch.searchKeys,
       null,
       fulltextSearch.isEnabled,
