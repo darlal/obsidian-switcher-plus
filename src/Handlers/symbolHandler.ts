@@ -10,7 +10,7 @@ import {
 import {
   CanvasFileView,
   LinkCache,
-  OpenViewState,
+  Pos,
   ReferenceCache,
   renderResults,
   SearchResult,
@@ -169,14 +169,8 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     if (sugg) {
       const symbolCmd = this.inputInfo.parsedCommand() as SourcedParsedCommand;
       const { leaf, file } = symbolCmd.source;
-      const openState: OpenViewState = { active: true };
+      const openState = this.getOpenViewState(sugg);
       const { item } = sugg;
-
-      if (item.symbolType !== SymbolType.CanvasNode) {
-        openState.eState = this.constructMDFileNavigationState(
-          item as SymbolInfoExcludingCanvasNodes,
-        ).eState;
-      }
 
       this.navigateToLeafOrOpenFileAsync(
         evt,
@@ -237,31 +231,19 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     }
   }
 
-  constructMDFileNavigationState(
-    symbolInfo: SymbolInfoExcludingCanvasNodes,
-  ): OpenViewState {
-    const {
-      start: { line, col },
-      end: endLoc,
-    } = symbolInfo.symbol.position;
+  override getPreferredViewLinePosition(sugg?: SymbolSuggestion): Pos {
+    let position = super.getPreferredViewLinePosition();
 
-    // object containing the state information for the target editor,
-    // start with the range to highlight in target editor
-    return {
-      eState: {
-        active: true,
-        focus: true,
-        startLoc: { line, col },
-        endLoc,
-        line,
-        cursor: {
-          from: { line, ch: col },
-          to: { line, ch: col },
-        },
-      },
-    };
+    if (sugg?.item?.symbol) {
+      const { item } = sugg;
+
+      if (!SymbolHandler.isCanvasSymbolPayload(item, item.symbol)) {
+        position = item.symbol.position;
+      }
+    }
+
+    return position;
   }
-
   private getSourceInfoForSymbolOperation(
     activeSuggestion: AnySuggestion,
     activeLeaf: WorkspaceLeaf,

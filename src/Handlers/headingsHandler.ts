@@ -15,6 +15,7 @@ import {
   ViewRegistry,
   renderResults,
   App,
+  Pos,
 } from 'obsidian';
 import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import {
@@ -69,35 +70,22 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   onChooseSuggestion(sugg: HeadingSuggestion, evt: MouseEvent | KeyboardEvent): boolean {
     let handled = false;
     if (sugg) {
-      const {
-        start: { line, col },
-        end: endLoc,
-      } = sugg.item.position;
-
-      // state information to highlight the target heading
-      const eState = {
-        active: true,
-        focus: true,
-        startLoc: { line, col },
-        endLoc,
-        line,
-        cursor: {
-          from: { line, ch: col },
-          to: { line, ch: col },
-        },
-      };
-
+      const openState = this.getOpenViewState(sugg);
       this.navigateToLeafOrOpenFile(
         evt,
         sugg.file,
         'Unable to navigate to heading for file.',
-        { active: true, eState },
+        openState,
       );
 
       handled = true;
     }
 
     return handled;
+  }
+
+  override getPreferredViewLinePosition(sugg?: HeadingSuggestion): Pos {
+    return sugg?.item?.position;
   }
 
   renderSuggestion(sugg: HeadingSuggestion, parentEl: HTMLElement): boolean {

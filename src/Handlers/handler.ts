@@ -5,6 +5,7 @@ import {
   FileView,
   HeadingCache,
   Keymap,
+  Loc,
   MarkdownRenderer,
   MarkdownView,
   MetadataCache,
@@ -12,6 +13,7 @@ import {
   OpenViewState,
   PaneType,
   Platform,
+  Pos,
   renderResults,
   SearchMatches,
   SearchResult,
@@ -47,7 +49,7 @@ import {
   getTFileFromLeaf,
 } from 'src/utils';
 
-export abstract class Handler<T> {
+export abstract class Handler<T extends AnySuggestion> {
   facets: Facet[];
 
   constructor(
@@ -561,7 +563,7 @@ export abstract class Handler<T> {
     splitDirection?: SplitDirection,
   ): Promise<void> {
     // default to having the pane active and focused
-    openState = openState ?? { active: true, eState: { active: true, focus: true } };
+    openState = openState ?? this.getOpenViewActiveState();
 
     if (leaf && navType === false) {
       const eState = openState?.eState;
@@ -1198,5 +1200,77 @@ export abstract class Handler<T> {
       .catch((err) => {
         console.log('Switcher++: error creating new file. ', err);
       });
+  }
+
+  /**
+   * Returns the state information for how to configure the View when opening
+   * sugg in an editor.
+   *
+   * @param {?T} [sugg]
+   * @returns {OpenViewState}
+   */
+  getOpenViewState(sugg?: T): OpenViewState {
+    const activeLinePos = this.getPreferredViewLinePosition(sugg);
+    const { eState } = this.getOpenViewLinePositionState(activeLinePos);
+    const activeState = this.getOpenViewActiveState();
+    Object.assign(activeState.eState, eState);
+
+    return activeState;
+  }
+
+  /**
+   * Returns the state information for how to configure wether or not the View should
+   * be active and focused. The default value for .active and .focus is true.
+   *
+   * @param {?{ active?: boolean; focus?: boolean }} [options]
+   * @returns {OpenViewState}
+   */
+  getOpenViewActiveState(options?: { active?: boolean; focus?: boolean }): OpenViewState {
+    const { active, focus } = Object.assign({ active: true, focus: true }, options);
+
+    return {
+      active,
+      eState: {
+        active,
+        focus,
+      },
+    };
+  }
+
+  /**
+   * Returns the position of the active line for a View.
+   *
+   * @param {?T} [sugg]
+   * @returns {Pos}
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  getPreferredViewLinePosition(sugg?: T): Pos {
+    const loc: Loc = { line: 0, col: 0, offset: 0 };
+    return { start: loc, end: loc };
+  }
+
+  /**
+   * Returns the eState information for where to place the cursor in the viewport
+   * based on position when opening an editor view.
+   *
+   * @param {?Pos} position
+   * @returns {OpenViewState}
+   */
+  getOpenViewLinePositionState(position?: Pos): OpenViewState {
+    const startLoc = Object.assign({ line: 0, col: 0, offset: 0 }, position?.start);
+    const endLoc = Object.assign({ line: 0, col: 0, offset: 0 }, position?.end);
+    const { line, col } = startLoc;
+
+    return {
+      eState: {
+        startLoc,
+        endLoc,
+        line,
+        cursor: {
+          from: { line, ch: col },
+          to: { line, ch: col },
+        },
+      },
+    };
   }
 }

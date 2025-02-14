@@ -825,17 +825,15 @@ describe('symbolHandler', () => {
     const getExpectedEphemeralState = (
       symbolInfo: SymbolInfoExcludingCanvasNodes,
     ): OpenViewState => {
-      const {
-        start: { line, col },
-        end: endLoc,
-      } = symbolInfo.symbol.position;
+      const { start: startLoc, end: endLoc } = symbolInfo.symbol.position;
+      const { line, col } = startLoc;
 
       const state: Record<string, unknown> = {
         active: true,
         eState: {
           active: true,
           focus: true,
-          startLoc: { line, col },
+          startLoc,
           endLoc,
           line,
           cursor: {
