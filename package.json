@@ -58,6 +58,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
+    "@aidenlx/obsidian-icon-shortcodes": "0.9.0",
     "ts-deepmerge": "^7.0.1"
   }
 }
