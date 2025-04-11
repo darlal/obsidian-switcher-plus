@@ -35,7 +35,12 @@ import {
   BookmarksItemInfo,
   Facet,
 } from 'src/types';
-import { isTFile, FrontMatterParser, matcherFnForRegExList } from 'src/utils';
+import {
+  isTFile,
+  FrontMatterParser,
+  matcherFnForRegExList,
+  getTFileFromLeaf,
+} from 'src/utils';
 
 type SupportedSuggestionTypes =
   | HeadingSuggestion
@@ -809,7 +814,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     searcher: StringSearcher,
     collection: EditorSuggestion[],
   ): void {
-    const file = leaf?.view?.file;
+    const file = getTFileFromLeaf(leaf);
     const {
       settings,
       app: { metadataCache },
