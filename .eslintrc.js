@@ -32,6 +32,7 @@ module.exports = {
   rules: {
     '@typescript-eslint/unbound-method': 'error',
     'no-unused-vars': 'off',
+    '@typescript-eslint/no-unsafe-assignment': 'warn',
     '@typescript-eslint/no-unused-vars': [
       'error',
       {

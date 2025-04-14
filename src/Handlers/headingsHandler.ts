@@ -1,3 +1,4 @@
+import { getApi as getIconShortcodesApi } from '@aidenlx/obsidian-icon-shortcodes';
 import { Handler } from './handler';
 import { StandardExHandler } from './standardExHandler';
 import { EditorHandler } from './editorHandler';
@@ -161,13 +162,23 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       renderMarkdownContentInSuggestions: { isEnabled, renderHeadings },
     } = config;
 
+    let headingText = heading;
+    const iconShortcodesApi = getIconShortcodesApi();
+
+    if (iconShortcodesApi) {
+      headingText = iconShortcodesApi.postProcessor(headingText, (iconText: string) => {
+        const iconResult = iconShortcodesApi.getIcon(iconText).innerText;
+        return iconResult ?? iconText;
+      });
+    }
+
     // If the override is null or undefined, fallback to the config value
     renderAsHTMLOverride = renderAsHTMLOverride ?? (isEnabled && renderHeadings);
 
     if (renderAsHTMLOverride) {
-      Handler.renderMarkdownContentAsync(app, titleEl, heading, sourceFile.path);
+      Handler.renderMarkdownContentAsync(app, titleEl, headingText, sourceFile.path);
     } else {
-      renderResults(titleEl, heading, searchResult);
+      renderResults(titleEl, headingText, searchResult);
     }
   }
 
