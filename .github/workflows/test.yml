@@ -11,6 +11,9 @@ on:
         required: true
         type: number
 
+env:
+  BUILD: production
+
 jobs:
   build_test:
     name: Build and test
