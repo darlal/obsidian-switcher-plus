@@ -145,7 +145,7 @@ export class SwitcherPlusSettings {
         iconName: '',
         coreLauncherButtonIconSelector: 'span.clickable-icon',
         coreLauncherButtonSelector:
-          '.mobile-navbar-action:has(span.clickable-icon svg.svg-icon.lucide-plus-circle)',
+          '.mobile-navbar-action.mobile-navbar-action-quick-switcher',
       },
       allowCreateNewFileInModeNames: [
         Mode[Mode.Standard] as keyof typeof Mode,

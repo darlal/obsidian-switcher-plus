@@ -215,7 +215,7 @@ In the demo below, `Quick Switcher++: Open Symbols for the active editor` global
 | Setting                         | Description | Default |
 |---------------------------------|-------------|---------|
 | Show ribbon icons | List of modes that should be accessible from the ribbon menu. | `HeadingsList`<br />`SymbolList` |
-| Override default Switcher launch button (the "⊕" button) on mobile platforms | Override the "⊕" button (in the Navigation Bar) on mobile platforms to launch Switcher++ instead of the default system switcher. Select the Mode to launch Switcher++ in, or select "Do not override" to disable the feature. | `Do not override` |
+| Override default Switcher launch button (the "🔍" button) on mobile platforms | Override the "🔍" button (in the Navigation Bar) on mobile platforms to launch Switcher++ instead of the default system switcher. Select the Mode to launch Switcher++ in, or select "Do not override" to disable the feature. | `Do not override` |
 | Preferred suggestion title source | The preferred source to use for the primary suggestion text that will be searched and displayed for file based suggestions. | `First H₁ heading` |
 | Preferred file path display format | The preferred way to display file paths in suggestions. Note: by default, path information will not be displayed for files at the root of the vault. | `Parent folder & filename` |
 | Hide path for root items | **Enabled**: path information will be hidden for items at the root of the vault. | enabled |

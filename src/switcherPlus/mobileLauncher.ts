@@ -71,7 +71,7 @@ function replaceCoreLauncherButtonWithQSPButton(
   return isSuccessful;
 }
 /**
- * Finds the "⊕" button element using the default selector.
+ * Finds the "🔍" button element using the default selector.
  * If that fails, retries using the selector stored in settings
  * @param  {App} app
  * @param  {MobileLauncherConfig} launcherConfig
@@ -102,14 +102,14 @@ function getCoreLauncherButtonElement(
 
 export class MobileLauncher {
   // Reference to the system switcher launcher button on mobile platforms,
-  // the "plus" button in the NavBar.
+  // the magnifying glass (🔍) button in the NavBar.
   static coreMobileLauncherButtonEl: HTMLElement | null;
 
   // Reference to the custom launcher button that was created
   static qspMobileLauncherButtonEl: HTMLElement | null;
 
   /**
-   * Overrides the default functionality of the "⊕" button on mobile platforms
+   * Overrides the default functionality of the "🔍" button on mobile platforms
    * to launch Switcher++ instead of the default system switcher.
    * @param  {App} app
    * @param  {MobileLauncherConfig} launcherConfig
@@ -151,7 +151,7 @@ export class MobileLauncher {
     return qspLauncherButtonEl;
   }
   /**
-   * Restores the default functionality of the "⊕" button on mobile platforms and
+   * Restores the default functionality of the "🔍" button on mobile platforms and
    * removes the custom launcher button.
    * @returns boolean true if successful
    */

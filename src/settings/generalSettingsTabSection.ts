@@ -192,7 +192,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
   ): void {
     const { mobileLauncher } = config;
     const desc =
-      'Override the "⊕" button (in the Navigation Bar) on mobile platforms to launch Switcher++ instead of the default system switcher. Select the Mode to launch Switcher++ in, or select "Do not override" to disable the feature.';
+      'Override the "🔍" button (in the Navigation Bar) on mobile platforms to launch Switcher++ instead of the default system switcher. Select the Mode to launch Switcher++ in, or select "Do not override" to disable the feature.';
 
     const disableOptionKey = 'disabled'; // Option to disable the feature
     const options: Record<string, string> = { [disableOptionKey]: 'Do not override' };
@@ -213,7 +213,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
 
     this.addDropdownSetting(
       containerEl,
-      'Override default Switcher launch button (the "⊕" button) on mobile platforms',
+      'Override default Switcher launch button (the "🔍" button) on mobile platforms',
       desc,
       initialValue,
       options,
