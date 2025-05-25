@@ -90,8 +90,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
     titleSource: TitleSource,
     metadataCache: MetadataCache,
   ): string {
-    const { view } = leaf;
-    const file = view?.file;
+    const file = getTFileFromLeaf(leaf);
     let text = leaf.getDisplayText();
 
     if (titleSource === 'H1' && file) {

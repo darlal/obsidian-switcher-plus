@@ -273,6 +273,7 @@ describe('editorHandler', () => {
       const expectedText = 'expected';
       const mockLeaf = mock<WorkspaceLeaf>({
         getDisplayText: () => file.basename,
+        isDeferred: false,
         view: mock<View>({
           file,
         }),
