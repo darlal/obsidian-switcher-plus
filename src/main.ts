@@ -1,6 +1,6 @@
 import { Plugin } from 'obsidian';
 import { SwitcherPlusSettings, SwitcherPlusSettingTab } from 'src/settings';
-import { createSwitcherPlus, MobileLauncher } from 'src/switcherPlus';
+import { createSwitcherPlus, EmptyTabMonitor, MobileLauncher } from 'src/switcherPlus';
 import { Mode, SessionOpts } from 'src/types';
 
 type CommandDefinitionOpts = Pick<SessionOpts, 'useActiveEditorAsSource'>;
@@ -107,7 +107,7 @@ export default class SwitcherPlusPlugin extends Plugin {
 
     this.addSettingTab(new SwitcherPlusSettingTab(this.app, this, options));
     this.registerRibbonCommandIcons();
-    this.updateMobileLauncherButtonOverride(options.mobileLauncher.isEnabled);
+    this.updateLauncherButtonOverrides(true);
 
     COMMAND_DATA.forEach(({ id, name, mode, iconId, sessionOpts }) => {
       this.registerCommand(id, name, mode, iconId, sessionOpts);
@@ -115,7 +115,7 @@ export default class SwitcherPlusPlugin extends Plugin {
   }
 
   onunload(): void {
-    this.updateMobileLauncherButtonOverride(false);
+    this.updateLauncherButtonOverrides(false);
   }
 
   registerCommand(
@@ -181,24 +181,36 @@ export default class SwitcherPlusPlugin extends Plugin {
     return true;
   }
 
-  updateMobileLauncherButtonOverride(isEnabled: boolean): void {
-    if (isEnabled) {
-      const onclickListener = () => {
-        const modeString = this.options.mobileLauncher.modeString as keyof typeof Mode;
-        const openMode = Mode[modeString];
+  updateLauncherButtonOverrides(isInstall: boolean): void {
+    const {
+      app,
+      options: { mobileLauncher },
+    } = this;
 
+    // First uninstall so any previously installed qsp launcher buttons/icons
+    // are removed so that they can be reinstalled if we needed.
+    MobileLauncher.removeMobileLauncherOverride();
+    EmptyTabMonitor.removeEmptyTabButtons(app.workspace);
+
+    if (isInstall) {
+      const modeString = mobileLauncher.modeString as keyof typeof Mode;
+      const openMode = Mode[modeString];
+      const onclickListener = () => {
         if (openMode) {
           this.createModalAndOpen(openMode, false);
         }
       };
 
-      MobileLauncher.installMobileLauncherOverride(
-        this.app,
-        this.options.mobileLauncher,
+      MobileLauncher.installMobileLauncherOverride(app, mobileLauncher, onclickListener);
+
+      const modeData = COMMAND_DATA.find((cmd) => cmd.mode === openMode);
+      const buttonLabel = 'Switcher++: ' + (modeData?.name ?? '');
+
+      EmptyTabMonitor.installEmptyTabMonitor(this, {
+        isEnabled: mobileLauncher.isEnabled && mobileLauncher.isEmptyTabButtonEnabled,
+        buttonLabel,
         onclickListener,
-      );
-    } else {
-      MobileLauncher.removeMobileLauncherOverride();
+      });
     }
   }
 }

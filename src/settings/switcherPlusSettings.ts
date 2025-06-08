@@ -141,6 +141,8 @@ export class SwitcherPlusSettings {
       escapeCmdChar: '!',
       mobileLauncher: {
         isEnabled: false,
+        isMobileButtonEnabled: true,
+        isEmptyTabButtonEnabled: true,
         modeString: Mode[Mode.HeadingsList],
         iconName: '',
         coreLauncherButtonIconSelector: 'span.clickable-icon',
@@ -822,7 +824,7 @@ export class SwitcherPlusSettings {
       defaultData: T,
       keys: Array<keyof T>,
     ): void => {
-      const keysToMerge = ['matchPriorityAdjustments', 'quickFilters'];
+      const keysToMerge = ['matchPriorityAdjustments', 'quickFilters', 'mobileLauncher'];
 
       const deepMerge = (key: keyof T) => {
         return merge.withOptions(

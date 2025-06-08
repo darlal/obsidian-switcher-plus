@@ -9,6 +9,7 @@ import { App, Setting, TextAreaComponent } from 'obsidian';
 import { Mode, PathDisplayFormat } from 'src/types';
 
 describe('generalSettingsTabSection', () => {
+  type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
   let mockApp: MockProxy<App>;
   let mockPluginSettingTab: MockProxy<SwitcherPlusSettingTab>;
   let mockContainerEl: MockProxy<HTMLElement>;
@@ -289,8 +290,8 @@ describe('generalSettingsTabSection', () => {
     });
   });
 
-  describe('showOverrideMobileLauncher', () => {
-    it('should show setting to override the mobile launcher (plus) button', () => {
+  describe('showLauncherButtonOverrides', () => {
+    it('should show setting to override the mobile launcher (🔍) button', () => {
       const initialValue = Mode[Mode.CommandList];
       config.mobileLauncher.modeString = initialValue;
       config.mobileLauncher.isEnabled = true;
@@ -300,14 +301,20 @@ describe('generalSettingsTabSection', () => {
         'addDropdownSetting',
       );
 
-      const showOverrideMobileLauncherSpy = jest.spyOn(sut, 'showOverrideMobileLauncher');
+      const showLauncherButtonOverridesSpy = jest.spyOn(
+        sut,
+        'showLauncherButtonOverrides',
+      );
 
       sut.display(mockContainerEl);
 
-      expect(showOverrideMobileLauncherSpy).toHaveBeenCalledWith(mockContainerEl, config);
+      expect(showLauncherButtonOverridesSpy).toHaveBeenCalledWith(
+        mockContainerEl,
+        config,
+      );
       expect(addDropdownSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
-        expect.any(String),
+        'New tab and mobile launcher buttons',
         expect.any(String),
         initialValue,
         expect.anything(),
@@ -315,7 +322,7 @@ describe('generalSettingsTabSection', () => {
         expect.any(Function),
       );
 
-      showOverrideMobileLauncherSpy.mockRestore();
+      showLauncherButtonOverridesSpy.mockRestore();
       addDropdownSettingSpy.mockRestore();
     });
 
@@ -336,7 +343,7 @@ describe('generalSettingsTabSection', () => {
 
       const configSaveSpy = jest.spyOn(config, 'save');
 
-      sut.showOverrideMobileLauncher(mockContainerEl, config);
+      sut.showLauncherButtonOverrides(mockContainerEl, config);
 
       // trigger the save
       dropdownSettingOnChangeFn(finalValue, config);
@@ -347,10 +354,55 @@ describe('generalSettingsTabSection', () => {
       addDropdownSettingSpy.mockRestore();
       configSaveSpy.mockRestore();
     });
+
+    it('should save changes to the .isMobileButtonEnabled setting', () => {
+      const initialValue = false;
+      const finalValue = true;
+      config.mobileLauncher.isEnabled = true;
+      config.mobileLauncher.isMobileButtonEnabled = initialValue;
+      let toggleSettingOnChangeFn: addToggleSettingArgs[5];
+
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+        if (args[1] === 'Override default Switcher launch button on mobile platforms') {
+          toggleSettingOnChangeFn = args[5];
+        }
+
+        return mock<Setting>();
+      });
+
+      sut.showLauncherButtonOverrides(mockContainerEl, config);
+
+      // trigger the change/save
+      toggleSettingOnChangeFn(finalValue, config);
+
+      expect(config.mobileLauncher.isMobileButtonEnabled).toBe(finalValue);
+    });
+
+    it('should save changes to the .isEmptyTabButtonEnabled setting', () => {
+      const initialValue = false;
+      const finalValue = true;
+      config.mobileLauncher.isEnabled = true;
+      config.mobileLauncher.isEmptyTabButtonEnabled = initialValue;
+      let toggleSettingOnChangeFn: addToggleSettingArgs[5];
+
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+        if (args[1] === 'Display launch button on the "New tab" page') {
+          toggleSettingOnChangeFn = args[5];
+        }
+
+        return mock<Setting>();
+      });
+
+      sut.showLauncherButtonOverrides(mockContainerEl, config);
+
+      // trigger the change/save
+      toggleSettingOnChangeFn(finalValue, config);
+
+      expect(config.mobileLauncher.isEmptyTabButtonEnabled).toBe(finalValue);
+    });
   });
 
   describe('showMatchPriorityAdjustments', () => {
-    type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
     let toggleSettingOnChangeFn: addToggleSettingArgs[5];
     let saveSettingsSpy: jest.SpyInstance;
 
@@ -465,7 +517,6 @@ describe('generalSettingsTabSection', () => {
   });
 
   describe('showResetFacetEachSession', () => {
-    type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
     let toggleSettingOnChangeFn: addToggleSettingArgs[5];
     let saveSettingsSpy: jest.SpyInstance;
 
@@ -505,7 +556,6 @@ describe('generalSettingsTabSection', () => {
   });
 
   describe('showRenderMarkdownContentAsHTML', () => {
-    type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
     let toggleSettingOnChangeFn: addToggleSettingArgs[5];
     let saveSettingsSpy: jest.SpyInstance;
 
@@ -543,7 +593,6 @@ describe('generalSettingsTabSection', () => {
     });
 
     describe('showQuickOpen', () => {
-      type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
       let toggleSettingOnChangeFn: addToggleSettingArgs[5];
       let saveSettingsSpy: jest.SpyInstance;
 
@@ -583,7 +632,6 @@ describe('generalSettingsTabSection', () => {
   });
 
   describe('showInsertLinkInEditor', () => {
-    type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
     let toggleSettingOnChangeFn: addToggleSettingArgs[5];
     let saveSettingsSpy: jest.SpyInstance;
 

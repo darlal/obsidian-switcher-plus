@@ -10,7 +10,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
 
     this.addSectionTitle(containerEl, 'General Settings');
     this.showEnabledRibbonCommands(containerEl, config);
-    this.showOverrideMobileLauncher(containerEl, config);
+    this.showLauncherButtonOverrides(containerEl, config);
     this.showPreferredSourceForTitle(containerEl, config);
 
     this.showPathDisplayFormat(containerEl, config);
@@ -186,13 +186,11 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     popup.open();
   }
 
-  showOverrideMobileLauncher(
+  showLauncherButtonOverrides(
     containerEl: HTMLElement,
     config: SwitcherPlusSettings,
   ): void {
     const { mobileLauncher } = config;
-    const desc =
-      'Override the "🔍" button (in the Navigation Bar) on mobile platforms to launch Switcher++ instead of the default system switcher. Select the Mode to launch Switcher++ in, or select "Do not override" to disable the feature.';
 
     const disableOptionKey = 'disabled'; // Option to disable the feature
     const options: Record<string, string> = { [disableOptionKey]: 'Do not override' };
@@ -211,10 +209,11 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       initialValue = mobileLauncher.modeString;
     }
 
-    this.addDropdownSetting(
+    // Show the launch mode selector dropdown for mobile navigation bar
+    let setting = this.addDropdownSetting(
       containerEl,
-      'Override default Switcher launch button (the "🔍" button) on mobile platforms',
-      desc,
+      'New tab and mobile launcher buttons',
+      'Select the Mode to launch Switcher++ in from the empty tab page and mobile navigation Bar button, or select "Do not override" to disable the feature.',
       initialValue,
       options,
       null,
@@ -227,9 +226,50 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         }
 
         config.save();
-        this.mainSettingsTab.plugin.updateMobileLauncherButtonOverride(isEnabled);
+
+        // Reload the settings panel. This will cause the new tab button option to display
+        this.mainSettingsTab.display();
+
+        // Trigger the buttons/new tab page to update to the new configuration
+        this.mainSettingsTab.plugin.updateLauncherButtonOverrides(isEnabled);
       },
     );
+
+    if (mobileLauncher.isEnabled) {
+      // Show the mobile launcher button
+      setting = this.addToggleSetting(
+        containerEl,
+        'Override default Switcher launch button on mobile platforms',
+        'When enabled, override the "🔍" button (in the Navigation Bar) on mobile platforms to launch Switcher++ instead of the default system switcher.',
+        mobileLauncher.isMobileButtonEnabled,
+        null,
+        (value, config) => {
+          config.mobileLauncher.isMobileButtonEnabled = value;
+          config.save();
+          this.mainSettingsTab.plugin.updateLauncherButtonOverrides(
+            config.mobileLauncher.isEnabled,
+          );
+        },
+      );
+      setting.setClass('qsp-setting-item-indent');
+
+      // Show the new tab page toggle button
+      setting = this.addToggleSetting(
+        containerEl,
+        'Display launch button on the "New tab" page',
+        'When enabled, a button to launch Switcher++ using the selected mode above will be added to the default Obsidian "New tab" page.',
+        mobileLauncher.isEmptyTabButtonEnabled,
+        null,
+        (value, config) => {
+          config.mobileLauncher.isEmptyTabButtonEnabled = value;
+          config.save();
+          this.mainSettingsTab.plugin.updateLauncherButtonOverrides(
+            config.mobileLauncher.isEnabled,
+          );
+        },
+      );
+      setting.setClass('qsp-setting-item-indent');
+    }
   }
 
   showMatchPriorityAdjustments(

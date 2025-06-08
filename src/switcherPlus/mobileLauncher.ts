@@ -122,14 +122,14 @@ export class MobileLauncher {
     onclickListener: () => void,
   ): HTMLElement {
     let qspLauncherButtonEl: HTMLElement = null;
+    const shouldInstall =
+      Platform.isMobile &&
+      launcherConfig.isEnabled &&
+      launcherConfig.isMobileButtonEnabled;
 
     // If it's not a mobile platform, or the override feature is disabled, or the
     // core launcher has already been overridden then do nothing.
-    if (
-      !Platform.isMobile ||
-      !launcherConfig.isEnabled ||
-      MobileLauncher.coreMobileLauncherButtonEl
-    ) {
+    if (!shouldInstall || MobileLauncher.coreMobileLauncherButtonEl) {
       return null;
     }
 

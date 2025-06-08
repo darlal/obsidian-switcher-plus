@@ -138,6 +138,8 @@ function getDefaultSettingsData(): SettingsData {
     escapeCmdChar: '!',
     mobileLauncher: {
       isEnabled: false,
+      isMobileButtonEnabled: true,
+      isEmptyTabButtonEnabled: true,
       modeString: Mode[Mode.HeadingsList],
       iconName: '',
       coreLauncherButtonIconSelector: 'span.clickable-icon',
@@ -329,6 +331,8 @@ function getTransientSettingsData(): SettingsData {
     escapeCmdChar: chance.letter(),
     mobileLauncher: {
       isEnabled: false,
+      isMobileButtonEnabled: true,
+      isEmptyTabButtonEnabled: true,
       modeString: Mode[Mode.CommandList],
       iconName: '',
       coreLauncherButtonIconSelector: '',

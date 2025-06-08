@@ -426,11 +426,20 @@ export type MobileLauncherConfig = {
    */
   isEnabled: boolean;
   /**
+   * Whether or not to override the default "🔍" button behavior on mobile
+   * Platforms to launch switcher++ instead of the default system switcher
+   */
+  isMobileButtonEnabled: boolean;
+  /**
+   * Whether or not the feature to add a QSP button to the empty tab page is enabled
+   */
+  isEmptyTabButtonEnabled: boolean;
+  /**
    * The custom mode string identifier to launch in switcher++.
    */
   modeString: string;
   /**
-   * Name of icon file to use instead of the default "plus" icon.
+   * Name of icon file to use instead of the default "🔍" icon.
    */
   iconName: string;
   /**
@@ -604,8 +613,9 @@ export interface SettingsData {
   togglePinnedCommandKeys: Hotkey;
   escapeCmdChar: string;
   /**
-   * Settings for overriding the default "plus" button behavior on mobile Platforms
-   * to launch switcher++ instead of the default system switcher
+   * Settings for adding a custom launcher button on the empty tab page and for
+   * overriding the default "🔍" button behavior on mobile Platforms to launch
+   * switcher++ instead of the default system switcher
    */
   mobileLauncher: MobileLauncherConfig;
   /**
