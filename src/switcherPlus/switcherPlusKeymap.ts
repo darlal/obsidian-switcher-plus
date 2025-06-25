@@ -462,7 +462,7 @@ export class SwitcherPlusKeymap {
 
         // Create the hotkey flair element.
         containerEl?.createEl('kbd', {
-          cls: ['suggestion-hotkey', 'qsp-quick-open-hotkey'],
+          cls: ['suggestion-flair', 'suggestion-hotkey', 'qsp-quick-open-hotkey'],
           text: SwitcherPlusKeymap.commandDisplayStr(modifiers, key),
         });
       }

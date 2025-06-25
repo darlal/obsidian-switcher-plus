@@ -74,6 +74,8 @@ export class SwitcherPlusSettings {
       hidePathIfRoot: true,
       enabledRelatedItems: Object.values(RelationType),
       showOptionalIndicatorIcons: true,
+      isFileExtensionIndicatorsEnabled: true,
+      excludeFileExtensionIndicators: ['md'],
       overrideStandardModeBehaviors: true,
       overrideStandardModeRendering: true,
       enabledRibbonCommands: [
@@ -558,6 +560,22 @@ export class SwitcherPlusSettings {
 
   set showOptionalIndicatorIcons(value: boolean) {
     this.data.showOptionalIndicatorIcons = value;
+  }
+
+  get isFileExtensionIndicatorsEnabled(): boolean {
+    return this.data.isFileExtensionIndicatorsEnabled;
+  }
+
+  set isFileExtensionIndicatorsEnabled(value: boolean) {
+    this.data.isFileExtensionIndicatorsEnabled = value;
+  }
+
+  get excludeFileExtensionIndicators(): Array<string> {
+    return this.data.excludeFileExtensionIndicators;
+  }
+
+  set excludeFileExtensionIndicators(value: Array<string>) {
+    this.data.excludeFileExtensionIndicators = [...new Set(value)];
   }
 
   get overrideStandardModeBehaviors(): boolean {

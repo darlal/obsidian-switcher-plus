@@ -1374,7 +1374,7 @@ describe('SwitcherPlusKeymap', () => {
       expect(mockFlairContainer.createEl).toHaveBeenCalledWith(
         'kbd',
         expect.objectContaining({
-          cls: ['suggestion-hotkey', 'qsp-quick-open-hotkey'],
+          cls: ['suggestion-flair', 'suggestion-hotkey', 'qsp-quick-open-hotkey'],
         }),
       );
     });

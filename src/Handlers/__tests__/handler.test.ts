@@ -101,6 +101,7 @@ describe('Handler', () => {
     });
 
     mockSettings = mock<SwitcherPlusSettings>({
+      excludeFileExtensionIndicators: [],
       excludeViewTypes: [],
       referenceViews: [],
       includeSidePanelViewTypes: [],
@@ -1797,6 +1798,78 @@ describe('Handler', () => {
       expect(mockFlairEl.setText).toHaveBeenCalledWith(text);
       expect(mockFlairContainerEl.createSpan).toHaveBeenCalledWith(
         expect.objectContaining({ cls: ['suggestion-flair', ...classes] }),
+      );
+    });
+  });
+
+  describe('renderFileExtensionIndicator', () => {
+    let mockFlairContainerEl: MockProxy<HTMLDivElement>;
+    let mockFile: MockProxy<TFile>;
+
+    beforeEach(() => {
+      mockFlairContainerEl = mock<HTMLDivElement>();
+      mockFile = mock<TFile>({ extension: 'md' });
+      mockClear(mockSettings);
+      mockSettings.isFileExtensionIndicatorsEnabled = true;
+      mockSettings.excludeFileExtensionIndicators = [];
+    });
+
+    it('should not render if isFileExtensionIndicatorsEnabled is false', () => {
+      mockSettings.isFileExtensionIndicatorsEnabled = false;
+
+      const result = sut.renderFileExtensionIndicator(
+        mockFlairContainerEl,
+        mockFile,
+        mockSettings,
+      );
+
+      expect(result).toBeNull();
+      expect(mockFlairContainerEl.createDiv).not.toHaveBeenCalled();
+    });
+
+    it('should not render if file is null', () => {
+      const result = sut.renderFileExtensionIndicator(
+        mockFlairContainerEl,
+        null,
+        mockSettings,
+      );
+
+      expect(result).toBeNull();
+      expect(mockFlairContainerEl.createDiv).not.toHaveBeenCalled();
+    });
+
+    it('should not render if file extension is in excludeFileExtensionIndicators', () => {
+      mockSettings.excludeFileExtensionIndicators = ['md', 'txt'];
+      mockFile.extension = 'md';
+
+      const result = sut.renderFileExtensionIndicator(
+        mockFlairContainerEl,
+        mockFile,
+        mockSettings,
+      );
+
+      expect(result).toBeNull();
+      expect(mockFlairContainerEl.createDiv).not.toHaveBeenCalled();
+    });
+
+    it('should render if file extension is not in excludeFileExtensionIndicators', () => {
+      const expectedFlairEl = mock<HTMLDivElement>();
+      mockFlairContainerEl.createDiv.mockReturnValueOnce(expectedFlairEl);
+      mockFile.extension = 'txt';
+      mockSettings.excludeFileExtensionIndicators = ['md'];
+
+      const result = sut.renderFileExtensionIndicator(
+        mockFlairContainerEl,
+        mockFile,
+        mockSettings,
+      );
+
+      expect(result).toBe(expectedFlairEl);
+      expect(mockFlairContainerEl.createDiv).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cls: ['suggestion-flair', 'nav-file-tag', 'qsp-file-ext-indicator'],
+          text: 'txt',
+        }),
       );
     });
   });

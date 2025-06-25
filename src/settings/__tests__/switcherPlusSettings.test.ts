@@ -71,6 +71,8 @@ function getDefaultSettingsData(): SettingsData {
     hidePathIfRoot: true,
     enabledRelatedItems: Object.values(RelationType),
     showOptionalIndicatorIcons: true,
+    isFileExtensionIndicatorsEnabled: true,
+    excludeFileExtensionIndicators: ['md'],
     overrideStandardModeBehaviors: true,
     overrideStandardModeRendering: true,
     enabledRibbonCommands: [
@@ -253,6 +255,8 @@ function getTransientSettingsData(): SettingsData {
     hidePathIfRoot: chance.bool(),
     enabledRelatedItems: chance.pickset(Object.values(RelationType), 2),
     showOptionalIndicatorIcons: chance.bool(),
+    isFileExtensionIndicatorsEnabled: chance.bool(),
+    excludeFileExtensionIndicators: ['md'],
     overrideStandardModeBehaviors: chance.bool(),
     overrideStandardModeRendering: chance.bool(),
     enabledRibbonCommands,

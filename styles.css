@@ -181,6 +181,9 @@
 /* flair icon for suggestions that represent an alias */
 .qsp-alias-indicator {}
 
+/* flair indicator for the file extension of file based suggestions */
+.qsp-file-ext-indicator {}
+
 /* Quick Open indicator container element */
 .qsp-quick-open-aux {
   display: flex;

@@ -571,6 +571,8 @@ export interface SettingsData {
   hidePathIfRoot: boolean;
   enabledRelatedItems: RelationType[];
   showOptionalIndicatorIcons: boolean;
+  isFileExtensionIndicatorsEnabled: boolean;
+  excludeFileExtensionIndicators: Array<string>;
   overrideStandardModeBehaviors: boolean;
   overrideStandardModeRendering: boolean;
   enabledRibbonCommands: Array<keyof typeof Mode>;

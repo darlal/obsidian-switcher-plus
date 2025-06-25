@@ -47,6 +47,7 @@ import {
   isHeadingSuggestion,
   stripMDExtensionFromPath,
   getTFileFromLeaf,
+  getDestinationFileForSuggestion,
 } from 'src/utils';
 
 export abstract class Handler<T extends AnySuggestion> {
@@ -960,7 +961,8 @@ export abstract class Handler<T extends AnySuggestion> {
     sugg: AnySuggestion,
     flairContainerEl: HTMLDivElement = null,
   ): HTMLDivElement {
-    const { showOptionalIndicatorIcons } = this.settings;
+    const { settings } = this;
+
     const indicatorData = new Map<keyof AnySuggestion, Record<string, string>>();
     indicatorData.set('isRecent', {
       iconName: 'history',
@@ -984,7 +986,10 @@ export abstract class Handler<T extends AnySuggestion> {
       flairContainerEl = this.createFlairContainer(parentEl);
     }
 
-    if (showOptionalIndicatorIcons) {
+    if (settings.showOptionalIndicatorIcons) {
+      const file = getDestinationFileForSuggestion(sugg);
+      this.renderFileExtensionIndicator(flairContainerEl, file, settings);
+
       for (const [state, data] of indicatorData.entries()) {
         if (sugg[state] === true) {
           if (data.parentElClass) {
@@ -1024,6 +1029,35 @@ export abstract class Handler<T extends AnySuggestion> {
       if (indicatorText) {
         flairEl.setText(indicatorText);
       }
+    }
+
+    return flairEl;
+  }
+
+  /**
+   * Displays the file extension as a flair icon.
+   * @param  {HTMLDivElement} flairContainerEl
+   * @param  {TFile} file the file whose extension should be displayed as a flair
+   * @param  {SwitcherPlusSettings} config
+   * @returns HTMLDivElement the rendered flair indicator element
+   */
+  renderFileExtensionIndicator(
+    flairContainerEl: HTMLDivElement,
+    file: TFile,
+    config: SwitcherPlusSettings,
+  ): HTMLDivElement {
+    let flairEl: HTMLDivElement = null;
+    const { isFileExtensionIndicatorsEnabled, excludeFileExtensionIndicators } = config;
+
+    if (!isFileExtensionIndicatorsEnabled || !file) {
+      return flairEl;
+    }
+
+    if (!excludeFileExtensionIndicators?.includes(file.extension)) {
+      flairEl = flairContainerEl?.createDiv({
+        cls: ['suggestion-flair', 'nav-file-tag', 'qsp-file-ext-indicator'],
+        text: file.extension,
+      });
     }
 
     return flairEl;
