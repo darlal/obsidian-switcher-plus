@@ -15,6 +15,7 @@ import {
   OpenInBackgroundConfig,
   PathDisplayFormat,
   QuickOpenConfig,
+  RecentCommandDisplayOrder,
   RelationType,
   RenderMarkdownContentConfig,
   SettingsData,
@@ -46,6 +47,7 @@ export class SwitcherPlusSettings {
       headingsListCommand: '#',
       bookmarksListCommand: "'",
       commandListCommand: '>',
+      recentCommandDisplayOrder: 'desc',
       vaultListCommand: 'vault ',
       relatedItemsListCommand: '~',
       relatedItemsListActiveEditorCommand: '^ ',
@@ -328,6 +330,14 @@ export class SwitcherPlusSettings {
 
   set commandListCommand(value: string) {
     this.data.commandListCommand = value;
+  }
+
+  get recentCommandDisplayOrder(): RecentCommandDisplayOrder {
+    return this.data.recentCommandDisplayOrder;
+  }
+
+  set recentCommandDisplayOrder(value: RecentCommandDisplayOrder) {
+    this.data.recentCommandDisplayOrder = value;
   }
 
   get commandListPlaceholderText(): string {

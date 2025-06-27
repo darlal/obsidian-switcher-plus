@@ -4,6 +4,7 @@ import {
   PathDisplayFormat,
   RelationType,
   SettingsData,
+  RecentCommandDisplayOrder,
   SymbolType,
 } from 'src/types';
 import SwitcherPlusPlugin from 'src/main';
@@ -46,6 +47,7 @@ function getDefaultSettingsData(): SettingsData {
     headingsListCommand: '#',
     bookmarksListCommand: "'",
     commandListCommand: '>',
+    recentCommandDisplayOrder: 'desc',
     vaultListCommand: 'vault ',
     relatedItemsListCommand: '~',
     relatedItemsListActiveEditorCommand: '^ ',
@@ -218,6 +220,10 @@ function getTransientSettingsData(): SettingsData {
     headingsListCommand: chance.word(),
     bookmarksListCommand: chance.word(),
     commandListCommand: chance.word(),
+    recentCommandDisplayOrder: chance.pickone([
+      'asc',
+      'desc',
+    ]) as RecentCommandDisplayOrder,
     vaultListCommand: chance.word(),
     shouldSearchHeadings: chance.bool(),
     strictHeadingsOnly: chance.bool(),

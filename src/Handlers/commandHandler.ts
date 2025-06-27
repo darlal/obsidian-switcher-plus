@@ -22,9 +22,9 @@ import {
 export const COMMAND_PALETTE_PLUGIN_ID = 'command-palette';
 export type CommandInfo = { cmd: Command; isPinned: boolean; isRecent: boolean };
 
-const RECENTLY_USED_COMMAND_IDS: string[] = [];
-
 export class CommandHandler extends Handler<CommandSuggestion> {
+  static recentlyUsedCommandIds: string[] = [];
+
   getCommandString(_sessionOpts?: SessionOpts): string {
     return this.settings?.commandListCommand;
   }
@@ -129,7 +129,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     if (sugg) {
       const { item } = sugg;
       this.app.commands.executeCommandById(item.id);
-      this.saveUsageToList(item.id, RECENTLY_USED_COMMAND_IDS);
+      this.saveUsageToList(item.id, CommandHandler.recentlyUsedCommandIds);
       handled = true;
     }
 
@@ -213,6 +213,10 @@ export class CommandHandler extends Handler<CommandSuggestion> {
       (id) => !isPinnedFaceted || (isPinnedFaceted && !pinnedIdsSet.has(id)),
     );
 
+    if (this.settings.recentCommandDisplayOrder === 'asc') {
+      recentIds.reverse();
+    }
+
     addCommandInfo(CommandListFacetIds.Recent, recentIds);
 
     return items;
@@ -240,7 +244,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
   }
 
   getRecentCommandIds(): Set<string> {
-    return new Set(RECENTLY_USED_COMMAND_IDS);
+    return new Set(CommandHandler.recentlyUsedCommandIds);
   }
 
   createSuggestion(commandInfo: CommandInfo, match: SearchResult): CommandSuggestion {

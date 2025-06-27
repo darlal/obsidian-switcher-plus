@@ -493,4 +493,55 @@ describe('commandHandler', () => {
       expect(recentCommandIds[0]).toBe(id);
     });
   });
+
+  describe('getPinnedAndRecentCommands ordering', () => {
+    beforeEach(() => {
+      // Clear the array before each test
+      CommandHandler.recentlyUsedCommandIds.length = 0;
+      mockReset(mockFindCommand);
+    });
+
+    it('should return recent commands in descending order (most recent first) when setting is "desc"', () => {
+      // Arrange
+      settings.recentCommandDisplayOrder = 'desc';
+      CommandHandler.recentlyUsedCommandIds.push('cmd2', 'cmd1'); // cmd2 is most recent
+
+      mockFindCommand.mockImplementation(
+        (id) => ({ id, name: `Command ${id}` }) as Command,
+      );
+
+      const getPinnedSpy = jest
+        .spyOn(sut, 'getPinnedCommandIds')
+        .mockReturnValue(new Set());
+
+      // Act
+      const results = sut.getPinnedAndRecentCommands(new Set());
+      const resultIds = results.map((info) => info.cmd.id);
+
+      // Assert
+      expect(resultIds).toEqual(['cmd2', 'cmd1']);
+      getPinnedSpy.mockRestore();
+    });
+
+    it('should return recent commands in ascending order (most recent last) when setting is "asc"', () => {
+      // Arrange
+      settings.recentCommandDisplayOrder = 'asc';
+      CommandHandler.recentlyUsedCommandIds.push('cmd2', 'cmd1'); // cmd2 is most recent
+
+      mockFindCommand.mockImplementation(
+        (id) => ({ id, name: `Command ${id}` }) as Command,
+      );
+      const getPinnedSpy = jest
+        .spyOn(sut, 'getPinnedCommandIds')
+        .mockReturnValue(new Set());
+
+      // Act
+      const results = sut.getPinnedAndRecentCommands(new Set());
+      const resultIds = results.map((info) => info.cmd.id);
+
+      // Assert
+      expect(resultIds).toEqual(['cmd1', 'cmd2']);
+      getPinnedSpy.mockRestore();
+    });
+  });
 });

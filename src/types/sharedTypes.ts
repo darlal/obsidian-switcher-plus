@@ -43,6 +43,8 @@ export enum Mode {
   VaultList = 256,
 }
 
+export type RecentCommandDisplayOrder = 'desc' | 'asc';
+
 export enum SymbolType {
   Link = 1,
   Embed = 2,
@@ -542,6 +544,7 @@ export interface SettingsData {
   headingsListCommand: string;
   bookmarksListCommand: string;
   commandListCommand: string;
+  recentCommandDisplayOrder: RecentCommandDisplayOrder;
   vaultListCommand: string;
   relatedItemsListCommand: string;
   relatedItemsListActiveEditorCommand: string;
