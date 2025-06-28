@@ -40,7 +40,7 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
       'Max recent files to show',
       'The maximum number of recent files to show when there is no search term',
       config.maxRecentFileSuggestionsOnInit,
-      [0, 75, 1],
+      [0, 75, 1, 25],
       'maxRecentFileSuggestionsOnInit',
     );
 

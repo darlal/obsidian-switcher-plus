@@ -514,7 +514,7 @@ describe('settingsTabSection', () => {
     let mockSliderComp: MockProxy<SliderComponent>;
     let createSettingSpy: jest.SpyInstance;
     const initValue = 0.5;
-    const limits: [min: number, max: number, step: number] = [-1, 1, 0.1];
+    const limits: Parameters<SettingsTabSection['addSliderSetting']>[4] = [-1, 1, 0.1, 0];
 
     beforeAll(() => {
       mockExtraButtonComp = mock<ExtraButtonComponent>();
@@ -542,7 +542,7 @@ describe('settingsTabSection', () => {
       createSettingSpy.mockRestore();
     });
 
-    test('reset button should set value back to 0', () => {
+    test('reset button should set value back to default initial value 0', () => {
       let onClickFn: () => void;
       mockExtraButtonComp.onClick.mockImplementationOnce((cb) => {
         onClickFn = cb;

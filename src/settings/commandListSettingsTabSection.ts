@@ -22,7 +22,7 @@ export class CommandListSettingsTabSection extends SettingsTabSection {
       'Max recent commands',
       'The maximum number of commands to save in the recent list.',
       config.maxRecentCommands,
-      [0, 75, 1],
+      [0, 75, 1, 25],
       'maxRecentCommands',
     );
 

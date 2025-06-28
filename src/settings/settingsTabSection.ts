@@ -193,7 +193,7 @@ export abstract class SettingsTabSection {
     name: string,
     desc: string,
     initialValue: number,
-    limits: [min: number, max: number, step: number],
+    limits: [min: number, max: number, step: number, initial: number],
     configStorageKey: NumberTypedConfigKey,
     onChange?: (value: number, config: SwitcherPlusSettings) => void,
   ): Setting {
@@ -203,7 +203,7 @@ export abstract class SettingsTabSection {
     setting.addExtraButton((comp) => {
       comp.setIcon('lucide-rotate-ccw');
       comp.setTooltip('Restore default');
-      comp.onClick(() => (setting.components[1] as SliderComponent).setValue(0));
+      comp.onClick(() => (setting.components[1] as SliderComponent).setValue(limits[3]));
       return comp;
     });
 

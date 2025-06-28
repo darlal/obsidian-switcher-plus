@@ -276,7 +276,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
             label,
             data.desc ?? '',
             value,
-            [-1, 1, 0.05],
+            [-1, 1, 0.05, 0],
             null,
             (value, config) => {
               collection[key].value = value;

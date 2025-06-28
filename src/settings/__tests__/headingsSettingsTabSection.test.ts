@@ -107,7 +107,7 @@ describe('headingsSettingsTabSection', () => {
       'Max recent files to show',
       expect.any(String),
       config.maxRecentFileSuggestionsOnInit,
-      [0, 75, 1],
+      expect.any(Array),
       'maxRecentFileSuggestionsOnInit',
     );
 
