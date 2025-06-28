@@ -144,7 +144,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
       }
 
       recentCommandIds.unshift(commandId);
-      recentCommandIds.splice(25);
+      recentCommandIds.splice(this.settings.maxRecentCommands);
     }
   }
 

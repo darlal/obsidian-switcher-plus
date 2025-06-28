@@ -5,7 +5,7 @@ import {
   SwitcherPlusSettingTab,
 } from 'src/settings';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { App } from 'obsidian';
+import { App, Setting } from 'obsidian';
 
 describe('commandListSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
@@ -13,6 +13,7 @@ describe('commandListSettingsTabSection', () => {
   let config: SwitcherPlusSettings;
   let mockContainerEl: MockProxy<HTMLElement>;
   let sut: CommandListSettingsTabSection;
+  let addSliderSettingSpy: jest.SpyInstance;
 
   beforeAll(() => {
     mockApp = mock<App>();
@@ -20,7 +21,15 @@ describe('commandListSettingsTabSection', () => {
     mockPluginSettingTab = mock<SwitcherPlusSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
 
+    addSliderSettingSpy = jest
+      .spyOn(SettingsTabSection.prototype, 'addSliderSetting')
+      .mockReturnValue(mock<Setting>());
+
     sut = new CommandListSettingsTabSection(mockApp, mockPluginSettingTab, config);
+  });
+
+  afterAll(() => {
+    addSliderSettingSpy.mockRestore();
   });
 
   it('should display a header for the section', () => {
@@ -54,5 +63,20 @@ describe('commandListSettingsTabSection', () => {
     );
 
     addTextSettingSpy.mockRestore();
+  });
+
+  it('should show the maxRecentCommands setting', () => {
+    sut.display(mockContainerEl);
+
+    expect(addSliderSettingSpy).toHaveBeenCalledWith(
+      mockContainerEl,
+      'Max recent commands',
+      expect.any(String),
+      config.maxRecentCommands,
+      expect.any(Array),
+      'maxRecentCommands',
+    );
+
+    addSliderSettingSpy.mockClear();
   });
 });

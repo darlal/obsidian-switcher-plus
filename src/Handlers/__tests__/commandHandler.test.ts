@@ -483,6 +483,22 @@ describe('commandHandler', () => {
       expect(recentCommandIds[0]).toBe(id);
     });
 
+    it('should not add more items than are allowed by settings', () => {
+      const recentCommandIds: string[] = [];
+      const max = 5;
+      const maxRecentSpy = jest
+        .spyOn(settings, 'maxRecentCommands', 'get')
+        .mockReturnValue(max);
+
+      for (let i = 0; i < max + 5; i++) {
+        sut.saveUsageToList(String(i), recentCommandIds);
+      }
+
+      expect(recentCommandIds).toHaveLength(max);
+
+      maxRecentSpy.mockRestore();
+    });
+
     it('should move an existing item from an old index to index 0', () => {
       const id = 'expected';
       const recentCommandIds = ['id A', id, 'id B'];

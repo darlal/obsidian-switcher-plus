@@ -545,6 +545,7 @@ export interface SettingsData {
   bookmarksListCommand: string;
   commandListCommand: string;
   recentCommandDisplayOrder: RecentCommandDisplayOrder;
+  maxRecentCommands: number;
   vaultListCommand: string;
   relatedItemsListCommand: string;
   relatedItemsListActiveEditorCommand: string;

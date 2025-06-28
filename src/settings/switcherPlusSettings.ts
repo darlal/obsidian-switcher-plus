@@ -48,6 +48,7 @@ export class SwitcherPlusSettings {
       bookmarksListCommand: "'",
       commandListCommand: '>',
       recentCommandDisplayOrder: 'desc',
+      maxRecentCommands: 25,
       vaultListCommand: 'vault ',
       relatedItemsListCommand: '~',
       relatedItemsListActiveEditorCommand: '^ ',
@@ -338,6 +339,14 @@ export class SwitcherPlusSettings {
 
   set recentCommandDisplayOrder(value: RecentCommandDisplayOrder) {
     this.data.recentCommandDisplayOrder = value;
+  }
+
+  get maxRecentCommands(): number {
+    return this.data.maxRecentCommands;
+  }
+
+  set maxRecentCommands(value: number) {
+    this.data.maxRecentCommands = value;
   }
 
   get commandListPlaceholderText(): string {
