@@ -635,6 +635,13 @@ export interface SettingsData {
    * Configuration for opening files in the background (unfocused)
    */
   openInBackground: OpenInBackgroundConfig;
+  /**
+   * Key combination that saves the current workspace and then loads the selected
+   * workspace.
+   *
+   * @type {Hotkey}
+   */
+  saveWorkspaceAndSwitchKeys: Hotkey;
 }
 
 export type SessionOpts = {

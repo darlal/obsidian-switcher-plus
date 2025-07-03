@@ -19,6 +19,7 @@ import {
   ModeDispatcher,
   NavigationKeysConfig,
   SwitcherPlus,
+  WorkspaceSuggestion,
 } from 'src/types';
 import {
   Scope,
@@ -39,7 +40,7 @@ import {
   PaneType,
   SplitDirection,
 } from 'obsidian';
-import { CommandHandler, HeadingsHandler } from 'src/Handlers';
+import { CommandHandler, HeadingsHandler, WorkspaceHandler } from 'src/Handlers';
 
 /**
  * Mapping of special keys to their string representation for display purposes.
@@ -285,7 +286,7 @@ export class SwitcherPlusKeymap {
   /**
    * Registers the hotkeys for selecting a suggestion and opening it using its index number in the array.
    *
-   * @param {Scope} scope
+   * @param {Scope}
    * @param {SwitcherPlusSettings} config
    */
   registerQuickOpenBindings(scope: Scope, config: SwitcherPlusSettings): void {
@@ -326,7 +327,7 @@ export class SwitcherPlusKeymap {
   /**
    * Registers the hotkeys for triggering a fulltext search
    *
-   * @param {Scope} scope
+   * @param {Scope}
    * @param {SwitcherPlusSettings} config
    */
   registerFulltextSearchBindings(scope: Scope, config: SwitcherPlusSettings): void {
@@ -372,7 +373,7 @@ export class SwitcherPlusKeymap {
    * the hotkeys specified for each background navigation type and adds the hotkey
    * to the custom keymap list.
    *
-   * @param {Scope} scope
+   * @param {Scope}
    * @param {SwitcherPlusSettings} config
    */
   registerOpenInBackgroundBindings(scope: Scope, config: SwitcherPlusSettings): void {
@@ -474,10 +475,10 @@ export class SwitcherPlusKeymap {
     customKeysInfo: CustomKeymapInfo[],
     insertConfig: InsertLinkConfig,
   ): CustomKeymapInfo {
-    const { isEnabled, keymap, insertableEditorTypes } = insertConfig;
     let keyInfo: CustomKeymapInfo = null;
 
-    if (isEnabled) {
+    if (insertConfig?.isEnabled) {
+      const { keymap, insertableEditorTypes } = insertConfig;
       const excludedModes = [Mode.CommandList, Mode.WorkspaceList, Mode.VaultList];
       const activeViewType = activeEditor?.view?.getViewType();
 
@@ -566,7 +567,7 @@ export class SwitcherPlusKeymap {
    * Re-register the standard mode keys that were previously unregistered, if any.
    * And enables displaying the standard prompt instructions
    *
-   * @param {Scope} scope
+   * @param {Scope}
    * @param {CustomKeymapInfo[]} customKeysToAdd Array of custom keymaps that should be registered
    * @param {Array<[CustomKeymapInfo, KeymapEventHandler]>} savedStandardKeysInfo Event
    * handler info for standard keys that were previously unregistered
@@ -600,7 +601,7 @@ export class SwitcherPlusKeymap {
    * Unregisters the standard mode keys, registers the custom keys and displays
    * the custom prompt instructions
    *
-   * @param {Scope} scope
+   * @param {Scope}
    * @param {CustomKeymapInfo[]} customKeysToAdd Array of custom keymaps that should be registered
    * @param {CustomKeymapInfo[]} standardKeysInfo Array of standard keymaps that should be unregistered
    * @param {KeymapConfig} keymapConfig
@@ -630,7 +631,7 @@ export class SwitcherPlusKeymap {
   /**
    * Registers keymaps using the provided scope.
    *
-   * @param {Scope} scope
+   * @param {Scope}
    * @param {CustomKeymapInfo[]} keymaps
    */
   registerKeys(scope: Scope, keymaps: CustomKeymapInfo[]): void {
@@ -642,7 +643,7 @@ export class SwitcherPlusKeymap {
   /**
    * Finds each keymap in Scope.keys and unregisters the associated KeymapEventHandler
    *
-   * @param {Scope} scope
+   * @param {Scope}
    * @param {CustomKeymapInfo[]} keymaps the keymaps to remove
    * @returns {Array<[CustomKeymapInfo, KeymapEventHandler]>} An array of tuples containing the keymap removed and the associated KeymapEventHandler that was unregistered.
    */
@@ -1048,6 +1049,28 @@ export class SwitcherPlusKeymap {
     return false;
   }
 
+  /**
+   * Saves the current workspace and then opens the selected workspace.
+   *
+   * @returns {false}
+   */
+  saveCurrentAndOpenSelectedWorkspace(): false {
+    const { app, chooser, modal } = this;
+    const sugg = chooser?.values?.[chooser.selectedItem] as WorkspaceSuggestion;
+
+    if (sugg && sugg.item) {
+      const pluginInstance = WorkspaceHandler.getEnabledWorkspacesPluginInstance(app);
+
+      if (pluginInstance) {
+        pluginInstance.saveWorkspace(pluginInstance.activeWorkspace);
+        pluginInstance.loadWorkspace(sugg.item.id);
+        modal.close();
+      }
+    }
+
+    return false;
+  }
+
   useSelectedItem(evt: KeyboardEvent, _ctx: KeymapContext): false {
     this.chooser.useSelectedItem(evt);
     return false; // Return false to prevent default.
@@ -1263,6 +1286,14 @@ export class SwitcherPlusKeymap {
       null,
       true,
       true,
+    );
+
+    // Save the current workspace, then open the selected workspace.
+    this.createCustomKeymap(
+      'save and switch workspace',
+      [Mode.WorkspaceList],
+      config.saveWorkspaceAndSwitchKeys,
+      this.saveCurrentAndOpenSelectedWorkspace.bind(this),
     );
 
     // Launches the Obsidian hotkey selection dialog for a command.

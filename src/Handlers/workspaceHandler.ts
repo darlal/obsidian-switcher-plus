@@ -9,6 +9,7 @@ import {
 } from 'src/types';
 import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import {
+  App,
   SearchResult,
   sortSearchResults,
   WorkspaceLeaf,
@@ -133,8 +134,12 @@ export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
   }
 
   getEnabledWorkspacesPluginInstance(): WorkspacesPluginInstance {
+    return WorkspaceHandler.getEnabledWorkspacesPluginInstance(this.app);
+  }
+
+  static getEnabledWorkspacesPluginInstance(app: App): WorkspacesPluginInstance {
     return getInternalEnabledPluginById(
-      this.app,
+      app,
       WORKSPACE_PLUGIN_ID,
     ) as WorkspacesPluginInstance;
   }

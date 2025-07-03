@@ -190,6 +190,7 @@ export class SwitcherPlusSettings {
           },
         ],
       },
+      saveWorkspaceAndSwitchKeys: { modifiers: ['Mod', 'Shift'], key: 's' },
     };
   }
 
@@ -775,6 +776,14 @@ export class SwitcherPlusSettings {
 
   set openInBackground(value: OpenInBackgroundConfig) {
     this.data.openInBackground = value;
+  }
+
+  get saveWorkspaceAndSwitchKeys(): Hotkey {
+    return this.data.saveWorkspaceAndSwitchKeys;
+  }
+
+  set saveWorkspaceAndSwitchKeys(value: Hotkey) {
+    this.data.saveWorkspaceAndSwitchKeys = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

@@ -48,6 +48,7 @@ declare module 'obsidian' {
   }
 
   export interface WorkspacesPluginInstance extends PluginInstance {
+    readonly activeWorkspace: string;
     workspaces: Record<string, unknown>;
     loadWorkspace(id: string): void;
     saveWorkspace(id: string): void;

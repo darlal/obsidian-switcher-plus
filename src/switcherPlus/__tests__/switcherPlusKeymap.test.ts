@@ -2,7 +2,7 @@ import { Chance } from 'chance';
 import { SwitcherPlusSettings } from 'src/settings';
 import { CustomKeymapInfo, SwitcherPlusKeymap } from 'src/switcherPlus';
 import { generateMarkdownLink, getSystemGlobalSearchInstance } from 'src/utils';
-import { CommandHandler, Handler } from 'src/Handlers';
+import { CommandHandler, Handler, WorkspaceHandler } from 'src/Handlers';
 import {
   MockProxy,
   anyFunction,
@@ -31,6 +31,7 @@ import {
   Platform,
   InternalPlugins,
   GlobalSearchPluginInstance,
+  WorkspacesPluginInstance,
 } from 'obsidian';
 import {
   AnySuggestion,
@@ -48,6 +49,7 @@ import {
   ModeDispatcher,
   HeadingSuggestion,
   OpenInBackgroundConfig,
+  WorkspaceSuggestion,
 } from 'src/types';
 import {
   makeFileSuggestion,
@@ -1736,6 +1738,69 @@ describe('SwitcherPlusKeymap', () => {
       expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
 
       consoleLogSpy.mockRestore();
+    });
+  });
+
+  describe('saveCurrentAndOpenSelectedWorkspace', () => {
+    let sut: SwitcherPlusKeymap;
+    let mockWorkspaceSugg: MockProxy<WorkspaceSuggestion>;
+    let mockWorkspacesPlugin: MockProxy<WorkspacesPluginInstance>;
+    let mockChooserLocal: MockProxy<Chooser<WorkspaceSuggestion>>;
+
+    beforeAll(() => {
+      mockWorkspaceSugg = mock<WorkspaceSuggestion>({
+        item: { id: 'workspaceId' },
+      });
+
+      mockChooserLocal = mock<Chooser<WorkspaceSuggestion>>({
+        values: [mockWorkspaceSugg],
+        selectedItem: 0,
+      });
+
+      mockWorkspacesPlugin = mock<WorkspacesPluginInstance>();
+      jest
+        .spyOn(WorkspaceHandler, 'getEnabledWorkspacesPluginInstance')
+        .mockReturnValue(mockWorkspacesPlugin);
+
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooserLocal,
+        mockModal,
+        config,
+      );
+    });
+
+    it('should save the current workspace, load the selected one, and close the modal', () => {
+      sut.saveCurrentAndOpenSelectedWorkspace();
+
+      expect(mockWorkspacesPlugin.saveWorkspace).toHaveBeenCalled();
+      expect(mockWorkspacesPlugin.loadWorkspace).toHaveBeenCalledWith('workspaceId');
+      expect(mockModal.close).toHaveBeenCalled();
+    });
+
+    it('should not do anything if there is no suggestion', () => {
+      mockClear(mockWorkspacesPlugin);
+      mockClear(mockModal);
+      mockChooserLocal.values = [];
+      sut.saveCurrentAndOpenSelectedWorkspace();
+
+      expect(mockWorkspacesPlugin.saveWorkspace).not.toHaveBeenCalled();
+      expect(mockWorkspacesPlugin.loadWorkspace).not.toHaveBeenCalled();
+      expect(mockModal.close).not.toHaveBeenCalled();
+    });
+
+    it('should not do anything if the workspaces plugin is not enabled', () => {
+      mockClear(mockWorkspacesPlugin);
+      mockClear(mockModal);
+      jest
+        .spyOn(WorkspaceHandler, 'getEnabledWorkspacesPluginInstance')
+        .mockReturnValueOnce(null);
+      sut.saveCurrentAndOpenSelectedWorkspace();
+
+      expect(mockWorkspacesPlugin.saveWorkspace).not.toHaveBeenCalled();
+      expect(mockWorkspacesPlugin.loadWorkspace).not.toHaveBeenCalled();
+      expect(mockModal.close).not.toHaveBeenCalled();
     });
   });
 });

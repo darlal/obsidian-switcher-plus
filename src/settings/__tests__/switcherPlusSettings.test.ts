@@ -187,6 +187,7 @@ function getDefaultSettingsData(): SettingsData {
         },
       ],
     },
+    saveWorkspaceAndSwitchKeys: { modifiers: ['Mod', 'Shift'], key: 's' },
   };
 
   return data;
@@ -361,6 +362,10 @@ function getTransientSettingsData(): SettingsData {
           hotkey: { modifiers: chance.pickset(['Alt', 'Ctrl'], 1), key: chance.letter() },
         },
       ],
+    },
+    saveWorkspaceAndSwitchKeys: {
+      modifiers: chance.pickset(['Alt', 'Ctrl'], 1),
+      key: chance.letter(),
     },
   };
 
