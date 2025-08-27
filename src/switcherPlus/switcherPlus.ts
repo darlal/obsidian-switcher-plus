@@ -7,7 +7,6 @@ import {
   SystemSwitcher,
   SwitcherPlus,
   AnySuggestion,
-  Mode,
   SessionOpts,
   ModeDispatcher,
 } from 'src/types';
@@ -51,13 +50,15 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       this._exMode = new ModeHandler(app, options, exKeymap);
     }
 
-    openInMode(mode: Mode, sessionOpts?: SessionOpts): void {
-      this.exMode.setSessionOpenMode(mode, this.chooser, sessionOpts);
+    openInMode(sessionOpts: SessionOpts): void {
+      this.exMode.setSessionOpenMode(this.chooser, sessionOpts);
       super.open();
     }
 
     onOpen(): void {
       this.exMode.onOpen();
+
+      // This call hard codes this.inputEl to an empty string, and calls updateSuggestions()
       super.onOpen();
     }
 
@@ -68,7 +69,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
 
     protected updateSuggestions(): void {
       const { exMode, inputEl, chooser } = this;
-      exMode.insertSessionOpenModeOrLastInputString(inputEl);
+      exMode.setInitialInputForSession(inputEl);
 
       if (!exMode.updateSuggestions(inputEl.value, chooser, this)) {
         super.updateSuggestions();

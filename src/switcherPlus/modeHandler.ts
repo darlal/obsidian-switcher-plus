@@ -51,7 +51,7 @@ import {
   SplitDirection,
 } from 'obsidian';
 
-const lastInputInfoByMode = {} as Record<Mode, InputInfo>;
+const previousInputInfoByMode = {} as Record<Mode, InputInfo>;
 
 export class ModeHandler implements ModeDispatcher {
   private _inputInfo: InputInfo;
@@ -59,10 +59,13 @@ export class ModeHandler implements ModeDispatcher {
     return this._inputInfo;
   }
 
+  get previousInputHistory(): Record<Mode, InputInfo> {
+    return previousInputInfoByMode;
+  }
+
   private handlersByMode: Map<Mode, Handler<AnySuggestion>>;
   private handlersByType: Map<SuggestionType, Handler<AnySuggestion>>;
   private handlersByCommand: Map<string, Handler<AnySuggestion>>;
-  private lastInput: string;
   private debouncedGetSuggestions: Debouncer<
     [InputInfo, Chooser<AnySuggestion>, SwitcherPlus],
     void
@@ -141,51 +144,37 @@ export class ModeHandler implements ModeDispatcher {
     ComponentManager.unload();
   }
 
-  setSessionOpenMode(
-    mode: Mode,
-    chooser: Chooser<AnySuggestion>,
-    sessionOpts?: SessionOpts,
-  ): void {
+  setSessionOpenMode(chooser: Chooser<AnySuggestion>, sessionOpts: SessionOpts): void {
     this.reset();
     chooser?.setSuggestions([]);
-
-    if (mode !== Mode.Standard) {
-      const openModeString = this.getHandler(mode).getCommandString(sessionOpts);
-      Object.assign(this.sessionOpts, sessionOpts, { openModeString });
-    }
-
-    if (lastInputInfoByMode[mode]) {
-      if (
-        (mode === Mode.CommandList && this.settings.preserveCommandPaletteLastInput) ||
-        (mode !== Mode.CommandList && this.settings.preserveQuickSwitcherLastInput)
-      ) {
-        const lastInfo = lastInputInfoByMode[mode];
-        this.lastInput = lastInfo.inputText;
-      }
-    }
+    this.sessionOpts = sessionOpts ?? {};
   }
 
-  insertSessionOpenModeOrLastInputString(inputEl: HTMLInputElement): void {
-    const { sessionOpts, lastInput } = this;
-    const openModeString = sessionOpts.openModeString ?? null;
-
-    if (lastInput && lastInput !== openModeString) {
-      inputEl.value = lastInput;
-      // `openModeString` may `null` when in standard mode
-      // otherwise `lastInput` starts with `openModeString`
-      const startsNumber = openModeString ? openModeString.length : 0;
-      inputEl.setSelectionRange(startsNumber, inputEl.value.length);
-    } else if (openModeString !== null && openModeString !== '') {
-      // update UI with current command string in the case were openInMode was called
-      inputEl.value = openModeString;
-
-      // reset to null so user input is not overridden the next time onInput is called
-      sessionOpts.openModeString = null;
+  setInitialInputForSession(inputEl: HTMLInputElement): void {
+    const { mode } = this.sessionOpts;
+    if (!mode) {
+      return;
     }
 
-    // the same logic as `openModeString`
-    // make sure it will not override user's normal input.
-    this.lastInput = null;
+    // This method should only run once per session opening.
+    this.sessionOpts.mode = null;
+
+    const lastInputText = this.previousInputHistory[mode]?.inputText;
+    const handler = this.getHandler(mode);
+    const commandString =
+      mode !== Mode.Standard ? handler.getCommandString(this.sessionOpts) : '';
+
+    const shouldPreserveInput =
+      (mode === Mode.CommandList && this.settings.preserveCommandPaletteLastInput) ||
+      (mode !== Mode.CommandList && this.settings.preserveQuickSwitcherLastInput);
+
+    if (shouldPreserveInput && lastInputText) {
+      inputEl.value = lastInputText;
+      const selectionStart = commandString?.length ?? 0;
+      inputEl.setSelectionRange(selectionStart, inputEl.value.length);
+    } else if (commandString) {
+      inputEl.value = commandString;
+    }
   }
 
   updateSuggestions(
@@ -206,7 +195,7 @@ export class ModeHandler implements ModeDispatcher {
     this._inputInfo = inputInfo;
 
     const { mode } = inputInfo;
-    lastInputInfoByMode[mode] = inputInfo;
+    this.previousInputHistory[mode] = inputInfo;
 
     this.updatedKeymapForMode(inputInfo, chooser, modal, exKeymap, settings, activeLeaf);
     this.toggleMobileCreateFileButton(modal, mode, settings);

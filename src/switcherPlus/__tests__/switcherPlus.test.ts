@@ -131,8 +131,7 @@ describe('switcherPlus', () => {
     });
 
     test('openInMode() should forward to ModeHandler and  call super.Open()', () => {
-      const opts = mock<SessionOpts>();
-      const mode = Mode.EditorList;
+      const opts = mock<SessionOpts>({ mode: Mode.EditorList });
       const setSessionOpenModeSpy = jest.spyOn(
         ModeHandler.prototype,
         'setSessionOpenMode',
@@ -142,9 +141,9 @@ describe('switcherPlus', () => {
         .spyOn(MockSystemSwitcherModal.prototype, 'open')
         .mockReturnValueOnce();
 
-      sut.openInMode(mode, opts);
+      sut.openInMode(opts);
 
-      expect(setSessionOpenModeSpy).toHaveBeenCalledWith(mode, mockChooser, opts);
+      expect(setSessionOpenModeSpy).toHaveBeenCalledWith(mockChooser, opts);
       expect(superOpenSpy).toHaveBeenCalled();
 
       setSessionOpenModeSpy.mockReset();
@@ -181,7 +180,7 @@ describe('switcherPlus', () => {
 
     it('should forward to ModeHandler to get suggestions', () => {
       const insertCmdStringSpy = jest
-        .spyOn(ModeHandler.prototype, 'insertSessionOpenModeOrLastInputString')
+        .spyOn(ModeHandler.prototype, 'setInitialInputForSession')
         .mockReturnValueOnce();
 
       const mhUpdateSuggestionsSpy = jest
@@ -215,7 +214,7 @@ describe('switcherPlus', () => {
     it('should forward to builtin system switcher if not handled by Modehandler', () => {
       const insertCmdStringSpy = jest.spyOn(
         ModeHandler.prototype,
-        'insertSessionOpenModeOrLastInputString',
+        'setInitialInputForSession',
       );
 
       const mhUpdateSuggestionsSpy = jest

@@ -20,6 +20,11 @@ import type { PaneType, SplitDirection, SuggestModal } from 'obsidian';
 import { PickKeys, WritableKeys } from 'ts-essentials';
 import { AllCanvasNodeData } from 'obsidian/canvas';
 
+export type SessionOpts = {
+  mode?: Mode;
+  useActiveEditorAsSource?: boolean;
+};
+
 // Pick from T the keys that are writable and whose value is of type K
 export type WritableKeysWithValueOfType<T, K> = PickKeys<Pick<T, WritableKeys<T>>, K>;
 
@@ -107,13 +112,13 @@ export declare class SystemSwitcher extends SuggestModal<AnySuggestion> {
 
 export interface SwitcherPlus extends SystemSwitcher {
   get exMode(): ModeDispatcher;
-  openInMode(mode: Mode, sessionOpts?: SessionOpts): void;
+  openInMode(sessionOpts: SessionOpts): void;
 }
 
 export interface ModeDispatcher {
   onOpen(): void;
   onClose(): void;
-  insertSessionOpenModeOrLastInputString(inputEl: HTMLInputElement): void;
+  setInitialInputForSession(inputEl: HTMLInputElement): void;
   /**
    * If the underlying InputInfo contains a version of the input string that has
    * been stripped of the custom mode escape char, it returns that. Otherwise, it return
@@ -166,11 +171,7 @@ export interface ModeDispatcher {
     },
   ): void;
 
-  setSessionOpenMode(
-    mode: Mode,
-    chooser: Chooser<AnySuggestion>,
-    SessionOpts?: SessionOpts,
-  ): void;
+  setSessionOpenMode(chooser: Chooser<AnySuggestion>, SessionOpts: SessionOpts): void;
 
   /**
    * Returns relevant InputInfo properties to be used for triggering fulltext search.
@@ -655,8 +656,3 @@ export interface SettingsData {
    */
   saveWorkspaceAndSwitchKeys: Hotkey;
 }
-
-export type SessionOpts = {
-  openModeString?: string;
-  useActiveEditorAsSource?: boolean;
-};

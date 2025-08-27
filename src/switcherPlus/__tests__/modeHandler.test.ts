@@ -334,146 +334,163 @@ describe('modeHandler', () => {
     });
   });
 
-  describe('Starting sessions with explicit command string', () => {
-    let commandStringSpy: jest.SpyInstance;
+  describe('Restoring previous session input', () => {
+    const mockKeymap = mock<SwitcherPlusKeymap>();
+    const mockChooser = mock<Chooser<AnySuggestion>>();
+    const mockInputEl = mock<HTMLInputElement>();
+    let mockHistory: Record<Mode, InputInfo>;
     let sut: ModeHandler;
+    let getSuggestionsSpy: jest.SpyInstance;
+    let historySpy: jest.SpyInstance;
 
-    beforeAll(() => {
-      sut = new ModeHandler(mockApp, mockSettings, null);
+    beforeEach(() => {
+      sut = new ModeHandler(mockApp, mockSettings, mockKeymap);
+      mockHistory = {} as Record<Mode, InputInfo>;
+      historySpy = jest
+        .spyOn(sut, 'previousInputHistory', 'get')
+        .mockReturnValue(mockHistory);
+
+      mockClear(mockInputEl);
+
+      // Prevent getSuggestions from running its complex logic
+      getSuggestionsSpy = jest
+        .spyOn(ModeHandler.prototype, 'getSuggestions')
+        .mockReturnValue();
     });
 
-    describe('setSessionOpenMode', () => {
-      it('should save the command string for any Ex modes', () => {
-        commandStringSpy = jest
-          .spyOn(EditorHandler.prototype, 'getCommandString')
-          .mockReturnValueOnce(editorTrigger);
-
-        sut.setSessionOpenMode(Mode.EditorList, null);
-
-        expect(commandStringSpy).toHaveBeenCalled();
-
-        commandStringSpy.mockRestore();
-      });
-
-      test.each(modeHandlingData)(
-        '$title: should not save the command string for Ex mode: $mode',
-        ({ handlerPrototype }) => {
-          const commandStringSpy = jest.spyOn(handlerPrototype, 'getCommandString');
-
-          sut.setSessionOpenMode(Mode.Standard, null);
-
-          expect(commandStringSpy).not.toHaveBeenCalled();
-
-          commandStringSpy.mockRestore();
-        },
-      );
+    afterEach(() => {
+      getSuggestionsSpy.mockRestore();
+      historySpy.mockRestore();
     });
 
-    describe('insertSessionOpenModeOrLastInputString', () => {
-      const mockInputEl = mock<HTMLInputElement>();
-
-      it('should insert the command string into the input element', () => {
-        mockInputEl.value = '';
-        sut.setSessionOpenMode(Mode.EditorList, null);
-
-        sut.insertSessionOpenModeOrLastInputString(mockInputEl);
-
-        expect(mockInputEl).toHaveProperty('value', editorTrigger);
-      });
-
-      it('should do nothing when sessionOpenModeString is falsy', () => {
-        mockInputEl.value = '';
-        sut.setSessionOpenMode(Mode.Standard, null);
-
-        sut.insertSessionOpenModeOrLastInputString(mockInputEl);
-
-        expect(mockInputEl).toHaveProperty('value', '');
-      });
+    it('should do nothing if a session has not been started in a specific mode', () => {
+      mockInputEl.value = '';
+      sut.setInitialInputForSession(mockInputEl);
+      expect(mockInputEl.value).toBe('');
     });
-    describe('insertSessionOpenModeOrLastInputString should restore last text', () => {
-      const mockKeymap = mock<SwitcherPlusKeymap>();
-      const mockChooser = mock<Chooser<AnySuggestion>>();
-      const mockInputEl = mock<HTMLInputElement>();
 
-      let getSuggestionSpy: jest.SpyInstance;
-      beforeAll(() => {
-        sut = new ModeHandler(mockApp, mockSettings, mockKeymap);
-        getSuggestionSpy = jest
-          .spyOn(ModeHandler.prototype, 'getSuggestions')
-          .mockReturnValue();
-      });
-      afterAll(() => {
-        getSuggestionSpy.mockRestore();
-      });
-      it('should restore the command string into the input element', () => {
+    it('should insert the command string for the mode if no previous input is preserved', () => {
+      mockSettings.preserveQuickSwitcherLastInput = false;
+      sut.setSessionOpenMode(mockChooser, { mode: Mode.EditorList });
+
+      sut.setInitialInputForSession(mockInputEl);
+
+      expect(mockInputEl.value).toBe(editorTrigger);
+    });
+
+    it('should do nothing for standard mode if no previous input is preserved', () => {
+      mockInputEl.value = '';
+      mockSettings.preserveQuickSwitcherLastInput = false;
+      sut.setSessionOpenMode(mockChooser, { mode: Mode.Standard });
+
+      sut.setInitialInputForSession(mockInputEl);
+
+      expect(mockInputEl.value).toBe('');
+    });
+
+    describe('when preserving input is enabled', () => {
+      it('should restore previous input for CommandList mode', () => {
         mockSettings.preserveCommandPaletteLastInput = true;
+        const previousInput = `${commandTrigger} some command`;
 
-        // save input
-        const expectToRestore = `${commandTrigger} hello`;
-        sut.updateSuggestions(expectToRestore, mockChooser, null);
+        // Simulate a previous session
+        sut.updateSuggestions(previousInput, mockChooser, null);
 
-        mockInputEl.value = '';
-        sut.setSessionOpenMode(Mode.CommandList, null);
-        sut.insertSessionOpenModeOrLastInputString(mockInputEl);
+        // Start a new session
+        sut.setSessionOpenMode(mockChooser, { mode: Mode.CommandList });
+        sut.setInitialInputForSession(mockInputEl);
 
-        expect(mockInputEl).toHaveProperty('value', expectToRestore);
-        // will auto select command text
-        // this make it easy to delete whole text
+        expect(mockInputEl.value).toBe(previousInput);
         expect(mockInputEl.setSelectionRange).toHaveBeenCalledWith(
           commandTrigger.length,
-          expectToRestore.length,
+          previousInput.length,
         );
 
-        // if we open another mode, it wouldn't restore last input
-        mockInputEl.value = '';
-        sut.setSessionOpenMode(Mode.SymbolList, null);
-        sut.insertSessionOpenModeOrLastInputString(mockInputEl);
-
-        expect(mockInputEl).toHaveProperty('value', symbolTrigger);
-
         mockSettings.preserveCommandPaletteLastInput = false;
       });
 
-      it("shouldn't restore the command string into the input element without config", () => {
-        mockSettings.preserveCommandPaletteLastInput = false;
-
-        // save first input
-        const firstText = `${commandTrigger} hello`;
-        sut.updateSuggestions(firstText, mockChooser, null);
-
-        mockInputEl.value = '';
-        sut.setSessionOpenMode(Mode.CommandList, null);
-        sut.insertSessionOpenModeOrLastInputString(mockInputEl);
-
-        expect(mockInputEl).toHaveProperty('value', commandTrigger);
-      });
-
-      it('should restore the quicker switcher string into the input element', () => {
-        mockSettings.preserveCommandPaletteLastInput = false;
+      it('should restore previous input for other modes (e.g., EditorList)', () => {
         mockSettings.preserveQuickSwitcherLastInput = true;
+        const previousInput = `${editorTrigger} some file`;
 
-        // will not save, because `preserveCommandPaletteLastInput` is false.
-        sut.updateSuggestions(`${commandTrigger} any text`, mockChooser, null);
+        // Simulate a previous session
+        sut.updateSuggestions(previousInput, mockChooser, null);
 
-        mockInputEl.value = '';
-        sut.setSessionOpenMode(Mode.CommandList, null);
-        sut.insertSessionOpenModeOrLastInputString(mockInputEl);
+        // Start a new session
+        sut.setSessionOpenMode(mockChooser, { mode: Mode.EditorList });
+        sut.setInitialInputForSession(mockInputEl);
 
-        // will not save command last input if the configuration is falsy.
-        expect(mockInputEl).toHaveProperty('value', commandTrigger);
-
-        // save input
-        const expectToRestore = `${editorTrigger} hello`;
-        sut.updateSuggestions(expectToRestore, mockChooser, null);
-
-        mockInputEl.value = '';
-        sut.setSessionOpenMode(Mode.EditorList, null);
-
-        sut.insertSessionOpenModeOrLastInputString(mockInputEl);
-        expect(mockInputEl).toHaveProperty('value', expectToRestore);
+        expect(mockInputEl.value).toBe(previousInput);
+        expect(mockInputEl.setSelectionRange).toHaveBeenCalledWith(
+          editorTrigger.length,
+          previousInput.length,
+        );
 
         mockSettings.preserveQuickSwitcherLastInput = false;
       });
+
+      it('should not restore input from a different mode', () => {
+        mockSettings.preserveQuickSwitcherLastInput = true;
+        const previousInput = `${editorTrigger} some file`;
+
+        // Simulate a previous session in EditorList mode
+        sut.updateSuggestions(previousInput, mockChooser, null);
+
+        // Start a new session in a different mode (e.g. HeadingsList)
+        sut.setSessionOpenMode(mockChooser, { mode: Mode.HeadingsList });
+        sut.setInitialInputForSession(mockInputEl);
+
+        // It should just insert the trigger for HeadingsList, not the input from EditorList
+        expect(mockInputEl.value).toBe(headingsTrigger);
+
+        mockSettings.preserveQuickSwitcherLastInput = false;
+      });
+    });
+
+    describe('when preserving input is disabled', () => {
+      it('should not restore previous input for CommandList mode', () => {
+        mockSettings.preserveCommandPaletteLastInput = false;
+        const previousInput = `${commandTrigger} some command`;
+
+        // Simulate a previous session
+        sut.updateSuggestions(previousInput, mockChooser, null);
+
+        // Start a new session
+        sut.setSessionOpenMode(mockChooser, { mode: Mode.CommandList });
+        sut.setInitialInputForSession(mockInputEl);
+
+        // Should only have the trigger, not the full previous input
+        expect(mockInputEl.value).toBe(commandTrigger);
+      });
+
+      it('should not restore previous input for other modes', () => {
+        mockSettings.preserveQuickSwitcherLastInput = false;
+        const previousInput = `${editorTrigger} some file`;
+
+        // Simulate a previous session
+        sut.updateSuggestions(previousInput, mockChooser, null);
+
+        // Start a new session
+        sut.setSessionOpenMode(mockChooser, { mode: Mode.EditorList });
+        sut.setInitialInputForSession(mockInputEl);
+
+        // Should only have the trigger, not the full previous input
+        expect(mockInputEl.value).toBe(editorTrigger);
+      });
+    });
+
+    it('should only populate input on the first call per session', () => {
+      mockSettings.preserveQuickSwitcherLastInput = false;
+      sut.setSessionOpenMode(mockChooser, { mode: Mode.EditorList });
+
+      // First call
+      sut.setInitialInputForSession(mockInputEl);
+      expect(mockInputEl.value).toBe(editorTrigger);
+
+      // Second call
+      mockInputEl.value = 'user typed something';
+      sut.setInitialInputForSession(mockInputEl);
+      expect(mockInputEl.value).toBe('user typed something'); // should not change
     });
   });
 

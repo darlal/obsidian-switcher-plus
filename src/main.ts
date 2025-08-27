@@ -175,7 +175,8 @@ export default class SwitcherPlusPlugin extends Plugin {
         return false;
       }
 
-      modal.openInMode(mode, sessionOpts);
+      const opts: SessionOpts = Object.assign({ mode }, sessionOpts);
+      modal.openInMode(opts);
     }
 
     return true;
