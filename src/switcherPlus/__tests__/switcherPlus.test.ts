@@ -156,7 +156,7 @@ describe('switcherPlus', () => {
 
       const superOnOpenSpy = jest.spyOn(MockSystemSwitcherModal.prototype, 'onOpen');
 
-      sut.onOpen();
+      void sut.onOpen();
 
       expect(mhOnOpenSpy).toHaveBeenCalled();
       expect(superOnOpenSpy).toHaveBeenCalled();

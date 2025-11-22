@@ -488,7 +488,6 @@ describe('SwitcherPlusSettings', () => {
     settings['matchPriorityAdjustments'] = defaults['matchPriorityAdjustments'];
     settings['quickFilters'] = defaults['quickFilters'];
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { enabledSymbolTypes, ...prunedSettings } = settings;
 
     mockPlugin.loadData.mockResolvedValueOnce(settings);
@@ -649,14 +648,17 @@ describe('SwitcherPlusSettings', () => {
     const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
     const errorMsg = 'saveData() unit test mock error';
-    const rejectedPromise = Promise.reject(errorMsg);
+    const rejectedPromise = Promise.reject(new Error(errorMsg));
     mockPlugin.saveData.mockReturnValueOnce(rejectedPromise);
 
     sut.save();
 
     await expect(rejectedPromise).rejects.toBeTruthy();
     expect(mockPlugin.saveData).toHaveBeenCalled();
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
+    expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ message: errorMsg }),
+    );
 
     consoleLogSpy.mockRestore();
   });

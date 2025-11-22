@@ -247,9 +247,11 @@ describe('generalSettingsTabSection', () => {
       const saveSpy = jest.spyOn(config, 'save');
 
       let focusoutFn: EventListener;
-      mockInputEl.addEventListener.mockImplementation((evtStr, listener) => {
-        focusoutFn = listener as EventListener;
-      });
+      mockInputEl.addEventListener.mockImplementation(
+        (evtStr: string, listener: EventListenerOrEventListenerObject) => {
+          focusoutFn = listener as EventListener;
+        },
+      );
 
       config.enabledRibbonCommands = []; // start with no values set
       mockTextComp.getValue.mockReturnValue(enabledCommands);
@@ -272,9 +274,11 @@ describe('generalSettingsTabSection', () => {
       const saveSpy = jest.spyOn(config, 'save');
 
       let focusoutFn: EventListener;
-      mockInputEl.addEventListener.mockImplementation((evtStr, listener) => {
-        focusoutFn = listener as EventListener;
-      });
+      mockInputEl.addEventListener.mockImplementation(
+        (evtStr: string, listener: EventListenerOrEventListenerObject) => {
+          focusoutFn = listener as EventListener;
+        },
+      );
 
       config.enabledRibbonCommands = initialCommands;
       mockTextComp.getValue.mockReturnValue(enabledCommands);
@@ -451,7 +455,7 @@ describe('generalSettingsTabSection', () => {
 
     it('should log error to the console when setting cannot be saved', async () => {
       const errorMsg = 'showMatchPriorityAdjustments Unit test error';
-      const rejectedPromise = Promise.reject(errorMsg);
+      const rejectedPromise = Promise.reject(new Error(errorMsg));
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
       addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
@@ -471,7 +475,10 @@ describe('generalSettingsTabSection', () => {
 
       await expect(rejectedPromise).rejects.toBeTruthy();
       expect(saveSettingsSpy).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ message: errorMsg }),
+      );
 
       addToggleSettingSpy.mockReset();
       consoleLogSpy.mockRestore();

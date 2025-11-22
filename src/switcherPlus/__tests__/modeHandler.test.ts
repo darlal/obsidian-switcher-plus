@@ -180,7 +180,7 @@ describe('modeHandler', () => {
 
     mockVault = mock<Vault>();
     mockWorkspace = mock<Workspace>();
-    mockWorkspace.iterateAllLeaves.mockImplementation();
+    mockWorkspace.iterateAllLeaves.mockImplementation(() => {});
 
     mockApp = mock<App>({
       internalPlugins: mockInternalPlugins,
@@ -484,7 +484,7 @@ describe('modeHandler', () => {
     const mockEvt = mock<MouseEvent>();
     const mockParentEl = mock<HTMLElement>();
     const mockChooser = mock<Chooser<AnySuggestion>>();
-    const mockSetSuggestion = mockChooser.setSuggestions.mockImplementation();
+    const mockSetSuggestion = mockChooser.setSuggestions.mockImplementation(() => {});
     let sut: ModeHandler;
 
     beforeAll(() => {
@@ -517,7 +517,7 @@ describe('modeHandler', () => {
 
     it('should log errors from async handlers to the console', async () => {
       const errorMsg = 'managing suggestions Unit test error';
-      const rejectedPromise = Promise.reject(errorMsg);
+      const rejectedPromise = Promise.reject(new Error(errorMsg));
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
       // Spy on SymbolHandler for the test here because it returns a promise.
@@ -528,7 +528,10 @@ describe('modeHandler', () => {
       sut.updateSuggestions(symbolTrigger, mockChooser, null);
 
       await expect(rejectedPromise).rejects.toBeTruthy();
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ message: errorMsg }),
+      );
 
       getSuggestionSpy.mockRestore();
       consoleLogSpy.mockRestore();
@@ -573,7 +576,7 @@ describe('modeHandler', () => {
         .spyOn(SymbolHandler.prototype, 'getSuggestions')
         .mockReturnValue(getSuggestionsPromise);
 
-      mockSetSuggestion.calledWith(expectedSuggs).mockImplementationOnce(() => {
+      mockSetSuggestion.mockImplementationOnce(() => {
         mockChooser.values = expectedSuggs;
         mockChooser.suggestions = expectedSuggEls;
         mockChooser.selectedItem = 0;
@@ -1238,7 +1241,7 @@ describe('modeHandler', () => {
 
     it('should log errors to the console of the destination file fails to open in a WorkspaceLeaf', async () => {
       const errorMsg = '.openSuggestionInBackground() fail open unit test error';
-      const rejectedPromise = Promise.reject(errorMsg);
+      const rejectedPromise = Promise.reject(new Error(errorMsg));
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
       const openFileInLeafSpy = jest
@@ -1247,8 +1250,13 @@ describe('modeHandler', () => {
 
       sut.openSuggestionInBackground(sugg, 'tab', 'vertical');
 
-      await expect(rejectedPromise).rejects.toBe(errorMsg);
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
+      await expect(rejectedPromise).rejects.toEqual(
+        expect.objectContaining({ message: errorMsg }),
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ message: errorMsg }),
+      );
 
       openFileInLeafSpy.mockRestore();
       consoleLogSpy.mockRestore();

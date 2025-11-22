@@ -76,7 +76,7 @@ export function makeSectionCache(
   type: 'yaml' | 'heading' | 'paragraph' | 'callout',
   startLoc?: Loc,
   endLoc?: Loc,
-  id?: string | undefined,
+  id?: string,
 ): SectionCache {
   const position = makePos(startLoc, endLoc);
 

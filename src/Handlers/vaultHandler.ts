@@ -17,6 +17,7 @@ import {
 import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import { Handler } from './handler';
 import { Searcher } from 'src/search';
+import { IpcRenderer } from 'electron';
 
 // 12/8/23: Format of Record is vaultId as key with and object payload
 export type VaultData = Record<string, { path: string; ts: number; open?: boolean }>;
@@ -167,19 +168,36 @@ export class VaultHandler extends Handler<VaultSuggestion> {
   }
 
   /**
+   * Gets the Electron IPC renderer. Returns null if not on desktop or if an error occurs.
+   * This should only be called on Desktop Platforms.
+   *
+   * @returns {IpcRenderer | null}
+   */
+  private getIpcRenderer(): IpcRenderer | null {
+    if (!Platform.isDesktop) {
+      return null;
+    }
+
+    try {
+      return (window.require('electron') as { ipcRenderer: IpcRenderer }).ipcRenderer;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Instructs Obsidian to open the vault at vaultPath. This should only be called
    * Desktop Platforms.
    *
    * @param {string} vaultPath
    */
   openVaultOnDesktop(vaultPath: string): void {
-    if (!Platform.isDesktop) {
+    const ipcRenderer = this.getIpcRenderer();
+    if (!ipcRenderer) {
       return;
     }
 
     try {
-      const ipcRenderer = window.require('electron').ipcRenderer;
-
       // 12/8/23: "vault-open" is the Obsidian defined channel for opening a vault
       ipcRenderer.sendSync(
         'vault-open',
@@ -200,9 +218,9 @@ export class VaultHandler extends Handler<VaultSuggestion> {
   getVaultListDataOnDesktop(): VaultData {
     let data: VaultData = null;
 
-    if (Platform.isDesktop) {
+    const ipcRenderer = this.getIpcRenderer();
+    if (ipcRenderer) {
       try {
-        const ipcRenderer = window.require('electron').ipcRenderer;
         data = ipcRenderer.sendSync('vault-list') as VaultData;
       } catch (error) {
         console.log('Switcher++: error retrieving list of available vaults. ', error);

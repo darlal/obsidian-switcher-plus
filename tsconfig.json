@@ -14,10 +14,12 @@
       "./src/types",
       "./node_modules/@types"
     ],
+    "outDir": "./dist/darlal-switcher-plus/tsc-output",
+    "noEmit": true,
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
-    "target": "es2020",
+    "target": "ES2023",
     "allowJs": true,
     "noImplicitAny": true,
     "strictBindCallApply": true,
@@ -25,9 +27,8 @@
     "moduleResolution": "node",
     "importHelpers": true,
     "lib": [
-      "dom",
-      "scripthost",
-      "es2020"
+      "ES2023",
+      "DOM"
     ]
   },
   "include": [

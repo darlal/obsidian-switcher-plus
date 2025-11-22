@@ -135,9 +135,11 @@ describe('relatedItemsSettingsTabSection', () => {
       const saveSpy = jest.spyOn(config, 'save');
 
       let focusoutFn: EventListener;
-      mockInputEl.addEventListener.mockImplementation((evtStr, listener) => {
-        focusoutFn = listener as EventListener;
-      });
+      mockInputEl.addEventListener.mockImplementation(
+        (evtStr: string, listener: EventListenerOrEventListenerObject) => {
+          focusoutFn = listener as EventListener;
+        },
+      );
 
       config.enabledRelatedItems = []; // start with no values set
       mockTextComp.getValue.mockReturnValue(enabledTypes);
@@ -160,9 +162,11 @@ describe('relatedItemsSettingsTabSection', () => {
       const saveSpy = jest.spyOn(config, 'save');
 
       let focusoutFn: EventListener;
-      mockInputEl.addEventListener.mockImplementation((evtStr, listener) => {
-        focusoutFn = listener as EventListener;
-      });
+      mockInputEl.addEventListener.mockImplementation(
+        (evtStr: string, listener: EventListenerOrEventListenerObject) => {
+          focusoutFn = listener as EventListener;
+        },
+      );
 
       config.enabledRelatedItems = initialTypes;
       mockTextComp.getValue.mockReturnValue(enabledTypes);

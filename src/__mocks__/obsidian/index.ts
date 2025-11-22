@@ -82,11 +82,31 @@ const mockNormalizePath = mockFn<typeof normalizePath>().mockImplementation(
   (path) => path,
 );
 
-const mockSortSearchResults = mockFn<typeof sortSearchResults>().mockImplementation();
-const mockRenderResults = mockFn<typeof renderResults>().mockImplementation();
-const mockDebounce = mockFn<typeof debounce>().mockImplementation();
-const mockSetIcon = mockFn<typeof setIcon>().mockImplementation();
-const mockParseLinktext = mockFn<typeof parseLinktext>().mockImplementation();
+const mockRenderResults = mockFn<typeof renderResults>().mockImplementation(() => {});
+const mockSetIcon = mockFn<typeof setIcon>().mockImplementation(() => {});
+const mockSortSearchResults = mockFn<typeof sortSearchResults>().mockImplementation(
+  () => {},
+);
+
+const mockDebounce = mockFn<typeof debounce>().mockImplementation(
+  <T extends unknown[], V>(_callback: (...args: T) => V) => {
+    const debouncer = Object.assign((..._args: T) => debouncer, {
+      cancel() {
+        return debouncer;
+      },
+      run() {
+        return undefined as V | void;
+      },
+    });
+    return debouncer;
+  },
+);
+
+const mockParseLinktext = mockFn<typeof parseLinktext>().mockImplementation(() => ({
+  path: '',
+  subpath: '',
+}));
+
 const mockStripHeadingForLink = mockFn<typeof stripHeadingForLink>().mockImplementation(
   (heading) => heading,
 );

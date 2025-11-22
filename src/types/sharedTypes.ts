@@ -26,7 +26,10 @@ export type SessionOpts = {
 };
 
 // Pick from T the keys that are writable and whose value is of type K
-export type WritableKeysWithValueOfType<T, K> = PickKeys<Pick<T, WritableKeys<T>>, K>;
+export type WritableKeysWithValueOfType<T extends object, K> = PickKeys<
+  Pick<T, WritableKeys<T>>,
+  K
+>;
 
 export enum PathDisplayFormat {
   None,

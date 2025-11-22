@@ -59,7 +59,7 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
       this.exMode.onOpen();
 
       // This call hard codes this.inputEl to an empty string, and calls updateSuggestions()
-      super.onOpen();
+      void super.onOpen();
     }
 
     onClose() {

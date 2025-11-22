@@ -202,7 +202,7 @@ describe('headingsSettingsTabSection', () => {
 
     it('should log error to the console when setting cannot be saved', async () => {
       const errorMsg = 'showHeadingOptions Unit test error';
-      const rejectedPromise = Promise.reject(errorMsg);
+      const rejectedPromise = Promise.reject(new Error(errorMsg));
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
       addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
@@ -222,7 +222,10 @@ describe('headingsSettingsTabSection', () => {
 
       await expect(rejectedPromise).rejects.toBeTruthy();
       expect(saveSettingsSpy).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ message: errorMsg }),
+      );
 
       addToggleSettingSpy.mockReset();
       consoleLogSpy.mockRestore();
@@ -307,9 +310,11 @@ describe('headingsSettingsTabSection', () => {
       const saveSpy = jest.spyOn(config, 'save');
 
       let focusoutFn: EventListener;
-      mockInputEl.addEventListener.mockImplementation((evtStr, listener) => {
-        focusoutFn = listener as EventListener;
-      });
+      mockInputEl.addEventListener.mockImplementation(
+        (evtStr: string, listener: EventListenerOrEventListenerObject) => {
+          focusoutFn = listener as EventListener;
+        },
+      );
 
       config.fileExtAllowList = []; // start with no values set
       mockTextComp.getValue.mockReturnValue(allowList);
@@ -373,9 +378,11 @@ describe('headingsSettingsTabSection', () => {
       const saveSpy = jest.spyOn(config, 'save');
 
       let focusoutFn: EventListener;
-      mockInputEl.addEventListener.mockImplementation((evtStr, listener) => {
-        focusoutFn = listener as EventListener;
-      });
+      mockInputEl.addEventListener.mockImplementation(
+        (evtStr: string, listener: EventListenerOrEventListenerObject) => {
+          focusoutFn = listener as EventListener;
+        },
+      );
 
       config.excludeFolders = []; // start with no values set
       mockTextComp.getValue.mockReturnValue(excludedPaths);

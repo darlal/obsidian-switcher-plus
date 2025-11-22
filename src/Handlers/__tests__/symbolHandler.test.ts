@@ -60,13 +60,7 @@ import {
   getCachedMetadata,
   makeInputInfo,
 } from '@fixtures';
-import {
-  CanvasData,
-  CanvasFileData,
-  CanvasGroupData,
-  CanvasLinkData,
-  CanvasTextData,
-} from 'obsidian/canvas';
+import { CanvasData, CanvasFileData, CanvasGroupData } from 'obsidian/canvas';
 import { mock, MockProxy, mockClear, mockFn } from 'jest-mock-extended';
 import { Chance } from 'chance';
 import { Searcher } from 'src/search';
@@ -927,7 +921,7 @@ describe('symbolHandler', () => {
     it('should log any navigation errors to the console', async () => {
       const canvasSugg = makeSymbolSuggestion(null, SymbolType.CanvasNode, new TFile());
       const errorMsg = 'SymbolHandler onChooseSuggestion Unit test error';
-      const rejectedPromise = Promise.reject(errorMsg);
+      const rejectedPromise = Promise.reject(new Error(errorMsg));
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
       sut.inputInfo = makeInputInfo({
@@ -940,7 +934,10 @@ describe('symbolHandler', () => {
       sut.onChooseSuggestion(canvasSugg, null);
 
       await expect(rejectedPromise).rejects.toBeTruthy();
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ message: errorMsg }),
+      );
 
       navigateToLeafOrOpenFileSpy.mockReset();
       consoleLogSpy.mockRestore();
@@ -1096,7 +1093,7 @@ describe('symbolHandler', () => {
 
     it('should return .file for CanvasFileData', () => {
       const node = canvasNodes.find((v) => v.type === 'file');
-      const expectedStr = (node as CanvasFileData).file;
+      const expectedStr = node.file;
 
       const result = SymbolHandler.getSuggestionTextForCanvasNode(node);
       expect(result).toBe(expectedStr);
@@ -1104,7 +1101,7 @@ describe('symbolHandler', () => {
 
     it('should return .text for CanvasTextData', () => {
       const node = canvasNodes.find((v) => v.type === 'text');
-      const expectedStr = (node as CanvasTextData).text;
+      const expectedStr = node.text;
 
       const result = SymbolHandler.getSuggestionTextForCanvasNode(node);
       expect(result).toBe(expectedStr);
@@ -1112,7 +1109,7 @@ describe('symbolHandler', () => {
 
     it('should return .url for CanvasLinkData', () => {
       const node = canvasNodes.find((v) => v.type === 'link');
-      const expectedStr = (node as CanvasLinkData).url;
+      const expectedStr = node.url;
 
       const result = SymbolHandler.getSuggestionTextForCanvasNode(node);
       expect(result).toBe(expectedStr);
@@ -1120,7 +1117,7 @@ describe('symbolHandler', () => {
 
     it('should return .label for CanvasGroupData', () => {
       const node = canvasNodes.find((v) => v.type === 'group');
-      const expectedStr = (node as CanvasGroupData).label;
+      const expectedStr = node.label;
 
       const result = SymbolHandler.getSuggestionTextForCanvasNode(node);
       expect(result).toBe(expectedStr);

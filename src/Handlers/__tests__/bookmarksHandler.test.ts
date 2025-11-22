@@ -309,7 +309,7 @@ describe('bookmarksHandler', () => {
     it('should contain a file property for bookmarks that point to a file', () => {
       const leafBookmark = expectedBookmarkedItems.find((v) =>
         BookmarksHandler.isBookmarksPluginFileItem(v),
-      ) as BookmarksPluginFileItem;
+      );
       mockPluginInstance.items = [leafBookmark];
 
       const tFile = new TFile();

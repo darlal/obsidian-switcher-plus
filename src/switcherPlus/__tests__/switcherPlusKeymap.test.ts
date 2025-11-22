@@ -1729,13 +1729,16 @@ describe('SwitcherPlusKeymap', () => {
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
       const errorMsg = 'openDefaultApp unit test error';
-      const rejectedPromise = Promise.reject(errorMsg);
+      const rejectedPromise = Promise.reject(new Error(errorMsg));
       mockApp.openWithDefaultApp.mockReturnValueOnce(rejectedPromise);
 
       sut.openDefaultApp(null, null);
 
       await expect(rejectedPromise).rejects.toBeTruthy();
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ message: errorMsg }),
+      );
 
       consoleLogSpy.mockRestore();
     });

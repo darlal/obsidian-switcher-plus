@@ -303,7 +303,7 @@ describe('symbolSettingsTabSection', () => {
       const initialEnabledValue = false;
       const finalEnabledValue = true;
       const errorMsg = 'showEnableLinksToggle Unit test error';
-      const rejectedPromise = Promise.reject(errorMsg);
+      const rejectedPromise = Promise.reject(new Error(errorMsg));
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
       addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
@@ -324,7 +324,10 @@ describe('symbolSettingsTabSection', () => {
 
       await expect(rejectedPromise).rejects.toBeTruthy();
       expect(mockConfig.saveSettings).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ message: errorMsg }),
+      );
 
       addToggleSettingSpy.mockReset();
       consoleLogSpy.mockRestore();

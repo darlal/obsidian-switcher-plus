@@ -745,7 +745,7 @@ describe('Handler', () => {
   describe('navigateToLeafOrOpenFile', () => {
     it('should log errors to the console', async () => {
       const errorMsg = 'navigateToLeafOrOpenFile unit test error';
-      const rejectedPromise = Promise.reject(errorMsg);
+      const rejectedPromise = Promise.reject(new Error(errorMsg));
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
       const navigateToLeafOrOpenFileAsyncSpy = jest
@@ -755,7 +755,10 @@ describe('Handler', () => {
       sut.navigateToLeafOrOpenFile(null, null, errorMsg);
 
       await expect(rejectedPromise).rejects.toBeTruthy();
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ message: errorMsg }),
+      );
 
       navigateToLeafOrOpenFileAsyncSpy.mockRestore();
       consoleLogSpy.mockRestore();
@@ -1193,7 +1196,7 @@ describe('Handler', () => {
 
     test('renderMarkdownContentAsync should log errors to the console', async () => {
       const errorMsg = 'renderMarkdownContent unit test error';
-      const rejectedPromise = Promise.reject(errorMsg);
+      const rejectedPromise = Promise.reject(new Error(errorMsg));
       const content = chance.word();
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
@@ -1206,7 +1209,7 @@ describe('Handler', () => {
       await expect(rejectedPromise).rejects.toBeTruthy();
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.any(String),
-        errorMsg,
+        expect.objectContaining({ message: errorMsg }),
         `content: ${content}`,
       );
 
@@ -2222,7 +2225,7 @@ describe('Handler', () => {
     it('should log any errors to the console while trying to create a new file', async () => {
       const filename = chance.word();
       const errorMsg = 'createFile Unit test error';
-      const rejectedPromise = Promise.reject(errorMsg);
+      const rejectedPromise = Promise.reject(new Error(errorMsg));
       const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
 
       mockWorkspace.openLinkText.mockReturnValueOnce(rejectedPromise);
@@ -2230,7 +2233,10 @@ describe('Handler', () => {
       sut.createFile(filename, null);
 
       await expect(rejectedPromise).rejects.toBeTruthy();
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ message: errorMsg }),
+      );
       expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
         filename,
         '',

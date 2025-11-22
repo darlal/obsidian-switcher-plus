@@ -157,7 +157,6 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
       try {
         new RegExp(str);
       } catch (err) {
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         failedMsg += `<span class="qsp-warning">${str}</span><br/>${err}<br/><br/>`;
         isValid = false;
       }
