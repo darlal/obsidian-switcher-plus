@@ -421,7 +421,7 @@ export type NavigationKeysConfig = {
   prevKeys: Hotkey[];
 };
 
-export type TitleSource = 'Default' | 'H1';
+export type TitleSource = 'Default' | 'H1' | 'FrontMatter';
 export type MatchPriorityData = { value: number; label: string; desc?: string };
 
 export type MobileLauncherConfig = {
@@ -605,6 +605,7 @@ export interface SettingsData {
   removeDefaultTabBinding: boolean;
   navigationKeys: NavigationKeysConfig;
   preferredSourceForTitle: TitleSource;
+  frontmatterTitleProperty: string;
   closeWhenEmptyKeys: Hotkey[];
   /**
    * When in Command Mode this key combination launches the Obsidian built in dialog to

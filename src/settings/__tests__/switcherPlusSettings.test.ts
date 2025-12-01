@@ -132,6 +132,7 @@ function getDefaultSettingsData(): SettingsData {
       ],
     },
     preferredSourceForTitle: 'H1',
+    frontmatterTitleProperty: 'title',
     closeWhenEmptyKeys: [{ modifiers: null, key: 'Backspace' }],
     navigateToHotkeySelectorKeys: { modifiers: ['Ctrl', 'Shift'], key: 'h' },
     togglePinnedCommandKeys: { modifiers: ['Ctrl', 'Shift'], key: 'p' },
@@ -313,7 +314,8 @@ function getTransientSettingsData(): SettingsData {
         },
       ],
     },
-    preferredSourceForTitle: chance.pickone(['Default', 'H1']),
+    preferredSourceForTitle: chance.pickone(['Default', 'H1', 'FrontMatter']),
+    frontmatterTitleProperty: chance.word(),
     closeWhenEmptyKeys: [
       {
         modifiers: chance.pickset(['Alt', 'Ctrl'], 1),

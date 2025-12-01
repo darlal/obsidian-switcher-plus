@@ -10,6 +10,7 @@ import { Mode, PathDisplayFormat } from 'src/types';
 
 describe('generalSettingsTabSection', () => {
   type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
+  type addDropdownSettingArgs = Parameters<SettingsTabSection['addDropdownSetting']>;
   let mockApp: MockProxy<App>;
   let mockPluginSettingTab: MockProxy<SwitcherPlusSettingTab>;
   let mockContainerEl: MockProxy<HTMLElement>;
@@ -684,6 +685,100 @@ describe('generalSettingsTabSection', () => {
       expect(insertConfig[settingKey]).toBe(finalValue);
 
       addToggleSettingSpy.mockReset();
+    });
+  });
+
+  describe('showPreferredSourceForTitle', () => {
+    let addDropdownSettingSpy: jest.SpyInstance;
+    let addTextSettingSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      addDropdownSettingSpy = jest.spyOn(
+        SettingsTabSection.prototype,
+        'addDropdownSetting',
+      );
+      addTextSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'addTextSetting');
+    });
+
+    afterAll(() => {
+      addDropdownSettingSpy.mockRestore();
+      addTextSettingSpy.mockRestore();
+    });
+
+    beforeEach(() => {
+      addDropdownSettingSpy.mockClear();
+      addTextSettingSpy.mockClear();
+    });
+
+    it('should render dropdown with all three title source options', () => {
+      sut.showPreferredSourceForTitle(mockContainerEl, config);
+
+      expect(addDropdownSettingSpy).toHaveBeenCalledWith(
+        mockContainerEl,
+        'Preferred suggestion title source',
+        expect.any(String),
+        config.preferredSourceForTitle,
+        expect.objectContaining({
+          Default: 'Default',
+          H1: 'First H₁ heading',
+          FrontMatter: 'Frontmatter property',
+        }),
+        'preferredSourceForTitle',
+        expect.any(Function),
+      );
+    });
+
+    it('should not render text input when preferredSourceForTitle is Default', () => {
+      config.preferredSourceForTitle = 'Default';
+
+      sut.showPreferredSourceForTitle(mockContainerEl, config);
+
+      expect(addDropdownSettingSpy).toHaveBeenCalled();
+      expect(addTextSettingSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not render text input when preferredSourceForTitle is H1', () => {
+      config.preferredSourceForTitle = 'H1';
+
+      sut.showPreferredSourceForTitle(mockContainerEl, config);
+
+      expect(addDropdownSettingSpy).toHaveBeenCalled();
+      expect(addTextSettingSpy).not.toHaveBeenCalled();
+    });
+
+    it('should render text input when preferredSourceForTitle is FrontMatter', () => {
+      config.preferredSourceForTitle = 'FrontMatter';
+
+      sut.showPreferredSourceForTitle(mockContainerEl, config);
+
+      expect(addDropdownSettingSpy).toHaveBeenCalled();
+      expect(addTextSettingSpy).toHaveBeenCalledWith(
+        mockContainerEl,
+        'Frontmatter property path',
+        expect.stringContaining('dot notation'),
+        config.frontmatterTitleProperty,
+        'frontmatterTitleProperty',
+        'title',
+      );
+    });
+
+    it('should refresh the settings page to show the new options when dropdown value changes', () => {
+      const displaySpy = jest.spyOn(mockPluginSettingTab, 'display');
+
+      sut.showPreferredSourceForTitle(mockContainerEl, config);
+
+      const dropdownArgs = addDropdownSettingSpy.mock.calls[0] as addDropdownSettingArgs;
+      const dropdownSettingOnChangeFn = dropdownArgs[6];
+      const saveSpy = jest.spyOn(config, 'save');
+
+      expect(dropdownSettingOnChangeFn).toBeDefined();
+      dropdownSettingOnChangeFn?.('FrontMatter', config);
+
+      expect(config.preferredSourceForTitle).toBe('FrontMatter');
+      expect(saveSpy).toHaveBeenCalled();
+      expect(displaySpy).toHaveBeenCalled();
+
+      saveSpy.mockRestore();
     });
   });
 });

@@ -135,6 +135,7 @@ export class SwitcherPlusSettings {
         ],
       },
       preferredSourceForTitle: 'H1',
+      frontmatterTitleProperty: 'title',
       closeWhenEmptyKeys: [{ modifiers: null, key: 'Backspace' }],
       navigateToHotkeySelectorKeys: { modifiers: ['Ctrl', 'Shift'], key: 'h' },
       togglePinnedCommandKeys: { modifiers: ['Ctrl', 'Shift'], key: 'p' },
@@ -699,6 +700,14 @@ export class SwitcherPlusSettings {
 
   set preferredSourceForTitle(value: TitleSource) {
     this.data.preferredSourceForTitle = value;
+  }
+
+  get frontmatterTitleProperty(): string {
+    return this.data.frontmatterTitleProperty;
+  }
+
+  set frontmatterTitleProperty(value: string) {
+    this.data.frontmatterTitleProperty = value;
   }
 
   get closeWhenEmptyKeys(): Hotkey[] {

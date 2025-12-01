@@ -22,6 +22,7 @@ import {
   FileView,
   SearchMatchPart,
   MarkdownRenderer,
+  FrontMatterCache,
 } from 'obsidian';
 import {
   defaultOpenViewState,
@@ -406,6 +407,164 @@ describe('Handler', () => {
 
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(mockFile);
       expect(result).toBe(mockH1);
+    });
+  });
+
+  describe('getFrontmatterProperty', () => {
+    it('should return null when frontmatter is null', () => {
+      const result = Handler.getFrontmatterProperty(null, 'title');
+
+      expect(result).toBe(null);
+    });
+
+    it('should return null when frontmatter is undefined', () => {
+      const result = Handler.getFrontmatterProperty(undefined, 'title');
+
+      expect(result).toBe(null);
+    });
+
+    it('should return null when property path is empty', () => {
+      const frontmatter = mock<FrontMatterCache>({ title: 'Test Title' });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, '');
+
+      expect(result).toBe(null);
+    });
+
+    it('should return null when property path is null', () => {
+      const frontmatter = mock<FrontMatterCache>({ title: 'Test Title' });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, null);
+
+      expect(result).toBe(null);
+    });
+
+    it('should extract a simple string property', () => {
+      const frontmatter = mock<FrontMatterCache>({ title: 'My Document Title' });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, 'title');
+
+      expect(result).toBe('My Document Title');
+    });
+
+    it('should extract a nested property using dot notation', () => {
+      const frontmatter = mock<FrontMatterCache>({
+        meta: {
+          display_name: 'Custom Display Name',
+        },
+      });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, 'meta.display_name');
+
+      expect(result).toBe('Custom Display Name');
+    });
+
+    it('should extract a deeply nested property', () => {
+      const frontmatter = mock<FrontMatterCache>({
+        level1: {
+          level2: {
+            level3: 'Deep Value',
+          },
+        },
+      });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, 'level1.level2.level3');
+
+      expect(result).toBe('Deep Value');
+    });
+
+    it('should return null when property does not exist', () => {
+      const frontmatter = mock<FrontMatterCache>({ title: 'Test' });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, 'nonexistent');
+
+      expect(result).toBe(null);
+    });
+
+    it('should return null when nested property path does not exist', () => {
+      const frontmatter = mock<FrontMatterCache>({
+        meta: {
+          author: 'John Doe',
+        },
+      });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, 'meta.nonexistent');
+
+      expect(result).toBe(null);
+    });
+
+    it('should trim whitespace from string values', () => {
+      const frontmatter = mock<FrontMatterCache>({ title: '  Padded Title  ' });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, 'title');
+
+      expect(result).toBe('Padded Title');
+    });
+
+    it('should return null for empty string after trimming', () => {
+      const frontmatter = mock<FrontMatterCache>({ title: '   ' });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, 'title');
+
+      expect(result).toBe(null);
+    });
+
+    it('should coerce number values to strings', () => {
+      const frontmatter = mock<FrontMatterCache>({ version: 42 });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, 'version');
+
+      expect(result).toBe('42');
+    });
+
+    it('should coerce boolean true to string', () => {
+      const frontmatter = mock<FrontMatterCache>({ published: true });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, 'published');
+
+      expect(result).toBe('true');
+    });
+
+    it('should coerce boolean false to string', () => {
+      const frontmatter = mock<FrontMatterCache>({ draft: false });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, 'draft');
+
+      expect(result).toBe('false');
+    });
+
+    it('should return null for array values', () => {
+      const frontmatter = mock<FrontMatterCache>({ tags: ['tag1', 'tag2'] });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, 'tags');
+
+      expect(result).toBe(null);
+    });
+
+    it('should return null for object values', () => {
+      const frontmatter = mock<FrontMatterCache>({
+        metadata: { author: 'John', date: '2023-01-01' },
+      });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, 'metadata');
+
+      expect(result).toBe(null);
+    });
+
+    it('should return null for null property values', () => {
+      const frontmatter = mock<FrontMatterCache>({ title: null });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, 'title');
+
+      expect(result).toBe(null);
+    });
+
+    it('should return null for undefined property values', () => {
+      const frontmatter = mock<FrontMatterCache>({ title: undefined });
+
+      const result = Handler.getFrontmatterProperty(frontmatter, 'title');
+
+      expect(result).toBe(null);
     });
   });
 

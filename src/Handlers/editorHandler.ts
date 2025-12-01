@@ -82,13 +82,19 @@ export class EditorHandler extends Handler<EditorSuggestion> {
   }
 
   getPreferredTitle(leaf: WorkspaceLeaf, titleSource: TitleSource): string {
-    return EditorHandler.getPreferredTitle(leaf, titleSource, this.app.metadataCache);
+    return EditorHandler.getPreferredTitle(
+      leaf,
+      titleSource,
+      this.app.metadataCache,
+      this.settings.frontmatterTitleProperty,
+    );
   }
 
   static getPreferredTitle(
     leaf: WorkspaceLeaf,
     titleSource: TitleSource,
     metadataCache: MetadataCache,
+    frontmatterProperty?: string,
   ): string {
     const file = getTFileFromLeaf(leaf);
     let text = leaf.getDisplayText();
@@ -98,6 +104,16 @@ export class EditorHandler extends Handler<EditorSuggestion> {
 
       if (h1) {
         text = text.replace(file.basename, h1.heading);
+      }
+    } else if (titleSource === 'FrontMatter' && file && frontmatterProperty) {
+      const frontmatter = metadataCache.getFileCache(file)?.frontmatter;
+      const customTitle = Handler.getFrontmatterProperty(
+        frontmatter,
+        frontmatterProperty,
+      );
+
+      if (customTitle) {
+        text = text.replace(file.basename, customTitle);
       }
     }
 

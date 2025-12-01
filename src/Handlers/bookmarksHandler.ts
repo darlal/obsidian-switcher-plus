@@ -116,15 +116,27 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
   ): string {
     let text = pluginInstance.getItemTitle(bookmark);
 
-    if (titleSource === 'H1' && file) {
-      const h1 = this.getFirstH1(file);
+    if (file) {
+      if (titleSource === 'H1') {
+        const h1 = this.getFirstH1(file);
 
-      if (h1) {
-        // the "#" represents the start of a heading deep link,
-        // "#^" represents the the start of a deep block link,
-        // so everything before "#" should represent the filename that
-        // needs to be replaced with the file title
-        text = text.replace(/^[^#]*/, h1.heading);
+        if (h1) {
+          // the "#" represents the start of a heading deep link,
+          // "#^" represents the the start of a deep block link,
+          // so everything before "#" should represent the filename that
+          // needs to be replaced with the file title
+          text = text.replace(/^[^#]*/, h1.heading);
+        }
+      } else if (titleSource === 'FrontMatter') {
+        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
+        const customTitle = Handler.getFrontmatterProperty(
+          frontmatter,
+          this.settings.frontmatterTitleProperty,
+        );
+
+        if (customTitle) {
+          text = text.replace(/^[^#]*/, customTitle);
+        }
       }
     }
 

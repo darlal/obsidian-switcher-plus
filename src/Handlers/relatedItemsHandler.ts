@@ -164,6 +164,12 @@ export class RelatedItemsHandler extends Handler<
     if (file) {
       if (preferredSource === 'H1') {
         text = this.getFirstH1(file)?.heading ?? null;
+      } else if (preferredSource === 'FrontMatter') {
+        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
+        text = Handler.getFrontmatterProperty(
+          frontmatter,
+          this.settings.frontmatterTitleProperty,
+        );
       }
     } else {
       const isUnresolved = !!unresolvedText?.length;

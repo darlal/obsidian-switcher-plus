@@ -672,6 +672,56 @@ describe('relatedItemsHandler', () => {
 
       expect(result).toBe(expected);
     });
+
+    test('with preferredSourceForTitle as FrontMatter and valid property, it should return the frontmatter value', () => {
+      const file = new TFile();
+      const customTitle = 'Custom Document Title';
+      const mockItemInfo = mock<RelatedItemsInfo>({ file });
+
+      const getFrontmatterPropertySpy = jest.spyOn<
+        typeof Handler,
+        'getFrontmatterProperty'
+      >(Handler, 'getFrontmatterProperty');
+      getFrontmatterPropertySpy.mockReturnValueOnce(customTitle);
+
+      const result = sut.getPreferredTitle(mockItemInfo, 'FrontMatter');
+
+      expect(result).toBe(customTitle);
+
+      const [, propertyPath] = getFrontmatterPropertySpy.mock.calls[0] ?? [];
+      expect(propertyPath).toBe(settings.frontmatterTitleProperty);
+
+      getFrontmatterPropertySpy.mockRestore();
+    });
+
+    test('with preferredSourceForTitle as FrontMatter but property does not exist, it should return null', () => {
+      const file = new TFile();
+      const mockItemInfo = mock<RelatedItemsInfo>({ file });
+
+      const getFrontmatterPropertySpy = jest.spyOn<
+        typeof Handler,
+        'getFrontmatterProperty'
+      >(Handler, 'getFrontmatterProperty');
+      getFrontmatterPropertySpy.mockReturnValueOnce(null);
+
+      const result = sut.getPreferredTitle(mockItemInfo, 'FrontMatter');
+
+      expect(result).toBe(null);
+
+      getFrontmatterPropertySpy.mockRestore();
+    });
+
+    test('with preferredSourceForTitle as FrontMatter but no file, it should return unresolved text', () => {
+      const unresolvedText = 'unresolved';
+      const mockItemInfo = mock<RelatedItemsInfo>({
+        file: null,
+        unresolvedText,
+      });
+
+      const result = sut.getPreferredTitle(mockItemInfo, 'FrontMatter');
+
+      expect(result).toBe(unresolvedText);
+    });
   });
 
   describe('addRelatedDiskFiles', () => {

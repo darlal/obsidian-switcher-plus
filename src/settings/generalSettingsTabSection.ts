@@ -107,6 +107,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     const options: Record<TitleSource, string> = {
       H1: 'First H₁ heading',
       Default: 'Default',
+      FrontMatter: 'Frontmatter property',
     };
 
     this.addDropdownSetting(
@@ -116,7 +117,26 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       config.preferredSourceForTitle,
       options,
       'preferredSourceForTitle',
+      (rawValue, config) => {
+        config.preferredSourceForTitle = rawValue as TitleSource;
+        config.save();
+
+        // Refresh the settings panel to show/hide the property path input
+        this.mainSettingsTab.display();
+      },
     );
+
+    // Conditionally show the property path input when FrontMatter is selected
+    if (config.preferredSourceForTitle === 'FrontMatter') {
+      this.addTextSetting(
+        containerEl,
+        'Frontmatter property path',
+        'The path to the frontmatter property to use as the title. Use dot notation for nested properties (e.g., "title" or "meta.display_name"). The property value must be a string, number, or boolean. If the property doesn\'t exist or has an invalid type, the default filename will be used.',
+        config.frontmatterTitleProperty,
+        'frontmatterTitleProperty',
+        'title',
+      ).setClass('qsp-setting-item-indent');
+    }
   }
 
   showPathDisplayFormat(containerEl: HTMLElement, config: SwitcherPlusSettings): void {

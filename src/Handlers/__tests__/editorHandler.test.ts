@@ -303,6 +303,70 @@ describe('editorHandler', () => {
 
       expect(result).toBe(file.basename);
     });
+
+    test('with preferredSourceForTitle as FrontMatter and valid property, it should return the frontmatter value', () => {
+      const file = new TFile();
+      const customTitle = 'Custom Document Title';
+      const mockLeaf = mock<WorkspaceLeaf>({
+        getDisplayText: () => file.basename,
+        isDeferred: false,
+        view: mock<View>({
+          file,
+        }),
+      });
+
+      const getFrontmatterPropertySpy = jest.spyOn<
+        typeof Handler,
+        'getFrontmatterProperty'
+      >(Handler, 'getFrontmatterProperty');
+      getFrontmatterPropertySpy.mockReturnValueOnce(customTitle);
+
+      const result = sut.getPreferredTitle(mockLeaf, 'FrontMatter');
+
+      expect(result).toBe(customTitle);
+
+      const [, propertyPath] = getFrontmatterPropertySpy.mock.calls[0] ?? [];
+      expect(propertyPath).toBe(settings.frontmatterTitleProperty);
+
+      getFrontmatterPropertySpy.mockRestore();
+    });
+
+    test('with preferredSourceForTitle as FrontMatter but property does not exist, it should return leaf display text', () => {
+      const file = new TFile();
+      const mockLeaf = mock<WorkspaceLeaf>({
+        getDisplayText: () => file.basename,
+        isDeferred: false,
+        view: mock<View>({
+          file,
+        }),
+      });
+
+      const getFrontmatterPropertySpy = jest.spyOn<
+        typeof Handler,
+        'getFrontmatterProperty'
+      >(Handler, 'getFrontmatterProperty');
+      getFrontmatterPropertySpy.mockReturnValueOnce(null);
+
+      const result = sut.getPreferredTitle(mockLeaf, 'FrontMatter');
+
+      expect(result).toBe(file.basename);
+
+      getFrontmatterPropertySpy.mockRestore();
+    });
+
+    test('with preferredSourceForTitle as FrontMatter but no file, it should return leaf display text', () => {
+      const displayText = 'Display Text';
+      const mockLeaf = mock<WorkspaceLeaf>({
+        getDisplayText: () => displayText,
+        view: mock<View>({
+          file: null,
+        }),
+      });
+
+      const result = sut.getPreferredTitle(mockLeaf, 'FrontMatter');
+
+      expect(result).toBe(displayText);
+    });
   });
 
   describe('renderSuggestion', () => {

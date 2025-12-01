@@ -824,6 +824,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       leaf,
       settings.preferredSourceForTitle,
       metadataCache,
+      settings.frontmatterTitleProperty,
     );
 
     const result = searcher.searchWithFallback(preferredTitle, file);

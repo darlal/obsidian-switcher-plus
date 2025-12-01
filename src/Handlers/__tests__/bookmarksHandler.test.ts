@@ -1,6 +1,6 @@
 import { SwitcherPlusSettings } from 'src/settings';
 import { mock, MockProxy, mockReset } from 'jest-mock-extended';
-import { BookmarksHandler, BOOKMARKS_PLUGIN_ID } from 'src/Handlers';
+import { BookmarksHandler, BOOKMARKS_PLUGIN_ID, Handler } from 'src/Handlers';
 import { InputInfo } from 'src/switcherPlus';
 import {
   BookmarksItemInfo,
@@ -34,6 +34,11 @@ import {
   BookmarksPluginFileItem,
 } from 'obsidian';
 import { filenameFromPath, stripMDExtensionFromPath } from 'src/utils';
+
+type GetFrontmatterPropertySpy = jest.SpyInstance<
+  ReturnType<(typeof Handler)['getFrontmatterProperty']>,
+  Parameters<(typeof Handler)['getFrontmatterProperty']>
+>;
 
 const expectedBookmarkedFileTitle = 'file 1';
 const expectedBookmarkedItems: BookmarksPluginItem[] = [];
@@ -388,6 +393,78 @@ describe('bookmarksHandler', () => {
       expect(result).toBe(titleText);
 
       getFirstH1Spy.mockRestore();
+    });
+
+    test('with preferredSourceForTitle as FrontMatter and valid property, it should return the frontmatter value', () => {
+      const file = new TFile();
+      const customTitle = 'Custom Document Title';
+      const mockBookmarkItem = mock<BookmarksPluginItem>();
+      const mockPluginInstance = mock<BookmarksPluginInstance>({
+        getItemTitle: () => 'filename#heading',
+      });
+
+      const getFrontmatterPropertySpy: GetFrontmatterPropertySpy = jest.spyOn(
+        Handler,
+        'getFrontmatterProperty',
+      );
+      getFrontmatterPropertySpy.mockReturnValueOnce(customTitle);
+
+      const result = sut.getPreferredTitle(
+        mockPluginInstance,
+        mockBookmarkItem,
+        file,
+        'FrontMatter',
+      );
+
+      expect(result).toBe(`${customTitle}#heading`);
+
+      const [, propertyPath] = getFrontmatterPropertySpy.mock.calls[0] ?? [];
+      expect(propertyPath).toBe(settings.frontmatterTitleProperty);
+
+      getFrontmatterPropertySpy.mockRestore();
+    });
+
+    test('with preferredSourceForTitle as FrontMatter but property does not exist, it should return item title', () => {
+      const file = new TFile();
+      const titleText = 'filename#heading';
+      const mockBookmarkItem = mock<BookmarksPluginItem>();
+      const mockPluginInstance = mock<BookmarksPluginInstance>({
+        getItemTitle: () => titleText,
+      });
+
+      const getFrontmatterPropertySpy: GetFrontmatterPropertySpy = jest.spyOn(
+        Handler,
+        'getFrontmatterProperty',
+      );
+      getFrontmatterPropertySpy.mockReturnValueOnce(null);
+
+      const result = sut.getPreferredTitle(
+        mockPluginInstance,
+        mockBookmarkItem,
+        file,
+        'FrontMatter',
+      );
+
+      expect(result).toBe(titleText);
+
+      getFrontmatterPropertySpy.mockRestore();
+    });
+
+    test('with preferredSourceForTitle as FrontMatter but no file, it should return item title', () => {
+      const titleText = 'filename#heading';
+      const mockBookmarkItem = mock<BookmarksPluginItem>();
+      const mockPluginInstance = mock<BookmarksPluginInstance>({
+        getItemTitle: () => titleText,
+      });
+
+      const result = sut.getPreferredTitle(
+        mockPluginInstance,
+        mockBookmarkItem,
+        null,
+        'FrontMatter',
+      );
+
+      expect(result).toBe(titleText);
     });
   });
 

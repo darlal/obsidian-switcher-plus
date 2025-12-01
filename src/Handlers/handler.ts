@@ -3,6 +3,7 @@ import {
   Component,
   EditorPosition,
   FileView,
+  FrontMatterCache,
   HeadingCache,
   Keymap,
   Loc,
@@ -245,6 +246,49 @@ export abstract class Handler<T extends AnySuggestion> {
     }
 
     return h1;
+  }
+
+  /**
+   * Extracts a string value from frontmatter using a property path.
+   * Supports nested properties using dot notation (e.g., "meta.display_name").
+   *
+   * @param frontmatter The frontmatter cache object
+   * @param propertyPath Dot-separated path to the property
+   * @returns The string value, or null if not found or not a valid type
+   */
+  static getFrontmatterProperty(
+    frontmatter: FrontMatterCache,
+    propertyPath: string,
+  ): string | null {
+    if (!frontmatter || !propertyPath) {
+      return null;
+    }
+
+    const keys = propertyPath.split('.');
+    let value: unknown = frontmatter;
+
+    // Navigate through nested properties
+    for (const key of keys) {
+      if (
+        value &&
+        typeof value === 'object' &&
+        key in (value as Record<string, unknown>)
+      ) {
+        value = (value as Record<string, unknown>)[key];
+      } else {
+        return null; // Property path doesn't exist
+      }
+    }
+
+    // Only accept string, number, or boolean values
+    // Anything else (arrays, objects, null, undefined) returns null
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    } else if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+
+    return null; // Invalid type, will fallback to Default
   }
 
   /**
