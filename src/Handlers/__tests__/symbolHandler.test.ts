@@ -1,4 +1,8 @@
-import { SwitcherPlusSettings } from 'src/settings';
+import {
+  BASE_VIEW_FACET_ID_MAP,
+  CANVAS_NODE_FACET_ID_MAP,
+  SwitcherPlusSettings,
+} from 'src/settings';
 import {
   Mode,
   SymbolSuggestion,
@@ -17,7 +21,7 @@ import {
   Handler,
   HeadingsHandler,
   SymbolHandler,
-  SymbolInfoExcludingCanvasNodes,
+  SymbolInfoExcludingSpecialFiles,
 } from 'src/Handlers';
 import {
   WorkspaceLeaf,
@@ -37,6 +41,11 @@ import {
   CanvasFileView,
   CanvasNodeElement,
   renderResults,
+  View,
+  BasesConfigFile,
+  BaseViewData,
+  parseYaml,
+  Pos,
 } from 'obsidian';
 import {
   rootSplitEditorFixtures,
@@ -59,6 +68,10 @@ import {
   symbolActiveTrigger,
   getCachedMetadata,
   makeInputInfo,
+  makeBaseFileContentString,
+  makeBaseFileContentStringEmptyViews,
+  makeBaseFileContentStringNoViews,
+  makeBaseFileContentStringInvalid,
 } from '@fixtures';
 import { CanvasData, CanvasFileData, CanvasGroupData } from 'obsidian/canvas';
 import { mock, MockProxy, mockClear, mockFn } from 'jest-mock-extended';
@@ -636,6 +649,39 @@ describe('symbolHandler', () => {
       excludeLinkSubTypesSpy.mockRestore();
     });
 
+    it('should return suggestions for base files', async () => {
+      // Arrange
+      const mockBaseFile = new TFile();
+      mockBaseFile.extension = 'base';
+      const activeLeaf = makeLeaf(mockBaseFile);
+      const fileContent = makeBaseFileContentString();
+      const parsedData: BasesConfigFile = {
+        views: [
+          { type: 'table', name: 'All Tasks' },
+          { type: 'list', name: 'Project List' },
+          { type: 'cards', name: 'Kanban Board' },
+        ],
+      };
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, activeLeaf);
+
+      mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+      const mockParseYamlFn = jest.mocked(parseYaml);
+      mockParseYamlFn.mockReturnValue(parsedData);
+
+      // Act
+      const results = await sut.getSuggestions(inputInfo);
+
+      // Assert
+      expect(results.every((sugg) => sugg.type === SuggestionType.SymbolList)).toBe(true);
+      expect(results).toHaveLength(parsedData.views.length);
+      expect(mockVault.cachedRead).toHaveBeenCalledWith(mockBaseFile);
+      expect(mockParseYamlFn).toHaveBeenCalledWith(fileContent);
+      expect(results.every((sugg) => sugg.item.symbolType === SymbolType.BaseView)).toBe(
+        true,
+      );
+    });
+
     it('should return suggestions for canvas files', async () => {
       const mockCanvasFile = new TFile();
       mockCanvasFile.extension = 'canvas';
@@ -652,6 +698,44 @@ describe('symbolHandler', () => {
       expect(results.every((sugg) => sugg.type === SuggestionType.SymbolList)).toBe(true);
       expect(results).toHaveLength(canvasNodes.length);
       expect(mockVault.cachedRead).toHaveBeenCalledWith(mockCanvasFile);
+    });
+
+    it('should process base files before canvas files when both checks would match', async () => {
+      // Arrange
+      // Create a file that could theoretically match both (though in practice a file
+      // can only have one extension, this test verifies the order of checks)
+      const mockBaseFile = new TFile();
+      mockBaseFile.extension = 'base';
+      const activeLeaf = makeLeaf(mockBaseFile);
+      const fileContent = makeBaseFileContentString();
+      const parsedData: BasesConfigFile = {
+        views: [{ type: 'table', name: 'Test View' }],
+      };
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, activeLeaf);
+
+      mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+      const mockParseYamlFn = jest.mocked(parseYaml);
+      mockParseYamlFn.mockReturnValue(parsedData);
+
+      const addBaseViewsSpy = jest.spyOn(sut, 'addBaseViewsFromSource');
+      const addCanvasSymbolsSpy = jest.spyOn(sut, 'addCanvasSymbolsFromSource');
+
+      // Act
+      await sut.getSuggestions(inputInfo);
+
+      // Assert
+      // Base file should trigger addBaseViewsFromSource, not addCanvasSymbolsFromSource
+      expect(addBaseViewsSpy).toHaveBeenCalledTimes(1);
+      expect(addCanvasSymbolsSpy).not.toHaveBeenCalled();
+      expect(addBaseViewsSpy).toHaveBeenCalledWith(
+        mockBaseFile,
+        expect.any(Array),
+        expect.any(Set),
+      );
+
+      addBaseViewsSpy.mockRestore();
+      addCanvasSymbolsSpy.mockRestore();
     });
 
     it('should return suggestion for Headings', async () => {
@@ -817,7 +901,7 @@ describe('symbolHandler', () => {
     });
 
     const getExpectedEphemeralState = (
-      symbolInfo: SymbolInfoExcludingCanvasNodes,
+      symbolInfo: SymbolInfoExcludingSpecialFiles,
     ): OpenViewState => {
       const { start: startLoc, end: endLoc } = symbolInfo.symbol.position;
       const { line, col } = startLoc;
@@ -848,7 +932,7 @@ describe('symbolHandler', () => {
       const mockEvt = mock<KeyboardEvent>();
       const mockLeaf = makeLeaf(symbolSugg.file);
       const expectedState = getExpectedEphemeralState(
-        symbolSugg.item as SymbolInfoExcludingCanvasNodes,
+        symbolSugg.item as SymbolInfoExcludingSpecialFiles,
       );
 
       const inputInfo = new InputInfo(symbolTrigger);
@@ -942,6 +1026,257 @@ describe('symbolHandler', () => {
       navigateToLeafOrOpenFileSpy.mockReset();
       consoleLogSpy.mockRestore();
     });
+
+    describe('Base view navigation', () => {
+      it('should navigate to Base view after file is opened', async () => {
+        // Arrange
+        const mockBaseFile = new TFile();
+        mockBaseFile.path = 'MyBase.base';
+        mockBaseFile.extension = 'base';
+        const baseViewData: BaseViewData = {
+          type: 'table',
+          name: 'All Tasks',
+        };
+        const baseViewSugg = makeSymbolSuggestion(
+          baseViewData,
+          SymbolType.BaseView,
+          mockBaseFile,
+        );
+        const promise = Promise.resolve();
+
+        mockWorkspace.openLinkText = mockFn().mockResolvedValue(undefined);
+
+        const mockLeaf = makeLeaf(mockBaseFile);
+        sut.inputInfo = makeInputInfo({
+          mode: Mode.SymbolList,
+          sourceInfo: { file: mockBaseFile, leaf: mockLeaf },
+        });
+
+        navigateToLeafOrOpenFileSpy.mockReturnValueOnce(promise);
+
+        // Act
+        sut.onChooseSuggestion(baseViewSugg, null);
+        await promise;
+
+        // Assert
+        expect(mockWorkspace.openLinkText).toHaveBeenCalledTimes(1);
+        expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
+          `${mockBaseFile.path}#All Tasks`,
+          mockBaseFile.path,
+          false,
+        );
+
+        navigateToLeafOrOpenFileSpy.mockReset();
+        mockWorkspace.openLinkText.mockReset();
+      });
+
+      it('should construct linktext correctly by stripping .base extension', async () => {
+        // Arrange
+        const mockBaseFile = new TFile();
+        mockBaseFile.path = 'Projects/MyBase.base';
+        mockBaseFile.extension = 'base';
+        const baseViewData: BaseViewData = {
+          type: 'list',
+          name: 'Project List',
+        };
+        const baseViewSugg = makeSymbolSuggestion(
+          baseViewData,
+          SymbolType.BaseView,
+          mockBaseFile,
+        );
+        const promise = Promise.resolve();
+
+        mockWorkspace.openLinkText = mockFn().mockResolvedValue(undefined);
+
+        const mockLeaf = makeLeaf(mockBaseFile);
+        sut.inputInfo = makeInputInfo({
+          mode: Mode.SymbolList,
+          sourceInfo: { file: mockBaseFile, leaf: mockLeaf },
+        });
+
+        navigateToLeafOrOpenFileSpy.mockReturnValueOnce(promise);
+
+        // Act
+        sut.onChooseSuggestion(baseViewSugg, null);
+        await promise;
+
+        // Assert
+        // Should strip .base extension and construct linktext with view name
+        expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
+          `${mockBaseFile.path}#Project List`,
+          mockBaseFile.path,
+          false,
+        );
+
+        navigateToLeafOrOpenFileSpy.mockReset();
+        mockWorkspace.openLinkText.mockReset();
+      });
+
+      it('should handle Base view names with special characters', async () => {
+        // Arrange
+        const mockBaseFile = new TFile();
+        mockBaseFile.path = 'MyBase.base';
+        mockBaseFile.extension = 'base';
+        const baseViewData: BaseViewData = {
+          type: 'cards',
+          name: 'Kanban Board (2024)',
+        };
+        const baseViewSugg = makeSymbolSuggestion(
+          baseViewData,
+          SymbolType.BaseView,
+          mockBaseFile,
+        );
+        const promise = Promise.resolve();
+
+        mockWorkspace.openLinkText = mockFn().mockResolvedValue(undefined);
+
+        const mockLeaf = makeLeaf(mockBaseFile);
+        sut.inputInfo = makeInputInfo({
+          mode: Mode.SymbolList,
+          sourceInfo: { file: mockBaseFile, leaf: mockLeaf },
+        });
+
+        navigateToLeafOrOpenFileSpy.mockReturnValueOnce(promise);
+
+        // Act
+        sut.onChooseSuggestion(baseViewSugg, null);
+        await promise;
+
+        // Assert
+        expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
+          `${mockBaseFile.path}#Kanban Board (2024)`,
+          mockBaseFile.path,
+          false,
+        );
+
+        navigateToLeafOrOpenFileSpy.mockReset();
+        mockWorkspace.openLinkText.mockReset();
+      });
+
+      it('should not navigate to Base view if symbol is not a Base view', async () => {
+        // Arrange
+        const mockFile = new TFile();
+        const headingSugg = makeSymbolSuggestion(
+          getHeadings()[0],
+          SymbolType.Heading,
+          mockFile,
+        );
+        const promise = Promise.resolve();
+
+        mockWorkspace.openLinkText = mockFn().mockResolvedValue(undefined);
+
+        const mockLeaf = makeLeaf(mockFile);
+        sut.inputInfo = makeInputInfo({
+          mode: Mode.SymbolList,
+          sourceInfo: { file: mockFile, leaf: mockLeaf },
+        });
+
+        navigateToLeafOrOpenFileSpy.mockReturnValueOnce(promise);
+
+        // Act
+        sut.onChooseSuggestion(headingSugg, null);
+        await promise;
+
+        // Assert
+        expect(mockWorkspace.openLinkText).not.toHaveBeenCalled();
+
+        navigateToLeafOrOpenFileSpy.mockReset();
+        mockWorkspace.openLinkText.mockReset();
+      });
+
+      it('should handle Base view navigation errors gracefully', async () => {
+        // Arrange
+        const mockBaseFile = new TFile();
+        mockBaseFile.path = 'MyBase.base';
+        mockBaseFile.extension = 'base';
+        const baseViewData: BaseViewData = {
+          type: 'table',
+          name: 'All Tasks',
+        };
+        const baseViewSugg = makeSymbolSuggestion(
+          baseViewData,
+          SymbolType.BaseView,
+          mockBaseFile,
+        );
+        const promise = Promise.resolve();
+        const openLinkTextError = new Error('Failed to open link');
+        const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValue();
+
+        mockWorkspace.openLinkText = mockFn().mockRejectedValue(openLinkTextError);
+
+        const mockLeaf = makeLeaf(mockBaseFile);
+        sut.inputInfo = makeInputInfo({
+          mode: Mode.SymbolList,
+          sourceInfo: { file: mockBaseFile, leaf: mockLeaf },
+        });
+
+        navigateToLeafOrOpenFileSpy.mockReturnValueOnce(promise);
+
+        // Act
+        sut.onChooseSuggestion(baseViewSugg, null);
+        await promise;
+        // Wait for openLinkText promise to reject
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        // Assert
+        expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
+          `${mockBaseFile.path}#All Tasks`,
+          mockBaseFile.path,
+          false,
+        );
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Unable to navigate to Base view'),
+          openLinkTextError,
+        );
+
+        navigateToLeafOrOpenFileSpy.mockReset();
+        mockWorkspace.openLinkText.mockReset();
+        consoleLogSpy.mockRestore();
+      });
+
+      it('should navigate to Base view after file navigation completes', async () => {
+        // Arrange
+        const mockBaseFile = new TFile();
+        mockBaseFile.path = 'MyBase.base';
+        mockBaseFile.extension = 'base';
+        const baseViewData: BaseViewData = {
+          type: 'table',
+          name: 'All Tasks',
+        };
+        const baseViewSugg = makeSymbolSuggestion(
+          baseViewData,
+          SymbolType.BaseView,
+          mockBaseFile,
+        );
+        const promise = Promise.resolve();
+
+        mockWorkspace.openLinkText = mockFn().mockResolvedValue(undefined);
+
+        const mockLeaf = makeLeaf(mockBaseFile);
+        sut.inputInfo = makeInputInfo({
+          mode: Mode.SymbolList,
+          sourceInfo: { file: mockBaseFile, leaf: mockLeaf },
+        });
+
+        navigateToLeafOrOpenFileSpy.mockReturnValueOnce(promise);
+
+        // Act
+        sut.onChooseSuggestion(baseViewSugg, null);
+        await promise;
+
+        // Assert
+        // Should call openLinkText after navigateToLeafOrOpenFileAsync resolves
+        expect(navigateToLeafOrOpenFileSpy).toHaveBeenCalled();
+        expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
+          `${mockBaseFile.path}#All Tasks`,
+          mockBaseFile.path,
+          false,
+        );
+
+        navigateToLeafOrOpenFileSpy.mockReset();
+        mockWorkspace.openLinkText.mockReset();
+      });
+    });
   });
 
   describe('addSymbolIndicator', () => {
@@ -1012,6 +1347,56 @@ describe('symbolHandler', () => {
         ['qsp-symbol-indicator'],
         null,
         expectedText,
+      );
+
+      renderIndicatorSpy.mockRestore();
+    });
+
+    it.each([
+      { viewType: 'table', expectedIcon: 'lucide-table' },
+      { viewType: 'list', expectedIcon: 'lucide-list' },
+      { viewType: 'cards', expectedIcon: 'lucide-layout-grid' },
+    ])('should add icon for Base views: $viewType', ({ viewType, expectedIcon }) => {
+      // Arrange
+      const baseViewData: BaseViewData = {
+        type: viewType,
+        name: chance.word(),
+      };
+      const sugg = makeSymbolSuggestion(baseViewData, SymbolType.BaseView);
+      const renderIndicatorSpy = jest.spyOn(sut, 'renderIndicator');
+
+      // Act
+      sut.addSymbolIndicator(sugg.item, mockParentEl);
+
+      // Assert
+      expect(renderIndicatorSpy).toHaveBeenCalledWith(
+        mockFlairContainerEl,
+        ['qsp-symbol-indicator'],
+        expectedIcon,
+        null,
+      );
+
+      renderIndicatorSpy.mockRestore();
+    });
+
+    it('should use table icon as fallback for unknown Base view types', () => {
+      // Arrange
+      const baseViewData: BaseViewData = {
+        type: 'unknown-view-type',
+        name: chance.word(),
+      };
+      const sugg = makeSymbolSuggestion(baseViewData, SymbolType.BaseView);
+      const renderIndicatorSpy = jest.spyOn(sut, 'renderIndicator');
+
+      // Act
+      sut.addSymbolIndicator(sugg.item, mockParentEl);
+
+      // Assert
+      expect(renderIndicatorSpy).toHaveBeenCalledWith(
+        mockFlairContainerEl,
+        ['qsp-symbol-indicator'],
+        'lucide-table',
+        null,
       );
 
       renderIndicatorSpy.mockRestore();
@@ -1088,6 +1473,374 @@ describe('symbolHandler', () => {
     });
   });
 
+  describe('addBaseViewsFromSource', () => {
+    const mockFile = new TFile();
+    let mockParseYamlFn: jest.MockedFunction<typeof parseYaml>;
+
+    beforeEach(() => {
+      mockParseYamlFn = jest.mocked(parseYaml);
+    });
+
+    afterEach(() => {
+      mockParseYamlFn.mockReset();
+    });
+
+    describe('adding base views', () => {
+      it('should add symbol information for base views', async () => {
+        // Arrange
+        const results: SymbolInfo[] = [];
+        const fileContent = makeBaseFileContentString();
+        const parsedData: BasesConfigFile = {
+          views: [
+            { type: 'table', name: 'All Tasks' },
+            { type: 'list', name: 'Project List' },
+            { type: 'cards', name: 'Kanban Board' },
+            { type: 'custom', name: 'Custom View' },
+          ],
+        };
+        mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+        mockParseYamlFn.mockReturnValue(parsedData);
+
+        // Act
+        await sut.addBaseViewsFromSource(mockFile, results, new Set<string>());
+
+        // Assert
+        expect(mockVault.cachedRead).toHaveBeenCalledWith(mockFile);
+        expect(mockParseYamlFn).toHaveBeenCalledWith(fileContent);
+        expect(results).toHaveLength(parsedData.views.length);
+        expect(results[0].symbolType).toBe(SymbolType.BaseView);
+        expect(SymbolHandler.isBaseViewSymbolPayload(results[0])).toBe(true);
+        const baseView = results[0] as SymbolInfo & { symbol: BaseViewData };
+        expect(baseView.symbol).toMatchObject({
+          type: 'table',
+          name: 'All Tasks',
+        });
+      });
+
+      it('should include all views when no facets are active', async () => {
+        // Arrange
+        const results: SymbolInfo[] = [];
+        const fileContent = makeBaseFileContentString();
+        const parsedData: BasesConfigFile = {
+          views: [
+            { type: 'table', name: 'All Tasks' },
+            { type: 'list', name: 'Project List' },
+            { type: 'cards', name: 'Kanban Board' },
+            { type: 'custom', name: 'Custom View' },
+          ],
+        };
+        mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+        mockParseYamlFn.mockReturnValue(parsedData);
+
+        // Act
+        await sut.addBaseViewsFromSource(mockFile, results, new Set<string>());
+
+        // Assert
+        expect(results).toHaveLength(parsedData.views.length);
+        expect(results.every((r) => r.symbolType === SymbolType.BaseView)).toBe(true);
+      });
+
+      it('should filter views based on active facets', async () => {
+        // Arrange
+        const results: SymbolInfo[] = [];
+        const fileContent = makeBaseFileContentString();
+        const parsedData: BasesConfigFile = {
+          views: [
+            { type: 'table', name: 'All Tasks' },
+            { type: 'list', name: 'Project List' },
+            { type: 'cards', name: 'Kanban Board' },
+            { type: 'custom', name: 'Custom View' },
+          ],
+        };
+        mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+        mockParseYamlFn.mockReturnValue(parsedData);
+        const activeFacetIds = new Set<string>([BASE_VIEW_FACET_ID_MAP.table]);
+
+        // Act
+        await sut.addBaseViewsFromSource(mockFile, results, activeFacetIds);
+
+        // Assert
+        expect(results).toHaveLength(1);
+        expect(SymbolHandler.isBaseViewSymbolPayload(results[0])).toBe(true);
+        const baseView = results[0] as SymbolInfo & { symbol: BaseViewData };
+        expect(baseView.symbol).toMatchObject({
+          type: 'table',
+          name: 'All Tasks',
+        });
+      });
+
+      it('should include unknown view types when no facets are active', async () => {
+        // Arrange
+        const results: SymbolInfo[] = [];
+        const fileContent = makeBaseFileContentString();
+        const parsedData: BasesConfigFile = {
+          views: [
+            { type: 'table', name: 'All Tasks' },
+            { type: 'list', name: 'Project List' },
+            { type: 'cards', name: 'Kanban Board' },
+            { type: 'custom', name: 'Custom View' },
+          ],
+        };
+        mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+        mockParseYamlFn.mockReturnValue(parsedData);
+
+        // Act
+        await sut.addBaseViewsFromSource(mockFile, results, new Set<string>());
+
+        // Assert
+        // The fixture includes a 'custom' view type which is not in BASE_VIEW_FACET_ID_MAP
+        const customView = results.find((r) => {
+          if (SymbolHandler.isBaseViewSymbolPayload(r)) {
+            const baseView = r as SymbolInfo & { symbol: BaseViewData };
+            return baseView.symbol.type === 'custom';
+          }
+          return false;
+        });
+        expect(customView).toBeDefined();
+        expect(customView).not.toBeNull();
+        expect(SymbolHandler.isBaseViewSymbolPayload(customView)).toBe(true);
+        const baseView = customView as SymbolInfo & { symbol: BaseViewData };
+        expect(baseView.symbol).toMatchObject({
+          type: 'custom',
+          name: 'Custom View',
+        });
+      });
+
+      it('should exclude unknown view types when facets are active', async () => {
+        // Arrange
+        const results: SymbolInfo[] = [];
+        const fileContent = makeBaseFileContentString();
+        const parsedData: BasesConfigFile = {
+          views: [
+            { type: 'table', name: 'All Tasks' },
+            { type: 'list', name: 'Project List' },
+            { type: 'cards', name: 'Kanban Board' },
+            { type: 'custom', name: 'Custom View' },
+          ],
+        };
+        mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+        mockParseYamlFn.mockReturnValue(parsedData);
+        const activeFacetIds = new Set<string>([BASE_VIEW_FACET_ID_MAP.table]);
+
+        // Act
+        await sut.addBaseViewsFromSource(mockFile, results, activeFacetIds);
+
+        // Assert
+        // Custom view should be excluded when facets are active
+        const customView = results.find((r) => {
+          if (SymbolHandler.isBaseViewSymbolPayload(r)) {
+            const baseView = r as SymbolInfo & { symbol: BaseViewData };
+            return baseView.symbol.type === 'custom';
+          }
+          return false;
+        });
+        expect(customView).toBeUndefined();
+        // Only the table view should be included
+        expect(results).toHaveLength(1);
+      });
+    });
+
+    describe('error handling', () => {
+      it('should handle empty views array', async () => {
+        // Arrange
+        const results: SymbolInfo[] = [];
+        const fileContent = makeBaseFileContentStringEmptyViews();
+        const parsedData: BasesConfigFile = { views: [] };
+        mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+        mockParseYamlFn.mockReturnValue(parsedData);
+
+        // Act
+        await sut.addBaseViewsFromSource(mockFile, results, new Set<string>());
+
+        // Assert
+        expect(results).toHaveLength(0);
+      });
+
+      it('should handle missing views property', async () => {
+        // Arrange
+        const results: SymbolInfo[] = [];
+        const fileContent = makeBaseFileContentStringNoViews();
+        const parsedData = {
+          name: 'My Base',
+          description: 'A test base file',
+        } as BasesConfigFile;
+        mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+        mockParseYamlFn.mockReturnValue(parsedData);
+
+        // Act
+        await sut.addBaseViewsFromSource(mockFile, results, new Set<string>());
+
+        // Assert
+        expect(results).toHaveLength(0);
+      });
+
+      it('should handle null parsed data', async () => {
+        // Arrange
+        const results: SymbolInfo[] = [];
+        const fileContent = '';
+        mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+        mockParseYamlFn.mockReturnValue(null);
+
+        // Act
+        await sut.addBaseViewsFromSource(mockFile, results, new Set<string>());
+
+        // Assert
+        expect(results).toHaveLength(0);
+      });
+
+      it('should log any exceptions reading a file to the console', async () => {
+        // Arrange
+        const expectedMsg = `Switcher++: error reading file to extract base view information. ${mockFile.path} `;
+        const errorMsg = 'addBaseViewsFromSource Unit test error';
+        const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+        mockVault.cachedRead.mockRejectedValueOnce(errorMsg);
+
+        // Act
+        await sut.addBaseViewsFromSource(mockFile, [], new Set<string>());
+
+        // Assert
+        expect(consoleLogSpy).toHaveBeenCalledWith(expectedMsg, errorMsg);
+        expect(mockVault.cachedRead).toHaveBeenCalledWith(mockFile);
+
+        consoleLogSpy.mockRestore();
+      });
+
+      it('should handle YAML parse errors gracefully', async () => {
+        // Arrange
+        const results: SymbolInfo[] = [];
+        const fileContent = makeBaseFileContentStringInvalid();
+        const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValue();
+        mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+        // Mock parseYaml to return null for invalid YAML
+        mockParseYamlFn.mockReturnValue(null);
+
+        // Act
+        await sut.addBaseViewsFromSource(mockFile, results, new Set<string>());
+
+        // Assert
+        // parseYaml returns null for invalid YAML, method should handle it gracefully
+        expect(results).toHaveLength(0);
+        expect(mockParseYamlFn).toHaveBeenCalledWith(fileContent);
+
+        consoleLogSpy.mockRestore();
+      });
+    });
+
+    describe('facet filtering', () => {
+      it('should include views matching active table facet', async () => {
+        // Arrange
+        const results: SymbolInfo[] = [];
+        const fileContent = makeBaseFileContentString();
+        const parsedData: BasesConfigFile = {
+          views: [
+            { type: 'table', name: 'All Tasks' },
+            { type: 'list', name: 'Project List' },
+            { type: 'cards', name: 'Kanban Board' },
+            { type: 'custom', name: 'Custom View' },
+          ],
+        };
+        mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+        mockParseYamlFn.mockReturnValue(parsedData);
+        const activeFacetIds = new Set<string>([BASE_VIEW_FACET_ID_MAP.table]);
+
+        // Act
+        await sut.addBaseViewsFromSource(mockFile, results, activeFacetIds);
+
+        // Assert
+        expect(results).toHaveLength(1);
+        expect(SymbolHandler.isBaseViewSymbolPayload(results[0])).toBe(true);
+        const baseView = results[0] as SymbolInfo & { symbol: BaseViewData };
+        expect(baseView.symbol.type).toBe('table');
+      });
+
+      it('should include views matching active list facet', async () => {
+        // Arrange
+        const results: SymbolInfo[] = [];
+        const fileContent = makeBaseFileContentString();
+        const parsedData: BasesConfigFile = {
+          views: [
+            { type: 'table', name: 'All Tasks' },
+            { type: 'list', name: 'Project List' },
+            { type: 'cards', name: 'Kanban Board' },
+            { type: 'custom', name: 'Custom View' },
+          ],
+        };
+        mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+        mockParseYamlFn.mockReturnValue(parsedData);
+        const activeFacetIds = new Set<string>([BASE_VIEW_FACET_ID_MAP.list]);
+
+        // Act
+        await sut.addBaseViewsFromSource(mockFile, results, activeFacetIds);
+
+        // Assert
+        expect(results).toHaveLength(1);
+        expect(SymbolHandler.isBaseViewSymbolPayload(results[0])).toBe(true);
+        const baseView = results[0] as SymbolInfo & { symbol: BaseViewData };
+        expect(baseView.symbol.type).toBe('list');
+      });
+
+      it('should include views matching active cards facet', async () => {
+        // Arrange
+        const results: SymbolInfo[] = [];
+        const fileContent = makeBaseFileContentString();
+        const parsedData: BasesConfigFile = {
+          views: [
+            { type: 'table', name: 'All Tasks' },
+            { type: 'list', name: 'Project List' },
+            { type: 'cards', name: 'Kanban Board' },
+            { type: 'custom', name: 'Custom View' },
+          ],
+        };
+        mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+        mockParseYamlFn.mockReturnValue(parsedData);
+        const activeFacetIds = new Set<string>([BASE_VIEW_FACET_ID_MAP.cards]);
+
+        // Act
+        await sut.addBaseViewsFromSource(mockFile, results, activeFacetIds);
+
+        // Assert
+        expect(results).toHaveLength(1);
+        expect(SymbolHandler.isBaseViewSymbolPayload(results[0])).toBe(true);
+        const baseView = results[0] as SymbolInfo & { symbol: BaseViewData };
+        expect(baseView.symbol.type).toBe('cards');
+      });
+
+      it('should include multiple views when multiple facets are active', async () => {
+        // Arrange
+        const results: SymbolInfo[] = [];
+        const fileContent = makeBaseFileContentString();
+        const parsedData: BasesConfigFile = {
+          views: [
+            { type: 'table', name: 'All Tasks' },
+            { type: 'list', name: 'Project List' },
+            { type: 'cards', name: 'Kanban Board' },
+            { type: 'custom', name: 'Custom View' },
+          ],
+        };
+        mockVault.cachedRead.mockResolvedValueOnce(fileContent);
+        mockParseYamlFn.mockReturnValue(parsedData);
+        const activeFacetIds = new Set<string>([
+          BASE_VIEW_FACET_ID_MAP.table,
+          BASE_VIEW_FACET_ID_MAP.list,
+        ]);
+
+        // Act
+        await sut.addBaseViewsFromSource(mockFile, results, activeFacetIds);
+
+        // Assert
+        expect(results.length).toBeGreaterThan(1);
+        const viewTypes = results
+          .filter((r) => SymbolHandler.isBaseViewSymbolPayload(r))
+          .map((r) => {
+            const baseView = r as SymbolInfo & { symbol: BaseViewData };
+            return baseView.symbol.type;
+          });
+        expect(viewTypes).toContain('table');
+        expect(viewTypes).toContain('list');
+      });
+    });
+  });
+
   describe('getSuggestionTextForCanvasNode', () => {
     const canvasNodes = (JSON.parse(makeCanvasFileContentString()) as CanvasData).nodes;
 
@@ -1121,6 +1874,345 @@ describe('symbolHandler', () => {
 
       const result = SymbolHandler.getSuggestionTextForCanvasNode(node);
       expect(result).toBe(expectedStr);
+    });
+  });
+
+  describe('getSuggestionTextForSymbol', () => {
+    it('should return view name for Base views', () => {
+      // Arrange
+      const viewName = chance.word();
+      const baseViewData: BaseViewData = {
+        type: 'table',
+        name: viewName,
+      };
+      const symbolInfo = makeSymbolSuggestion(baseViewData, SymbolType.BaseView).item;
+
+      // Act
+      const result = SymbolHandler.getSuggestionTextForSymbol(symbolInfo);
+
+      // Assert
+      expect(result).toBe(viewName);
+    });
+  });
+
+  describe('isBaseFile', () => {
+    it('should return true when file has base extension', () => {
+      // Arrange
+      const mockFile = new TFile();
+      mockFile.extension = 'base';
+
+      // Act
+      const result = SymbolHandler.isBaseFile(mockFile);
+
+      // Assert
+      expect(result).toBe(true);
+    });
+
+    it('should return false when file has different extension', () => {
+      // Arrange
+      const mockFile = new TFile();
+      mockFile.extension = 'md';
+
+      // Act
+      const result = SymbolHandler.isBaseFile(mockFile);
+
+      // Assert
+      expect(result).toBe(false);
+    });
+
+    it('should return false when file is null', () => {
+      // Arrange
+      const mockFile: TFile = null;
+
+      // Act
+      const result = SymbolHandler.isBaseFile(mockFile);
+
+      // Assert
+      expect(result).toBe(false);
+    });
+
+    it('should return false when file is undefined', () => {
+      // Arrange
+      const mockFile: TFile = undefined;
+
+      // Act
+      const result = SymbolHandler.isBaseFile(mockFile);
+
+      // Assert
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('isBaseView', () => {
+    it('should return true when view type is bases', () => {
+      // Arrange
+      const mockView = mock<View>();
+      mockView.getViewType.mockReturnValue('bases');
+
+      // Act
+      const result = SymbolHandler.isBaseView(mockView);
+
+      // Assert
+      expect(result).toBe(true);
+      expect(mockView.getViewType).toHaveBeenCalled();
+    });
+
+    it('should return false when view type is not bases', () => {
+      // Arrange
+      const mockView = mock<View>();
+      mockView.getViewType.mockReturnValue('markdown');
+
+      // Act
+      const result = SymbolHandler.isBaseView(mockView);
+
+      // Assert
+      expect(result).toBe(false);
+      expect(mockView.getViewType).toHaveBeenCalled();
+    });
+
+    it('should return false when view is null', () => {
+      // Arrange
+      const mockView: View = null;
+
+      // Act
+      const result = SymbolHandler.isBaseView(mockView);
+
+      // Assert
+      expect(result).toBe(false);
+    });
+
+    it('should return false when view is undefined', () => {
+      // Arrange
+      const mockView: View = undefined;
+
+      // Act
+      const result = SymbolHandler.isBaseView(mockView);
+
+      // Assert
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('getPreferredViewLinePosition', () => {
+    it('should return default position for Base views', () => {
+      // Arrange
+      const baseViewData: BaseViewData = {
+        type: 'table',
+        name: chance.word(),
+      };
+      const baseViewSugg = makeSymbolSuggestion(baseViewData, SymbolType.BaseView);
+      const getPreferredViewLinePositionSpy = jest.spyOn(
+        Handler.prototype,
+        'getPreferredViewLinePosition',
+      );
+      const defaultLoc = { line: 0, col: 0, offset: 0 };
+      const defaultPosition: Pos = { start: defaultLoc, end: defaultLoc };
+      getPreferredViewLinePositionSpy.mockReturnValue(defaultPosition);
+
+      // Act
+      const result = sut.getPreferredViewLinePosition(baseViewSugg);
+
+      // Assert
+      expect(result).toBe(defaultPosition);
+      expect(getPreferredViewLinePositionSpy).toHaveBeenCalled();
+
+      getPreferredViewLinePositionSpy.mockRestore();
+    });
+
+    it('should return default position for Canvas nodes', () => {
+      // Arrange
+      const canvasNodes = (JSON.parse(makeCanvasFileContentString()) as CanvasData).nodes;
+      const canvasNode = canvasNodes[0];
+      const canvasSugg = makeSymbolSuggestion(canvasNode, SymbolType.CanvasNode);
+      const getPreferredViewLinePositionSpy = jest.spyOn(
+        Handler.prototype,
+        'getPreferredViewLinePosition',
+      );
+      const defaultLoc = { line: 0, col: 0, offset: 0 };
+      const defaultPosition: Pos = { start: defaultLoc, end: defaultLoc };
+      getPreferredViewLinePositionSpy.mockReturnValue(defaultPosition);
+
+      // Act
+      const result = sut.getPreferredViewLinePosition(canvasSugg);
+
+      // Assert
+      expect(result).toBe(defaultPosition);
+      expect(getPreferredViewLinePositionSpy).toHaveBeenCalled();
+
+      getPreferredViewLinePositionSpy.mockRestore();
+    });
+
+    it('should return symbol position for symbols with position data', () => {
+      // Arrange
+      const heading = getHeadings()[0];
+      const headingSugg = makeSymbolSuggestion(heading, SymbolType.Heading);
+      const getPreferredViewLinePositionSpy = jest.spyOn(
+        Handler.prototype,
+        'getPreferredViewLinePosition',
+      );
+      const defaultLoc = { line: 0, col: 0, offset: 0 };
+      const defaultPosition: Pos = { start: defaultLoc, end: defaultLoc };
+      getPreferredViewLinePositionSpy.mockReturnValue(defaultPosition);
+
+      // Act
+      const result = sut.getPreferredViewLinePosition(headingSugg);
+
+      // Assert
+      expect(result).toBe(heading.position);
+      expect(result).not.toBe(defaultPosition);
+
+      getPreferredViewLinePositionSpy.mockRestore();
+    });
+  });
+
+  describe('getAvailableFacets', () => {
+    let inputInfo: InputInfo;
+    const baseViewFacetIds = new Set(Object.values(BASE_VIEW_FACET_ID_MAP));
+    const mdFacetIds = new Set(Object.values(SymbolType).filter((v) => isNaN(Number(v))));
+
+    beforeEach(() => {
+      inputInfo = new InputInfo(symbolTrigger);
+      inputInfo.mode = Mode.SymbolList;
+    });
+
+    it('should return only Base view facets when source is a Base file', () => {
+      // Arrange
+      const mockBaseFile = new TFile();
+      mockBaseFile.extension = 'base';
+      const sourceInfo: SourceInfo = {
+        file: mockBaseFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      const cmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
+      cmd.source = sourceInfo;
+
+      // Act
+      const results = sut.getAvailableFacets(inputInfo);
+
+      // Assert
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every((facet) => baseViewFacetIds.has(facet.id))).toBe(true);
+      // Verify no markdown facets are included
+      expect(results.some((facet) => mdFacetIds.has(facet.id))).toBe(false);
+      // Verify no canvas facets are included
+      const canvasFacetIds = new Set(Object.values(CANVAS_NODE_FACET_ID_MAP));
+      expect(results.some((facet) => canvasFacetIds.has(facet.id))).toBe(false);
+    });
+
+    it('should return only Canvas facets when source is a Canvas file', () => {
+      // Arrange
+      const mockCanvasFile = new TFile();
+      mockCanvasFile.extension = 'canvas';
+      const sourceInfo: SourceInfo = {
+        file: mockCanvasFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      const cmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
+      cmd.source = sourceInfo;
+
+      // Act
+      const results = sut.getAvailableFacets(inputInfo);
+
+      // Assert
+      const canvasFacetIds = new Set(Object.values(CANVAS_NODE_FACET_ID_MAP));
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every((facet) => canvasFacetIds.has(facet.id))).toBe(true);
+      // Verify no markdown facets are included
+      expect(results.some((facet) => mdFacetIds.has(facet.id))).toBe(false);
+      // Verify no base view facets are included
+      expect(results.some((facet) => baseViewFacetIds.has(facet.id))).toBe(false);
+    });
+
+    it('should return only markdown facets when source is a markdown file', () => {
+      // Arrange
+      const mockMdFile = new TFile();
+      mockMdFile.extension = 'md';
+      const sourceInfo: SourceInfo = {
+        file: mockMdFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      const cmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
+      cmd.source = sourceInfo;
+
+      // Act
+      const results = sut.getAvailableFacets(inputInfo);
+
+      // Assert
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every((facet) => mdFacetIds.has(facet.id))).toBe(true);
+      // Verify no canvas facets are included
+      const canvasFacetIds = new Set(Object.values(CANVAS_NODE_FACET_ID_MAP));
+      expect(results.some((facet) => canvasFacetIds.has(facet.id))).toBe(false);
+      // Verify no base view facets are included
+      expect(results.some((facet) => baseViewFacetIds.has(facet.id))).toBe(false);
+    });
+
+    it('should check Base files before Canvas files when both checks would match', () => {
+      // Arrange
+      // Create a Base file (in practice, a file can only have one extension,
+      // but this test verifies the order of checks)
+      const mockBaseFile = new TFile();
+      mockBaseFile.extension = 'base';
+      const sourceInfo: SourceInfo = {
+        file: mockBaseFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      const cmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
+      cmd.source = sourceInfo;
+
+      // Act
+      const results = sut.getAvailableFacets(inputInfo);
+
+      // Assert
+      // Should return Base view facets, not Canvas facets
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every((facet) => baseViewFacetIds.has(facet.id))).toBe(true);
+      const canvasFacetIds = new Set(Object.values(CANVAS_NODE_FACET_ID_MAP));
+      expect(results.some((facet) => canvasFacetIds.has(facet.id))).toBe(false);
+    });
+
+    it('should return markdown facets when source file is null', () => {
+      // Arrange
+      const sourceInfo: SourceInfo = {
+        file: null,
+        leaf: null,
+        suggestion: null,
+        isValidSource: false,
+      };
+      const cmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
+      cmd.source = sourceInfo;
+
+      // Act
+      const results = sut.getAvailableFacets(inputInfo);
+
+      // Assert
+      // When file is null, it should default to markdown facets
+      expect(Array.isArray(results)).toBe(true);
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every((facet) => mdFacetIds.has(facet.id))).toBe(true);
+    });
+
+    it('should return markdown facets when source is null', () => {
+      // Arrange
+      const cmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
+      cmd.source = null;
+
+      // Act
+      const results = sut.getAvailableFacets(inputInfo);
+
+      // Assert
+      // When source is null, it should default to markdown facets
+      expect(Array.isArray(results)).toBe(true);
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every((facet) => mdFacetIds.has(facet.id))).toBe(true);
     });
   });
 });

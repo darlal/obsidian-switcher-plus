@@ -8,8 +8,11 @@ import {
   CanvasTextData,
 } from 'obsidian/canvas';
 import {
+  BasesConfigFile,
+  BaseViewData,
   CanvasFileView,
   LinkCache,
+  parseYaml,
   Pos,
   ReferenceCache,
   renderResults,
@@ -40,11 +43,11 @@ import { getLinkType, isCalloutCache, isHeadingCache, isTagCache } from 'src/uti
 import { InputInfo, ParsedCommand, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler } from './handler';
 import { HeadingsHandler } from './headingsHandler';
-import { CANVAS_NODE_FACET_ID_MAP } from 'src/settings';
+import { BASE_VIEW_FACET_ID_MAP, CANVAS_NODE_FACET_ID_MAP } from 'src/settings';
 import { Searcher } from 'src/search';
 
-export type SymbolInfoExcludingCanvasNodes = Omit<SymbolInfo, 'symbol'> & {
-  symbol: Exclude<AnySymbolInfoPayload, AllCanvasNodeData>;
+export type SymbolInfoExcludingSpecialFiles = Omit<SymbolInfo, 'symbol'> & {
+  symbol: Exclude<AnySymbolInfoPayload, AllCanvasNodeData | BaseViewData>;
 };
 
 const CANVAS_ICON_MAP: Record<string, string> = {
@@ -52,6 +55,13 @@ const CANVAS_ICON_MAP: Record<string, string> = {
   text: 'lucide-sticky-note',
   link: 'lucide-globe',
   group: 'create-group',
+};
+
+// Base views use different icons for each view type to provide visual distinction
+const BASE_VIEW_ICON_MAP: Record<string, string> = {
+  table: 'lucide-table',
+  list: 'lucide-list',
+  cards: 'lucide-layout-grid',
 };
 
 export class SymbolHandler extends Handler<SymbolSuggestion> {
@@ -180,10 +190,27 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
         Mode.SymbolList,
       ).then(
         () => {
-          const { symbol } = item;
+          if (SymbolHandler.isCanvasSymbolPayload(item)) {
+            this.zoomToCanvasNode(this.getActiveLeaf().view, item.symbol);
+          }
 
-          if (SymbolHandler.isCanvasSymbolPayload(item, symbol)) {
-            this.zoomToCanvasNode(this.getActiveLeaf().view, symbol);
+          if (SymbolHandler.isBaseViewSymbolPayload(item)) {
+            const baseView = item.symbol as BaseViewData;
+            const filePath = sugg.file?.path;
+            const linktext = `${filePath}#${baseView.name}`;
+
+            // Dec 2025: there is not an API available to open/navigate to a specific
+            // base file view, so use openLinkText() to simulate the open, hopefully this
+            // should cause Obsidian to configure any internal state needed for the view.
+            // Doing this after navigateToLeafOrOpenFileAsync() allows us to respect the
+            // navigation preferences the user has configured, passing false as the last
+            // param should force the 'open' to happen in the current tab.
+            this.app.workspace.openLinkText(linktext, filePath, false).catch((err) => {
+              console.log(
+                `Switcher++: Unable to navigate to Base view ${baseView.name} in file ${filePath}`,
+                err,
+              );
+            });
           }
         },
         (reason) => {
@@ -206,8 +233,10 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
   override getAvailableFacets(inputInfo: InputInfo): Facet[] {
     const cmd = inputInfo.parsedCommand(Mode.SymbolList) as SourcedParsedCommand;
+    const isBaseFile = SymbolHandler.isBaseFile(cmd?.source?.file);
     const isCanvasFile = SymbolHandler.isCanvasFile(cmd?.source?.file);
     const facets = this.getFacets(inputInfo.mode);
+    const baseViewFacetIds = new Set(Object.values(BASE_VIEW_FACET_ID_MAP));
     const canvasFacetIds = new Set(Object.values(CANVAS_NODE_FACET_ID_MAP));
 
     // get only the string values of SymbolType as they are used as the face ids
@@ -215,7 +244,13 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
     facets.forEach((facet) => {
       const { id } = facet;
-      facet.isAvailable = isCanvasFile ? canvasFacetIds.has(id) : mdFacetIds.has(id);
+      if (isBaseFile) {
+        facet.isAvailable = baseViewFacetIds.has(id);
+      } else if (isCanvasFile) {
+        facet.isAvailable = canvasFacetIds.has(id);
+      } else {
+        facet.isAvailable = mdFacetIds.has(id);
+      }
     });
 
     return facets.filter((v) => v.isAvailable);
@@ -237,8 +272,12 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     if (sugg?.item?.symbol) {
       const { item } = sugg;
 
-      if (!SymbolHandler.isCanvasSymbolPayload(item, item.symbol)) {
-        position = item.symbol.position;
+      if (
+        !SymbolHandler.isCanvasSymbolPayload(item) &&
+        !SymbolHandler.isBaseViewSymbolPayload(item)
+      ) {
+        const symbolInfo = item as SymbolInfoExcludingSpecialFiles;
+        position = symbolInfo.symbol.position;
       }
     }
 
@@ -294,7 +333,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
     if (selectNearestHeading) {
       SymbolHandler.FindNearestHeadingSymbol(
-        items as SymbolInfoExcludingCanvasNodes[],
+        items as SymbolInfoExcludingSpecialFiles[],
         sourceInfo,
       );
     }
@@ -303,7 +342,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
   }
 
   private static FindNearestHeadingSymbol(
-    items: SymbolInfoExcludingCanvasNodes[],
+    items: SymbolInfoExcludingSpecialFiles[],
     sourceInfo: SourceInfo,
   ): void {
     const cursorLine = sourceInfo?.cursor?.line;
@@ -311,7 +350,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     // find the nearest heading to the current cursor pos, if applicable
     if (cursorLine) {
       let found: SymbolInfo = null;
-      const headings = items.filter((v): v is SymbolInfoExcludingCanvasNodes =>
+      const headings = items.filter((v): v is SymbolInfoExcludingSpecialFiles =>
         isHeadingCache(v.symbol),
       );
 
@@ -344,7 +383,9 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       const { file } = sourceInfo;
       const activeFacetIds = this.getActiveFacetIds(inputInfo);
 
-      if (SymbolHandler.isCanvasFile(file)) {
+      if (SymbolHandler.isBaseFile(file)) {
+        await this.addBaseViewsFromSource(file, ret, activeFacetIds);
+      } else if (SymbolHandler.isCanvasFile(file)) {
         await this.addCanvasSymbolsFromSource(file, ret, activeFacetIds);
       } else {
         const symbolData = metadataCache.getFileCache(file);
@@ -372,7 +413,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
           if (orderByLineNumber) {
             SymbolHandler.orderSymbolsByLineNumber(
-              ret as SymbolInfoExcludingCanvasNodes[],
+              ret as SymbolInfoExcludingSpecialFiles[],
             );
           }
         }
@@ -425,6 +466,67 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
             type: 'symbolInfo',
             symbolType: SymbolType.CanvasNode,
             symbol: { ...node },
+          });
+        }
+      });
+    }
+  }
+
+  /**
+   * Extracts Base view information from a Base configuration file and adds them to the symbol list.
+   * Base files contain YAML configuration that defines views (table, list, cards, etc.) which
+   * can be navigated to in symbol mode.
+   *
+   * This method follows the same pattern as `addCanvasSymbolsFromSource()` but parses YAML
+   * instead of JSON. It handles unknown view types by including them only when no facets are
+   * active, allowing custom view types to be shown in the default unfiltered state.
+   *
+   * @param file - The Base configuration file (.base extension) to read
+   * @param symbolList - The array to append extracted view symbols to
+   * @param activeFacetIds - Set of active facet IDs used for filtering which views to include
+   */
+  async addBaseViewsFromSource(
+    file: TFile,
+    symbolList: SymbolInfo[],
+    activeFacetIds: Set<string>,
+  ): Promise<void> {
+    let parsedData: BasesConfigFile;
+
+    try {
+      const fileContent = await this.app.vault.cachedRead(file);
+      parsedData = parseYaml(fileContent) as BasesConfigFile;
+    } catch (e) {
+      console.log(
+        `Switcher++: error reading file to extract base view information. ${file.path} `,
+        e,
+      );
+      return;
+    }
+
+    // Handle case where parseYaml returns null/undefined for invalid YAML
+    if (!parsedData) {
+      return;
+    }
+
+    if (parsedData?.views && Array.isArray(parsedData.views)) {
+      parsedData.views.forEach((view) => {
+        const facetId = BASE_VIEW_FACET_ID_MAP[view.type];
+
+        // For unknown view types (not in the facet map), include them only when no facets
+        // are active. This allows custom view types to be shown in the default unfiltered
+        // state while respecting facet filters when they are active.
+        const shouldInclude = facetId
+          ? this.shouldIncludeSymbol(facetId, activeFacetIds)
+          : activeFacetIds.size === 0;
+
+        if (shouldInclude) {
+          symbolList.push({
+            type: 'symbolInfo',
+            symbolType: SymbolType.BaseView,
+            symbol: {
+              type: view.type,
+              name: view.name,
+            } as BaseViewData,
           });
         }
       });
@@ -505,9 +607,17 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     }
   }
 
+  /**
+   * Sorts symbols by their line number position in the file.
+   * Base views and Canvas nodes are excluded from this method because they don't have
+   * position data (unlike markdown symbols like headings, tags, links, etc.).
+   *
+   * @param symbols - Array of symbol info objects that have position data
+   * @returns Sorted array with indent levels calculated based on heading hierarchy
+   */
   private static orderSymbolsByLineNumber(
-    symbols: SymbolInfoExcludingCanvasNodes[],
-  ): SymbolInfoExcludingCanvasNodes[] {
+    symbols: SymbolInfoExcludingSpecialFiles[],
+  ): SymbolInfoExcludingSpecialFiles[] {
     const sorted = symbols.sort((a, b) => {
       const { start: aStart } = a.symbol.position;
       const { start: bStart } = b.symbol.position;
@@ -542,8 +652,10 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       text = symbol.tag.slice(1);
     } else if (isCalloutCache(symbol)) {
       text = symbol.calloutTitle;
-    } else if (SymbolHandler.isCanvasSymbolPayload(symbolInfo, symbol)) {
-      text = SymbolHandler.getSuggestionTextForCanvasNode(symbol);
+    } else if (SymbolHandler.isCanvasSymbolPayload(symbolInfo)) {
+      text = SymbolHandler.getSuggestionTextForCanvasNode(symbolInfo.symbol);
+    } else if (SymbolHandler.isBaseViewSymbolPayload(symbolInfo)) {
+      text = (symbolInfo.symbol as BaseViewData).name;
     } else {
       const refCache = symbol as ReferenceCache;
       ({ link: text } = refCache);
@@ -591,8 +703,13 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       // Obsidian 0.15.9 the --callout-icon css prop holds the name of the icon glyph
       const iconName = calloutFlairEl.getCssPropertyValue('--callout-icon');
       setIcon(calloutFlairEl, iconName);
-    } else if (SymbolHandler.isCanvasSymbolPayload(symbolInfo, symbol)) {
-      const icon = CANVAS_ICON_MAP[symbol.type];
+    } else if (SymbolHandler.isCanvasSymbolPayload(symbolInfo)) {
+      const icon = CANVAS_ICON_MAP[symbolInfo.symbol.type];
+      this.renderIndicator(flairContainerEl, flairElClasses, icon, null);
+    } else if (SymbolHandler.isBaseViewSymbolPayload(symbolInfo)) {
+      const baseView = symbolInfo.symbol as BaseViewData;
+      // Use table icon as fallback for unknown view types
+      const icon = BASE_VIEW_ICON_MAP[baseView.type] || BASE_VIEW_ICON_MAP.table;
       this.renderIndicator(flairContainerEl, flairElClasses, icon, null);
     } else {
       let indicator: string;
@@ -609,9 +726,14 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
   static isCanvasSymbolPayload(
     symbolInfo: SymbolInfo,
-    payload: AnySymbolInfoPayload,
-  ): payload is AllCanvasNodeData {
+  ): symbolInfo is SymbolInfo & { symbol: AllCanvasNodeData } {
     return symbolInfo.symbolType === SymbolType.CanvasNode;
+  }
+
+  static isBaseViewSymbolPayload(
+    symbolInfo: SymbolInfo,
+  ): symbolInfo is SymbolInfo & { symbol: BaseViewData } {
+    return symbolInfo.symbolType === SymbolType.BaseView;
   }
 
   static isCanvasFile(sourceFile: TFile): boolean {
@@ -620,5 +742,28 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
   static isCanvasView(view: View): view is CanvasFileView {
     return view?.getViewType() === 'canvas';
+  }
+
+  /**
+   * Determines if a file is a Base configuration file.
+   * Base files are used to define views and configurations in Obsidian.
+   *
+   * @param sourceFile - The file to check, may be null or undefined.
+   * @returns True if the file has a '.base' extension, false otherwise.
+   */
+  static isBaseFile(sourceFile: TFile): boolean {
+    return sourceFile?.extension === 'base';
+  }
+
+  /**
+   * Determines if a view is a Base view.
+   * Unlike Canvas views, there's no specific BasesFileView type in Obsidian's type system,
+   * so this method performs a simple runtime check using the view type string.
+   *
+   * @param view - The view to check, may be null or undefined.
+   * @returns True if the view type is 'bases', false otherwise.
+   */
+  static isBaseView(view: View): boolean {
+    return view?.getViewType() === 'bases';
   }
 }

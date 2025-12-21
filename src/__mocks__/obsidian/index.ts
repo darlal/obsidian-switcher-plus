@@ -14,6 +14,7 @@ import {
   normalizePath,
   setIcon,
   parseLinktext,
+  parseYaml,
   Component,
   MarkdownRenderer,
   prepareFuzzySearch,
@@ -111,6 +112,10 @@ const mockStripHeadingForLink = mockFn<typeof stripHeadingForLink>().mockImpleme
   (heading) => heading,
 );
 
+// Mock parseYaml - returns undefined by default
+// Tests should override with mockReturnValue or mockImplementation as needed
+const mockParseYaml = mockFn<typeof parseYaml>();
+
 export {
   mockPlatform as Platform,
   mockModal as Modal,
@@ -125,6 +130,7 @@ export {
   mockNormalizePath as normalizePath,
   mockSetIcon as setIcon,
   mockParseLinktext as parseLinktext,
+  mockParseYaml as parseYaml,
   mockStripHeadingForLink as stripHeadingForLink,
   mockKeymap as Keymap,
   mockMarkdownRenderer as MarkdownRenderer,

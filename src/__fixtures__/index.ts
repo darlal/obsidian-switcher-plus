@@ -5,3 +5,4 @@ export * from './inputText.fixture';
 export * from './modeTrigger.fixture';
 export * from './suggestions.fixture';
 export * from './canvasFile.fixture';
+export * from './baseFile.fixture';

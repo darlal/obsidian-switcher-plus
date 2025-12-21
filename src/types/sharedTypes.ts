@@ -15,6 +15,7 @@ import {
   Modifier,
   BookmarksPluginItem,
   Hotkey,
+  BaseViewData,
 } from 'obsidian';
 import type { PaneType, SplitDirection, SuggestModal } from 'obsidian';
 import { PickKeys, WritableKeys } from 'ts-essentials';
@@ -60,6 +61,7 @@ export enum SymbolType {
   Heading = 8,
   Callout = 16,
   CanvasNode = 32,
+  BaseView = 64,
 }
 
 export enum LinkType {
@@ -219,7 +221,8 @@ export type AnySymbolInfoPayload =
   | TagCache
   | HeadingCache
   | CalloutCache
-  | AllCanvasNodeData;
+  | AllCanvasNodeData
+  | BaseViewData;
 
 export interface SymbolInfo {
   type: 'symbolInfo';

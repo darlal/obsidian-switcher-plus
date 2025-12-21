@@ -8,6 +8,17 @@ export const CANVAS_NODE_FACET_ID_MAP: Record<string, string> = {
   group: 'canvas-node-group',
 };
 
+/**
+ * Maps Base view types to their corresponding facet IDs.
+ * These are the common built-in view types (table, list, cards) that can be filtered
+ * in Symbol mode. Custom view types registered by plugins do not have facets.
+ */
+export const BASE_VIEW_FACET_ID_MAP: Record<string, string> = {
+  table: 'base-view-table',
+  list: 'base-view-list',
+  cards: 'base-view-cards',
+};
+
 export const SYMBOL_MODE_FACETS: Facet[] = [
   {
     id: SymbolType[SymbolType.Heading],
@@ -69,6 +80,27 @@ export const SYMBOL_MODE_FACETS: Facet[] = [
     id: CANVAS_NODE_FACET_ID_MAP.group,
     mode: Mode.SymbolList,
     label: 'groups',
+    isActive: false,
+    isAvailable: true,
+  },
+  {
+    id: BASE_VIEW_FACET_ID_MAP.table,
+    mode: Mode.SymbolList,
+    label: 'table views',
+    isActive: false,
+    isAvailable: true,
+  },
+  {
+    id: BASE_VIEW_FACET_ID_MAP.list,
+    mode: Mode.SymbolList,
+    label: 'list views',
+    isActive: false,
+    isAvailable: true,
+  },
+  {
+    id: BASE_VIEW_FACET_ID_MAP.cards,
+    mode: Mode.SymbolList,
+    label: 'card views',
     isActive: false,
     isAvailable: true,
   },
