@@ -2,7 +2,7 @@ import { Chance } from 'chance';
 import { SwitcherPlusSettings } from 'src/settings';
 import { CustomKeymapInfo, SwitcherPlusKeymap } from 'src/switcherPlus';
 import { generateMarkdownLink, getSystemGlobalSearchInstance } from 'src/utils';
-import { CommandHandler, Handler, WorkspaceHandler } from 'src/Handlers';
+import { CommandHandler, SymbolHandler, WorkspaceHandler } from 'src/Handlers';
 import {
   MockProxy,
   anyFunction,
@@ -43,6 +43,7 @@ import {
   InsertLinkConfig,
   CommandSuggestion,
   SuggestionType,
+  SymbolInfo,
   SymbolType,
   QuickOpenConfig,
   FileSuggestion,
@@ -1563,7 +1564,7 @@ describe('SwitcherPlusKeymap', () => {
     let mockSuggParentEl: MockProxy<HTMLDivElement>;
     let mockTitleEl: MockProxy<HTMLElement>;
     let file: TFile;
-    let renderContentAsyncSpy: jest.SpyInstance;
+    let renderSymbolContentSpy: jest.SpyInstance;
 
     beforeAll(() => {
       file = new TFile();
@@ -1577,18 +1578,26 @@ describe('SwitcherPlusKeymap', () => {
       mockConfig.renderMarkdownContentInSuggestions = {
         isEnabled: true,
         renderHeadings: false,
+        renderLinks: false,
+        renderTags: false,
+        renderCallouts: false,
         toggleContentRenderingKeys: null,
       };
 
-      renderContentAsyncSpy = jest
-        .spyOn(Handler, 'renderMarkdownContentAsync')
+      // Mock shouldRenderSymbolAsHTML to return true for headings
+      // Note: config is used to create the keymap, so we spy on config.shouldRenderSymbolAsHTML
+      jest.spyOn(config, 'shouldRenderSymbolAsHTML').mockReturnValue(true);
+
+      // Mock SymbolHandler.renderSymbolContent instead of Handler.renderMarkdownContentAsync
+      renderSymbolContentSpy = jest
+        .spyOn(SymbolHandler, 'renderSymbolContent')
         .mockReturnValue();
     });
 
     afterEach(() => {
       mockChooser.values = null;
       mockChooser.suggestions = null;
-      renderContentAsyncSpy.mockClear();
+      renderSymbolContentSpy.mockClear();
       mockRenderResults.mockClear();
 
       mockClear(mockChooser);
@@ -1598,7 +1607,8 @@ describe('SwitcherPlusKeymap', () => {
 
     afterAll(() => {
       mockConfig.renderMarkdownContentInSuggestions = null;
-      renderContentAsyncSpy.mockRestore();
+      jest.restoreAllMocks();
+      renderSymbolContentSpy.mockRestore();
     });
 
     it('should render a HeadingSuggestion as HTML', () => {
@@ -1610,11 +1620,23 @@ describe('SwitcherPlusKeymap', () => {
 
       sut.toggleMarkdownContentRendering(null, null);
 
-      expect(renderContentAsyncSpy).toHaveBeenCalledWith(
+      // Verify shouldRenderSymbolAsHTML was called with SymbolType.Heading
+      expect(config.shouldRenderSymbolAsHTML).toHaveBeenCalledWith(SymbolType.Heading);
+
+      // Verify renderSymbolContent was called with correct parameters
+      const expectedSymbolInfo: SymbolInfo = {
+        type: 'symbolInfo',
+        symbol: heading,
+        symbolType: SymbolType.Heading,
+      };
+      expect(renderSymbolContentSpy).toHaveBeenCalledWith(
         mockApp,
+        config,
         mockTitleEl,
-        heading.heading,
-        file.path,
+        expectedSymbolInfo,
+        file,
+        sugg.match,
+        true, // shouldRenderAsHTML is true when .qsp-rendered-container doesn't exist
       );
     });
 
@@ -1627,11 +1649,18 @@ describe('SwitcherPlusKeymap', () => {
 
       sut.toggleMarkdownContentRendering(null, null);
 
-      expect(renderContentAsyncSpy).toHaveBeenCalledWith(
+      // Verify shouldRenderSymbolAsHTML was called with SymbolType.Heading
+      expect(config.shouldRenderSymbolAsHTML).toHaveBeenCalledWith(SymbolType.Heading);
+
+      // Verify renderSymbolContent was called with the SymbolInfo from the suggestion
+      expect(renderSymbolContentSpy).toHaveBeenCalledWith(
         mockApp,
+        config,
         mockTitleEl,
-        heading.heading,
-        file.path,
+        sugg.item, // SymbolSuggestion.item is already a SymbolInfo
+        file,
+        sugg.match,
+        true, // shouldRenderAsHTML is true when .qsp-rendered-container doesn't exist
       );
     });
 
@@ -1643,17 +1672,30 @@ describe('SwitcherPlusKeymap', () => {
       mockChooser.selectedItem = 0;
 
       // Return a value here to indicate that the suggestion is currently being displayed
-      // as HTML and therefore shoudl be toggled to raw text
+      // as HTML and therefore should be toggled to raw text
       mockTitleEl.querySelector
         .calledWith('.qsp-rendered-container')
         .mockReturnValueOnce(mock<Element>());
 
       sut.toggleMarkdownContentRendering(null, null);
 
-      expect(mockRenderResults).toHaveBeenCalledWith(
+      // Verify shouldRenderSymbolAsHTML was called with SymbolType.Heading
+      expect(config.shouldRenderSymbolAsHTML).toHaveBeenCalledWith(SymbolType.Heading);
+
+      // Verify renderSymbolContent was called with renderAsHTMLOverride = false
+      const expectedSymbolInfo: SymbolInfo = {
+        type: 'symbolInfo',
+        symbol: heading,
+        symbolType: SymbolType.Heading,
+      };
+      expect(renderSymbolContentSpy).toHaveBeenCalledWith(
+        mockApp,
+        config,
         mockTitleEl,
-        heading.heading,
+        expectedSymbolInfo,
+        file,
         sugg.match,
+        false, // shouldRenderAsHTML is false when .qsp-rendered-container exists
       );
     });
 
@@ -1672,11 +1714,23 @@ describe('SwitcherPlusKeymap', () => {
 
       sut.toggleMarkdownContentRendering(null, null);
 
-      expect(renderContentAsyncSpy).toHaveBeenCalledWith(
+      // Verify shouldRenderSymbolAsHTML was called with SymbolType.Heading
+      expect(config.shouldRenderSymbolAsHTML).toHaveBeenCalledWith(SymbolType.Heading);
+
+      // Verify renderSymbolContent was called with renderAsHTMLOverride = true
+      const expectedSymbolInfo: SymbolInfo = {
+        type: 'symbolInfo',
+        symbol: heading,
+        symbolType: SymbolType.Heading,
+      };
+      expect(renderSymbolContentSpy).toHaveBeenCalledWith(
         mockApp,
+        config,
         mockTitleEl,
-        heading.heading,
-        file.path,
+        expectedSymbolInfo,
+        file,
+        sugg.match,
+        true, // shouldRenderAsHTML is true when .qsp-rendered-container doesn't exist
       );
     });
   });

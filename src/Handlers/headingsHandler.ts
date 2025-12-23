@@ -2,6 +2,7 @@ import { Handler } from './handler';
 import { StandardExHandler } from './standardExHandler';
 import { EditorHandler } from './editorHandler';
 import { BookmarksHandler } from './bookmarksHandler';
+import { SymbolHandler } from './symbolHandler';
 import { Searcher, StringSearcher } from 'src/search';
 import { HeadingsListFacetIds, SwitcherPlusSettings } from 'src/settings';
 import {
@@ -13,7 +14,6 @@ import {
   WorkspaceLeaf,
   TFolder,
   ViewRegistry,
-  renderResults,
   App,
   Pos,
 } from 'obsidian';
@@ -34,6 +34,8 @@ import {
   BookmarksSuggestion,
   BookmarksItemInfo,
   Facet,
+  SymbolInfo,
+  SymbolType,
 } from 'src/types';
 import {
   isTFile,
@@ -129,8 +131,8 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   }
 
   /**
-   * Renders the heading content into titleEl. Note when shouldRenderAsHTML is true
-   * rendering will happen asynchronously
+   * Renders the heading content into titleEl using the unified symbol rendering method.
+   * Note when shouldRenderAsHTML is true rendering will happen asynchronously.
    *
    * @static
    * @param {App} app
@@ -156,19 +158,23 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     searchResult?: SearchResult,
     renderAsHTMLOverride?: boolean,
   ): void {
-    const { heading } = headingCache;
-    const {
-      renderMarkdownContentInSuggestions: { isEnabled, renderHeadings },
-    } = config;
+    // Convert HeadingCache to SymbolInfo format for unified rendering
+    const symbolInfo: SymbolInfo = {
+      type: 'symbolInfo',
+      symbol: headingCache,
+      symbolType: SymbolType.Heading,
+    };
 
-    // If the override is null or undefined, fallback to the config value
-    renderAsHTMLOverride = renderAsHTMLOverride ?? (isEnabled && renderHeadings);
-
-    if (renderAsHTMLOverride) {
-      Handler.renderMarkdownContentAsync(app, titleEl, heading, sourceFile.path);
-    } else {
-      renderResults(titleEl, heading, searchResult);
-    }
+    // Use the unified rendering method
+    SymbolHandler.renderSymbolContent(
+      app,
+      config,
+      titleEl,
+      symbolInfo,
+      sourceFile,
+      searchResult,
+      renderAsHTMLOverride,
+    );
   }
 
   getAvailableFacets(inputInfo: InputInfo): Facet[] {

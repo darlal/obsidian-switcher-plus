@@ -2,7 +2,6 @@ import { SwitcherPlusSettings } from 'src/settings';
 import {
   getDestinationFileForSuggestion,
   generateMarkdownLink,
-  isHeadingCache,
   isHeadingSuggestion,
   isSymbolSuggestion,
   getSystemGlobalSearchInstance,
@@ -18,6 +17,8 @@ import {
   Mode,
   ModeDispatcher,
   NavigationKeysConfig,
+  SymbolInfo,
+  SymbolType,
   SwitcherPlus,
   WorkspaceSuggestion,
 } from 'src/types';
@@ -35,12 +36,11 @@ import {
   Hotkey,
   HotkeysSettingTab,
   KeymapEventListener,
-  HeadingCache,
   TFile,
   PaneType,
   SplitDirection,
 } from 'obsidian';
-import { CommandHandler, HeadingsHandler, WorkspaceHandler } from 'src/Handlers';
+import { CommandHandler, SymbolHandler, WorkspaceHandler } from 'src/Handlers';
 
 /**
  * Mapping of special keys to their string representation for display purposes.
@@ -978,20 +978,22 @@ export class SwitcherPlusKeymap {
   ): boolean | void {
     const { app, config, chooser } = this;
     const selectedSugg = chooser.values?.[chooser.selectedItem];
-    let headingCache: HeadingCache = null;
-    let file: TFile = null;
+    const file = (selectedSugg as { file: TFile }).file;
+    let symbolInfo: SymbolInfo = null;
 
-    if (isSymbolSuggestion(selectedSugg) && isHeadingCache(selectedSugg.item.symbol)) {
-      // Suggestion is a Symbol suggestion with a HeadingCache payload
-      headingCache = selectedSugg.item.symbol;
-      file = selectedSugg.file;
+    if (isSymbolSuggestion(selectedSugg)) {
+      symbolInfo = selectedSugg.item;
     } else if (isHeadingSuggestion(selectedSugg)) {
-      // Suggestion is a regular Heading Suggestion
-      headingCache = selectedSugg.item;
-      file = selectedSugg.file;
+      // Convert HeadingCache to SymbolInfo format for unified handling
+      symbolInfo = {
+        type: 'symbolInfo',
+        symbol: selectedSugg.item,
+        symbolType: SymbolType.Heading,
+      };
     }
 
-    if (headingCache && file) {
+    // Check if this symbol type supports rendering and proceed with rendering
+    if (symbolInfo && file && config.shouldRenderSymbolAsHTML(symbolInfo.symbolType)) {
       const parentEl = chooser.suggestions[chooser.selectedItem];
       const titleEl = parentEl.querySelector<HTMLElement>('.qsp-title');
 
@@ -1002,11 +1004,12 @@ export class SwitcherPlusKeymap {
       // Remove the child nodes from titleEl container since they will be re-rendered.
       titleEl.empty();
 
-      HeadingsHandler.renderHeadingContent(
+      // Use unified rendering method that supports all symbol types
+      SymbolHandler.renderSymbolContent(
         app,
         config,
         titleEl,
-        headingCache,
+        symbolInfo,
         file,
         selectedSugg.match,
         shouldRenderAsHTML,
@@ -1312,11 +1315,12 @@ export class SwitcherPlusKeymap {
       this.togglePinnedCommand.bind(this),
     );
 
-    // Toggles between showing raw text content for a heading (with search match
-    // highlights), or, showing rendered markdown content for the heading.
+    // Toggles between showing raw text content for a symbol (with search match
+    // highlights), or, showing rendered markdown content for the symbol.
+    // Works for all supported symbol types: Links, Tags, Callouts, and Headings.
     const { renderMarkdownContentInSuggestions } = config;
     this.createCustomKeymap(
-      'toggle preview (selected heading)',
+      'toggle preview (selected item)',
       [Mode.HeadingsList, Mode.SymbolList],
       renderMarkdownContentInSuggestions.toggleContentRenderingKeys,
       this.toggleMarkdownContentRendering.bind(this),

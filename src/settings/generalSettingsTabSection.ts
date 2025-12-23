@@ -371,25 +371,85 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     containerEl: HTMLElement,
     config: SwitcherPlusSettings,
   ): void {
-    const setting = this.addToggleSetting(
+    const { renderMarkdownContentInSuggestions } = config;
+
+    // Master toggle
+    const isEnabledSetting = this.addToggleSetting(
       containerEl,
-      'Display Headings as Live Preview',
-      'When enabled, Headings will be rendered as HTML similar to the Obsidian "Live Preview" display. When disabled, Headings will be rendered as raw text. Use the "toggle preview (selected heading)" hotkey to toggle the display for individual headings.',
-      config.renderMarkdownContentInSuggestions.renderHeadings,
+      'Display markdown content as Live Preview',
+      'When enabled, markdown content in symbol suggestions will be rendered as HTML similar to the Obsidian "Live Preview" display. When disabled, content will be rendered as raw text. Use the "toggle preview (selected item)" hotkey to toggle the display for individual items.',
+      renderMarkdownContentInSuggestions.isEnabled,
       null,
       (value, config) => {
         const { renderMarkdownContentInSuggestions } = config;
-        renderMarkdownContentInSuggestions.renderHeadings = value;
         renderMarkdownContentInSuggestions.isEnabled = value;
-        config.save();
+
+        // have to wait for the save here because the call to display() will
+        // trigger a read of the updated data
+        config.saveSettings().then(
+          () => {
+            // reload the settings panel. This will cause the individual toggles
+            // to be shown/hidden based on isEnabled status
+            this.mainSettingsTab.display();
+          },
+          (reason) =>
+            console.log(
+              'Switcher++: error saving "Display markdown content as Live Preview" setting. ',
+              reason,
+            ),
+        );
       },
     );
 
     // Show a callout that this feature is experimental
-    setting?.nameEl?.createSpan({
+    isEnabledSetting?.nameEl?.createSpan({
       cls: ['qsp-tag', 'qsp-warning'],
       text: 'Experimental',
     });
+
+    // Individual toggles (only shown when master toggle is enabled)
+    if (renderMarkdownContentInSuggestions.isEnabled) {
+      const symbolTypeToggles: Array<{
+        name: string;
+        property: keyof typeof renderMarkdownContentInSuggestions;
+        description: string;
+      }> = [
+        {
+          name: 'Headings',
+          property: 'renderHeadings',
+          description: 'Render headings as HTML',
+        },
+        {
+          name: 'Links',
+          property: 'renderLinks',
+          description: 'Render links as HTML',
+        },
+        {
+          name: 'Tags',
+          property: 'renderTags',
+          description: 'Render tags as HTML',
+        },
+        {
+          name: 'Callouts',
+          property: 'renderCallouts',
+          description: 'Render callouts as HTML',
+        },
+      ];
+
+      symbolTypeToggles.forEach(({ name, property, description }) => {
+        this.addToggleSetting(
+          containerEl,
+          name,
+          description,
+          renderMarkdownContentInSuggestions[property] as boolean,
+          null,
+          (value, config) => {
+            (config.renderMarkdownContentInSuggestions[property] as boolean) = value;
+            config.save();
+          },
+        ).setClass('qsp-setting-item-indent');
+      });
+    }
   }
 
   showInsertLinkInEditor(containerEl: HTMLElement, config: SwitcherPlusSettings): void {

@@ -17,12 +17,7 @@ import {
   SourceInfo,
 } from 'src/types';
 import { InputInfo, SourcedParsedCommand } from 'src/switcherPlus';
-import {
-  Handler,
-  HeadingsHandler,
-  SymbolHandler,
-  SymbolInfoExcludingSpecialFiles,
-} from 'src/Handlers';
+import { Handler, SymbolHandler, SymbolInfoExcludingSpecialFiles } from 'src/Handlers';
 import {
   WorkspaceLeaf,
   App,
@@ -790,14 +785,14 @@ describe('symbolHandler', () => {
       expect(() => sut.renderSuggestion(null, null)).not.toThrow();
     });
 
-    it('should delegate rendering of headings to Headings Handler', () => {
-      const renderHeadingSpy = jest.spyOn(HeadingsHandler, 'renderHeadingContent');
+    it('should render heading symbols using the unified renderSymbolContent method', () => {
+      const renderSymbolContentSpy = jest.spyOn(SymbolHandler, 'renderSymbolContent');
 
       sut.renderSuggestion(symbolSugg, mockParentEl);
 
-      expect(renderHeadingSpy).toHaveBeenCalled();
+      expect(renderSymbolContentSpy).toHaveBeenCalledTimes(1);
 
-      renderHeadingSpy.mockRestore();
+      renderSymbolContentSpy.mockRestore();
     });
 
     it('should render Tag suggestion', () => {
@@ -2213,6 +2208,490 @@ describe('symbolHandler', () => {
       expect(Array.isArray(results)).toBe(true);
       expect(results.length).toBeGreaterThan(0);
       expect(results.every((facet) => mdFacetIds.has(facet.id))).toBe(true);
+    });
+  });
+
+  describe('getMarkdownContentForSymbol', () => {
+    const mockFile = new TFile();
+
+    it('should return heading text for Heading symbols', () => {
+      // Arrange
+      const heading = getHeadings()[0];
+      const symbolInfo = makeSymbolSuggestion(heading, SymbolType.Heading).item;
+
+      // Act
+      const result = SymbolHandler.getMarkdownContentForSymbol(symbolInfo, mockFile);
+
+      // Assert
+      expect(result).toBe(heading.heading);
+    });
+
+    it('should return tag with # character for Tag symbols', () => {
+      // Arrange
+      const tag = getTags()[0];
+      const symbolInfo = makeSymbolSuggestion(tag, SymbolType.Tag).item;
+
+      // Act
+      const result = SymbolHandler.getMarkdownContentForSymbol(symbolInfo, mockFile);
+
+      // Assert
+      expect(result).toBe(tag.tag);
+      expect(result).toContain('#');
+    });
+
+    it('should return calloutTitle for Callout symbols', () => {
+      // Arrange
+      const symbolInfo = makeSymbolSuggestion(calloutCache, SymbolType.Callout).item;
+
+      // Act
+      const result = SymbolHandler.getMarkdownContentForSymbol(symbolInfo, mockFile);
+
+      // Assert
+      expect(result).toBe(calloutCache.calloutTitle);
+    });
+
+    it('should return original markdown for Link symbols when original is available', () => {
+      // Arrange
+      const link = getLinks()[1]; // This link has original markdown
+      const symbolInfo = makeSymbolSuggestion(link, SymbolType.Link).item;
+      const refCache = link as ReferenceCache;
+
+      // Act
+      const result = SymbolHandler.getMarkdownContentForSymbol(symbolInfo, mockFile);
+
+      // Assert
+      expect(result).toBe(refCache.original);
+    });
+
+    it('should return original markdown for Link symbols', () => {
+      // Arrange
+      const link = getLinks()[0]; // This link has original markdown
+      const symbolInfo = makeSymbolSuggestion(link, SymbolType.Link).item;
+      const refCache = link as ReferenceCache;
+
+      // Act
+      const result = SymbolHandler.getMarkdownContentForSymbol(symbolInfo, mockFile);
+
+      // Assert
+      // Should return original markdown text
+      expect(result).toBe(refCache.original);
+    });
+
+    it('should return null for Link symbols when original is not available', () => {
+      // Arrange
+      const linkCache: ReferenceCache = {
+        link: 'some-link',
+        // No original property
+      } as ReferenceCache;
+      const symbolInfo: SymbolInfo = {
+        type: 'symbolInfo',
+        symbol: linkCache,
+        symbolType: SymbolType.Link,
+      };
+
+      // Act
+      const result = SymbolHandler.getMarkdownContentForSymbol(symbolInfo, mockFile);
+
+      // Assert
+      expect(result).toBeNull();
+    });
+
+    it('should return null for Embed symbols when original is not available', () => {
+      // Arrange
+      // Embed symbols are ReferenceCache but if they don't have original,
+      // they should return null
+      const embedCache: ReferenceCache = {
+        link: 'test.jpg',
+        // No original property
+      } as ReferenceCache;
+      const symbolInfo: SymbolInfo = {
+        type: 'symbolInfo',
+        symbol: embedCache,
+        symbolType: SymbolType.Embed,
+      };
+
+      // Act
+      const result = SymbolHandler.getMarkdownContentForSymbol(symbolInfo, mockFile);
+
+      // Assert
+      expect(result).toBeNull();
+    });
+
+    it('should return null for CanvasNode symbols', () => {
+      // Arrange
+      const canvasNodes = (JSON.parse(makeCanvasFileContentString()) as CanvasData).nodes;
+      const symbolInfo = makeSymbolSuggestion(canvasNodes[0], SymbolType.CanvasNode).item;
+
+      // Act
+      const result = SymbolHandler.getMarkdownContentForSymbol(symbolInfo, mockFile);
+
+      // Assert
+      expect(result).toBeNull();
+    });
+
+    it('should return null for BaseView symbols', () => {
+      // Arrange
+      const baseViewData: BaseViewData = {
+        type: 'table',
+        name: chance.word(),
+      };
+      const symbolInfo = makeSymbolSuggestion(baseViewData, SymbolType.BaseView).item;
+
+      // Act
+      const result = SymbolHandler.getMarkdownContentForSymbol(symbolInfo, mockFile);
+
+      // Assert
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('renderSymbolContent', () => {
+    let mockTitleEl: MockProxy<HTMLElement>;
+    let mockConfig: MockProxy<SwitcherPlusSettings>;
+    const mockFile = new TFile();
+    const mockSearchResult = makeFuzzyMatch();
+
+    beforeEach(() => {
+      mockTitleEl = mock<HTMLElement>();
+      mockConfig = mock<SwitcherPlusSettings>();
+    });
+
+    it('should render as HTML when config says to render as HTML', () => {
+      // Arrange
+      const heading = getHeadings()[0];
+      const symbolInfo = makeSymbolSuggestion(heading, SymbolType.Heading).item;
+      mockConfig.shouldRenderSymbolAsHTML.mockReturnValue(true);
+
+      const renderMarkdownSpy = jest
+        .spyOn(Handler, 'renderMarkdownContentAsync')
+        .mockReturnValueOnce();
+
+      // Act
+      SymbolHandler.renderSymbolContent(
+        mockApp,
+        mockConfig,
+        mockTitleEl,
+        symbolInfo,
+        mockFile,
+      );
+
+      // Assert
+      expect(mockConfig.shouldRenderSymbolAsHTML).toHaveBeenCalledWith(
+        SymbolType.Heading,
+      );
+
+      expect(renderMarkdownSpy).toHaveBeenCalledWith(
+        mockApp,
+        mockTitleEl,
+        heading.heading,
+        mockFile.path,
+      );
+
+      renderMarkdownSpy.mockRestore();
+    });
+
+    it('should render as raw text when config says not to render as HTML', () => {
+      // Arrange
+      const heading = getHeadings()[0];
+      const symbolInfo = makeSymbolSuggestion(heading, SymbolType.Heading).item;
+      mockConfig.shouldRenderSymbolAsHTML.mockReturnValue(false);
+
+      const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
+      const getSuggestionTextSpy = jest
+        .spyOn(SymbolHandler, 'getSuggestionTextForSymbol')
+        .mockReturnValueOnce(heading.heading);
+
+      // Act
+      SymbolHandler.renderSymbolContent(
+        mockApp,
+        mockConfig,
+        mockTitleEl,
+        symbolInfo,
+        mockFile,
+        mockSearchResult,
+      );
+
+      // Assert
+      expect(mockConfig.shouldRenderSymbolAsHTML).toHaveBeenCalledWith(
+        SymbolType.Heading,
+      );
+
+      expect(getSuggestionTextSpy).toHaveBeenCalledWith(symbolInfo);
+      expect(mockRenderResults).toHaveBeenCalledWith(
+        mockTitleEl,
+        heading.heading,
+        mockSearchResult,
+      );
+
+      getSuggestionTextSpy.mockRestore();
+    });
+
+    it('should render as HTML when renderAsHTMLOverride is true, regardless of config', () => {
+      // Arrange
+      const heading = getHeadings()[0];
+      const symbolInfo = makeSymbolSuggestion(heading, SymbolType.Heading).item;
+      mockConfig.shouldRenderSymbolAsHTML.mockReturnValue(false); // Config says no HTML
+
+      const renderMarkdownSpy = jest
+        .spyOn(Handler, 'renderMarkdownContentAsync')
+        .mockReturnValueOnce();
+
+      // Act
+      SymbolHandler.renderSymbolContent(
+        mockApp,
+        mockConfig,
+        mockTitleEl,
+        symbolInfo,
+        mockFile,
+        mockSearchResult,
+        true, // Override to HTML
+      );
+
+      // Assert
+      expect(renderMarkdownSpy).toHaveBeenCalledWith(
+        mockApp,
+        mockTitleEl,
+        heading.heading,
+        mockFile.path,
+      );
+
+      // Config should not be checked when override is provided
+      expect(mockConfig.shouldRenderSymbolAsHTML).not.toHaveBeenCalled();
+
+      renderMarkdownSpy.mockRestore();
+    });
+
+    it('should render as raw text when renderAsHTMLOverride is false, regardless of config', () => {
+      // Arrange
+      const heading = getHeadings()[0];
+      const symbolInfo = makeSymbolSuggestion(heading, SymbolType.Heading).item;
+      mockConfig.shouldRenderSymbolAsHTML.mockReturnValue(true); // Config says HTML
+
+      const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
+      const getSuggestionTextSpy = jest
+        .spyOn(SymbolHandler, 'getSuggestionTextForSymbol')
+        .mockReturnValueOnce(heading.heading);
+
+      // Act
+      SymbolHandler.renderSymbolContent(
+        mockApp,
+        mockConfig,
+        mockTitleEl,
+        symbolInfo,
+        mockFile,
+        mockSearchResult,
+        false, // Override to text
+      );
+
+      // Assert
+      expect(getSuggestionTextSpy).toHaveBeenCalledWith(symbolInfo);
+      expect(mockRenderResults).toHaveBeenCalledWith(
+        mockTitleEl,
+        heading.heading,
+        mockSearchResult,
+      );
+
+      // Config should not be checked when override is provided
+      expect(mockConfig.shouldRenderSymbolAsHTML).not.toHaveBeenCalled();
+
+      getSuggestionTextSpy.mockRestore();
+    });
+
+    it('should fall back to config when renderAsHTMLOverride is undefined', () => {
+      // Arrange
+      const heading = getHeadings()[0];
+      const symbolInfo = makeSymbolSuggestion(heading, SymbolType.Heading).item;
+      mockConfig.shouldRenderSymbolAsHTML.mockReturnValue(true);
+
+      const renderMarkdownSpy = jest
+        .spyOn(Handler, 'renderMarkdownContentAsync')
+        .mockReturnValueOnce();
+
+      // Act
+      SymbolHandler.renderSymbolContent(
+        mockApp,
+        mockConfig,
+        mockTitleEl,
+        symbolInfo,
+        mockFile,
+        mockSearchResult,
+        undefined, // No override
+      );
+
+      // Assert
+      expect(mockConfig.shouldRenderSymbolAsHTML).toHaveBeenCalledWith(
+        SymbolType.Heading,
+      );
+
+      expect(renderMarkdownSpy).toHaveBeenCalledWith(
+        mockApp,
+        mockTitleEl,
+        heading.heading,
+        mockFile.path,
+      );
+
+      renderMarkdownSpy.mockRestore();
+    });
+
+    it('should render as raw text when markdown content is null', () => {
+      // Arrange
+      const canvasNodes = (JSON.parse(makeCanvasFileContentString()) as CanvasData).nodes;
+      const symbolInfo = makeSymbolSuggestion(canvasNodes[0], SymbolType.CanvasNode).item;
+      mockConfig.shouldRenderSymbolAsHTML.mockReturnValue(true); // Config says HTML
+
+      const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
+      const getSuggestionTextSpy = jest
+        .spyOn(SymbolHandler, 'getSuggestionTextForSymbol')
+        .mockReturnValueOnce('canvas node text');
+
+      // Act
+      SymbolHandler.renderSymbolContent(
+        mockApp,
+        mockConfig,
+        mockTitleEl,
+        symbolInfo,
+        mockFile,
+        mockSearchResult,
+      );
+
+      // Assert
+      // Should fall back to raw text when markdown content is null
+      expect(getSuggestionTextSpy).toHaveBeenCalledWith(symbolInfo);
+      expect(mockRenderResults).toHaveBeenCalledWith(
+        mockTitleEl,
+        'canvas node text',
+        mockSearchResult,
+      );
+
+      getSuggestionTextSpy.mockRestore();
+    });
+
+    it('should render Tag symbols as HTML when configured', () => {
+      // Arrange
+      const tag = getTags()[0];
+      const symbolInfo = makeSymbolSuggestion(tag, SymbolType.Tag).item;
+      mockConfig.shouldRenderSymbolAsHTML.mockReturnValue(true);
+
+      const renderMarkdownSpy = jest
+        .spyOn(Handler, 'renderMarkdownContentAsync')
+        .mockReturnValueOnce();
+
+      // Act
+      SymbolHandler.renderSymbolContent(
+        mockApp,
+        mockConfig,
+        mockTitleEl,
+        symbolInfo,
+        mockFile,
+      );
+
+      // Assert
+      expect(renderMarkdownSpy).toHaveBeenCalledWith(
+        mockApp,
+        mockTitleEl,
+        tag.tag, // Should include the # character
+        mockFile.path,
+      );
+
+      renderMarkdownSpy.mockRestore();
+    });
+
+    it('should render Callout symbols as HTML when configured', () => {
+      // Arrange
+      const symbolInfo = makeSymbolSuggestion(calloutCache, SymbolType.Callout).item;
+      mockConfig.shouldRenderSymbolAsHTML.mockReturnValue(true);
+
+      const renderMarkdownSpy = jest
+        .spyOn(Handler, 'renderMarkdownContentAsync')
+        .mockReturnValueOnce();
+
+      // Act
+      SymbolHandler.renderSymbolContent(
+        mockApp,
+        mockConfig,
+        mockTitleEl,
+        symbolInfo,
+        mockFile,
+      );
+
+      // Assert
+      expect(renderMarkdownSpy).toHaveBeenCalledWith(
+        mockApp,
+        mockTitleEl,
+        calloutCache.calloutTitle,
+        mockFile.path,
+      );
+
+      renderMarkdownSpy.mockRestore();
+    });
+
+    it('should render Link symbols as HTML when configured', () => {
+      // Arrange
+      const link = getLinks()[1]; // Link with displayText
+      const symbolInfo = makeSymbolSuggestion(link, SymbolType.Link).item;
+      mockConfig.shouldRenderSymbolAsHTML.mockReturnValue(true);
+
+      const renderMarkdownSpy = jest
+        .spyOn(Handler, 'renderMarkdownContentAsync')
+        .mockReturnValueOnce();
+
+      // Act
+      SymbolHandler.renderSymbolContent(
+        mockApp,
+        mockConfig,
+        mockTitleEl,
+        symbolInfo,
+        mockFile,
+      );
+
+      // Assert
+      const refCache = link as ReferenceCache;
+      expect(renderMarkdownSpy).toHaveBeenCalledWith(
+        mockApp,
+        mockTitleEl,
+        refCache.original,
+        mockFile.path,
+      );
+
+      renderMarkdownSpy.mockRestore();
+    });
+
+    it('should not call renderMarkdownContentAsync when markdown content is null and override is true', () => {
+      // Arrange
+      const canvasNodes = (JSON.parse(makeCanvasFileContentString()) as CanvasData).nodes;
+      const symbolInfo = makeSymbolSuggestion(canvasNodes[0], SymbolType.CanvasNode).item;
+
+      const renderMarkdownSpy = jest
+        .spyOn(Handler, 'renderMarkdownContentAsync')
+        .mockReturnValueOnce();
+      const mockRenderResults = jest.mocked<typeof renderResults>(renderResults);
+      const getSuggestionTextSpy = jest
+        .spyOn(SymbolHandler, 'getSuggestionTextForSymbol')
+        .mockReturnValueOnce('canvas node text');
+
+      // Act
+      SymbolHandler.renderSymbolContent(
+        mockApp,
+        mockConfig,
+        mockTitleEl,
+        symbolInfo,
+        mockFile,
+        mockSearchResult,
+        true, // Override to HTML, but markdown content is null
+      );
+
+      // Assert
+      // Should fall back to raw text even with override when markdown content is null
+      expect(renderMarkdownSpy).not.toHaveBeenCalled();
+      expect(getSuggestionTextSpy).toHaveBeenCalledWith(symbolInfo);
+      expect(mockRenderResults).toHaveBeenCalledWith(
+        mockTitleEl,
+        'canvas node text',
+        mockSearchResult,
+      );
+
+      renderMarkdownSpy.mockRestore();
+      getSuggestionTextSpy.mockRestore();
     });
   });
 });

@@ -8,6 +8,7 @@ import {
   CanvasTextData,
 } from 'obsidian/canvas';
 import {
+  App,
   BasesConfigFile,
   BaseViewData,
   CanvasFileView,
@@ -42,8 +43,11 @@ import {
 import { getLinkType, isCalloutCache, isHeadingCache, isTagCache } from 'src/utils';
 import { InputInfo, ParsedCommand, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler } from './handler';
-import { HeadingsHandler } from './headingsHandler';
-import { BASE_VIEW_FACET_ID_MAP, CANVAS_NODE_FACET_ID_MAP } from 'src/settings';
+import {
+  BASE_VIEW_FACET_ID_MAP,
+  CANVAS_NODE_FACET_ID_MAP,
+  SwitcherPlusSettings,
+} from 'src/settings';
 import { Searcher } from 'src/search';
 
 export type SymbolInfoExcludingSpecialFiles = Omit<SymbolInfo, 'symbol'> & {
@@ -153,19 +157,14 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       this.addClassesToSuggestionContainer(parentEl, parentElClasses);
       const { titleEl } = Handler.createContentStructureElements(parentEl);
 
-      if (isHeadingCache(item.symbol)) {
-        HeadingsHandler.renderHeadingContent(
-          this.app,
-          this.settings,
-          titleEl,
-          item.symbol,
-          file,
-          match,
-        );
-      } else {
-        const text = SymbolHandler.getSuggestionTextForSymbol(item);
-        renderResults(titleEl, text, match);
-      }
+      SymbolHandler.renderSymbolContent(
+        this.app,
+        this.settings,
+        titleEl,
+        item,
+        file,
+        match,
+      );
 
       this.addSymbolIndicator(item, parentEl);
       handled = true;
@@ -640,6 +639,109 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     });
 
     return sorted;
+  }
+
+  /**
+   * Extracts markdown content from a symbol for HTML rendering purposes.
+   * Returns the raw markdown string that should be rendered, or null if
+   * the symbol type doesn't support markdown rendering.
+   *
+   * This method differs from `getSuggestionTextForSymbol()` in that it returns
+   * the raw markdown content (e.g., tags include the `#` character) rather than
+   * processed text suitable for display. The returned content is intended to be
+   * passed to a markdown renderer for HTML conversion.
+   *
+   * @param symbolInfo - The symbol information containing the symbol payload
+   * @param _sourceFile - The source file containing the symbol (currently unused
+   *   but included for consistency with rendering methods and potential future use)
+   * @returns The markdown content string, or null if the symbol type doesn't
+   *   support markdown rendering (e.g., Embed, CanvasNode, BaseView)
+   */
+  static getMarkdownContentForSymbol(
+    symbolInfo: SymbolInfo,
+    _sourceFile: TFile,
+  ): string | null {
+    const { symbol } = symbolInfo;
+
+    if (isHeadingCache(symbol)) {
+      return symbol.heading;
+    }
+
+    if (isTagCache(symbol)) {
+      // Include the # character for tags (unlike getSuggestionTextForSymbol which slices it)
+      return symbol.tag;
+    }
+
+    if (isCalloutCache(symbol)) {
+      return symbol.calloutTitle;
+    }
+
+    // Handle Link types (ReferenceCache)
+    const refCache = symbol as ReferenceCache;
+    if (refCache.original) {
+      return refCache.original;
+    }
+
+    // Return null for unsupported types (Embed, CanvasNode, BaseView)
+    return null;
+  }
+
+  /**
+   * Renders symbol content as either HTML (Live Preview) or raw text based on
+   * configuration settings and optional override parameter.
+   *
+   * This method provides a unified rendering approach for all symbol types
+   * (Headings, Links, Tags, Callouts) that can be used by both `SymbolHandler`
+   * and `HeadingsHandler`. It determines the rendering mode by checking:
+   * 1. The `renderAsHTMLOverride` parameter (if provided)
+   * 2. The configuration setting via `config.shouldRenderSymbolAsHTML()`
+   *
+   * When HTML rendering is enabled, the markdown content is converted to HTML
+   * asynchronously using Obsidian's markdown renderer. When raw text rendering
+   * is used, search result highlighting is preserved.
+   *
+   * @param app - The Obsidian App instance
+   * @param config - The SwitcherPlusSettings configuration
+   * @param titleEl - The HTML element to render into
+   * @param symbolInfo - The symbol information to render
+   * @param sourceFile - The source file containing the symbol, used for
+   *   resolving relative links during HTML rendering
+   * @param searchResult - Optional search result for highlighting when rendering
+   *   as raw text
+   * @param renderAsHTMLOverride - Optional override to force HTML or text rendering.
+   *   If `true`, renders as HTML regardless of config. If `false`, renders as raw
+   *   text regardless of config. If `null` or `undefined`, falls back to config value.
+   */
+  static renderSymbolContent(
+    app: App,
+    config: SwitcherPlusSettings,
+    titleEl: HTMLElement,
+    symbolInfo: SymbolInfo,
+    sourceFile: TFile,
+    searchResult?: SearchResult,
+    renderAsHTMLOverride?: boolean,
+  ): void {
+    // Get markdown content for HTML rendering
+    const markdownContent = SymbolHandler.getMarkdownContentForSymbol(
+      symbolInfo,
+      sourceFile,
+    );
+
+    // Determine if HTML rendering should be used
+    // If override is explicitly set (true/false), use it; otherwise check config
+    const shouldRenderAsHTML =
+      renderAsHTMLOverride ??
+      (markdownContent !== null &&
+        config.shouldRenderSymbolAsHTML(symbolInfo.symbolType));
+
+    if (shouldRenderAsHTML && markdownContent !== null) {
+      // Render as HTML using markdown renderer
+      Handler.renderMarkdownContentAsync(app, titleEl, markdownContent, sourceFile.path);
+    } else {
+      // Render as raw text with search highlighting
+      const text = SymbolHandler.getSuggestionTextForSymbol(symbolInfo);
+      renderResults(titleEl, text, searchResult);
+    }
   }
 
   static getSuggestionTextForSymbol(symbolInfo: SymbolInfo): string {

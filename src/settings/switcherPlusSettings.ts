@@ -158,6 +158,9 @@ export class SwitcherPlusSettings {
       renderMarkdownContentInSuggestions: {
         isEnabled: false,
         renderHeadings: false,
+        renderLinks: false,
+        renderTags: false,
+        renderCallouts: false,
         toggleContentRenderingKeys: { modifiers: ['Shift', 'Ctrl'], key: 'm' },
       },
       quickOpen: {
@@ -889,6 +892,56 @@ export class SwitcherPlusSettings {
 
   setSymbolTypeEnabled(symbol: SymbolType, isEnabled: boolean): void {
     this.data.enabledSymbolTypes[symbol] = isEnabled;
+  }
+
+  /**
+   * Determines whether a given symbol type should be rendered as HTML based on the
+   * current render markdown content settings.
+   *
+   * This method checks if the markdown rendering feature is enabled globally, and if so,
+   * returns the specific render setting for the given symbol type. Only certain symbol
+   * types support HTML rendering (Headings, Links, Tags, and Callouts). Unsupported
+   * symbol types (such as Embeds, CanvasNodes, and BaseViews) will always return false
+   * as they do not have corresponding render settings.
+   *
+   * @param symbolType - The symbol type to check render settings for.
+   * @returns `true` if the symbol type should be rendered as HTML, `false` otherwise.
+   *          Returns `false` if the feature is disabled globally or if the symbol type
+   *          is not supported for HTML rendering.
+   */
+  shouldRenderSymbolAsHTML(symbolType: SymbolType): boolean {
+    const { renderMarkdownContentInSuggestions } = this.data;
+
+    // If feature is disabled globally, no symbol types should be rendered as HTML
+    if (!renderMarkdownContentInSuggestions.isEnabled) {
+      return false;
+    }
+
+    // Map symbol types to their corresponding render settings
+    // Only certain symbol types support HTML rendering
+    const symbolTypeToRenderSetting: Partial<
+      Record<
+        SymbolType,
+        'renderHeadings' | 'renderLinks' | 'renderTags' | 'renderCallouts'
+      >
+    > = {
+      [SymbolType.Heading]: 'renderHeadings',
+      [SymbolType.Link]: 'renderLinks',
+      [SymbolType.Tag]: 'renderTags',
+      [SymbolType.Callout]: 'renderCallouts',
+    };
+
+    // Get the render setting key for this symbol type
+    const renderSettingKey = symbolTypeToRenderSetting[symbolType];
+
+    // Return false for unsupported symbol types (e.g., Embed, CanvasNode, BaseView)
+    // These types do not have corresponding render settings
+    if (!renderSettingKey) {
+      return false;
+    }
+
+    // Return the value of the corresponding render setting
+    return renderMarkdownContentInSuggestions[renderSettingKey];
   }
 
   static async transformDataFile(

@@ -15,7 +15,7 @@ import {
   Workspace,
   WorkspaceLeaf,
 } from 'obsidian';
-import { Handler, HeadingsHandler } from 'src/Handlers';
+import { Handler, HeadingsHandler, SymbolHandler } from 'src/Handlers';
 import { HeadingsListFacetIds, SwitcherPlusSettings } from 'src/settings';
 import {
   getCachedMetadata,
@@ -39,6 +39,8 @@ import {
   EditorSuggestion,
   SuggestionType,
   SearchQuery,
+  SymbolInfo,
+  SymbolType,
 } from 'src/types';
 import {
   isAliasSuggestion,
@@ -635,8 +637,8 @@ describe('headingsHandler', () => {
         1,
       );
 
-      const renderMarkdownSpy = jest
-        .spyOn(Handler, 'renderMarkdownContentAsync')
+      const renderSymbolContentSpy = jest
+        .spyOn(SymbolHandler, 'renderSymbolContent')
         .mockReturnValueOnce();
 
       // Note: omit the optional renderAsHTMLOverride param
@@ -648,14 +650,23 @@ describe('headingsHandler', () => {
         file,
       );
 
-      expect(renderMarkdownSpy).toHaveBeenCalledWith(
+      const expectedSymbolInfo: SymbolInfo = {
+        type: 'symbolInfo',
+        symbol: heading,
+        symbolType: SymbolType.Heading,
+      };
+
+      expect(renderSymbolContentSpy).toHaveBeenCalledWith(
         mockApp,
+        mockConfig,
         mockTitleEl,
-        heading.heading,
-        file.path,
+        expectedSymbolInfo,
+        file,
+        undefined,
+        undefined,
       );
 
-      renderMarkdownSpy.mockRestore();
+      renderSymbolContentSpy.mockRestore();
     });
 
     it('.renderHeadingContent() should render markdown content when the override is enabled', () => {
@@ -671,8 +682,8 @@ describe('headingsHandler', () => {
         1,
       );
 
-      const renderMarkdownSpy = jest
-        .spyOn(Handler, 'renderMarkdownContentAsync')
+      const renderSymbolContentSpy = jest
+        .spyOn(SymbolHandler, 'renderSymbolContent')
         .mockReturnValueOnce();
 
       HeadingsHandler.renderHeadingContent(
@@ -685,14 +696,23 @@ describe('headingsHandler', () => {
         true, // Enable override
       );
 
-      expect(renderMarkdownSpy).toHaveBeenCalledWith(
+      const expectedSymbolInfo: SymbolInfo = {
+        type: 'symbolInfo',
+        symbol: heading,
+        symbolType: SymbolType.Heading,
+      };
+
+      expect(renderSymbolContentSpy).toHaveBeenCalledWith(
         mockApp,
+        mockConfig,
         mockTitleEl,
-        heading.heading,
-        file.path,
+        expectedSymbolInfo,
+        file,
+        null,
+        true,
       );
 
-      renderMarkdownSpy.mockRestore();
+      renderSymbolContentSpy.mockRestore();
     });
   });
 

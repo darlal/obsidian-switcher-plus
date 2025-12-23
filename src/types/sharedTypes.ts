@@ -471,6 +471,24 @@ export type RenderMarkdownContentConfig = {
    */
   renderHeadings: boolean;
   /**
+   * If true markdown link content in symbol suggestions will be displayed as HTML elements
+   *
+   * @type {boolean}
+   */
+  renderLinks: boolean;
+  /**
+   * If true markdown tag content in symbol suggestions will be displayed as HTML elements
+   *
+   * @type {boolean}
+   */
+  renderTags: boolean;
+  /**
+   * If true markdown callout content in symbol suggestions will be displayed as HTML elements
+   *
+   * @type {boolean}
+   */
+  renderCallouts: boolean;
+  /**
    * Key combination that toggles between displaying the rendered HTML content or the
    * raw text content.
    *

@@ -575,13 +575,19 @@ describe('generalSettingsTabSection', () => {
       saveSettingsSpy.mockRestore();
     });
 
-    it('should save changes to the renderMarkdownContentInSuggestions setting', () => {
-      const initialValue = false;
-      const finalValue = true;
+    afterEach(() => {
+      toggleSettingOnChangeFn = null;
+    });
 
-      config.renderMarkdownContentInSuggestions.renderHeadings = initialValue;
+    it('should refresh the mainSettingsTab panel when the master toggle changes', async () => {
+      const initialEnabledValue = false;
+      const finalEnabledValue = true;
+      const savePromise = Promise.resolve();
+
+      config.renderMarkdownContentInSuggestions.isEnabled = initialEnabledValue;
+      saveSettingsSpy.mockReturnValueOnce(savePromise);
       addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
-        if (args[1] === 'Display Headings as Live Preview') {
+        if (args[1] === 'Display markdown content as Live Preview') {
           toggleSettingOnChangeFn = args[5];
         }
 
@@ -591,13 +597,79 @@ describe('generalSettingsTabSection', () => {
       sut.showRenderMarkdownContentAsHTML(mockContainerEl, config);
 
       // trigger the change/save
-      toggleSettingOnChangeFn(finalValue, config);
+      toggleSettingOnChangeFn(finalEnabledValue, config);
+
+      await savePromise;
 
       expect(saveSettingsSpy).toHaveBeenCalled();
+      expect(mockPluginSettingTab.display).toHaveBeenCalled();
+      expect(config.renderMarkdownContentInSuggestions.isEnabled).toBe(finalEnabledValue);
+
+      config.renderMarkdownContentInSuggestions.isEnabled = false;
+      addToggleSettingSpy.mockReset();
+      mockPluginSettingTab.display.mockClear();
+    });
+
+    it('should save changes to individual symbol type toggles when master toggle is enabled', () => {
+      const initialValue = false;
+      const finalValue = true;
+      const saveSpy = jest.spyOn(config, 'save').mockReturnValueOnce();
+
+      config.renderMarkdownContentInSuggestions.isEnabled = true;
+      config.renderMarkdownContentInSuggestions.renderHeadings = initialValue;
+      let headingsToggleOnChangeFn: addToggleSettingArgs[5];
+
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+        if (args[1] === 'Headings') {
+          headingsToggleOnChangeFn = args[5];
+        }
+
+        return mock<Setting>({ nameEl: mock<HTMLElement>() });
+      });
+
+      sut.showRenderMarkdownContentAsHTML(mockContainerEl, config);
+
+      // trigger the change/save
+      headingsToggleOnChangeFn(finalValue, config);
+
       expect(config.renderMarkdownContentInSuggestions.renderHeadings).toBe(finalValue);
+      expect(saveSpy).toHaveBeenCalled();
 
       config.renderMarkdownContentInSuggestions.renderHeadings = false;
+      config.renderMarkdownContentInSuggestions.isEnabled = false;
       addToggleSettingSpy.mockReset();
+      saveSpy.mockRestore();
+    });
+
+    it('should log error to the console when setting cannot be saved', async () => {
+      const errorMsg = 'showRenderMarkdownContentAsHTML Unit test error';
+      const rejectedPromise = Promise.reject(new Error(errorMsg));
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+        if (args[1] === 'Display markdown content as Live Preview') {
+          toggleSettingOnChangeFn = args[5];
+        }
+
+        return mock<Setting>({ nameEl: mock<HTMLElement>() });
+      });
+
+      saveSettingsSpy.mockReturnValueOnce(rejectedPromise);
+
+      sut.showRenderMarkdownContentAsHTML(mockContainerEl, config);
+
+      // trigger the change/save
+      toggleSettingOnChangeFn(true, config);
+
+      await expect(rejectedPromise).rejects.toBeTruthy();
+      expect(saveSettingsSpy).toHaveBeenCalled();
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ message: errorMsg }),
+      );
+
+      addToggleSettingSpy.mockReset();
+      consoleLogSpy.mockRestore();
     });
 
     describe('showQuickOpen', () => {

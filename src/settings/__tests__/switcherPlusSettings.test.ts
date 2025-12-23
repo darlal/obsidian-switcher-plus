@@ -155,6 +155,9 @@ function getDefaultSettingsData(): SettingsData {
     renderMarkdownContentInSuggestions: {
       isEnabled: false,
       renderHeadings: false,
+      renderLinks: false,
+      renderTags: false,
+      renderCallouts: false,
       toggleContentRenderingKeys: { modifiers: ['Shift', 'Ctrl'], key: 'm' },
     },
     quickOpen: {
@@ -345,6 +348,9 @@ function getTransientSettingsData(): SettingsData {
     renderMarkdownContentInSuggestions: {
       isEnabled: false,
       renderHeadings: false,
+      renderLinks: false,
+      renderTags: false,
+      renderCallouts: false,
       toggleContentRenderingKeys: { modifiers: ['Shift', 'Ctrl'], key: 'm' },
     },
     quickOpen: {
@@ -932,6 +938,196 @@ describe('SwitcherPlusSettings', () => {
       expect(savedData.version).toBe('2.0.0');
       expect(savedData.quickFilters).toEqual(expected);
       expect(result).toBe(true);
+    });
+  });
+
+  describe('shouldRenderSymbolAsHTML', () => {
+    it('should return false when isEnabled is false', () => {
+      // Arrange
+      sut.renderMarkdownContentInSuggestions.isEnabled = false;
+      sut.renderMarkdownContentInSuggestions.renderHeadings = true;
+      sut.renderMarkdownContentInSuggestions.renderLinks = true;
+      sut.renderMarkdownContentInSuggestions.renderTags = true;
+      sut.renderMarkdownContentInSuggestions.renderCallouts = true;
+
+      // Act & Assert
+      expect(sut.shouldRenderSymbolAsHTML(SymbolType.Heading)).toBe(false);
+      expect(sut.shouldRenderSymbolAsHTML(SymbolType.Link)).toBe(false);
+      expect(sut.shouldRenderSymbolAsHTML(SymbolType.Tag)).toBe(false);
+      expect(sut.shouldRenderSymbolAsHTML(SymbolType.Callout)).toBe(false);
+    });
+
+    it('should return false for unsupported symbol types', () => {
+      // Arrange
+      sut.renderMarkdownContentInSuggestions.isEnabled = true;
+      sut.renderMarkdownContentInSuggestions.renderHeadings = true;
+      sut.renderMarkdownContentInSuggestions.renderLinks = true;
+      sut.renderMarkdownContentInSuggestions.renderTags = true;
+      sut.renderMarkdownContentInSuggestions.renderCallouts = true;
+
+      // Act & Assert
+      expect(sut.shouldRenderSymbolAsHTML(SymbolType.Embed)).toBe(false);
+      expect(sut.shouldRenderSymbolAsHTML(SymbolType.CanvasNode)).toBe(false);
+      expect(sut.shouldRenderSymbolAsHTML(SymbolType.BaseView)).toBe(false);
+    });
+
+    describe('when feature is enabled globally', () => {
+      beforeEach(() => {
+        sut.renderMarkdownContentInSuggestions.isEnabled = true;
+      });
+
+      it('should return true when Heading setting is true', () => {
+        // Arrange
+        sut.renderMarkdownContentInSuggestions.renderHeadings = true;
+
+        // Act
+        const result = sut.shouldRenderSymbolAsHTML(SymbolType.Heading);
+
+        // Assert
+        expect(result).toBe(true);
+      });
+
+      it('should return false when Heading setting is false', () => {
+        // Arrange
+        sut.renderMarkdownContentInSuggestions.renderHeadings = false;
+
+        // Act
+        const result = sut.shouldRenderSymbolAsHTML(SymbolType.Heading);
+
+        // Assert
+        expect(result).toBe(false);
+      });
+
+      it('should return true when Link setting is true', () => {
+        // Arrange
+        sut.renderMarkdownContentInSuggestions.renderLinks = true;
+
+        // Act
+        const result = sut.shouldRenderSymbolAsHTML(SymbolType.Link);
+
+        // Assert
+        expect(result).toBe(true);
+      });
+
+      it('should return false when Link setting is false', () => {
+        // Arrange
+        sut.renderMarkdownContentInSuggestions.renderLinks = false;
+
+        // Act
+        const result = sut.shouldRenderSymbolAsHTML(SymbolType.Link);
+
+        // Assert
+        expect(result).toBe(false);
+      });
+
+      it('should return true when Tag setting is true', () => {
+        // Arrange
+        sut.renderMarkdownContentInSuggestions.renderTags = true;
+
+        // Act
+        const result = sut.shouldRenderSymbolAsHTML(SymbolType.Tag);
+
+        // Assert
+        expect(result).toBe(true);
+      });
+
+      it('should return false when Tag setting is false', () => {
+        // Arrange
+        sut.renderMarkdownContentInSuggestions.renderTags = false;
+
+        // Act
+        const result = sut.shouldRenderSymbolAsHTML(SymbolType.Tag);
+
+        // Assert
+        expect(result).toBe(false);
+      });
+
+      it('should return true when Callout setting is true', () => {
+        // Arrange
+        sut.renderMarkdownContentInSuggestions.renderCallouts = true;
+
+        // Act
+        const result = sut.shouldRenderSymbolAsHTML(SymbolType.Callout);
+
+        // Assert
+        expect(result).toBe(true);
+      });
+
+      it('should return false when Callout setting is false', () => {
+        // Arrange
+        sut.renderMarkdownContentInSuggestions.renderCallouts = false;
+
+        // Act
+        const result = sut.shouldRenderSymbolAsHTML(SymbolType.Callout);
+
+        // Assert
+        expect(result).toBe(false);
+      });
+
+      it('should return correct values for multiple symbol types independently', () => {
+        // Arrange
+        sut.renderMarkdownContentInSuggestions.renderHeadings = true;
+        sut.renderMarkdownContentInSuggestions.renderLinks = false;
+        sut.renderMarkdownContentInSuggestions.renderTags = true;
+        sut.renderMarkdownContentInSuggestions.renderCallouts = false;
+
+        // Act & Assert
+        expect(sut.shouldRenderSymbolAsHTML(SymbolType.Heading)).toBe(true);
+        expect(sut.shouldRenderSymbolAsHTML(SymbolType.Link)).toBe(false);
+        expect(sut.shouldRenderSymbolAsHTML(SymbolType.Tag)).toBe(true);
+        expect(sut.shouldRenderSymbolAsHTML(SymbolType.Callout)).toBe(false);
+      });
+
+      it('should handle all symbol types correctly with mixed settings', () => {
+        // Arrange
+        sut.renderMarkdownContentInSuggestions.renderHeadings = true;
+        sut.renderMarkdownContentInSuggestions.renderLinks = true;
+        sut.renderMarkdownContentInSuggestions.renderTags = false;
+        sut.renderMarkdownContentInSuggestions.renderCallouts = false;
+
+        // Act & Assert
+        expect(sut.shouldRenderSymbolAsHTML(SymbolType.Heading)).toBe(true);
+        expect(sut.shouldRenderSymbolAsHTML(SymbolType.Link)).toBe(true);
+        expect(sut.shouldRenderSymbolAsHTML(SymbolType.Tag)).toBe(false);
+        expect(sut.shouldRenderSymbolAsHTML(SymbolType.Callout)).toBe(false);
+        expect(sut.shouldRenderSymbolAsHTML(SymbolType.Embed)).toBe(false);
+        expect(sut.shouldRenderSymbolAsHTML(SymbolType.CanvasNode)).toBe(false);
+        expect(sut.shouldRenderSymbolAsHTML(SymbolType.BaseView)).toBe(false);
+      });
+
+      describe('unsupported symbol types', () => {
+        beforeEach(() => {
+          // Set all render settings to true to ensure unsupported types still return false
+          sut.renderMarkdownContentInSuggestions.renderHeadings = true;
+          sut.renderMarkdownContentInSuggestions.renderLinks = true;
+          sut.renderMarkdownContentInSuggestions.renderTags = true;
+          sut.renderMarkdownContentInSuggestions.renderCallouts = true;
+        });
+
+        it('should return false for Embed symbol type', () => {
+          // Act
+          const result = sut.shouldRenderSymbolAsHTML(SymbolType.Embed);
+
+          // Assert
+          expect(result).toBe(false);
+        });
+
+        it('should return false for CanvasNode symbol type', () => {
+          // Act
+          const result = sut.shouldRenderSymbolAsHTML(SymbolType.CanvasNode);
+
+          // Assert
+          expect(result).toBe(false);
+        });
+
+        it('should return false for BaseView symbol type', () => {
+          // Act
+          const result = sut.shouldRenderSymbolAsHTML(SymbolType.BaseView);
+
+          // Assert
+          expect(result).toBe(false);
+        });
+      });
     });
   });
 });
