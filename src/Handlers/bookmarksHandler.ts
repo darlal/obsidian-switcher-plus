@@ -84,8 +84,35 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
     return suggestions;
   }
 
-  renderSuggestion(_sugg: BookmarksSuggestion, _parentEl: HTMLElement): boolean {
-    return false;
+  renderSuggestion(sugg: BookmarksSuggestion, parentEl: HTMLElement): boolean {
+    let handled = false;
+
+    // Only use custom rendering for file-based bookmarks to enable tag display.
+    // Other bookmark types (saved searches, folders, etc.) are delegated to core
+    // Obsidian rendering by returning false.
+    if (sugg && BookmarksHandler.isBookmarksPluginFileItem(sugg.item)) {
+      const { file, matchType, match, bookmarkPath } = sugg;
+
+      this.renderAsFileInfoPanel(
+        parentEl,
+        ['qsp-suggestion-bookmark'],
+        bookmarkPath,
+        file,
+        matchType,
+        match,
+      );
+
+      // Tags are rendered between the file info and the path
+      const contentEl = parentEl.querySelector<HTMLElement>('.qsp-content');
+      if (contentEl) {
+        this.renderTags(contentEl, file);
+      }
+
+      this.renderOptionalIndicators(parentEl, sugg);
+      handled = true;
+    }
+
+    return handled;
   }
 
   onChooseSuggestion(

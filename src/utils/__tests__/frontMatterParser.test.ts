@@ -147,6 +147,58 @@ describe('FrontMatterParser', () => {
       expect(results[0]).toBe('foo');
     });
 
+    it('should parse Tag key (case-insensitive)', () => {
+      const fm: FrontMatterCache = {
+        Tag: 'foo',
+        position: null,
+      };
+
+      const results = FrontMatterParser.getTags(fm);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(1);
+      expect(results[0]).toBe('foo');
+    });
+
+    it('should parse TAG key (case-insensitive)', () => {
+      const fm: FrontMatterCache = {
+        TAG: 'foo',
+        position: null,
+      };
+
+      const results = FrontMatterParser.getTags(fm);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(1);
+      expect(results[0]).toBe('foo');
+    });
+
+    it('should parse Tags key (case-insensitive)', () => {
+      const fm: FrontMatterCache = {
+        Tags: 'foo',
+        position: null,
+      };
+
+      const results = FrontMatterParser.getTags(fm);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(1);
+      expect(results[0]).toBe('foo');
+    });
+
+    it('should parse TAGS key (case-insensitive)', () => {
+      const fm: FrontMatterCache = {
+        TAGS: 'foo',
+        position: null,
+      };
+
+      const results = FrontMatterParser.getTags(fm);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(1);
+      expect(results[0]).toBe('foo');
+    });
+
     it('should parse string values', () => {
       const fm: FrontMatterCache = {
         tags: 'one, two ,three',

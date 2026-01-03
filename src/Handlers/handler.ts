@@ -51,6 +51,8 @@ import {
   getDestinationFileForSuggestion,
   getHeadingBreadcrumbs,
   formatHeadingBreadcrumbs,
+  getFileTags,
+  formatTags,
 } from 'src/utils';
 
 export abstract class Handler<T extends AnySuggestion> {
@@ -745,14 +747,82 @@ export abstract class Handler<T extends AnySuggestion> {
       return;
     }
 
+    // Determine if truncation will occur - truncation indicator rendered via CSS
+    const { maxBreadcrumbDepth } = this.settings;
+    const cssClasses = ['qsp-heading-breadcrumbs'];
+    if (maxBreadcrumbDepth > 0 && breadcrumbs.length > maxBreadcrumbDepth) {
+      cssClasses.push('qsp-truncated');
+    }
+
     const formattedBreadcrumbs = formatHeadingBreadcrumbs(
       breadcrumbs,
       this.settings.headingBreadcrumbSeparator,
-      this.settings.maxBreadcrumbDepth,
+      maxBreadcrumbDepth,
     );
 
     if (formattedBreadcrumbs) {
-      this.renderBreadcrumb(parentEl, formattedBreadcrumbs, 'lucide-heading');
+      this.renderBreadcrumb(
+        parentEl,
+        formattedBreadcrumbs,
+        'lucide-heading',
+        undefined,
+        cssClasses,
+      );
+    }
+  }
+
+  /**
+   * Renders tags for a file as a breadcrumb element. Tags are extracted based on the
+   * configured tag source setting (frontmatter, inline, or both), optionally filtered
+   * against an exclusion list, and truncated if they exceed the max display limit.
+   *
+   * @param parentEl - The containing element, typically the element with "suggestion-content" style
+   * @param file - The file to extract tags from
+   * @returns void
+   */
+  renderTags(parentEl: HTMLElement, file: TFile): void {
+    const { settings } = this;
+
+    if (!settings.showTagsInSuggestions || !parentEl || !file) {
+      return;
+    }
+
+    // Convert the exclusion array to a Set for the utility function
+    const excludeTagsSet = new Set(settings.excludeTagsFromDisplay);
+
+    const tags = getFileTags(
+      file,
+      this.app.metadataCache,
+      settings.tagSource,
+      excludeTagsSet,
+    );
+
+    if (tags.length === 0) {
+      return;
+    }
+
+    // Handle max tags limit - truncation indicator is rendered via CSS
+    let displayTags = tags;
+    const cssClasses = ['qsp-tags-breadcrumbs'];
+    if (settings.maxTagsToDisplay > 0 && tags.length > settings.maxTagsToDisplay) {
+      displayTags = tags.slice(0, settings.maxTagsToDisplay);
+      cssClasses.push('qsp-truncated');
+    }
+
+    const formattedTags = formatTags(
+      displayTags,
+      settings.tagDisplaySeparator,
+      settings.removeHashPrefixFromTags,
+    );
+
+    if (formattedTags) {
+      this.renderBreadcrumb(
+        parentEl,
+        formattedTags,
+        'lucide-tags',
+        undefined,
+        cssClasses,
+      );
     }
   }
 

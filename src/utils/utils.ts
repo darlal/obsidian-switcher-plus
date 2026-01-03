@@ -32,7 +32,9 @@ import {
   CalloutCache,
   Mode,
   BookmarksSuggestion,
+  TagSource,
 } from 'src/types';
+import { FrontMatterParser } from 'src/utils/frontMatterParser';
 
 export function isOfType<T>(
   obj: unknown,
@@ -525,4 +527,79 @@ export function formatHeadingBreadcrumbs(
  */
 export function leafHasLoadedViewOfType(leaf: WorkspaceLeaf, viewType: string): boolean {
   return leaf?.view?.getViewType() === viewType && !leaf.isDeferred;
+}
+
+/**
+ * Extracts tags from a file based on the specified tag source (inline, frontmatter, or both).
+ * Tags are deduplicated, optionally filtered against an exclusion set, and returned sorted.
+ *
+ * @param file - The file to extract tags from
+ * @param metadataCache - The Obsidian metadata cache to retrieve file metadata
+ * @param tagSource - Which source(s) to retrieve tags from (default: TagSource.Both)
+ * @param excludeTags - Optional set of tag names (without #) to exclude from results
+ * @returns Sorted array of unique tag strings (with # prefix), or empty array if no tags found
+ */
+export function getFileTags(
+  file: TFile,
+  metadataCache: MetadataCache,
+  tagSource: TagSource = TagSource.Both,
+  excludeTags?: Set<string>,
+): string[] {
+  const fileCache = metadataCache.getFileCache(file);
+  if (!fileCache) {
+    return [];
+  }
+
+  const tagSet = new Set<string>();
+
+  // Get inline tags if requested
+  if (tagSource === TagSource.Inline || tagSource === TagSource.Both) {
+    const inlineTags = fileCache.tags ?? [];
+    inlineTags.forEach((tc) => tagSet.add(tc.tag));
+  }
+
+  // Get frontmatter tags if requested
+  if (tagSource === TagSource.Frontmatter || tagSource === TagSource.Both) {
+    const fmTags = FrontMatterParser.getTags(fileCache.frontmatter);
+    // Frontmatter tags may not have # prefix, so normalize them
+    fmTags.forEach((tag) => {
+      tagSet.add(tag.startsWith('#') ? tag : `#${tag}`);
+    });
+  }
+
+  let tags = Array.from(tagSet);
+
+  // Filter excluded tags
+  if (excludeTags && excludeTags.size > 0) {
+    tags = tags.filter((tag) => {
+      const tagName = tag.startsWith('#') ? tag.slice(1) : tag;
+      return !excludeTags.has(tagName);
+    });
+  }
+
+  return tags.sort();
+}
+
+/**
+ * Formats an array of tags into a display string.
+ *
+ * @param tags - Array of tag strings to format
+ * @param separator - String to use between tags (default: ', ')
+ * @param removeHashPrefix - Whether to remove the # prefix from tags (default: false)
+ * @returns Formatted string with tags joined by separator
+ */
+export function formatTags(
+  tags: string[],
+  separator: string = ' ',
+  removeHashPrefix: boolean = false,
+): string {
+  if (!tags || tags.length === 0) {
+    return '';
+  }
+
+  const formattedTags = removeHashPrefix
+    ? tags.map((tag) => (tag.startsWith('#') ? tag.slice(1) : tag))
+    : tags;
+
+  return formattedTags.join(separator);
 }

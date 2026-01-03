@@ -815,6 +815,35 @@ describe('settingsTabSection', () => {
         mockReset(mockConfig);
       });
     });
+
+    it('should execute the onChange callback if supplied', () => {
+      const expectedValue = chance.word();
+      const cb = jest.fn();
+
+      let onChangeFn: (v: string) => void;
+      mockTextComp.onChange.mockImplementationOnce((cb) => {
+        onChangeFn = cb;
+        return mockTextComp;
+      });
+
+      sut.addTextAreaSetting(
+        mockContainerEl,
+        chance.word(),
+        chance.sentence(),
+        chance.word(),
+        null,
+        null,
+        cb,
+      );
+
+      // trigger the value change here
+      onChangeFn(expectedValue);
+
+      expect(mockTextComp.onChange).toHaveBeenCalled();
+      expect(cb).toHaveBeenCalledWith(expectedValue, mockConfig);
+
+      mockReset(mockConfig);
+    });
   });
 
   describe('addDropdown', () => {

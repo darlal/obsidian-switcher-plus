@@ -6,7 +6,7 @@ import {
 } from 'src/settings';
 import { mock, mockFn, MockProxy, mockReset } from 'jest-mock-extended';
 import { App, Setting, SettingGroup, TextAreaComponent } from 'obsidian';
-import { Mode, PathDisplayFormat } from 'src/types';
+import { Mode, PathDisplayFormat, TagSource } from 'src/types';
 
 describe('generalSettingsTabSection', () => {
   type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
@@ -1222,6 +1222,320 @@ describe('generalSettingsTabSection', () => {
       expect(displaySpy).toHaveBeenCalled();
 
       saveSpy.mockRestore();
+    });
+  });
+
+  describe('showTagDisplaySettings', () => {
+    type addTextAreaSettingArgs = Parameters<SettingsTabSection['addTextAreaSetting']>;
+    let toggleSettingOnChangeFn: addToggleSettingArgs[5];
+    let saveSettingsSpy: jest.SpyInstance;
+    let addSectionTitleSpy: jest.SpyInstance;
+    let addSliderSettingSpy: jest.SpyInstance;
+    let addDropdownSettingSpy: jest.SpyInstance;
+    let addTextAreaSettingSpy: jest.SpyInstance;
+    let addTextSettingSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      saveSettingsSpy = jest.spyOn(config, 'saveSettings');
+      addSectionTitleSpy = jest.spyOn(SettingsTabSection.prototype, 'addSectionTitle');
+      addSliderSettingSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'addSliderSetting')
+        .mockReturnValue(mock<Setting>());
+      addDropdownSettingSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'addDropdownSetting')
+        .mockReturnValue(mock<Setting>());
+      addTextAreaSettingSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'addTextAreaSetting')
+        .mockReturnValue(mock<Setting>());
+      addTextSettingSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'addTextSetting')
+        .mockReturnValue(mock<Setting>());
+    });
+
+    afterAll(() => {
+      saveSettingsSpy.mockRestore();
+      addSectionTitleSpy.mockRestore();
+      addSliderSettingSpy.mockRestore();
+      addDropdownSettingSpy.mockRestore();
+      addTextAreaSettingSpy.mockRestore();
+      addTextSettingSpy.mockRestore();
+    });
+
+    afterEach(() => {
+      toggleSettingOnChangeFn = null;
+      config.showTagsInSuggestions = false;
+      addToggleSettingSpy.mockClear();
+      addSectionTitleSpy.mockClear();
+      addSliderSettingSpy.mockClear();
+      addDropdownSettingSpy.mockClear();
+      addTextAreaSettingSpy.mockClear();
+      addTextSettingSpy.mockClear();
+    });
+
+    it('should show the showTagsInSuggestions master toggle', () => {
+      sut.showTagDisplaySettings(mockContainerEl, config);
+
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
+        expect.any(SettingGroup),
+        'Show tags in suggestions',
+        expect.any(String),
+        config.showTagsInSuggestions,
+        null,
+        expect.any(Function),
+      );
+    });
+
+    it('should refresh the mainSettingsTab panel when showTagsInSuggestions changes', async () => {
+      const initialValue = false;
+      const finalValue = true;
+      const savePromise = Promise.resolve();
+
+      config.showTagsInSuggestions = initialValue;
+      saveSettingsSpy.mockReturnValueOnce(savePromise);
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+        if (args[1] === 'Show tags in suggestions') {
+          toggleSettingOnChangeFn = args[5];
+        }
+
+        return mock<Setting>();
+      });
+
+      sut.showTagDisplaySettings(mockContainerEl, config);
+
+      // trigger the change/save
+      toggleSettingOnChangeFn(finalValue, config);
+
+      await savePromise;
+
+      expect(saveSettingsSpy).toHaveBeenCalled();
+      expect(mockPluginSettingTab.display).toHaveBeenCalled();
+      expect(config.showTagsInSuggestions).toBe(finalValue);
+
+      mockPluginSettingTab.display.mockClear();
+    });
+
+    it('should log error to the console when setting cannot be saved', async () => {
+      const errorMsg = 'showTagDisplaySettings Unit test error';
+      const rejectedPromise = Promise.reject(new Error(errorMsg));
+      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+        if (args[1] === 'Show tags in suggestions') {
+          toggleSettingOnChangeFn = args[5];
+        }
+
+        return mock<Setting>();
+      });
+
+      saveSettingsSpy.mockReturnValueOnce(rejectedPromise);
+
+      sut.showTagDisplaySettings(mockContainerEl, config);
+
+      // trigger the change/save
+      toggleSettingOnChangeFn(true, config);
+
+      await expect(rejectedPromise).rejects.toBeTruthy();
+      expect(saveSettingsSpy).toHaveBeenCalled();
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ message: errorMsg }),
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should show tag source dropdown when master toggle is enabled', () => {
+      config.showTagsInSuggestions = true;
+      addToggleSettingSpy.mockReturnValue(mock<Setting>());
+
+      sut.showTagDisplaySettings(mockContainerEl, config);
+
+      expect(addDropdownSettingSpy).toHaveBeenCalledWith(
+        expect.any(SettingGroup),
+        'Tag source',
+        expect.any(String),
+        config.tagSource,
+        expect.objectContaining({
+          [TagSource.Both]: 'Both',
+          [TagSource.Inline]: 'Inline only',
+          [TagSource.Frontmatter]: 'Frontmatter only',
+        }),
+        null,
+        expect.any(Function),
+      );
+    });
+
+    it('should save tag source setting when changed', () => {
+      config.showTagsInSuggestions = true;
+      config.tagSource = TagSource.Both;
+      const finalValue = TagSource.Inline;
+      addToggleSettingSpy.mockReturnValue(mock<Setting>());
+
+      let dropdownOnChangeFn: addDropdownSettingArgs[6];
+      addDropdownSettingSpy.mockImplementation((...args: addDropdownSettingArgs) => {
+        if (args[1] === 'Tag source') {
+          dropdownOnChangeFn = args[6];
+        }
+        return mock<Setting>();
+      });
+
+      const saveSpy = jest.spyOn(config, 'save');
+
+      sut.showTagDisplaySettings(mockContainerEl, config);
+
+      // trigger the change/save
+      dropdownOnChangeFn(finalValue, config);
+
+      expect(config.tagSource).toBe(finalValue);
+      expect(saveSpy).toHaveBeenCalled();
+
+      config.tagSource = TagSource.Both;
+      saveSpy.mockRestore();
+    });
+
+    it('should show excluded tags textarea when master toggle is enabled', () => {
+      config.showTagsInSuggestions = true;
+      addToggleSettingSpy.mockReturnValue(mock<Setting>());
+
+      sut.showTagDisplaySettings(mockContainerEl, config);
+
+      expect(addTextAreaSettingSpy).toHaveBeenCalledWith(
+        expect.any(SettingGroup),
+        'Excluded tags',
+        expect.any(String),
+        config.excludeTagsFromDisplay.join('\n'),
+        null,
+        expect.any(String),
+        expect.any(Function),
+      );
+    });
+
+    it('should save excluded tags setting when changed', () => {
+      config.showTagsInSuggestions = true;
+      config.excludeTagsFromDisplay = [];
+      const finalValue = ['tag1', 'tag2'];
+      addToggleSettingSpy.mockReturnValue(mock<Setting>());
+
+      let textAreaOnChangeFn: addTextAreaSettingArgs[6];
+      addTextAreaSettingSpy.mockImplementation((...args: addTextAreaSettingArgs) => {
+        if (args[1] === 'Excluded tags') {
+          textAreaOnChangeFn = args[6];
+        }
+        return mock<Setting>();
+      });
+
+      const saveSpy = jest.spyOn(config, 'save');
+
+      sut.showTagDisplaySettings(mockContainerEl, config);
+
+      // trigger the change/save
+      textAreaOnChangeFn(finalValue.join('\n'), config);
+
+      expect(config.excludeTagsFromDisplay).toEqual(finalValue);
+      expect(saveSpy).toHaveBeenCalled();
+
+      config.excludeTagsFromDisplay = [];
+      saveSpy.mockRestore();
+    });
+
+    it('should show max tags slider when master toggle is enabled', () => {
+      config.showTagsInSuggestions = true;
+      addToggleSettingSpy.mockReturnValue(mock<Setting>());
+
+      sut.showTagDisplaySettings(mockContainerEl, config);
+
+      expect(addSliderSettingSpy).toHaveBeenCalledWith(
+        expect.any(SettingGroup),
+        'Max tags to display',
+        expect.any(String),
+        config.maxTagsToDisplay,
+        [0, 20, 1, 5],
+        'maxTagsToDisplay',
+      );
+    });
+
+    it('should show tag separator text setting when master toggle is enabled', () => {
+      config.showTagsInSuggestions = true;
+      addToggleSettingSpy.mockReturnValue(mock<Setting>());
+
+      sut.showTagDisplaySettings(mockContainerEl, config);
+
+      expect(addTextSettingSpy).toHaveBeenCalledWith(
+        expect.any(SettingGroup),
+        'Tag separator',
+        expect.any(String),
+        config.tagDisplaySeparator,
+        'tagDisplaySeparator',
+        ', ',
+      );
+    });
+
+    it('should show remove hash prefix toggle when master toggle is enabled', () => {
+      config.showTagsInSuggestions = true;
+      addToggleSettingSpy.mockReturnValue(mock<Setting>());
+
+      sut.showTagDisplaySettings(mockContainerEl, config);
+
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
+        expect.any(SettingGroup),
+        'Remove # prefix from tags',
+        expect.any(String),
+        config.removeHashPrefixFromTags,
+        'removeHashPrefixFromTags',
+      );
+    });
+
+    it('should not show sub-settings when master toggle is disabled', () => {
+      config.showTagsInSuggestions = false;
+
+      sut.showTagDisplaySettings(mockContainerEl, config);
+
+      // Master toggle should still be shown
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
+        expect.any(SettingGroup),
+        'Show tags in suggestions',
+        expect.any(String),
+        config.showTagsInSuggestions,
+        null,
+        expect.any(Function),
+      );
+
+      // But sub-settings should not be called for tag-specific settings
+      // (only the master toggle call should exist)
+      expect(addDropdownSettingSpy).not.toHaveBeenCalledWith(
+        mockContainerEl,
+        'Tag source',
+        expect.any(String),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
+      expect(addTextAreaSettingSpy).not.toHaveBeenCalledWith(
+        mockContainerEl,
+        'Excluded tags',
+        expect.any(String),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
+      expect(addSliderSettingSpy).not.toHaveBeenCalledWith(
+        mockContainerEl,
+        'Max tags to display',
+        expect.any(String),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
+      expect(addTextSettingSpy).not.toHaveBeenCalledWith(
+        mockContainerEl,
+        'Tag separator',
+        expect.any(String),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
     });
   });
 });

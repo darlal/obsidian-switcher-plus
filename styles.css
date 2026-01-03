@@ -73,7 +73,8 @@
 }
 
 /* highlight the open editor flair icon */
-.suggestion-item.qsp-open-editor .qsp-editor-indicator {
+.suggestion-item.qsp-open-editor .suggestion-aux.qsp-aux .qsp-editor-indicator,
+.suggestion-item.qsp-open-editor .suggestion-aux.qsp-aux .qsp-editor-indicator svg {
   color: var(--text-accent);
 }
 
@@ -170,8 +171,58 @@
 /* suggestion flair/icon container */
 .qsp-aux {}
 
-/* suggestion file path element */
-.qsp-path {}
+/* Faint styling for optional flair icons, excluding symbol indicators */
+.suggestion-aux.qsp-aux > *:not(.qsp-symbol-indicator),
+.suggestion-aux.qsp-aux > *:not(.qsp-symbol-indicator) svg {
+  color: var(--text-faint);
+}
+
+/* Breadcrumb row container - uses flexbox for vertical alignment between icon and text.
+   Applies to all breadcrumb types (path, heading, tags). */
+.qsp-path,
+.qsp-heading-breadcrumbs,
+.qsp-tags-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Add spacing between multiple breadcrumb rows (path, heading, tags) */
+.qsp-path + .qsp-heading-breadcrumbs,
+.qsp-path + .qsp-tags-breadcrumbs,
+.qsp-heading-breadcrumbs + .qsp-tags-breadcrumbs {
+  margin-top: 2px;
+}
+
+/* breadcrumb icon indicator (folder, heading, tags, etc.) */
+.qsp-breadcrumb-indicator {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+
+/* Ensure icon SVG inherits size properly */
+.qsp-breadcrumb-indicator svg {
+  width: 1em;
+  height: 1em;
+}
+
+/* breadcrumb content element */
+.qsp-breadcrumb {
+  color: var(--text-muted);
+}
+
+/* heading breadcrumbs element */
+.qsp-heading-breadcrumbs {}
+
+/* tags breadcrumb element */
+.qsp-tags-breadcrumbs {}
+
+/* truncated content indicator - displays ellipsis after content */
+.qsp-truncated::after {
+  content: '…';
+}
 
 /* headings suggestion, heading level (H1, H2, etc..) icon */
 .qsp-headings-indicator {}

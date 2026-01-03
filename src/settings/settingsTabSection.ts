@@ -181,8 +181,9 @@ export abstract class SettingsTabSection {
    * @param  {string} name
    * @param  {string} desc
    * @param  {string} initialValue
-   * @param  {ListTypedConfigKey|StringTypedConfigKey} configStorageKey The SwitcherPlusSettings key where the value for this setting should be stored.
+   * @param  {ListTypedConfigKey|StringTypedConfigKey} configStorageKey The SwitcherPlusSettings key where the value for this setting should be stored. This can safely be set to null if the onChange handler is provided.
    * @param  {string} placeholderText?
+   * @param  {(value:string,config:SwitcherPlusSettings)=>void} onChange? optional callback to invoke instead of using configStorageKey
    * @returns Setting
    */
   addTextAreaSetting(
@@ -192,6 +193,7 @@ export abstract class SettingsTabSection {
     initialValue: string,
     configStorageKey: ListTypedConfigKey | StringTypedConfigKey,
     placeholderText?: string,
+    onChange?: (value: string, config: SwitcherPlusSettings) => void,
   ): Setting {
     return this.withSetting(containerEl, name, desc, (setting) => {
       setting.addTextArea((comp) => {
@@ -199,9 +201,16 @@ export abstract class SettingsTabSection {
         comp.setValue(initialValue);
 
         comp.onChange((rawValue) => {
-          const value = rawValue.length ? rawValue : initialValue;
-          const isArray = Array.isArray(this.config[configStorageKey]);
-          this.saveChangesToConfig(configStorageKey, isArray ? value.split('\n') : value);
+          if (onChange) {
+            onChange(rawValue, this.config);
+          } else {
+            const value = rawValue.length ? rawValue : initialValue;
+            const isArray = Array.isArray(this.config[configStorageKey]);
+            this.saveChangesToConfig(
+              configStorageKey,
+              isArray ? value.split('\n') : value,
+            );
+          }
         });
       });
     });

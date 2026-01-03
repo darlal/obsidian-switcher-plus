@@ -1,6 +1,6 @@
 import { Modal, SettingGroup } from 'obsidian';
 import { SwitcherPlusSettings } from 'src/settings';
-import { Mode, PathDisplayFormat, TitleSource } from 'src/types';
+import { Mode, PathDisplayFormat, TagSource, TitleSource } from 'src/types';
 import { SettingsTabSection } from './settingsTabSection';
 import { getModeNames } from 'src/utils';
 
@@ -37,6 +37,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     this.showStandardModeOverrides(containerEl, config);
     this.showPathDisplayGroup(containerEl, config);
     this.showPreferredSourceForTitle(containerEl, config);
+    this.showTagDisplaySettings(containerEl, config);
     this.showQuickOpen(containerEl, config);
     this.showRenderMarkdownContentAsHTML(containerEl, config);
 
@@ -540,5 +541,97 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         config.save();
       },
     );
+  }
+
+  showTagDisplaySettings(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
+    const { showTagsInSuggestions } = config;
+    const group = new SettingGroup(containerEl);
+
+    this.addToggleSetting(
+      group,
+      'Show tags in suggestions',
+      'When enabled, tags associated with a file will be displayed in suggestions.',
+      showTagsInSuggestions,
+      null,
+      (value, config) => {
+        config.showTagsInSuggestions = value;
+
+        config.saveSettings().then(
+          () => {
+            // Reload the settings panel to show/hide sub-settings based on toggle state
+            this.mainSettingsTab.display();
+          },
+          (reason) =>
+            console.log(
+              'Switcher++: error saving "Show tags in suggestions" setting. ',
+              reason,
+            ),
+        );
+      },
+    );
+
+    if (showTagsInSuggestions) {
+      const tagSourceOptions: Record<TagSource, string> = {
+        [TagSource.Both]: 'Both',
+        [TagSource.Inline]: 'Inline only',
+        [TagSource.Frontmatter]: 'Frontmatter only',
+      };
+
+      this.addDropdownSetting(
+        group,
+        'Tag source',
+        'Select which tags to display: inline tags (in document body), frontmatter tags, or both.',
+        config.tagSource,
+        tagSourceOptions,
+        null,
+        (rawValue, config) => {
+          config.tagSource = rawValue as TagSource;
+          config.save();
+        },
+      );
+
+      this.addTextAreaSetting(
+        group,
+        'Excluded tags',
+        'Tags to exclude from display, one per line. Tags should be entered without the # prefix.',
+        config.excludeTagsFromDisplay.join('\n'),
+        null,
+        'tag1\ntag2\ntag3',
+        (rawValue, config) => {
+          const tags = rawValue
+            .split('\n')
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0);
+          config.excludeTagsFromDisplay = tags;
+          config.save();
+        },
+      );
+
+      this.addSliderSetting(
+        group,
+        'Max tags to display',
+        'Maximum number of tags to show per suggestion. Set to 0 for unlimited.',
+        config.maxTagsToDisplay,
+        [0, 20, 1, 5],
+        'maxTagsToDisplay',
+      );
+
+      this.addTextSetting(
+        group,
+        'Tag separator',
+        'The string used to separate multiple tags in the display.',
+        config.tagDisplaySeparator,
+        'tagDisplaySeparator',
+        ', ',
+      );
+
+      this.addToggleSetting(
+        group,
+        'Remove # prefix from tags',
+        'When enabled, the # prefix will be removed from tags when displayed.',
+        config.removeHashPrefixFromTags,
+        'removeHashPrefixFromTags',
+      );
+    }
   }
 }

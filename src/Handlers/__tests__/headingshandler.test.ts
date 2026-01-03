@@ -594,6 +594,10 @@ describe('headingsHandler', () => {
         .spyOn(Handler.prototype, 'renderHeadingBreadcrumbs')
         .mockReturnValueOnce();
 
+      const renderTagsSpy = jest
+        .spyOn(Handler.prototype, 'renderTags')
+        .mockReturnValueOnce();
+
       const renderPathSpy = jest
         .spyOn(Handler.prototype, 'renderPath')
         .mockReturnValueOnce();
@@ -605,6 +609,7 @@ describe('headingsHandler', () => {
         headingSugg.item,
         headingSugg.file,
       );
+      expect(renderTagsSpy).toHaveBeenCalledWith(mockContentEl, headingSugg.file);
       expect(renderPathSpy).toHaveBeenCalledWith(mockContentEl, headingSugg.file);
 
       // Check that the first call to renderResults has the expected content passed in
@@ -621,6 +626,43 @@ describe('headingsHandler', () => {
 
       mockRenderResults.mockRestore();
       renderHeadingBreadcrumbsSpy.mockRestore();
+      renderTagsSpy.mockRestore();
+      renderPathSpy.mockRestore();
+    });
+
+    it('should render tags after breadcrumbs and before path', () => {
+      const mockContentEl = mock<HTMLDivElement>();
+      const mockParentEl = mock<HTMLElement>();
+      mockParentEl.createDiv.mockReturnValue(mockContentEl);
+
+      // Track call order
+      const callOrder: string[] = [];
+
+      const renderHeadingBreadcrumbsSpy = jest
+        .spyOn(Handler.prototype, 'renderHeadingBreadcrumbs')
+        .mockImplementation(() => {
+          callOrder.push('breadcrumbs');
+        });
+
+      const renderTagsSpy = jest
+        .spyOn(Handler.prototype, 'renderTags')
+        .mockImplementation(() => {
+          callOrder.push('tags');
+        });
+
+      const renderPathSpy = jest
+        .spyOn(Handler.prototype, 'renderPath')
+        .mockImplementation(() => {
+          callOrder.push('path');
+        });
+
+      sut.renderSuggestion(headingSugg, mockParentEl);
+
+      // Verify order: breadcrumbs -> tags -> path
+      expect(callOrder).toEqual(['breadcrumbs', 'tags', 'path']);
+
+      renderHeadingBreadcrumbsSpy.mockRestore();
+      renderTagsSpy.mockRestore();
       renderPathSpy.mockRestore();
     });
 

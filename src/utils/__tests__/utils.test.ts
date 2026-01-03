@@ -13,6 +13,7 @@ import {
   RelationType,
   SuggestionType,
   SymbolType,
+  TagSource,
 } from 'src/types';
 import {
   filenameFromPath,
@@ -25,6 +26,8 @@ import {
   getTFileFromLeaf,
   getHeadingBreadcrumbs,
   formatHeadingBreadcrumbs,
+  getFileTags,
+  formatTags,
 } from 'src/utils';
 import {
   getTags,
@@ -861,6 +864,404 @@ describe('utils', () => {
 
       // Assert
       expect(result).toBe('Level 4 > Level 5 > Level 6');
+    });
+  });
+
+  describe('getFileTags', () => {
+    let mockMetadataCache: MockProxy<MetadataCache>;
+    let mockFile: TFile;
+
+    beforeEach(() => {
+      mockMetadataCache = mock<MetadataCache>();
+      mockFile = new TFile();
+    });
+
+    afterEach(() => {
+      mockReset(mockMetadataCache);
+    });
+
+    it('should return empty array when file cache is null', () => {
+      // Arrange
+      mockMetadataCache.getFileCache.mockReturnValue(null);
+
+      // Act
+      const result = getFileTags(mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual([]);
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(mockFile);
+    });
+
+    it('should return empty array when file cache is undefined', () => {
+      // Arrange
+      mockMetadataCache.getFileCache.mockReturnValue(undefined);
+
+      // Act
+      const result = getFileTags(mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array when file has no tags', () => {
+      // Arrange
+      mockMetadataCache.getFileCache.mockReturnValue({
+        tags: [],
+        frontmatter: null,
+      });
+
+      // Act
+      const result = getFileTags(mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual([]);
+    });
+
+    describe('TagSource.Both', () => {
+      it('should return both inline and frontmatter tags', () => {
+        // Arrange
+        mockMetadataCache.getFileCache.mockReturnValue({
+          tags: [
+            { tag: '#inline1', position: null },
+            { tag: '#inline2', position: null },
+          ],
+          frontmatter: { tags: ['frontmatter1', 'frontmatter2'] },
+        });
+
+        // Act
+        const result = getFileTags(mockFile, mockMetadataCache, TagSource.Both);
+
+        // Assert
+        expect(result).toContain('#inline1');
+        expect(result).toContain('#inline2');
+        expect(result).toContain('#frontmatter1');
+        expect(result).toContain('#frontmatter2');
+        expect(result).toHaveLength(4);
+      });
+
+      it('should deduplicate tags that appear in both sources', () => {
+        // Arrange
+        mockMetadataCache.getFileCache.mockReturnValue({
+          tags: [{ tag: '#shared', position: null }],
+          frontmatter: { tags: ['shared'] },
+        });
+
+        // Act
+        const result = getFileTags(mockFile, mockMetadataCache, TagSource.Both);
+
+        // Assert
+        expect(result).toEqual(['#shared']);
+        expect(result).toHaveLength(1);
+      });
+    });
+
+    describe('TagSource.Inline', () => {
+      it('should return only inline tags', () => {
+        // Arrange
+        mockMetadataCache.getFileCache.mockReturnValue({
+          tags: [
+            { tag: '#inline1', position: null },
+            { tag: '#inline2', position: null },
+          ],
+          frontmatter: { tags: ['frontmatter1'] },
+        });
+
+        // Act
+        const result = getFileTags(mockFile, mockMetadataCache, TagSource.Inline);
+
+        // Assert
+        expect(result).toContain('#inline1');
+        expect(result).toContain('#inline2');
+        expect(result).not.toContain('#frontmatter1');
+        expect(result).toHaveLength(2);
+      });
+
+      it('should handle missing inline tags gracefully', () => {
+        // Arrange
+        mockMetadataCache.getFileCache.mockReturnValue({
+          frontmatter: { tags: ['frontmatter1'] },
+        });
+
+        // Act
+        const result = getFileTags(mockFile, mockMetadataCache, TagSource.Inline);
+
+        // Assert
+        expect(result).toEqual([]);
+      });
+    });
+
+    describe('TagSource.Frontmatter', () => {
+      it('should return only frontmatter tags', () => {
+        // Arrange
+        mockMetadataCache.getFileCache.mockReturnValue({
+          tags: [{ tag: '#inline1', position: null }],
+          frontmatter: { tags: ['frontmatter1', 'frontmatter2'] },
+        });
+
+        // Act
+        const result = getFileTags(mockFile, mockMetadataCache, TagSource.Frontmatter);
+
+        // Assert
+        expect(result).toContain('#frontmatter1');
+        expect(result).toContain('#frontmatter2');
+        expect(result).not.toContain('#inline1');
+        expect(result).toHaveLength(2);
+      });
+
+      it('should add # prefix to frontmatter tags that lack it', () => {
+        // Arrange
+        mockMetadataCache.getFileCache.mockReturnValue({
+          frontmatter: { tags: ['noprefix', '#hasprefix'] },
+        });
+
+        // Act
+        const result = getFileTags(mockFile, mockMetadataCache, TagSource.Frontmatter);
+
+        // Assert
+        expect(result).toContain('#noprefix');
+        expect(result).toContain('#hasprefix');
+        expect(result).not.toContain('noprefix');
+      });
+
+      it('should handle missing frontmatter gracefully', () => {
+        // Arrange
+        mockMetadataCache.getFileCache.mockReturnValue({
+          tags: [{ tag: '#inline1', position: null }],
+        });
+
+        // Act
+        const result = getFileTags(mockFile, mockMetadataCache, TagSource.Frontmatter);
+
+        // Assert
+        expect(result).toEqual([]);
+      });
+    });
+
+    describe('tag exclusion', () => {
+      it('should filter out excluded tags', () => {
+        // Arrange
+        mockMetadataCache.getFileCache.mockReturnValue({
+          tags: [
+            { tag: '#keep', position: null },
+            { tag: '#exclude', position: null },
+          ],
+          frontmatter: { tags: ['alsokeep', 'alsoexclude'] },
+        });
+        const excludeTags = new Set(['exclude', 'alsoexclude']);
+
+        // Act
+        const result = getFileTags(
+          mockFile,
+          mockMetadataCache,
+          TagSource.Both,
+          excludeTags,
+        );
+
+        // Assert
+        expect(result).toContain('#keep');
+        expect(result).toContain('#alsokeep');
+        expect(result).not.toContain('#exclude');
+        expect(result).not.toContain('#alsoexclude');
+        expect(result).toHaveLength(2);
+      });
+
+      it('should handle empty exclusion set', () => {
+        // Arrange
+        mockMetadataCache.getFileCache.mockReturnValue({
+          tags: [{ tag: '#tag1', position: null }],
+        });
+        const excludeTags = new Set<string>();
+
+        // Act
+        const result = getFileTags(
+          mockFile,
+          mockMetadataCache,
+          TagSource.Both,
+          excludeTags,
+        );
+
+        // Assert
+        expect(result).toContain('#tag1');
+      });
+
+      it('should handle undefined exclusion set', () => {
+        // Arrange
+        mockMetadataCache.getFileCache.mockReturnValue({
+          tags: [{ tag: '#tag1', position: null }],
+        });
+
+        // Act
+        const result = getFileTags(
+          mockFile,
+          mockMetadataCache,
+          TagSource.Both,
+          undefined,
+        );
+
+        // Assert
+        expect(result).toContain('#tag1');
+      });
+
+      it('should filter tags without hash prefix in exclusion check', () => {
+        // Arrange: inline tags can theoretically lack # prefix in edge cases
+        mockMetadataCache.getFileCache.mockReturnValue({
+          tags: [
+            { tag: 'nohash', position: null },
+            { tag: '#withhash', position: null },
+          ],
+        });
+        const excludeTags = new Set(['nohash']);
+
+        // Act
+        const result = getFileTags(
+          mockFile,
+          mockMetadataCache,
+          TagSource.Inline,
+          excludeTags,
+        );
+
+        // Assert
+        expect(result).not.toContain('nohash');
+        expect(result).toContain('#withhash');
+      });
+    });
+
+    it('should return tags sorted alphabetically', () => {
+      // Arrange
+      mockMetadataCache.getFileCache.mockReturnValue({
+        tags: [
+          { tag: '#zebra', position: null },
+          { tag: '#alpha', position: null },
+          { tag: '#beta', position: null },
+        ],
+      });
+
+      // Act
+      const result = getFileTags(mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual(['#alpha', '#beta', '#zebra']);
+    });
+
+    it('should use TagSource.Both as default', () => {
+      // Arrange
+      mockMetadataCache.getFileCache.mockReturnValue({
+        tags: [{ tag: '#inline', position: null }],
+        frontmatter: { tags: ['frontmatter'] },
+      });
+
+      // Act
+      const result = getFileTags(mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toContain('#inline');
+      expect(result).toContain('#frontmatter');
+    });
+  });
+
+  describe('formatTags', () => {
+    it('should format tags with default separator', () => {
+      // Arrange
+      const tags = ['#tag1', '#tag2', '#tag3'];
+
+      // Act
+      const result = formatTags(tags);
+
+      // Assert
+      expect(result).toBe('#tag1 #tag2 #tag3');
+    });
+
+    it('should format tags with custom separator', () => {
+      // Arrange
+      const tags = ['#tag1', '#tag2', '#tag3'];
+
+      // Act
+      const result = formatTags(tags, ' | ');
+
+      // Assert
+      expect(result).toBe('#tag1 | #tag2 | #tag3');
+    });
+
+    it('should return empty string for empty array', () => {
+      // Arrange
+      const tags: string[] = [];
+
+      // Act
+      const result = formatTags(tags);
+
+      // Assert
+      expect(result).toBe('');
+    });
+
+    it('should return empty string for null input', () => {
+      // Act
+      const result = formatTags(null);
+
+      // Assert
+      expect(result).toBe('');
+    });
+
+    it('should return empty string for undefined input', () => {
+      // Act
+      const result = formatTags(undefined);
+
+      // Assert
+      expect(result).toBe('');
+    });
+
+    it('should handle single tag', () => {
+      // Arrange
+      const tags = ['#singletag'];
+
+      // Act
+      const result = formatTags(tags);
+
+      // Assert
+      expect(result).toBe('#singletag');
+    });
+
+    it('should remove hash prefix when removeHashPrefix is true', () => {
+      // Arrange
+      const tags = ['#tag1', '#tag2'];
+
+      // Act
+      const result = formatTags(tags, ', ', true);
+
+      // Assert
+      expect(result).toBe('tag1, tag2');
+    });
+
+    it('should keep hash prefix when removeHashPrefix is false', () => {
+      // Arrange
+      const tags = ['#tag1', '#tag2'];
+
+      // Act
+      const result = formatTags(tags, ', ', false);
+
+      // Assert
+      expect(result).toBe('#tag1, #tag2');
+    });
+
+    it('should handle tags without hash prefix when removeHashPrefix is true', () => {
+      // Arrange
+      const tags = ['tag1', '#tag2'];
+
+      // Act
+      const result = formatTags(tags, ', ', true);
+
+      // Assert
+      expect(result).toBe('tag1, tag2');
+    });
+
+    it('should handle mixed separator and removeHashPrefix options', () => {
+      // Arrange
+      const tags = ['#alpha', '#beta', '#gamma'];
+
+      // Act
+      const result = formatTags(tags, ' / ', true);
+
+      // Assert
+      expect(result).toBe('alpha / beta / gamma');
     });
   });
 });

@@ -148,6 +148,12 @@ export class EditorHandler extends Handler<EditorSuggestion> {
         hideBasename,
       );
 
+      // Tags are rendered between the file info and the path
+      const contentEl = parentEl.querySelector<HTMLElement>('.qsp-content');
+      if (contentEl) {
+        this.renderTags(contentEl, file);
+      }
+
       this.renderOptionalIndicators(parentEl, sugg);
       handled = true;
     }

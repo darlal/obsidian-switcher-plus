@@ -45,11 +45,14 @@ import {
   SessionOpts,
   BookmarksItemInfo,
   SettingsData,
+  TagSource,
 } from 'src/types';
 import {
   stripMDExtensionFromPath,
   getHeadingBreadcrumbs,
   formatHeadingBreadcrumbs,
+  getFileTags,
+  formatTags,
 } from 'src/utils';
 import { mock, mockClear, mockFn, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
@@ -57,13 +60,15 @@ import { SwitcherPlusSettings } from 'src/settings';
 import { Chance } from 'chance';
 import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 
-// Mock the utility functions for renderHeadingBreadcrumbs tests
+// Mock the utility functions for renderHeadingBreadcrumbs and renderTags tests
 jest.mock('src/utils', () => {
   return {
     __esModule: true,
     ...jest.requireActual<typeof import('src/utils')>('src/utils'),
     getHeadingBreadcrumbs: jest.fn(),
     formatHeadingBreadcrumbs: jest.fn(),
+    getFileTags: jest.fn(),
+    formatTags: jest.fn(),
   };
 });
 
@@ -1684,6 +1689,8 @@ describe('Handler', () => {
         mockParentEl,
         formattedBreadcrumbs,
         'lucide-heading',
+        undefined,
+        ['qsp-heading-breadcrumbs'],
       );
     });
 
@@ -1809,6 +1816,320 @@ describe('Handler', () => {
         ' / ',
         mockSettings.maxBreadcrumbDepth,
       );
+    });
+
+    it('should add qsp-truncated class when breadcrumbs exceed maxBreadcrumbDepth', () => {
+      // Arrange
+      const breadcrumbs = [
+        makeHeading('H1', 1),
+        makeHeading('H2', 2),
+        makeHeading('H3', 3),
+      ];
+      const formattedBreadcrumbs = 'H2 > H3';
+      mockSettings.maxBreadcrumbDepth = 2;
+
+      mockGetHeadingBreadcrumbs.mockReturnValueOnce(breadcrumbs);
+      mockFormatHeadingBreadcrumbs.mockReturnValueOnce(formattedBreadcrumbs);
+
+      // Act
+      sut.renderHeadingBreadcrumbs(mockParentEl, mockHeading, mockFile);
+
+      // Assert
+      expect(mockRenderBreadcrumb).toHaveBeenCalledWith(
+        mockParentEl,
+        formattedBreadcrumbs,
+        'lucide-heading',
+        undefined,
+        ['qsp-heading-breadcrumbs', 'qsp-truncated'],
+      );
+    });
+
+    it('should not add qsp-truncated class when breadcrumbs equal maxBreadcrumbDepth', () => {
+      // Arrange
+      const breadcrumbs = [makeHeading('H1', 1), makeHeading('H2', 2)];
+      const formattedBreadcrumbs = 'H1 > H2';
+      mockSettings.maxBreadcrumbDepth = 2;
+
+      mockGetHeadingBreadcrumbs.mockReturnValueOnce(breadcrumbs);
+      mockFormatHeadingBreadcrumbs.mockReturnValueOnce(formattedBreadcrumbs);
+
+      // Act
+      sut.renderHeadingBreadcrumbs(mockParentEl, mockHeading, mockFile);
+
+      // Assert
+      expect(mockRenderBreadcrumb).toHaveBeenCalledWith(
+        mockParentEl,
+        formattedBreadcrumbs,
+        'lucide-heading',
+        undefined,
+        ['qsp-heading-breadcrumbs'],
+      );
+    });
+
+    it('should not add qsp-truncated class when maxBreadcrumbDepth is 0 (unlimited)', () => {
+      // Arrange
+      const breadcrumbs = [
+        makeHeading('H1', 1),
+        makeHeading('H2', 2),
+        makeHeading('H3', 3),
+      ];
+      const formattedBreadcrumbs = 'H1 > H2 > H3';
+      mockSettings.maxBreadcrumbDepth = 0;
+
+      mockGetHeadingBreadcrumbs.mockReturnValueOnce(breadcrumbs);
+      mockFormatHeadingBreadcrumbs.mockReturnValueOnce(formattedBreadcrumbs);
+
+      // Act
+      sut.renderHeadingBreadcrumbs(mockParentEl, mockHeading, mockFile);
+
+      // Assert
+      expect(mockRenderBreadcrumb).toHaveBeenCalledWith(
+        mockParentEl,
+        formattedBreadcrumbs,
+        'lucide-heading',
+        undefined,
+        ['qsp-heading-breadcrumbs'],
+      );
+    });
+  });
+
+  describe('renderTags', () => {
+    const mockGetFileTags = jest.mocked<typeof getFileTags>(getFileTags);
+    const mockFormatTags = jest.mocked<typeof formatTags>(formatTags);
+    let mockRenderBreadcrumb: jest.SpyInstance;
+    let mockParentEl: MockProxy<HTMLElement>;
+    let mockWrapperEl: MockProxy<HTMLDivElement>;
+    let mockFile: TFile;
+
+    beforeAll(() => {
+      mockParentEl = mock<HTMLElement>();
+      mockWrapperEl = mock<HTMLDivElement>();
+      mockParentEl.createDiv.mockReturnValue(mockWrapperEl);
+      mockFile = new TFile();
+      mockRenderBreadcrumb = jest.spyOn(Handler.prototype, 'renderBreadcrumb');
+    });
+
+    beforeEach(() => {
+      mockReset(mockSettings);
+      mockSettings.showTagsInSuggestions = true;
+      mockSettings.tagSource = TagSource.Both;
+      mockSettings.excludeTagsFromDisplay = [];
+      mockSettings.tagDisplaySeparator = ' ';
+      mockSettings.removeHashPrefixFromTags = false;
+      mockSettings.maxTagsToDisplay = 0;
+      jest.clearAllMocks();
+    });
+
+    afterAll(() => {
+      mockRenderBreadcrumb.mockRestore();
+    });
+
+    it('should render tags when file has tags', () => {
+      // Arrange
+      const tags = ['#project', '#todo'];
+      const formattedTags = '#project #todo';
+
+      mockGetFileTags.mockReturnValueOnce(tags);
+      mockFormatTags.mockReturnValueOnce(formattedTags);
+
+      // Act
+      sut.renderTags(mockParentEl, mockFile);
+
+      // Assert
+      expect(mockGetFileTags).toHaveBeenCalledWith(
+        mockFile,
+        mockMetadataCache,
+        TagSource.Both,
+        new Set([]),
+      );
+      expect(mockFormatTags).toHaveBeenCalledWith(tags, ' ', false);
+      expect(mockRenderBreadcrumb).toHaveBeenCalledWith(
+        mockParentEl,
+        formattedTags,
+        'lucide-tags',
+        undefined,
+        ['qsp-tags-breadcrumbs'],
+      );
+    });
+
+    it('should not render anything when file has no tags', () => {
+      // Arrange
+      mockGetFileTags.mockReturnValueOnce([]);
+
+      // Act
+      sut.renderTags(mockParentEl, mockFile);
+
+      // Assert
+      expect(mockGetFileTags).toHaveBeenCalled();
+      expect(mockFormatTags).not.toHaveBeenCalled();
+      expect(mockRenderBreadcrumb).not.toHaveBeenCalled();
+    });
+
+    it('should not render when showTagsInSuggestions setting is disabled', () => {
+      // Arrange
+      mockSettings.showTagsInSuggestions = false;
+
+      // Act
+      sut.renderTags(mockParentEl, mockFile);
+
+      // Assert
+      expect(mockGetFileTags).not.toHaveBeenCalled();
+      expect(mockFormatTags).not.toHaveBeenCalled();
+      expect(mockRenderBreadcrumb).not.toHaveBeenCalled();
+    });
+
+    it('should not render when parentEl is null', () => {
+      // Act
+      sut.renderTags(null, mockFile);
+
+      // Assert
+      expect(mockGetFileTags).not.toHaveBeenCalled();
+      expect(mockFormatTags).not.toHaveBeenCalled();
+      expect(mockRenderBreadcrumb).not.toHaveBeenCalled();
+    });
+
+    it('should not render when file is null', () => {
+      // Act
+      sut.renderTags(mockParentEl, null);
+
+      // Assert
+      expect(mockGetFileTags).not.toHaveBeenCalled();
+      expect(mockFormatTags).not.toHaveBeenCalled();
+      expect(mockRenderBreadcrumb).not.toHaveBeenCalled();
+    });
+
+    it('should add qsp-truncated class when tags exceed maxTagsToDisplay', () => {
+      // Arrange
+      const allTags = ['#a', '#b', '#c', '#d', '#e'];
+      const truncatedTags = ['#a', '#b', '#c'];
+      const formattedTags = '#a #b #c';
+      mockSettings.maxTagsToDisplay = 3;
+
+      mockGetFileTags.mockReturnValueOnce(allTags);
+      mockFormatTags.mockReturnValueOnce(formattedTags);
+
+      // Act
+      sut.renderTags(mockParentEl, mockFile);
+
+      // Assert
+      expect(mockFormatTags).toHaveBeenCalledWith(truncatedTags, ' ', false);
+      expect(mockRenderBreadcrumb).toHaveBeenCalledWith(
+        mockParentEl,
+        formattedTags,
+        'lucide-tags',
+        undefined,
+        ['qsp-tags-breadcrumbs', 'qsp-truncated'],
+      );
+    });
+
+    it('should not add qsp-truncated class when tags equal maxTagsToDisplay', () => {
+      // Arrange
+      const tags = ['#a', '#b', '#c'];
+      const formattedTags = '#a #b #c';
+      mockSettings.maxTagsToDisplay = 3;
+
+      mockGetFileTags.mockReturnValueOnce(tags);
+      mockFormatTags.mockReturnValueOnce(formattedTags);
+
+      // Act
+      sut.renderTags(mockParentEl, mockFile);
+
+      // Assert
+      expect(mockFormatTags).toHaveBeenCalledWith(tags, ' ', false);
+      expect(mockRenderBreadcrumb).toHaveBeenCalledWith(
+        mockParentEl,
+        formattedTags,
+        'lucide-tags',
+        undefined,
+        ['qsp-tags-breadcrumbs'],
+      );
+    });
+
+    it('should not truncate when maxTagsToDisplay is 0 (unlimited)', () => {
+      // Arrange
+      const tags = ['#a', '#b', '#c', '#d', '#e'];
+      const formattedTags = '#a #b #c #d #e';
+      mockSettings.maxTagsToDisplay = 0;
+
+      mockGetFileTags.mockReturnValueOnce(tags);
+      mockFormatTags.mockReturnValueOnce(formattedTags);
+
+      // Act
+      sut.renderTags(mockParentEl, mockFile);
+
+      // Assert
+      expect(mockFormatTags).toHaveBeenCalledWith(tags, ' ', false);
+      expect(mockRenderBreadcrumb).toHaveBeenCalledWith(
+        mockParentEl,
+        formattedTags,
+        'lucide-tags',
+        undefined,
+        ['qsp-tags-breadcrumbs'],
+      );
+    });
+
+    it('should pass correct tagSource to getFileTags', () => {
+      // Arrange
+      mockSettings.tagSource = TagSource.Inline;
+      mockGetFileTags.mockReturnValueOnce(['#test']);
+      mockFormatTags.mockReturnValueOnce('#test');
+
+      // Act
+      sut.renderTags(mockParentEl, mockFile);
+
+      // Assert
+      expect(mockGetFileTags).toHaveBeenCalledWith(
+        mockFile,
+        mockMetadataCache,
+        TagSource.Inline,
+        new Set([]),
+      );
+    });
+
+    it('should pass excludeTagsFromDisplay as Set to getFileTags', () => {
+      // Arrange
+      mockSettings.excludeTagsFromDisplay = ['internal', 'draft'];
+      mockGetFileTags.mockReturnValueOnce(['#public']);
+      mockFormatTags.mockReturnValueOnce('#public');
+
+      // Act
+      sut.renderTags(mockParentEl, mockFile);
+
+      // Assert
+      expect(mockGetFileTags).toHaveBeenCalledWith(
+        mockFile,
+        mockMetadataCache,
+        TagSource.Both,
+        new Set(['internal', 'draft']),
+      );
+    });
+
+    it('should pass separator and removeHashPrefix settings to formatTags', () => {
+      // Arrange
+      mockSettings.tagDisplaySeparator = ', ';
+      mockSettings.removeHashPrefixFromTags = true;
+      mockGetFileTags.mockReturnValueOnce(['#a', '#b']);
+      mockFormatTags.mockReturnValueOnce('a, b');
+
+      // Act
+      sut.renderTags(mockParentEl, mockFile);
+
+      // Assert
+      expect(mockFormatTags).toHaveBeenCalledWith(['#a', '#b'], ', ', true);
+    });
+
+    it('should not render when formatTags returns empty string', () => {
+      // Arrange
+      mockGetFileTags.mockReturnValueOnce(['#a']);
+      mockFormatTags.mockReturnValueOnce('');
+
+      // Act
+      sut.renderTags(mockParentEl, mockFile);
+
+      // Assert
+      // renderTags checks for falsy formattedTags and skips renderBreadcrumb
+      expect(mockFormatTags).toHaveBeenCalled();
+      expect(mockRenderBreadcrumb).not.toHaveBeenCalled();
     });
   });
 

@@ -1163,6 +1163,26 @@ describe('symbolHandler', () => {
       settings.showHeadingBreadcrumbsInSymbolMode = previousValue;
     });
 
+    it('should NOT render tags in Symbol mode (all suggestions belong to same file)', () => {
+      // In Symbol mode, all suggestions pertain to the same file, so showing
+      // file-level tags on every symbol suggestion would be redundant
+      const expectedFile = new TFile();
+      const headingSugg = makeSymbolSuggestion(
+        getHeadings()[0],
+        SymbolType.Heading,
+        expectedFile,
+      );
+      const renderTagsSpy = jest
+        .spyOn(Handler.prototype, 'renderTags')
+        .mockReturnValueOnce();
+
+      sut.renderSuggestion(headingSugg, mockParentEl);
+
+      expect(renderTagsSpy).not.toHaveBeenCalled();
+
+      renderTagsSpy.mockRestore();
+    });
+
     it('should render Tag suggestion', () => {
       const tagSugg = makeSymbolSuggestion(getTags()[0], SymbolType.Tag);
 

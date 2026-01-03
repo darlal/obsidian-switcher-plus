@@ -377,7 +377,10 @@ describe('editorHandler', () => {
     it('should render a suggestion with match offsets', () => {
       const preferredTitle = 'foo';
       const mockLeaf = makeLeafWithRoot(preferredTitle, null);
+      const mockContentEl = mock<HTMLElement>();
       const mockParentEl = mock<HTMLElement>();
+      mockParentEl.querySelector.mockReturnValue(mockContentEl);
+
       const sugg = makeEditorSuggestion(mockLeaf);
       sugg.preferredTitle = preferredTitle;
       const renderAsFileInfoPanelSpy = jest
@@ -397,6 +400,57 @@ describe('editorHandler', () => {
       );
 
       renderAsFileInfoPanelSpy.mockRestore();
+    });
+
+    it('should call renderTags with the content element and file', () => {
+      const preferredTitle = 'foo';
+      const mockLeaf = makeLeafWithRoot(preferredTitle, null);
+      const mockContentEl = mock<HTMLElement>();
+      const mockParentEl = mock<HTMLElement>();
+      mockParentEl.querySelector.mockReturnValue(mockContentEl);
+
+      const sugg = makeEditorSuggestion(mockLeaf);
+      sugg.preferredTitle = preferredTitle;
+
+      const renderAsFileInfoPanelSpy = jest
+        .spyOn(Handler.prototype, 'renderAsFileInfoPanel')
+        .mockReturnValueOnce(null);
+      const renderTagsSpy = jest
+        .spyOn(Handler.prototype, 'renderTags')
+        .mockReturnValueOnce();
+
+      sut.renderSuggestion(sugg, mockParentEl);
+
+      expect(mockParentEl.querySelector).toHaveBeenCalledWith('.qsp-content');
+      expect(renderTagsSpy).toHaveBeenCalledWith(mockContentEl, sugg.file);
+
+      renderAsFileInfoPanelSpy.mockRestore();
+      renderTagsSpy.mockRestore();
+    });
+
+    it('should not call renderTags when content element is not found', () => {
+      const preferredTitle = 'foo';
+      const mockLeaf = makeLeafWithRoot(preferredTitle, null);
+      const mockParentEl = mock<HTMLElement>();
+      mockParentEl.querySelector.mockReturnValue(null);
+
+      const sugg = makeEditorSuggestion(mockLeaf);
+      sugg.preferredTitle = preferredTitle;
+
+      const renderAsFileInfoPanelSpy = jest
+        .spyOn(Handler.prototype, 'renderAsFileInfoPanel')
+        .mockReturnValueOnce(null);
+      const renderTagsSpy = jest
+        .spyOn(Handler.prototype, 'renderTags')
+        .mockReturnValueOnce();
+
+      sut.renderSuggestion(sugg, mockParentEl);
+
+      expect(mockParentEl.querySelector).toHaveBeenCalledWith('.qsp-content');
+      expect(renderTagsSpy).not.toHaveBeenCalled();
+
+      renderAsFileInfoPanelSpy.mockRestore();
+      renderTagsSpy.mockRestore();
     });
   });
 
