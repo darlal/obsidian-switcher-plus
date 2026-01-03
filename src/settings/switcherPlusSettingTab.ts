@@ -27,6 +27,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     private config: SwitcherPlusSettings,
   ) {
     super(app, plugin);
+    this.containerEl.addClass('qsp-settings-container');
   }
 
   display(): void {
@@ -44,7 +45,6 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     ];
 
     containerEl.empty();
-    containerEl.createEl('h2', { text: 'Quick Switcher++ Settings' });
 
     tabSections.forEach((tabSectionClass) => {
       this.displayTabSection(tabSectionClass);

@@ -33,7 +33,7 @@ describe('WorkspaceSettingsTabSection', () => {
 
     expect(addSectionTitleSpy).toHaveBeenCalledWith(
       mockContainerEl,
-      'Workspace List Mode Settings',
+      'Workspace List Mode',
     );
 
     addSectionTitleSpy.mockRestore();

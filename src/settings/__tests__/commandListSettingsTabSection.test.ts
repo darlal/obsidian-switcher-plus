@@ -40,10 +40,7 @@ describe('commandListSettingsTabSection', () => {
 
     sut.display(mockContainerEl);
 
-    expect(addSectionTitleSpy).toHaveBeenCalledWith(
-      mockContainerEl,
-      'Command List Mode Settings',
-    );
+    expect(addSectionTitleSpy).toHaveBeenCalledWith(mockContainerEl, 'Command List Mode');
 
     addSectionTitleSpy.mockRestore();
   });

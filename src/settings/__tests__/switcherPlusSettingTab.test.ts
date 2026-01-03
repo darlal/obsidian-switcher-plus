@@ -43,14 +43,6 @@ describe('SwitcherPlusSettingTab', () => {
       displayTabSectionSpy.mockClear();
     });
 
-    it('should display a title header', () => {
-      sut.display();
-
-      expect(mockContainerEl.createEl).toHaveBeenCalledWith('h2', {
-        text: 'Quick Switcher++ Settings',
-      });
-    });
-
     it('should display all the different setting tab sections', () => {
       const expected = [
         [GeneralSettingsTabSection],

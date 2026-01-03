@@ -6,7 +6,7 @@ import {
   SwitcherPlusSettingTab,
 } from 'src/settings';
 import { mock, mockClear, MockProxy } from 'jest-mock-extended';
-import { App, Setting, ViewRegistry } from 'obsidian';
+import { App, Setting, SettingGroup, ViewRegistry } from 'obsidian';
 
 describe('symbolSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
@@ -47,7 +47,7 @@ describe('symbolSettingsTabSection', () => {
 
       expect(addSectionTitleSpy).toHaveBeenCalledWith(
         mockContainerEl,
-        'Symbol List Mode Settings',
+        'Symbol List Mode',
       );
 
       addSectionTitleSpy.mockRestore();
@@ -85,28 +85,16 @@ describe('symbolSettingsTabSection', () => {
       );
     });
 
-    it('should show the alwaysNewTabForSymbols setting', () => {
+    it('should call showSymbolTabBehaviorGroup', () => {
+      const showSymbolTabBehaviorGroupSpy = jest
+        .spyOn(sut, 'showSymbolTabNavigationBehavior')
+        .mockReturnValueOnce();
+
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toHaveBeenCalledWith(
-        mockContainerEl,
-        'Open Symbols in new tab',
-        expect.any(String),
-        config.alwaysNewTabForSymbols,
-        'alwaysNewTabForSymbols',
-      );
-    });
+      expect(showSymbolTabBehaviorGroupSpy).toHaveBeenCalledWith(mockContainerEl, config);
 
-    it('should show the useActiveTabForSymbolsOnMobile setting', () => {
-      sut.display(mockContainerEl);
-
-      expect(addToggleSettingSpy).toHaveBeenCalledWith(
-        mockContainerEl,
-        'Open Symbols in active tab on mobile devices',
-        expect.any(String),
-        config.useActiveTabForSymbolsOnMobile,
-        'useActiveTabForSymbolsOnMobile',
-      );
+      showSymbolTabBehaviorGroupSpy.mockRestore();
     });
 
     it('should show the selectNearestHeading setting', () => {
@@ -176,39 +164,93 @@ describe('symbolSettingsTabSection', () => {
     it('should show the symbol type setting for Links', () => {
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toHaveBeenCalledWith(
-        mockContainerEl,
-        'Show Links',
-        expect.any(String),
-        true,
-        null,
-        expect.any(Function),
-      );
+      // Verify that addToggleSetting was called with a SettingGroup
+      const toggleCall = addToggleSettingSpy.mock.calls.find(
+        (call: Parameters<SettingsTabSection['addToggleSetting']>) =>
+          call[1] === 'Show Links',
+      ) as Parameters<SettingsTabSection['addToggleSetting']>;
+
+      expect(toggleCall[0]).toBeInstanceOf(SettingGroup);
     });
 
     it('should show the symbol type setting for Links to headings', () => {
+      config.setSymbolTypeEnabled(SymbolType.Link, true);
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toHaveBeenCalledWith(
-        mockContainerEl,
-        'Links to headings',
-        expect.any(String),
-        true,
-        null,
-        expect.any(Function),
-      );
+      // Verify that addToggleSetting was called with a SettingGroup
+      const toggleCall = addToggleSettingSpy.mock.calls.find(
+        (call: Parameters<SettingsTabSection['addToggleSetting']>) =>
+          call[1] === 'Links to headings',
+      ) as Parameters<SettingsTabSection['addToggleSetting']>;
+
+      expect(toggleCall[0]).toBeInstanceOf(SettingGroup);
     });
 
     it('should show the symbol type setting for Links to blocks', () => {
+      config.setSymbolTypeEnabled(SymbolType.Link, true);
       sut.display(mockContainerEl);
 
+      // Verify that addToggleSetting was called with a SettingGroup
+      const toggleCall = addToggleSettingSpy.mock.calls.find(
+        (call: Parameters<SettingsTabSection['addToggleSetting']>) =>
+          call[1] === 'Links to blocks',
+      ) as Parameters<SettingsTabSection['addToggleSetting']>;
+
+      expect(toggleCall[0]).toBeInstanceOf(SettingGroup);
+    });
+  });
+
+  describe('showSymbolTabNavigationBehavior', () => {
+    let createSettingSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      createSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'createSetting');
+    });
+
+    afterAll(() => {
+      createSettingSpy.mockRestore();
+    });
+
+    beforeEach(() => {
+      createSettingSpy.mockClear();
+      addToggleSettingSpy.mockClear();
+    });
+
+    it('should create a setting with title and description in the SettingGroup', () => {
+      sut.showSymbolTabNavigationBehavior(mockContainerEl, config);
+
+      // Verify that createSetting was called with a SettingGroup instance
+      expect(createSettingSpy).toHaveBeenCalled();
+
+      type createSettingArgs = Parameters<SettingsTabSection['createSetting']>;
+      const createSettingCall = createSettingSpy.mock.calls.find(
+        (call: createSettingArgs) => call[1] === 'Symbol Tab navigation behavior',
+      ) as createSettingArgs | undefined;
+
+      expect(createSettingCall?.[0]).toBeInstanceOf(SettingGroup);
+    });
+
+    it('should show the alwaysNewTabForSymbols setting', () => {
+      sut.showSymbolTabNavigationBehavior(mockContainerEl, config);
+
       expect(addToggleSettingSpy).toHaveBeenCalledWith(
-        mockContainerEl,
-        'Links to blocks',
+        expect.any(SettingGroup),
+        'Open Symbols in new tab',
         expect.any(String),
-        true,
-        null,
-        expect.any(Function),
+        config.alwaysNewTabForSymbols,
+        'alwaysNewTabForSymbols',
+      );
+    });
+
+    it('should show the useActiveTabForSymbolsOnMobile setting', () => {
+      sut.showSymbolTabNavigationBehavior(mockContainerEl, config);
+
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
+        expect.any(SettingGroup),
+        'Open Symbols in active tab on mobile devices',
+        expect.any(String),
+        config.useActiveTabForSymbolsOnMobile,
+        'useActiveTabForSymbolsOnMobile',
       );
     });
   });

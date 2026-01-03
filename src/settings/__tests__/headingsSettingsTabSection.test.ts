@@ -5,7 +5,7 @@ import {
   SwitcherPlusSettingTab,
 } from 'src/settings';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { App, Setting, TextAreaComponent, ViewRegistry } from 'obsidian';
+import { App, Setting, SettingGroup, TextAreaComponent, ViewRegistry } from 'obsidian';
 
 describe('headingsSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
@@ -48,7 +48,7 @@ describe('headingsSettingsTabSection', () => {
 
     expect(addSectionTitleSpy).toHaveBeenCalledWith(
       mockContainerEl,
-      'Headings List Mode Settings',
+      'Headings List Mode',
     );
 
     addSectionTitleSpy.mockRestore();
@@ -114,18 +114,16 @@ describe('headingsSettingsTabSection', () => {
     addToggleSettingSpy.mockClear();
   });
 
-  it('should show the excludeObsidianIgnoredFiles setting', () => {
+  it('should show exclusions group', () => {
+    const showExclusionsGroupSpy = jest
+      .spyOn(sut, 'showExclusionsGroup')
+      .mockReturnValueOnce();
+
     sut.display(mockContainerEl);
 
-    expect(addToggleSettingSpy).toHaveBeenCalledWith(
-      mockContainerEl,
-      'Hide Obsidian "Excluded files"',
-      expect.any(String),
-      config.excludeObsidianIgnoredFiles,
-      'excludeObsidianIgnoredFiles',
-    );
+    expect(showExclusionsGroupSpy).toHaveBeenCalled();
 
-    addToggleSettingSpy.mockClear();
+    showExclusionsGroupSpy.mockRestore();
   });
 
   it('should show file extension override settings', () => {
@@ -231,35 +229,76 @@ describe('headingsSettingsTabSection', () => {
       consoleLogSpy.mockRestore();
     });
 
+    it('should call addToggleSetting with SettingGroup instead of containerEl for master toggle', () => {
+      sut.showHeadingSettings(mockContainerEl, config);
+
+      // Verify that addToggleSetting was called with a SettingGroup instance (not containerEl) for the master toggle
+      const toggleCall = addToggleSettingSpy.mock.calls.find(
+        (call: addToggleSettingArgs) => call[1] === 'Search Headings',
+      ) as addToggleSettingArgs;
+
+      expect(toggleCall[0]).toBeInstanceOf(SettingGroup);
+
+      addToggleSettingSpy.mockReset();
+    });
+
+    it('should call addToggleSetting with SettingGroup instead of containerEl for conditional child toggles when enabled', () => {
+      config.shouldSearchHeadings = true;
+
+      sut.showHeadingSettings(mockContainerEl, config);
+
+      // Verify that addToggleSetting was called with SettingGroup instances for conditional child toggles
+      const strictHeadingsOnlyCall = addToggleSettingSpy.mock.calls.find(
+        (call: addToggleSettingArgs) => call[1] === 'Turn off filename fallback',
+      ) as addToggleSettingArgs;
+
+      const searchAllHeadingsCall = addToggleSettingSpy.mock.calls.find(
+        (call: addToggleSettingArgs) => call[1] === 'Search all headings',
+      ) as addToggleSettingArgs;
+
+      expect(strictHeadingsOnlyCall[0]).toBeInstanceOf(SettingGroup);
+      expect(searchAllHeadingsCall[0]).toBeInstanceOf(SettingGroup);
+
+      // Verify both child toggles are added to the same group
+      expect(strictHeadingsOnlyCall[0]).toBe(searchAllHeadingsCall[0]);
+
+      config.shouldSearchHeadings = false;
+      addToggleSettingSpy.mockReset();
+    });
+
     it('should show the strictHeadingsOnly setting', () => {
+      config.shouldSearchHeadings = true;
       addToggleSettingSpy.mockReturnValue(mock<Setting>());
 
       sut.showHeadingSettings(mockContainerEl, config);
 
       expect(addToggleSettingSpy).toHaveBeenCalledWith(
-        mockContainerEl,
+        expect.any(SettingGroup),
         'Turn off filename fallback',
         expect.any(String),
         config.strictHeadingsOnly,
         'strictHeadingsOnly',
       );
 
+      config.shouldSearchHeadings = false;
       addToggleSettingSpy.mockReset();
     });
 
     it('should show the searchAllHeadings setting', () => {
+      config.shouldSearchHeadings = true;
       addToggleSettingSpy.mockReturnValue(mock<Setting>());
 
       sut.showHeadingSettings(mockContainerEl, config);
 
       expect(addToggleSettingSpy).toHaveBeenCalledWith(
-        mockContainerEl,
+        expect.any(SettingGroup),
         'Search all headings',
         expect.any(String),
         config.searchAllHeadings,
         'searchAllHeadings',
       );
 
+      config.shouldSearchHeadings = false;
       addToggleSettingSpy.mockReset();
     });
   });
@@ -332,6 +371,83 @@ describe('headingsSettingsTabSection', () => {
     });
   });
 
+  describe('showExclusionsGroup', () => {
+    let createSettingSpy: jest.SpyInstance;
+    let showExcludeFoldersSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      createSettingSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'createSetting')
+        .mockReturnValue(mock<Setting>());
+      showExcludeFoldersSpy = jest.spyOn(sut, 'showExcludeFolders').mockReturnValueOnce();
+    });
+
+    afterAll(() => {
+      createSettingSpy.mockRestore();
+      showExcludeFoldersSpy.mockRestore();
+    });
+
+    it('should create a SettingGroup as a label', () => {
+      sut.showExclusionsGroup(mockContainerEl, config);
+
+      // Verify createSetting was called with a SettingGroup
+      type createSettingArgs = Parameters<SettingsTabSection['createSetting']>;
+      const settingCall = createSettingSpy.mock.calls.find(
+        (call: createSettingArgs) => call[1] === 'Exclusions',
+      ) as createSettingArgs | undefined;
+
+      expect(settingCall?.[0]).toBeInstanceOf(SettingGroup);
+    });
+
+    it('should call showExcludeFolders with SettingGroup', () => {
+      sut.showExclusionsGroup(mockContainerEl, config);
+
+      expect(showExcludeFoldersSpy).toHaveBeenCalled();
+      type showExcludeFoldersArgs = Parameters<
+        HeadingsSettingsTabSection['showExcludeFolders']
+      >;
+      const excludeFoldersCall = showExcludeFoldersSpy.mock
+        .calls[0] as showExcludeFoldersArgs;
+      expect(excludeFoldersCall[0]).toBeInstanceOf(SettingGroup);
+      expect(excludeFoldersCall[1]).toBe(config);
+    });
+
+    it('should call addToggleSetting with SettingGroup for excludeObsidianIgnoredFiles', () => {
+      sut.showExclusionsGroup(mockContainerEl, config);
+
+      type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
+      const toggleCall = addToggleSettingSpy.mock.calls.find(
+        (call: addToggleSettingArgs) => call[1] === 'Hide Obsidian "Excluded files"',
+      ) as addToggleSettingArgs | undefined;
+
+      expect(toggleCall?.[0]).toBeInstanceOf(SettingGroup);
+      expect(toggleCall?.[1]).toBe('Hide Obsidian "Excluded files"');
+      expect(toggleCall?.[4]).toBe('excludeObsidianIgnoredFiles');
+
+      addToggleSettingSpy.mockClear();
+    });
+
+    it('should add both settings to the same group', () => {
+      sut.showExclusionsGroup(mockContainerEl, config);
+
+      type showExcludeFoldersArgs = Parameters<
+        HeadingsSettingsTabSection['showExcludeFolders']
+      >;
+      type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
+      const excludeFoldersCall = showExcludeFoldersSpy.mock
+        .calls[0] as showExcludeFoldersArgs;
+      const toggleCall = addToggleSettingSpy.mock.calls.find(
+        (call: addToggleSettingArgs) => call[1] === 'Hide Obsidian "Excluded files"',
+      ) as addToggleSettingArgs | undefined;
+
+      expect(excludeFoldersCall[0]).toBeInstanceOf(SettingGroup);
+      expect(toggleCall?.[0]).toBeInstanceOf(SettingGroup);
+      expect(excludeFoldersCall[0]).toEqual(toggleCall?.[0]);
+
+      addToggleSettingSpy.mockClear();
+    });
+  });
+
   describe('excludeFolders setting', () => {
     const excludedPaths = 'foo\nbar';
     let mockSetting: MockProxy<Setting>;
@@ -374,6 +490,19 @@ describe('headingsSettingsTabSection', () => {
       );
     });
 
+    it('should work with SettingGroup container', () => {
+      const mockGroup = new SettingGroup(mockContainerEl);
+
+      sut.showExcludeFolders(mockGroup, config);
+
+      expect(mockTextComp.setValue).toHaveBeenCalledWith(excludedPaths);
+      expect(createSettingSpy).toHaveBeenCalledWith(
+        mockGroup,
+        'Exclude folders',
+        expect.any(String),
+      );
+    });
+
     it('should save updated value', () => {
       const saveSpy = jest.spyOn(config, 'save');
 
@@ -397,6 +526,47 @@ describe('headingsSettingsTabSection', () => {
       );
 
       saveSpy.mockRestore();
+    });
+
+    it('should preserve TextArea focusout handler when used in group', () => {
+      const saveSpy = jest.spyOn(config, 'save');
+      const validateSpy = jest
+        .spyOn(sut, 'validateExcludeFolderList')
+        .mockReturnValue(true);
+
+      let focusoutFn: EventListener;
+      mockInputEl.addEventListener.mockImplementation(
+        (evtStr: string, listener: EventListenerOrEventListenerObject) => {
+          if (evtStr === 'focusout') {
+            focusoutFn = listener as EventListener;
+          }
+        },
+      );
+
+      config.excludeFolders = [];
+      mockTextComp.getValue.mockReturnValue(excludedPaths);
+
+      const mockGroup = new SettingGroup(mockContainerEl);
+      sut.showExcludeFolders(mockGroup, config);
+
+      // Verify focusout handler was attached
+      expect(mockInputEl.addEventListener).toHaveBeenCalledWith(
+        'focusout',
+        expect.any(Function),
+      );
+
+      // Trigger the focusout handler
+      focusoutFn(null);
+
+      // Verify validation and save were called
+      expect(validateSpy).toHaveBeenCalled();
+      expect(saveSpy).toHaveBeenCalled();
+      expect(config.excludeFolders).toEqual(
+        expect.arrayContaining(excludedPaths.split('\n')),
+      );
+
+      saveSpy.mockRestore();
+      validateSpy.mockRestore();
     });
 
     it('should not validate invalid exclude regex', () => {

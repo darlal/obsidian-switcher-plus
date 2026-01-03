@@ -5,7 +5,7 @@ export class EditorSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
     const { config } = this;
 
-    this.addSectionTitle(containerEl, 'Editor List Mode Settings');
+    this.addSectionTitle(containerEl, 'Editor List Mode');
 
     this.addTextSetting(
       containerEl,

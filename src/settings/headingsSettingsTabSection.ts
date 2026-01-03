@@ -1,12 +1,12 @@
 import { SwitcherPlusSettings } from './switcherPlusSettings';
 import { SettingsTabSection } from './settingsTabSection';
-import { Modal } from 'obsidian';
+import { Modal, SettingGroup } from 'obsidian';
 
 export class HeadingsSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
     const { config } = this;
 
-    this.addSectionTitle(containerEl, 'Headings List Mode Settings');
+    this.addSectionTitle(containerEl, 'Headings List Mode');
 
     this.addTextSetting(
       containerEl,
@@ -17,7 +17,16 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
       config.headingsListPlaceholderText,
     );
 
-    this.showHeadingSettings(containerEl, config);
+    this.addSliderSetting(
+      containerEl,
+      'Max recent files to show',
+      'The maximum number of recent files to show when there is no search term',
+      config.maxRecentFileSuggestionsOnInit,
+      [0, 75, 1, 25],
+      'maxRecentFileSuggestionsOnInit',
+    );
+
+    this.showFileExtAllowList(containerEl, config);
 
     this.addToggleSetting(
       containerEl,
@@ -35,33 +44,17 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
       'shouldSearchBookmarks',
     );
 
-    this.addSliderSetting(
-      containerEl,
-      'Max recent files to show',
-      'The maximum number of recent files to show when there is no search term',
-      config.maxRecentFileSuggestionsOnInit,
-      [0, 75, 1, 25],
-      'maxRecentFileSuggestionsOnInit',
-    );
-
-    this.showExcludeFolders(containerEl, config);
-
-    this.addToggleSetting(
-      containerEl,
-      'Hide Obsidian "Excluded files"',
-      'Enabled, do not display suggestions for files that are in Obsidian\'s "Options > Files & Links > Excluded files" list. Disabled, suggestions for those files will be displayed but downranked.',
-      config.excludeObsidianIgnoredFiles,
-      'excludeObsidianIgnoredFiles',
-    );
-
-    this.showFileExtAllowList(containerEl, config);
+    this.showHeadingSettings(containerEl, config);
+    this.showExclusionsGroup(containerEl, config);
   }
 
   showHeadingSettings(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
     const isEnabled = config.shouldSearchHeadings;
 
+    const group = new SettingGroup(containerEl);
+
     this.addToggleSetting(
-      containerEl,
+      group,
       'Search Headings',
       "Enabled, search and show suggestions for Headings. Disabled, Don't search through Headings",
       isEnabled,
@@ -84,25 +77,21 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
     );
 
     if (isEnabled) {
-      let setting = this.addToggleSetting(
-        containerEl,
+      this.addToggleSetting(
+        group,
         'Turn off filename fallback',
         'Enabled, strictly search through only the headings contained in the file. Do not fallback to searching the filename when an H1 match is not found. Disabled, fallback to searching against the filename when there is not a match in the first H1 contained in the file.',
         config.strictHeadingsOnly,
         'strictHeadingsOnly',
       );
 
-      setting.setClass('qsp-setting-item-indent');
-
-      setting = this.addToggleSetting(
-        containerEl,
+      this.addToggleSetting(
+        group,
         'Search all headings',
         'Enabled, search through all headings contained in each file. Disabled, only search through the first H1 in each file.',
         config.searchAllHeadings,
         'searchAllHeadings',
       );
-
-      setting.setClass('qsp-setting-item-indent');
     }
   }
 
@@ -126,7 +115,30 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
     });
   }
 
-  showExcludeFolders(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
+  showExclusionsGroup(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
+    const group = new SettingGroup(containerEl);
+
+    this.createSetting(
+      group,
+      'Exclusions',
+      'Configure which folders and files should be excluded from search results in Headings list mode.',
+    );
+
+    this.showExcludeFolders(group, config);
+
+    this.addToggleSetting(
+      group,
+      'Hide Obsidian "Excluded files"',
+      'Enabled, do not display suggestions for files that are in Obsidian\'s "Options > Files & Links > Excluded files" list. Disabled, suggestions for those files will be displayed but downranked.',
+      config.excludeObsidianIgnoredFiles,
+      'excludeObsidianIgnoredFiles',
+    );
+  }
+
+  showExcludeFolders(
+    containerEl: HTMLElement | SettingGroup,
+    config: SwitcherPlusSettings,
+  ): void {
     const settingName = 'Exclude folders';
 
     this.createSetting(

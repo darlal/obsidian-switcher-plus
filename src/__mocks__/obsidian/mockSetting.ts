@@ -6,6 +6,8 @@ import {
   DropdownComponent,
   ExtraButtonComponent,
   PluginSettingTab,
+  Setting,
+  SettingGroup,
   SliderComponent,
   TextAreaComponent,
   TextComponent,
@@ -15,6 +17,7 @@ import {
 export class MockPluginSettingTab implements PluginSettingTab {
   app: App;
   containerEl: HTMLElement;
+  icon: string = '';
 
   constructor(app: App) {
     this.containerEl = mock<HTMLElement>();
@@ -29,8 +32,33 @@ export class MockPluginSettingTab implements PluginSettingTab {
   }
 }
 
+export class MockSettingGroup {
+  private containerEl: HTMLElement;
+  private heading: string | DocumentFragment | null = null;
+
+  constructor(containerEl: HTMLElement) {
+    this.containerEl = containerEl;
+  }
+
+  setHeading(text: string | DocumentFragment): this {
+    this.heading = text;
+    return this;
+  }
+
+  addClass(cls: string): this {
+    return this;
+  }
+
+  addSetting(cb: (setting: Setting) => void): this {
+    const setting = new MockSetting(this.containerEl);
+    cb(setting as unknown as Setting);
+    return this;
+  }
+}
+
 export class MockSetting {
   private containerEl;
+  public components: Array<any> = [];
 
   constructor(containerEl: HTMLElement) {
     this.containerEl = containerEl;
@@ -53,32 +81,44 @@ export class MockSetting {
   }
 
   addText(cb: (component: TextComponent) => any): this {
-    cb(new MockTextComponent(this.containerEl));
+    const comp = new MockTextComponent(this.containerEl);
+    this.components.push(comp);
+    cb(comp);
     return this;
   }
 
   addToggle(cb: (component: ToggleComponent) => any): this {
-    cb(new MockToggleComponent(this.containerEl));
+    const comp = new MockToggleComponent(this.containerEl);
+    this.components.push(comp);
+    cb(comp);
     return this;
   }
 
   addTextArea(cb: (component: TextAreaComponent) => any): this {
-    cb(new MockTextAreaComponent(this.containerEl));
+    const comp = new MockTextAreaComponent(this.containerEl);
+    this.components.push(comp);
+    cb(comp);
     return this;
   }
 
   addDropdown(cb: (component: DropdownComponent) => any): this {
-    cb(new MockDropdownComponent(this.containerEl));
+    const comp = new MockDropdownComponent(this.containerEl);
+    this.components.push(comp);
+    cb(comp);
     return this;
   }
 
   addExtraButton(cb: (component: ExtraButtonComponent) => any): this {
-    cb(new MockExtraButtonComponent(this.containerEl));
+    const comp = new MockExtraButtonComponent(this.containerEl);
+    this.components.push(comp);
+    cb(comp);
     return this;
   }
 
   addSlider(cb: (component: SliderComponent) => any): this {
-    cb(new MockSliderComponent(this.containerEl));
+    const comp = new MockSliderComponent(this.containerEl);
+    this.components.push(comp);
+    cb(comp);
     return this;
   }
 }
@@ -164,7 +204,7 @@ export class MockToggleComponent implements ToggleComponent {
     throw new Error('Method not implemented.');
   }
   setTooltip(tooltip: string): this {
-    throw new Error('Method not implemented.');
+    return this;
   }
   onClick(): void {
     throw new Error('Method not implemented.');
@@ -292,13 +332,13 @@ export class MockExtraButtonComponent implements ExtraButtonComponent {
     throw new Error('Method not implemented.');
   }
   setTooltip(tooltip: string): this {
-    throw new Error('Method not implemented.');
+    return this;
   }
   setIcon(icon: string): this {
-    throw new Error('Method not implemented.');
+    return this;
   }
   onClick(callback: () => any): this {
-    throw new Error('Method not implemented.');
+    return this;
   }
   disabled: boolean;
   then(cb: (component: this) => any): this {
@@ -340,13 +380,13 @@ export class MockSliderComponent implements SliderComponent {
     throw new Error('Method not implemented.');
   }
   setLimits(min: number, max: number, step: number | 'any'): this {
-    throw new Error('Method not implemented.');
+    return this;
   }
   getValuePretty(): string {
     throw new Error('Method not implemented.');
   }
   setDynamicTooltip(): this {
-    throw new Error('Method not implemented.');
+    return this;
   }
   showTooltip(): void {
     throw new Error('Method not implemented.');

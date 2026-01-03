@@ -5,7 +5,7 @@ import {
   SwitcherPlusSettingTab,
 } from 'src/settings';
 import { mock, mockFn, MockProxy, mockReset } from 'jest-mock-extended';
-import { App, Setting, TextAreaComponent } from 'obsidian';
+import { App, Setting, SettingGroup, TextAreaComponent } from 'obsidian';
 import { Mode, PathDisplayFormat } from 'src/types';
 
 describe('generalSettingsTabSection', () => {
@@ -48,10 +48,7 @@ describe('generalSettingsTabSection', () => {
 
       sut.display(mockContainerEl);
 
-      expect(addSectionTitleSpy).toHaveBeenCalledWith(
-        mockContainerEl,
-        'General Settings',
-      );
+      expect(addSectionTitleSpy).toHaveBeenCalledWith(mockContainerEl, 'General');
 
       addSectionTitleSpy.mockRestore();
     });
@@ -68,40 +65,16 @@ describe('generalSettingsTabSection', () => {
       );
     });
 
-    it('should show the overrideStandardModeBehaviors setting', () => {
+    it('should show setting for standard mode overrides', () => {
+      const showStandardModeOverridesSpy = jest
+        .spyOn(sut, 'showStandardModeOverrides')
+        .mockReturnValueOnce();
+
       sut.display(mockContainerEl);
 
-      expect(addToggleSettingSpy).toHaveBeenCalledWith(
-        mockContainerEl,
-        'Override Standard mode file open behavior',
-        expect.any(String),
-        config.overrideStandardModeBehaviors,
-        'overrideStandardModeBehaviors',
-      );
-    });
+      expect(showStandardModeOverridesSpy).toHaveBeenCalled();
 
-    it('should show the overrideStandardModeRendering setting', () => {
-      sut.display(mockContainerEl);
-
-      expect(addToggleSettingSpy).toHaveBeenCalledWith(
-        mockContainerEl,
-        'Override Standard mode rendering',
-        expect.any(String),
-        config.overrideStandardModeRendering,
-        'overrideStandardModeRendering',
-      );
-    });
-
-    it('should show the hidePathIfRoot setting', () => {
-      sut.display(mockContainerEl);
-
-      expect(addToggleSettingSpy).toHaveBeenCalledWith(
-        mockContainerEl,
-        'Hide path for root items',
-        expect.any(String),
-        config.hidePathIfRoot,
-        'hidePathIfRoot',
-      );
+      showStandardModeOverridesSpy.mockRestore();
     });
 
     it('should show the showOptionalIndicatorIcons setting', () => {
@@ -140,6 +113,18 @@ describe('generalSettingsTabSection', () => {
       showMatchPriorityAdjustmentsSpy.mockRestore();
     });
 
+    it('should show setting for restore input group', () => {
+      const showRestoreInputSpy = jest
+        .spyOn(sut, 'showRestoreInput')
+        .mockReturnValueOnce();
+
+      sut.display(mockContainerEl);
+
+      expect(showRestoreInputSpy).toHaveBeenCalled();
+
+      showRestoreInputSpy.mockRestore();
+    });
+
     it('should show the showModeTriggerInstructions setting', () => {
       sut.display(mockContainerEl);
 
@@ -153,25 +138,18 @@ describe('generalSettingsTabSection', () => {
     });
   });
 
-  describe('showPathDisplayFormat', () => {
+  describe('showPathDisplayGroup', () => {
     it('should show the pathDisplayFormat setting', () => {
-      const addDropdownSettingSpy = jest.spyOn(
-        SettingsTabSection.prototype,
-        'addDropdownSetting',
-      );
-
       const showPathDisplayFormatSpy = jest.spyOn(sut, 'showPathDisplayFormat');
 
-      sut.display(mockContainerEl);
+      sut.showPathDisplayGroup(mockContainerEl, config);
 
-      expect(showPathDisplayFormatSpy).toHaveBeenCalledWith(mockContainerEl, config);
-      expect(addDropdownSettingSpy).toHaveBeenCalled();
+      expect(showPathDisplayFormatSpy).toHaveBeenCalled();
 
       showPathDisplayFormatSpy.mockRestore();
-      addDropdownSettingSpy.mockRestore();
     });
 
-    it('should save modified setting', () => {
+    it('should save modified showPathDisplayFormat setting', () => {
       config.pathDisplayFormat = PathDisplayFormat.None;
       const finalValue = PathDisplayFormat.Full;
 
@@ -198,6 +176,166 @@ describe('generalSettingsTabSection', () => {
 
       addDropdownSettingSpy.mockRestore();
       configSaveSpy.mockRestore();
+    });
+
+    it('should show the hidePathIfRoot setting', () => {
+      addToggleSettingSpy.mockClear();
+
+      sut.showPathDisplayGroup(mockContainerEl, config);
+
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        'Hide path for root items',
+        expect.any(String),
+        config.hidePathIfRoot,
+        'hidePathIfRoot',
+      );
+
+      addToggleSettingSpy.mockClear();
+    });
+  });
+
+  describe('showStandardModeOverrides', () => {
+    let createSettingSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      createSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'createSetting');
+    });
+
+    afterAll(() => {
+      createSettingSpy.mockRestore();
+    });
+
+    beforeEach(() => {
+      createSettingSpy.mockClear();
+      addToggleSettingSpy.mockClear();
+    });
+
+    it('should create a setting with title and description "Standard Mode Overrides" in the SettingGroup', () => {
+      sut.showStandardModeOverrides(mockContainerEl, config);
+
+      // Verify that createSetting was called with a SettingGroup instance (not containerEl)
+      expect(createSettingSpy).toHaveBeenCalled();
+
+      type createSettingArgs = Parameters<SettingsTabSection['createSetting']>;
+      const createSettingCall = createSettingSpy.mock.calls.find(
+        (call: createSettingArgs) => call[1] === 'Standard Mode Overrides',
+      ) as createSettingArgs | undefined;
+
+      expect(createSettingCall?.[0]).toBeInstanceOf(SettingGroup);
+      expect(createSettingCall?.[1]).toBe('Standard Mode Overrides');
+    });
+
+    it('should call addToggleSetting with SettingGroup instead of containerEl for both override toggles', () => {
+      sut.showStandardModeOverrides(mockContainerEl, config);
+
+      // Verify that addToggleSetting was called with a SettingGroup instance (not containerEl)
+      const toggleCalls = addToggleSettingSpy.mock.calls.filter(
+        (call: addToggleSettingArgs) =>
+          call[1] === 'Override Standard mode file open behavior' ||
+          call[1] === 'Override Standard mode rendering',
+      ) as addToggleSettingArgs[];
+
+      expect(toggleCalls).toHaveLength(2);
+      toggleCalls.forEach((call) => {
+        expect(call[0]).toBeInstanceOf(SettingGroup);
+      });
+    });
+
+    it('should show the overrideStandardModeBehaviors setting', () => {
+      sut.showStandardModeOverrides(mockContainerEl, config);
+
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        'Override Standard mode file open behavior',
+        expect.any(String),
+        config.overrideStandardModeBehaviors,
+        'overrideStandardModeBehaviors',
+      );
+    });
+
+    it('should show the overrideStandardModeRendering setting', () => {
+      sut.showStandardModeOverrides(mockContainerEl, config);
+
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        'Override Standard mode rendering',
+        expect.any(String),
+        config.overrideStandardModeRendering,
+        'overrideStandardModeRendering',
+      );
+    });
+  });
+
+  describe('showRestoreInput', () => {
+    let createSettingSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      createSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'createSetting');
+    });
+
+    afterAll(() => {
+      createSettingSpy.mockRestore();
+    });
+
+    beforeEach(() => {
+      createSettingSpy.mockClear();
+      addToggleSettingSpy.mockClear();
+    });
+
+    it('should create a setting with title and description "Restore Previous Input" in the SettingGroup', () => {
+      sut.showRestoreInput(mockContainerEl, config);
+
+      // Verify that createSetting was called with a SettingGroup instance (not containerEl)
+      expect(createSettingSpy).toHaveBeenCalled();
+
+      type createSettingArgs = Parameters<SettingsTabSection['createSetting']>;
+      const createSettingCall = createSettingSpy.mock.calls.find(
+        (call: createSettingArgs) => call[1] === 'Restore Previous Input',
+      ) as createSettingArgs | undefined;
+
+      expect(createSettingCall?.[0]).toBeInstanceOf(SettingGroup);
+      expect(createSettingCall?.[1]).toBe('Restore Previous Input');
+    });
+
+    it('should call addToggleSetting with SettingGroup instead of containerEl for both restore input toggles', () => {
+      sut.showRestoreInput(mockContainerEl, config);
+
+      // Verify that addToggleSetting was called with a SettingGroup instance (not containerEl)
+      const toggleCalls = addToggleSettingSpy.mock.calls.filter(
+        (call: addToggleSettingArgs) =>
+          call[1] === 'Restore previous input in Command Mode' ||
+          call[1] === 'Restore previous input',
+      ) as addToggleSettingArgs[];
+
+      expect(toggleCalls).toHaveLength(2);
+      toggleCalls.forEach((call) => {
+        expect(call[0]).toBeInstanceOf(SettingGroup);
+      });
+    });
+
+    it('should show the preserveCommandPaletteLastInput setting', () => {
+      sut.showRestoreInput(mockContainerEl, config);
+
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        'Restore previous input in Command Mode',
+        expect.any(String),
+        config.preserveCommandPaletteLastInput,
+        'preserveCommandPaletteLastInput',
+      );
+    });
+
+    it('should show the preserveQuickSwitcherLastInput setting', () => {
+      sut.showRestoreInput(mockContainerEl, config);
+
+      expect(addToggleSettingSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        'Restore previous input',
+        expect.any(String),
+        config.preserveQuickSwitcherLastInput,
+        'preserveQuickSwitcherLastInput',
+      );
     });
   });
 
@@ -296,6 +434,31 @@ describe('generalSettingsTabSection', () => {
   });
 
   describe('showLauncherButtonOverrides', () => {
+    it('should call addDropdownSetting with SettingGroup instead of containerEl', () => {
+      const initialValue = Mode[Mode.CommandList];
+      config.mobileLauncher.modeString = initialValue;
+      config.mobileLauncher.isEnabled = true;
+
+      const addDropdownSettingSpy = jest.spyOn(
+        SettingsTabSection.prototype,
+        'addDropdownSetting',
+      );
+
+      sut.showLauncherButtonOverrides(mockContainerEl, config);
+
+      // Verify that addDropdownSetting was called with a SettingGroup instance (not containerEl)
+      expect(addDropdownSettingSpy).toHaveBeenCalled();
+
+      const dropdownCall = addDropdownSettingSpy.mock.calls.find(
+        (call: addDropdownSettingArgs) =>
+          call[1] === 'New tab and mobile launcher buttons',
+      );
+
+      expect(dropdownCall?.[0]).toBeInstanceOf(SettingGroup);
+
+      addDropdownSettingSpy.mockRestore();
+    });
+
     it('should show setting to override the mobile launcher (🔍) button', () => {
       const initialValue = Mode[Mode.CommandList];
       config.mobileLauncher.modeString = initialValue;
@@ -317,15 +480,7 @@ describe('generalSettingsTabSection', () => {
         mockContainerEl,
         config,
       );
-      expect(addDropdownSettingSpy).toHaveBeenCalledWith(
-        mockContainerEl,
-        'New tab and mobile launcher buttons',
-        expect.any(String),
-        initialValue,
-        expect.anything(),
-        null,
-        expect.any(Function),
-      );
+      expect(addDropdownSettingSpy).toHaveBeenCalled();
 
       showLauncherButtonOverridesSpy.mockRestore();
       addDropdownSettingSpy.mockRestore();
@@ -358,6 +513,26 @@ describe('generalSettingsTabSection', () => {
 
       addDropdownSettingSpy.mockRestore();
       configSaveSpy.mockRestore();
+    });
+
+    it('should call addToggleSetting with SettingGroup instead of containerEl for conditional toggles when enabled', () => {
+      config.mobileLauncher.isEnabled = true;
+
+      sut.showLauncherButtonOverrides(mockContainerEl, config);
+
+      // Verify that addToggleSetting was called with a SettingGroup instance (not containerEl)
+      const toggleCalls = addToggleSettingSpy.mock.calls.filter(
+        (call: addToggleSettingArgs) =>
+          call[1] === 'Override default Switcher launch button on mobile platforms' ||
+          call[1] === 'Display launch button on the "New tab" page',
+      ) as addToggleSettingArgs[];
+
+      expect(toggleCalls.length).toBeGreaterThan(0);
+      toggleCalls.forEach((call) => {
+        expect(call[0]).toBeInstanceOf(SettingGroup);
+      });
+
+      config.mobileLauncher.isEnabled = false;
     });
 
     it('should save changes to the .isMobileButtonEnabled setting', () => {
@@ -405,6 +580,37 @@ describe('generalSettingsTabSection', () => {
 
       expect(config.mobileLauncher.isEmptyTabButtonEnabled).toBe(finalValue);
     });
+
+    it('should refresh the settings panel when dropdown value changes', () => {
+      const displaySpy = jest.spyOn(mockPluginSettingTab, 'display');
+      const finalValue = Mode[Mode.Standard];
+      config.mobileLauncher.isEnabled = false;
+
+      type addDropdownSettingArgs = Parameters<SettingsTabSection['addDropdownSetting']>;
+      let dropdownSettingOnChangeFn: addDropdownSettingArgs[6];
+
+      const addDropdownSettingSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'addDropdownSetting')
+        .mockImplementationOnce((...args) => {
+          dropdownSettingOnChangeFn = args[6];
+          return mock<Setting>();
+        });
+
+      const configSaveSpy = jest.spyOn(config, 'save');
+
+      sut.showLauncherButtonOverrides(mockContainerEl, config);
+
+      // trigger the save
+      dropdownSettingOnChangeFn(finalValue, config);
+
+      expect(config.mobileLauncher.modeString).toBe(finalValue);
+      expect(configSaveSpy).toHaveBeenCalled();
+      expect(displaySpy).toHaveBeenCalled();
+
+      addDropdownSettingSpy.mockRestore();
+      configSaveSpy.mockRestore();
+      displaySpy.mockRestore();
+    });
   });
 
   describe('showMatchPriorityAdjustments', () => {
@@ -421,6 +627,17 @@ describe('generalSettingsTabSection', () => {
 
     afterEach(() => {
       toggleSettingOnChangeFn = null;
+    });
+
+    it('should call addToggleSetting with SettingGroup instead of containerEl', () => {
+      sut.showMatchPriorityAdjustments(mockContainerEl, config);
+
+      // Verify that addToggleSetting was called with a SettingGroup instance (not containerEl)
+      const toggleCall = addToggleSettingSpy.mock.calls.find(
+        (call: addToggleSettingArgs) => call[1] === 'Result priority adjustments',
+      ) as addToggleSettingArgs;
+
+      expect(toggleCall[0]).toBeInstanceOf(SettingGroup);
     });
 
     it('should refresh the mainSettingsTab panel when the enable result priority setting changes', async () => {
@@ -483,6 +700,38 @@ describe('generalSettingsTabSection', () => {
 
       addToggleSettingSpy.mockReset();
       consoleLogSpy.mockRestore();
+    });
+
+    it('should call addSliderSetting with SettingGroup instead of containerEl when enabled', () => {
+      const addSliderSettingSpy = jest.spyOn(
+        SettingsTabSection.prototype,
+        'addSliderSetting',
+      );
+
+      config.matchPriorityAdjustments.isEnabled = true;
+
+      sut.showMatchPriorityAdjustments(mockContainerEl, config);
+
+      // Verify that addSliderSetting was called with a SettingGroup instance (not containerEl)
+      expect(addSliderSettingSpy).toHaveBeenCalled();
+
+      const sliderCalls = addSliderSettingSpy.mock.calls;
+      sliderCalls.forEach((call) => {
+        expect(call[0]).toBeInstanceOf(SettingGroup);
+      });
+
+      expect(addSliderSettingSpy).not.toHaveBeenCalledWith(
+        mockContainerEl,
+        expect.any(String),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
+
+      config.matchPriorityAdjustments.isEnabled = false;
+      addSliderSettingSpy.mockRestore();
     });
 
     it('should save Result Priority Adjustments settings changes', () => {
@@ -672,6 +921,64 @@ describe('generalSettingsTabSection', () => {
       consoleLogSpy.mockRestore();
     });
 
+    it('should call addToggleSetting with SettingGroup instead of containerEl for master toggle', () => {
+      sut.showRenderMarkdownContentAsHTML(mockContainerEl, config);
+
+      // Verify that addToggleSetting was called with a SettingGroup instance (not containerEl)
+      const toggleCall = addToggleSettingSpy.mock.calls.find(
+        (call: addToggleSettingArgs) =>
+          call[1] === 'Display markdown content as Live Preview',
+      ) as addToggleSettingArgs;
+
+      expect(toggleCall[0]).toBeInstanceOf(SettingGroup);
+    });
+
+    it('should call addToggleSetting with SettingGroup instead of containerEl for conditional child toggles when enabled', () => {
+      config.renderMarkdownContentInSuggestions.isEnabled = true;
+
+      sut.showRenderMarkdownContentAsHTML(mockContainerEl, config);
+
+      // Verify that addToggleSetting was called with a SettingGroup instance (not containerEl)
+      const childToggleCalls = addToggleSettingSpy.mock.calls.filter(
+        (call: addToggleSettingArgs) =>
+          call[1] === 'Headings' ||
+          call[1] === 'Links' ||
+          call[1] === 'Tags' ||
+          call[1] === 'Callouts',
+      ) as addToggleSettingArgs[];
+
+      expect(childToggleCalls.length).toBeGreaterThan(0);
+      childToggleCalls.forEach((call) => {
+        expect(call[0]).toBeInstanceOf(SettingGroup);
+      });
+
+      config.renderMarkdownContentInSuggestions.isEnabled = false;
+    });
+
+    it('should add experimental tag to master toggle nameEl', () => {
+      const mockNameEl = mock<HTMLElement>();
+      const createSpanSpy = jest
+        .spyOn(mockNameEl, 'createSpan')
+        .mockReturnValue(mock<HTMLElement>());
+      const mockSetting = mock<Setting>({ nameEl: mockNameEl });
+
+      addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
+        if (args[1] === 'Display markdown content as Live Preview') {
+          return mockSetting;
+        }
+        return mock<Setting>();
+      });
+
+      sut.showRenderMarkdownContentAsHTML(mockContainerEl, config);
+
+      expect(createSpanSpy).toHaveBeenCalledWith({
+        cls: ['qsp-tag', 'qsp-warning'],
+        text: 'Experimental',
+      });
+
+      createSpanSpy.mockRestore();
+    });
+
     describe('showQuickOpen', () => {
       let toggleSettingOnChangeFn: addToggleSettingArgs[5];
       let saveSettingsSpy: jest.SpyInstance;
@@ -714,13 +1021,61 @@ describe('generalSettingsTabSection', () => {
   describe('showInsertLinkInEditor', () => {
     let toggleSettingOnChangeFn: addToggleSettingArgs[5];
     let saveSettingsSpy: jest.SpyInstance;
+    let createSettingSpy: jest.SpyInstance;
 
     beforeAll(() => {
       saveSettingsSpy = jest.spyOn(config, 'saveSettings');
+      createSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'createSetting');
     });
 
     afterAll(() => {
       saveSettingsSpy.mockRestore();
+      createSettingSpy.mockRestore();
+    });
+
+    beforeEach(() => {
+      createSettingSpy.mockClear();
+      addToggleSettingSpy.mockClear();
+    });
+
+    it('should create a setting with title and description "Insert link in editor" in the SettingGroup', () => {
+      sut.showInsertLinkInEditor(mockContainerEl, config);
+
+      // Verify that createSetting was called with a SettingGroup instance (not containerEl)
+      expect(createSettingSpy).toHaveBeenCalled();
+
+      type createSettingArgs = Parameters<SettingsTabSection['createSetting']>;
+      const createSettingCall = createSettingSpy.mock.calls.find(
+        (call: createSettingArgs) => call[1] === 'Insert link in editor',
+      ) as createSettingArgs | undefined;
+
+      expect(createSettingCall?.[0]).toBeInstanceOf(SettingGroup);
+      expect(createSettingCall?.[1]).toBe('Insert link in editor');
+    });
+
+    it('should not call createSetting with containerEl for the label', () => {
+      sut.showInsertLinkInEditor(mockContainerEl, config);
+
+      expect(createSettingSpy).not.toHaveBeenCalledWith(
+        mockContainerEl,
+        'Insert link in editor',
+        expect.any(String),
+      );
+    });
+
+    it('should call addToggleSetting with SettingGroup instead of containerEl for both toggles', () => {
+      sut.showInsertLinkInEditor(mockContainerEl, config);
+
+      // Verify that addToggleSetting was called with a SettingGroup instance (not containerEl)
+      const toggleCalls = addToggleSettingSpy.mock.calls.filter(
+        (call: addToggleSettingArgs) =>
+          call[1] === 'Use filename as alias' || call[1] === 'Use heading as alias',
+      ) as addToggleSettingArgs[];
+
+      expect(toggleCalls).toHaveLength(2);
+      toggleCalls.forEach((call) => {
+        expect(call[0]).toBeInstanceOf(SettingGroup);
+      });
     });
 
     it.each([
@@ -782,21 +1137,36 @@ describe('generalSettingsTabSection', () => {
       addTextSettingSpy.mockClear();
     });
 
+    it('should call addDropdownSetting with SettingGroup instead of containerEl', () => {
+      sut.showPreferredSourceForTitle(mockContainerEl, config);
+
+      // Verify that addDropdownSetting was called with a SettingGroup instance (not containerEl)
+      expect(addDropdownSettingSpy).toHaveBeenCalled();
+
+      const dropdownCall = addDropdownSettingSpy.mock.calls.find(
+        (call: addDropdownSettingArgs) => call[1] === 'Preferred suggestion title source',
+      ) as addDropdownSettingArgs | undefined;
+
+      expect(dropdownCall?.[0]).toBeInstanceOf(SettingGroup);
+    });
+
     it('should render dropdown with all three title source options', () => {
       sut.showPreferredSourceForTitle(mockContainerEl, config);
 
-      expect(addDropdownSettingSpy).toHaveBeenCalledWith(
-        mockContainerEl,
-        'Preferred suggestion title source',
-        expect.any(String),
-        config.preferredSourceForTitle,
+      expect(addDropdownSettingSpy).toHaveBeenCalled();
+
+      const dropdownCall = addDropdownSettingSpy.mock.calls.find(
+        (call: addDropdownSettingArgs) => call[1] === 'Preferred suggestion title source',
+      ) as addDropdownSettingArgs | undefined;
+
+      expect(dropdownCall?.[0]).toBeInstanceOf(SettingGroup);
+      expect(dropdownCall?.[1]).toBe('Preferred suggestion title source');
+      expect(dropdownCall?.[4]).toEqual(
         expect.objectContaining({
           Default: 'Default',
           H1: 'First H₁ heading',
           FrontMatter: 'Frontmatter property',
         }),
-        'preferredSourceForTitle',
-        expect.any(Function),
       );
     });
 
@@ -818,20 +1188,22 @@ describe('generalSettingsTabSection', () => {
       expect(addTextSettingSpy).not.toHaveBeenCalled();
     });
 
-    it('should render text input when preferredSourceForTitle is FrontMatter', () => {
+    it('should call addTextSetting with SettingGroup instead of containerEl when FrontMatter is selected', () => {
       config.preferredSourceForTitle = 'FrontMatter';
 
       sut.showPreferredSourceForTitle(mockContainerEl, config);
 
       expect(addDropdownSettingSpy).toHaveBeenCalled();
-      expect(addTextSettingSpy).toHaveBeenCalledWith(
-        mockContainerEl,
-        'Frontmatter property path',
-        expect.stringContaining('dot notation'),
-        config.frontmatterTitleProperty,
-        'frontmatterTitleProperty',
-        'title',
-      );
+      expect(addTextSettingSpy).toHaveBeenCalled();
+
+      type addTextSettingArgs = Parameters<SettingsTabSection['addTextSetting']>;
+      const textSettingCall = addTextSettingSpy.mock.calls.find(
+        (call: addTextSettingArgs) => call[1] === 'Frontmatter property path',
+      ) as addTextSettingArgs | undefined;
+
+      expect(textSettingCall?.[0]).toBeInstanceOf(SettingGroup);
+      expect(textSettingCall?.[1]).toBe('Frontmatter property path');
+      expect(textSettingCall?.[2]).toEqual(expect.stringContaining('dot notation'));
     });
 
     it('should refresh the settings page to show the new options when dropdown value changes', () => {
@@ -843,7 +1215,6 @@ describe('generalSettingsTabSection', () => {
       const dropdownSettingOnChangeFn = dropdownArgs[6];
       const saveSpy = jest.spyOn(config, 'save');
 
-      expect(dropdownSettingOnChangeFn).toBeDefined();
       dropdownSettingOnChangeFn?.('FrontMatter', config);
 
       expect(config.preferredSourceForTitle).toBe('FrontMatter');

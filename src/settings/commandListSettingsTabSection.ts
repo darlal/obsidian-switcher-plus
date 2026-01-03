@@ -6,7 +6,7 @@ export class CommandListSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
     const { config } = this;
 
-    this.addSectionTitle(containerEl, 'Command List Mode Settings');
+    this.addSectionTitle(containerEl, 'Command List Mode');
 
     this.addTextSetting(
       containerEl,

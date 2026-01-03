@@ -1,6 +1,6 @@
 import { SwitcherPlusSettings } from './switcherPlusSettings';
 import { SwitcherPlusSettingTab } from './switcherPlusSettingTab';
-import { App, Setting, SliderComponent } from 'obsidian';
+import { App, Setting, SettingGroup, SliderComponent } from 'obsidian';
 import { WritableKeysWithValueOfType } from 'src/types';
 import { WritableKeys } from 'ts-essentials';
 
@@ -23,17 +23,83 @@ export abstract class SettingsTabSection {
 
   /**
    * Creates a new Setting with the given name and description.
-   * @param  {HTMLElement} containerEl
+   * Supports both HTMLElement and SettingGroup containers.
+   * @param  {HTMLElement | SettingGroup} containerEl
    * @param  {string} name
    * @param  {string} desc
    * @returns Setting
    */
-  createSetting(containerEl: HTMLElement, name?: string, desc?: string): Setting {
-    const setting = new Setting(containerEl);
-    setting.setName(name);
-    setting.setDesc(desc);
+  createSetting(
+    containerEl: HTMLElement | SettingGroup,
+    name?: string,
+    desc?: string,
+  ): Setting {
+    let setting: Setting;
+
+    if (containerEl instanceof SettingGroup) {
+      containerEl.addSetting((s) => {
+        setting = s;
+        s.setName(name);
+        s.setDesc(desc);
+      });
+    } else {
+      setting = new Setting(containerEl);
+      setting.setName(name);
+      setting.setDesc(desc);
+    }
 
     return setting;
+  }
+
+  /**
+   * Helper method to create a setting and configure it with a component.
+   * Handles the instanceof check to support both HTMLElement and SettingGroup containers.
+   * @param  {HTMLElement | SettingGroup} containerEl
+   * @param  {string} name
+   * @param  {string} desc
+   * @param  {(setting: Setting) => void} setupComponent Callback to configure the setting's component
+   * @returns Setting
+   */
+  private withSetting(
+    containerEl: HTMLElement | SettingGroup,
+    name: string,
+    desc: string,
+    setupComponent: (setting: Setting) => void,
+  ): Setting {
+    let setting: Setting;
+
+    if (containerEl instanceof SettingGroup) {
+      containerEl.addSetting((s) => {
+        setting = s;
+        s.setName(name).setDesc(desc);
+        setupComponent(s);
+      });
+    } else {
+      // Use createSetting so it can be mocked in tests
+      setting = this.createSetting(containerEl, name, desc);
+      setupComponent(setting);
+    }
+
+    return setting;
+  }
+
+  /**
+   * Creates an onChange handler that either calls a custom callback or saves to config.
+   * @param  {K | null} configStorageKey The SwitcherPlusSettings key where the value should be stored. Can be null if onChange is provided.
+   * @param  {(value: T, config: SwitcherPlusSettings) => void} onChange? Optional custom callback
+   * @returns {(value: T) => void} The onChange handler function
+   */
+  private createOnChangeHandler<T, K extends WritableKeys<SwitcherPlusSettings>>(
+    configStorageKey: K | null,
+    onChange?: (value: T, config: SwitcherPlusSettings) => void,
+  ): (value: T) => void {
+    return (value: T) => {
+      if (onChange) {
+        onChange(value, this.config);
+      } else if (configStorageKey) {
+        this.saveChangesToConfig(configStorageKey, value as SwitcherPlusSettings[K]);
+      }
+    };
   }
   /**
    * Create section title elements and divider.
@@ -51,7 +117,8 @@ export abstract class SettingsTabSection {
 
   /**
    * Creates a HTMLInput element setting.
-   * @param  {HTMLElement} containerEl The element to attach the setting to.
+   * Supports both HTMLElement and SettingGroup containers.
+   * @param  {HTMLElement | SettingGroup} containerEl The element to attach the setting to.
    * @param  {string} name
    * @param  {string} desc
    * @param  {string} initialValue
@@ -60,31 +127,30 @@ export abstract class SettingsTabSection {
    * @returns Setting
    */
   addTextSetting(
-    containerEl: HTMLElement,
+    containerEl: HTMLElement | SettingGroup,
     name: string,
     desc: string,
     initialValue: string,
     configStorageKey: StringTypedConfigKey,
     placeholderText?: string,
   ): Setting {
-    const setting = this.createSetting(containerEl, name, desc);
+    return this.withSetting(containerEl, name, desc, (setting) => {
+      setting.addText((comp) => {
+        comp.setPlaceholder(placeholderText);
+        comp.setValue(initialValue);
 
-    setting.addText((comp) => {
-      comp.setPlaceholder(placeholderText);
-      comp.setValue(initialValue);
-
-      comp.onChange((rawValue) => {
-        const value = rawValue.length ? rawValue : initialValue;
-        this.saveChangesToConfig(configStorageKey, value);
+        comp.onChange((rawValue) => {
+          const value = rawValue.length ? rawValue : initialValue;
+          this.saveChangesToConfig(configStorageKey, value);
+        });
       });
     });
-
-    return setting;
   }
 
   /**
    * Create a Checkbox element setting.
-   * @param  {HTMLElement} containerEl The element to attach the setting to.
+   * Supports both HTMLElement and SettingGroup containers.
+   * @param  {HTMLElement | SettingGroup} containerEl The element to attach the setting to.
    * @param  {string} name
    * @param  {string} desc
    * @param  {boolean} initialValue
@@ -93,32 +159,25 @@ export abstract class SettingsTabSection {
    * @returns Setting
    */
   addToggleSetting(
-    containerEl: HTMLElement,
+    containerEl: HTMLElement | SettingGroup,
     name: string,
     desc: string,
     initialValue: boolean,
     configStorageKey: BooleanTypedConfigKey,
     onChange?: (value: boolean, config: SwitcherPlusSettings) => void,
   ): Setting {
-    const setting = this.createSetting(containerEl, name, desc);
-
-    setting.addToggle((comp) => {
-      comp.setValue(initialValue);
-      comp.onChange((value) => {
-        if (onChange) {
-          onChange(value, this.config);
-        } else {
-          this.saveChangesToConfig(configStorageKey, value);
-        }
+    return this.withSetting(containerEl, name, desc, (setting) => {
+      setting.addToggle((comp) => {
+        comp.setValue(initialValue);
+        comp.onChange(this.createOnChangeHandler(configStorageKey, onChange));
       });
     });
-
-    return setting;
   }
 
   /**
    * Create a TextArea element setting.
-   * @param  {HTMLElement} containerEl The element to attach the setting to.
+   * Supports both HTMLElement and SettingGroup containers.
+   * @param  {HTMLElement | SettingGroup} containerEl The element to attach the setting to.
    * @param  {string} name
    * @param  {string} desc
    * @param  {string} initialValue
@@ -127,32 +186,31 @@ export abstract class SettingsTabSection {
    * @returns Setting
    */
   addTextAreaSetting(
-    containerEl: HTMLElement,
+    containerEl: HTMLElement | SettingGroup,
     name: string,
     desc: string,
     initialValue: string,
     configStorageKey: ListTypedConfigKey | StringTypedConfigKey,
     placeholderText?: string,
   ): Setting {
-    const setting = this.createSetting(containerEl, name, desc);
+    return this.withSetting(containerEl, name, desc, (setting) => {
+      setting.addTextArea((comp) => {
+        comp.setPlaceholder(placeholderText);
+        comp.setValue(initialValue);
 
-    setting.addTextArea((comp) => {
-      comp.setPlaceholder(placeholderText);
-      comp.setValue(initialValue);
-
-      comp.onChange((rawValue) => {
-        const value = rawValue.length ? rawValue : initialValue;
-        const isArray = Array.isArray(this.config[configStorageKey]);
-        this.saveChangesToConfig(configStorageKey, isArray ? value.split('\n') : value);
+        comp.onChange((rawValue) => {
+          const value = rawValue.length ? rawValue : initialValue;
+          const isArray = Array.isArray(this.config[configStorageKey]);
+          this.saveChangesToConfig(configStorageKey, isArray ? value.split('\n') : value);
+        });
       });
     });
-
-    return setting;
   }
 
   /**
    * Add a dropdown list setting
-   * @param  {HTMLElement} containerEl
+   * Supports both HTMLElement and SettingGroup containers.
+   * @param  {HTMLElement | SettingGroup} containerEl
    * @param  {string} name
    * @param  {string} desc
    * @param  {string} initialValue option value that is initially selected
@@ -162,7 +220,7 @@ export abstract class SettingsTabSection {
    * @returns Setting
    */
   addDropdownSetting(
-    containerEl: HTMLElement,
+    containerEl: HTMLElement | SettingGroup,
     name: string,
     desc: string,
     initialValue: string,
@@ -170,26 +228,29 @@ export abstract class SettingsTabSection {
     configStorageKey: StringTypedConfigKey,
     onChange?: (rawValue: string, config: SwitcherPlusSettings) => void,
   ): Setting {
-    const setting = this.createSetting(containerEl, name, desc);
-
-    setting.addDropdown((comp) => {
-      comp.addOptions(options);
-      comp.setValue(initialValue);
-
-      comp.onChange((rawValue) => {
-        if (onChange) {
-          onChange(rawValue, this.config);
-        } else {
-          this.saveChangesToConfig(configStorageKey, rawValue);
-        }
+    return this.withSetting(containerEl, name, desc, (setting) => {
+      setting.addDropdown((comp) => {
+        comp.addOptions(options);
+        comp.setValue(initialValue);
+        comp.onChange(this.createOnChangeHandler(configStorageKey, onChange));
       });
     });
-
-    return setting;
   }
 
+  /**
+   * Add a slider setting with reset button.
+   * Supports both HTMLElement and SettingGroup containers.
+   * @param  {HTMLElement | SettingGroup} containerEl
+   * @param  {string} name
+   * @param  {string} desc
+   * @param  {number} initialValue
+   * @param  {[min: number, max: number, step: number, initial: number]} limits
+   * @param  {NumberTypedConfigKey} configStorageKey The SwitcherPlusSettings key where the value for this setting should be stored. This can safely be set to null if the onChange handler is provided.
+   * @param  {(value:number,config:SwitcherPlusSettings)=>void} onChange? optional callback to invoke instead of using configStorageKey
+   * @returns Setting
+   */
   addSliderSetting(
-    containerEl: HTMLElement,
+    containerEl: HTMLElement | SettingGroup,
     name: string,
     desc: string,
     initialValue: number,
@@ -197,31 +258,24 @@ export abstract class SettingsTabSection {
     configStorageKey: NumberTypedConfigKey,
     onChange?: (value: number, config: SwitcherPlusSettings) => void,
   ): Setting {
-    const setting = this.createSetting(containerEl, name, desc);
+    return this.withSetting(containerEl, name, desc, (setting) => {
+      // display a button to reset the slider value
+      setting.addExtraButton((comp) => {
+        comp.setIcon('lucide-rotate-ccw');
+        comp.setTooltip('Restore default');
+        comp.onClick(() =>
+          (setting.components[1] as SliderComponent).setValue(limits[3]),
+        );
+        return comp;
+      });
 
-    // display a button to reset the slider value
-    setting.addExtraButton((comp) => {
-      comp.setIcon('lucide-rotate-ccw');
-      comp.setTooltip('Restore default');
-      comp.onClick(() => (setting.components[1] as SliderComponent).setValue(limits[3]));
-      return comp;
-    });
-
-    setting.addSlider((comp) => {
-      comp.setLimits(limits[0], limits[1], limits[2]);
-      comp.setValue(initialValue);
-      comp.setDynamicTooltip();
-
-      comp.onChange((value) => {
-        if (onChange) {
-          onChange(value, this.config);
-        } else {
-          this.saveChangesToConfig(configStorageKey, value);
-        }
+      setting.addSlider((comp) => {
+        comp.setLimits(limits[0], limits[1], limits[2]);
+        comp.setValue(initialValue);
+        comp.setDynamicTooltip();
+        comp.onChange(this.createOnChangeHandler(configStorageKey, onChange));
       });
     });
-
-    return setting;
   }
 
   /**

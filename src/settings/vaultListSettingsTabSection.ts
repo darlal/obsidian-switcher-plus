@@ -4,7 +4,7 @@ export class VaultListSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
     const { config } = this;
 
-    const titleSetting = this.addSectionTitle(containerEl, 'Vault List Mode Settings');
+    const titleSetting = this.addSectionTitle(containerEl, 'Vault List Mode');
     titleSetting.nameEl?.createSpan({
       cls: ['qsp-tag', 'qsp-warning'],
       text: 'Experimental',

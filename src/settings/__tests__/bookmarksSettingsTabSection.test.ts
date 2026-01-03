@@ -33,7 +33,7 @@ describe('bookmarksSettingsTabSection', () => {
 
     expect(addSectionTitleSpy).toHaveBeenCalledWith(
       mockContainerEl,
-      'Bookmarks List Mode Settings',
+      'Bookmarks List Mode',
     );
 
     addSectionTitleSpy.mockRestore();

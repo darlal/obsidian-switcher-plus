@@ -1,4 +1,4 @@
-import { Modal } from 'obsidian';
+import { Modal, SettingGroup } from 'obsidian';
 import { SwitcherPlusSettings } from 'src/settings';
 import { Mode, PathDisplayFormat, TitleSource } from 'src/types';
 import { SettingsTabSection } from './settingsTabSection';
@@ -8,27 +8,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
     const { config } = this;
 
-    this.addSectionTitle(containerEl, 'General Settings');
-    this.showEnabledRibbonCommands(containerEl, config);
-    this.showLauncherButtonOverrides(containerEl, config);
-    this.showPreferredSourceForTitle(containerEl, config);
-
-    this.showPathDisplayFormat(containerEl, config);
-    this.addToggleSetting(
-      containerEl,
-      'Hide path for root items',
-      'When enabled, path information will be hidden for items at the root of the vault.',
-      config.hidePathIfRoot,
-      'hidePathIfRoot',
-    ).setClass('qsp-setting-item-indent');
-
-    this.addTextSetting(
-      containerEl,
-      'Mode trigger escape character',
-      'Character to indicate that a mode trigger character should be treated just as a normal text.',
-      config.escapeCmdChar,
-      'escapeCmdChar',
-    );
+    this.addSectionTitle(containerEl, 'General');
 
     this.addToggleSetting(
       containerEl,
@@ -37,22 +17,8 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       config.onOpenPreferNewTab,
       'onOpenPreferNewTab',
     );
-
-    this.addToggleSetting(
-      containerEl,
-      'Override Standard mode file open behavior',
-      'When enabled, Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to inject custom file open behavior.',
-      config.overrideStandardModeBehaviors,
-      'overrideStandardModeBehaviors',
-    );
-
-    this.addToggleSetting(
-      containerEl,
-      'Override Standard mode rendering',
-      'When enabled, Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to render suggestions as multi-line.',
-      config.overrideStandardModeRendering,
-      'overrideStandardModeRendering',
-    );
+    this.showLauncherButtonOverrides(containerEl, config);
+    this.showEnabledRibbonCommands(containerEl, config);
 
     this.addToggleSetting(
       containerEl,
@@ -61,32 +27,6 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       config.showOptionalIndicatorIcons,
       'showOptionalIndicatorIcons',
     );
-
-    this.addToggleSetting(
-      containerEl,
-      'Allow Backspace key to close the Switcher',
-      'When the search box is empty, pressing the backspace key will close Switcher++.',
-      config.shouldCloseModalOnBackspace,
-      'shouldCloseModalOnBackspace',
-    );
-
-    this.showMatchPriorityAdjustments(containerEl, config);
-    this.showInsertLinkInEditor(containerEl, config);
-
-    this.addToggleSetting(
-      containerEl,
-      'Restore previous input in Command Mode',
-      'When enabled, restore the last typed input in Command Mode when launched via global command hotkey.',
-      config.preserveCommandPaletteLastInput,
-      'preserveCommandPaletteLastInput',
-    );
-    this.addToggleSetting(
-      containerEl,
-      'Restore previous input',
-      'When enabled, restore the last typed input when launched via global command hotkey.',
-      config.preserveQuickSwitcherLastInput,
-      'preserveQuickSwitcherLastInput',
-    );
     this.addToggleSetting(
       containerEl,
       'Display mode trigger instructions',
@@ -94,10 +34,31 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       config.showModeTriggerInstructions,
       'showModeTriggerInstructions',
     );
-
-    this.showResetFacetEachSession(containerEl, config);
-    this.showRenderMarkdownContentAsHTML(containerEl, config);
+    this.showStandardModeOverrides(containerEl, config);
+    this.showPathDisplayGroup(containerEl, config);
+    this.showPreferredSourceForTitle(containerEl, config);
     this.showQuickOpen(containerEl, config);
+    this.showRenderMarkdownContentAsHTML(containerEl, config);
+
+    this.addTextSetting(
+      containerEl,
+      'Mode trigger escape character',
+      'Character to indicate that a mode trigger character should be treated just as a normal text.',
+      config.escapeCmdChar,
+      'escapeCmdChar',
+    );
+    this.addToggleSetting(
+      containerEl,
+      'Allow Backspace key to close the Switcher',
+      'When the search box is empty, pressing the backspace key will close Switcher++.',
+      config.shouldCloseModalOnBackspace,
+      'shouldCloseModalOnBackspace',
+    );
+    this.showRestoreInput(containerEl, config);
+
+    this.showInsertLinkInEditor(containerEl, config);
+    this.showResetFacetEachSession(containerEl, config);
+    this.showMatchPriorityAdjustments(containerEl, config);
   }
 
   showPreferredSourceForTitle(
@@ -110,8 +71,10 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       FrontMatter: 'Frontmatter property',
     };
 
+    const group = new SettingGroup(containerEl);
+
     this.addDropdownSetting(
-      containerEl,
+      group,
       'Preferred suggestion title source',
       'The preferred source to use for the "title" text that will be searched and displayed for file based suggestions',
       config.preferredSourceForTitle,
@@ -129,17 +92,20 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     // Conditionally show the property path input when FrontMatter is selected
     if (config.preferredSourceForTitle === 'FrontMatter') {
       this.addTextSetting(
-        containerEl,
+        group,
         'Frontmatter property path',
         'The path to the frontmatter property to use as the title. Use dot notation for nested properties (e.g., "title" or "meta.display_name"). The property value must be a string, number, or boolean. If the property doesn\'t exist or has an invalid type, the default filename will be used.',
         config.frontmatterTitleProperty,
         'frontmatterTitleProperty',
         'title',
-      ).setClass('qsp-setting-item-indent');
+      );
     }
   }
 
-  showPathDisplayFormat(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
+  showPathDisplayFormat(
+    containerEl: HTMLElement | SettingGroup,
+    config: SwitcherPlusSettings,
+  ): void {
     const options: Record<string, string> = {};
     options[PathDisplayFormat.None.toString()] = 'Hide path';
     options[PathDisplayFormat.Full.toString()] = 'Full path';
@@ -159,6 +125,81 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         config.pathDisplayFormat = Number(rawValue);
         config.save();
       },
+    );
+  }
+
+  showPathDisplayGroup(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
+    const group = new SettingGroup(containerEl);
+
+    this.createSetting(
+      group,
+      'Path Display Settings',
+      'Configure how file paths are displayed in suggestions.',
+    );
+
+    this.showPathDisplayFormat(group, config);
+
+    this.addToggleSetting(
+      group,
+      'Hide path for root items',
+      'When enabled, path information will be hidden for items at the root of the vault.',
+      config.hidePathIfRoot,
+      'hidePathIfRoot',
+    );
+  }
+
+  showStandardModeOverrides(
+    containerEl: HTMLElement,
+    config: SwitcherPlusSettings,
+  ): void {
+    const group = new SettingGroup(containerEl);
+
+    this.createSetting(
+      group,
+      'Standard Mode Overrides',
+      'Configure how Switcher++ overrides the default Obsidian Switcher behavior in Standard mode.',
+    );
+
+    this.addToggleSetting(
+      group,
+      'Override Standard mode file open behavior',
+      'When enabled, Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to inject custom file open behavior.',
+      config.overrideStandardModeBehaviors,
+      'overrideStandardModeBehaviors',
+    );
+
+    this.addToggleSetting(
+      group,
+      'Override Standard mode rendering',
+      'When enabled, Switcher++ will change the default Obsidian builtin Switcher functionality (Standard mode) to render suggestions as multi-line.',
+      config.overrideStandardModeRendering,
+      'overrideStandardModeRendering',
+    );
+  }
+
+  showRestoreInput(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
+    const group = new SettingGroup(containerEl);
+
+    this.createSetting(
+      group,
+      'Restore Previous Input',
+      'Configure whether to restore the last typed input when launching the Switcher.',
+    );
+
+    this.addToggleSetting(
+      group,
+      'Restore previous input in Command Mode',
+      'When enabled, restore the last typed input in Command Mode when launched via global command hotkey.',
+      config.preserveCommandPaletteLastInput,
+      'preserveCommandPaletteLastInput',
+    );
+
+    this.addToggleSetting(
+      group,
+      'Restore previous input',
+      'When enabled, restore the last typed input when launched via global command hotkey.',
+      config.preserveQuickSwitcherLastInput,
+      'preserveQuickSwitcherLastInput',
     );
   }
 
@@ -212,6 +253,8 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
   ): void {
     const { mobileLauncher } = config;
 
+    const group = new SettingGroup(containerEl);
+
     const disableOptionKey = 'disabled'; // Option to disable the feature
     const options: Record<string, string> = { [disableOptionKey]: 'Do not override' };
 
@@ -230,8 +273,8 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     }
 
     // Show the launch mode selector dropdown for mobile navigation bar
-    let setting = this.addDropdownSetting(
-      containerEl,
+    this.addDropdownSetting(
+      group,
       'New tab and mobile launcher buttons',
       'Select the Mode to launch Switcher++ in from the empty tab page and mobile navigation Bar button, or select "Do not override" to disable the feature.',
       initialValue,
@@ -257,8 +300,8 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
 
     if (mobileLauncher.isEnabled) {
       // Show the mobile launcher button
-      setting = this.addToggleSetting(
-        containerEl,
+      this.addToggleSetting(
+        group,
         'Override default Switcher launch button on mobile platforms',
         'When enabled, override the "🔍" button (in the Navigation Bar) on mobile platforms to launch Switcher++ instead of the default system switcher.',
         mobileLauncher.isMobileButtonEnabled,
@@ -271,11 +314,10 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
           );
         },
       );
-      setting.setClass('qsp-setting-item-indent');
 
       // Show the new tab page toggle button
-      setting = this.addToggleSetting(
-        containerEl,
+      this.addToggleSetting(
+        group,
         'Display launch button on the "New tab" page',
         'When enabled, a button to launch Switcher++ using the selected mode above will be added to the default Obsidian "New tab" page.',
         mobileLauncher.isEmptyTabButtonEnabled,
@@ -288,7 +330,6 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
           );
         },
       );
-      setting.setClass('qsp-setting-item-indent');
     }
   }
 
@@ -300,8 +341,10 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
       matchPriorityAdjustments: { isEnabled, adjustments, fileExtAdjustments },
     } = config;
 
+    const group = new SettingGroup(containerEl);
+
     this.addToggleSetting(
-      containerEl,
+      group,
       'Result priority adjustments',
       'Artificially increase the match score of the specified item types by a fixed percentage so they appear higher in the results list (does not apply to Standard Mode).',
       isEnabled,
@@ -331,8 +374,8 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         Object.entries(collection).forEach(([key, data]) => {
           const { value, label } = data;
 
-          const setting = this.addSliderSetting(
-            containerEl,
+          this.addSliderSetting(
+            group,
             label,
             data.desc ?? '',
             value,
@@ -343,8 +386,6 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
               config.save();
             },
           );
-
-          setting.setClass('qsp-setting-item-indent');
         });
       });
     }
@@ -373,9 +414,11 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
   ): void {
     const { renderMarkdownContentInSuggestions } = config;
 
+    const group = new SettingGroup(containerEl);
+
     // Master toggle
     const isEnabledSetting = this.addToggleSetting(
-      containerEl,
+      group,
       'Display markdown content as Live Preview',
       'When enabled, markdown content in symbol suggestions will be rendered as HTML similar to the Obsidian "Live Preview" display. When disabled, content will be rendered as raw text. Use the "toggle preview (selected item)" hotkey to toggle the display for individual items.',
       renderMarkdownContentInSuggestions.isEnabled,
@@ -438,7 +481,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
 
       symbolTypeToggles.forEach(({ name, property, description }) => {
         this.addToggleSetting(
-          containerEl,
+          group,
           name,
           description,
           renderMarkdownContentInSuggestions[property] as boolean,
@@ -447,16 +490,21 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
             (config.renderMarkdownContentInSuggestions[property] as boolean) = value;
             config.save();
           },
-        ).setClass('qsp-setting-item-indent');
+        );
       });
     }
   }
 
   showInsertLinkInEditor(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
-    this.createSetting(containerEl, 'Insert link in editor', '');
+    const group = new SettingGroup(containerEl);
+    this.createSetting(
+      group,
+      'Insert link in editor',
+      'Configure alias options when inserting links into the editor.',
+    );
 
-    let setting = this.addToggleSetting(
-      containerEl,
+    this.addToggleSetting(
+      group,
       'Use filename as alias',
       'When enabled, the file basename will be set as the link alias.',
       config.insertLinkInEditor.useBasenameAsAlias,
@@ -466,10 +514,9 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         config.save();
       },
     );
-    setting.setClass('qsp-setting-item-indent');
 
-    setting = this.addToggleSetting(
-      containerEl,
+    this.addToggleSetting(
+      group,
       'Use heading as alias',
       'When enabled, the file heading will be set as the link alias. This overrides the "use filename as alias" setting.',
       config.insertLinkInEditor.useHeadingAsAlias,
@@ -479,7 +526,6 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         config.save();
       },
     );
-    setting.setClass('qsp-setting-item-indent');
   }
 
   showQuickOpen(containerEl: HTMLElement, config: SwitcherPlusSettings): void {

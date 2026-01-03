@@ -4,7 +4,7 @@ export class WorkspaceSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
     const { config } = this;
 
-    this.addSectionTitle(containerEl, 'Workspace List Mode Settings');
+    this.addSectionTitle(containerEl, 'Workspace List Mode');
 
     this.addTextSetting(
       containerEl,

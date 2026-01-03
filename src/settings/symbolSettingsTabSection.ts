@@ -1,3 +1,4 @@
+import { SettingGroup } from 'obsidian';
 import { SwitcherPlusSettings } from './switcherPlusSettings';
 import { SettingsTabSection } from './settingsTabSection';
 import { LinkType, SymbolType } from 'src/types';
@@ -6,7 +7,7 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
     const { config } = this;
 
-    this.addSectionTitle(containerEl, 'Symbol List Mode Settings');
+    this.addSectionTitle(containerEl, 'Symbol List Mode');
 
     this.addTextSetting(
       containerEl,
@@ -36,22 +37,6 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
 
     this.addToggleSetting(
       containerEl,
-      'Open Symbols in new tab',
-      'Enabled, always open a new tab when navigating to Symbols. Disabled, navigate in an already open tab (if one exists).',
-      config.alwaysNewTabForSymbols,
-      'alwaysNewTabForSymbols',
-    );
-
-    this.addToggleSetting(
-      containerEl,
-      'Open Symbols in active tab on mobile devices',
-      'Enabled, navigate to the target file and symbol in the active editor tab. Disabled, open a new tab when navigating to Symbols, even on mobile devices.',
-      config.useActiveTabForSymbolsOnMobile,
-      'useActiveTabForSymbolsOnMobile',
-    );
-
-    this.addToggleSetting(
-      containerEl,
       'Auto-select nearest heading',
       'Enabled, in an unfiltered symbol list, select the closest preceding Heading to the current cursor position. Disabled, the first symbol in the list is selected.',
       config.selectNearestHeading,
@@ -60,6 +45,36 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
 
     this.showEnableSymbolTypesToggle(containerEl, config);
     this.showEnableLinksToggle(containerEl, config);
+    this.showSymbolTabNavigationBehavior(containerEl, config);
+  }
+
+  showSymbolTabNavigationBehavior(
+    containerEl: HTMLElement,
+    config: SwitcherPlusSettings,
+  ): void {
+    const group = new SettingGroup(containerEl);
+
+    this.createSetting(
+      group,
+      'Symbol Tab navigation behavior',
+      'Configure how symbols are opened when navigating from the symbol list.',
+    );
+
+    this.addToggleSetting(
+      group,
+      'Open Symbols in new tab',
+      'Enabled, always open a new tab when navigating to Symbols. Disabled, navigate in an already open tab (if one exists).',
+      config.alwaysNewTabForSymbols,
+      'alwaysNewTabForSymbols',
+    );
+
+    this.addToggleSetting(
+      group,
+      'Open Symbols in active tab on mobile devices',
+      'Enabled, navigate to the target file and symbol in the active editor tab. Disabled, open a new tab when navigating to Symbols, even on mobile devices.',
+      config.useActiveTabForSymbolsOnMobile,
+      'useActiveTabForSymbolsOnMobile',
+    );
   }
 
   showEnableSymbolTypesToggle(
@@ -91,28 +106,23 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
   showEnableLinksToggle(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
     const isLinksEnabled = config.isSymbolTypeEnabled(SymbolType.Link);
 
-    this.addToggleSetting(
-      containerEl,
-      'Show Links',
-      '',
-      isLinksEnabled,
-      null,
-      (isEnabled) => {
-        config.setSymbolTypeEnabled(SymbolType.Link, isEnabled);
+    const group = new SettingGroup(containerEl);
 
-        // have to wait for the save here because the call to display() will
-        // trigger a read of the updated data
-        config.saveSettings().then(
-          () => {
-            // reload the settings panel. This will cause the sublink types toggle
-            // controls to be shown/hidden based on isLinksEnabled status
-            this.mainSettingsTab.display();
-          },
-          (reason) =>
-            console.log('Switcher++: error saving "Show Links" setting. ', reason),
-        );
-      },
-    );
+    this.addToggleSetting(group, 'Show Links', '', isLinksEnabled, null, (isEnabled) => {
+      config.setSymbolTypeEnabled(SymbolType.Link, isEnabled);
+
+      // have to wait for the save here because the call to display() will
+      // trigger a read of the updated data
+      config.saveSettings().then(
+        () => {
+          // reload the settings panel. This will cause the sublink types toggle
+          // controls to be shown/hidden based on isLinksEnabled status
+          this.mainSettingsTab.display();
+        },
+        (reason) =>
+          console.log('Switcher++: error saving "Show Links" setting. ', reason),
+      );
+    });
 
     if (isLinksEnabled) {
       const allowedLinkTypes: [string, number][] = [
@@ -122,16 +132,9 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
 
       allowedLinkTypes.forEach(([name, linkType]) => {
         const isExcluded = (config.excludeLinkSubTypes & linkType) === linkType;
-        const setting = this.addToggleSetting(
-          containerEl,
-          name,
-          '',
-          !isExcluded,
-          null,
-          (isEnabled) => this.saveEnableSubLinkChange(linkType, isEnabled),
+        this.addToggleSetting(group, name, '', !isExcluded, null, (isEnabled) =>
+          this.saveEnableSubLinkChange(linkType, isEnabled),
         );
-
-        setting.setClass('qsp-setting-item-indent');
       });
     }
   }

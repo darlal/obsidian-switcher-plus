@@ -31,10 +31,7 @@ describe('editorSettingsTabSection', () => {
 
     sut.display(mockContainerEl);
 
-    expect(addSectionTitleSpy).toHaveBeenCalledWith(
-      mockContainerEl,
-      'Editor List Mode Settings',
-    );
+    expect(addSectionTitleSpy).toHaveBeenCalledWith(mockContainerEl, 'Editor List Mode');
 
     addSectionTitleSpy.mockRestore();
   });

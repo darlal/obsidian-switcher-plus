@@ -39,10 +39,7 @@ describe('vaultListSettingsTabSection', () => {
   it('should display a header for the section', () => {
     sut.display(mockContainerEl);
 
-    expect(addSectionTitleSpy).toHaveBeenCalledWith(
-      mockContainerEl,
-      'Vault List Mode Settings',
-    );
+    expect(addSectionTitleSpy).toHaveBeenCalledWith(mockContainerEl, 'Vault List Mode');
   });
 
   it('should show the mode trigger setting', () => {

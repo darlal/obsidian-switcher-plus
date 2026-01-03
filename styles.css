@@ -50,6 +50,13 @@
   padding-left: 36px;
 }
 
+/* Jan 2026-fix: Add visual divider when a SettingGroup is followed by a single
+  Setting (Switcher++ settings only)
+*/
+.qsp-settings-container .setting-group + .setting-item {
+  margin-top: var(--size-4-6);
+}
+
 /* symbol suggestion should align to the left */
 .suggestion-item.qsp-suggestion-symbol {
   justify-content: left;

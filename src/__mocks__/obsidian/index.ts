@@ -23,6 +23,7 @@ import {
 } from 'obsidian';
 import {
   MockSetting,
+  MockSettingGroup,
   MockTextComponent,
   MockToggleComponent,
   MockTextAreaComponent,
@@ -136,6 +137,7 @@ export {
   mockMarkdownRenderer as MarkdownRenderer,
   mockComponent as Component,
   MockSetting as Setting,
+  MockSettingGroup as SettingGroup,
   MockTextComponent as TextComponent,
   MockToggleComponent as ToggleComponent,
   MockTextAreaComponent as TextAreaComponent,

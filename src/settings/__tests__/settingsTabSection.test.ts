@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import {
   SettingsTabSection,
   SwitcherPlusSettings,
@@ -10,6 +11,7 @@ import {
   DropdownComponent,
   ExtraButtonComponent,
   Setting,
+  SettingGroup,
   SliderComponent,
   TextAreaComponent,
   TextComponent,
@@ -30,6 +32,38 @@ describe('settingsTabSection', () => {
   let mockConfig: MockProxy<SwitcherPlusSettings>;
   let mockContainerEl: MockProxy<HTMLElement>;
   let sut: SUT;
+
+  /**
+   * Creates a mock SettingGroup that can be used in tests.
+   * The mock implements addSetting() which accepts a callback and calls it with a mock Setting.
+   * Uses Object.create to ensure instanceof checks pass.
+   */
+  function createMockSettingGroup(): SettingGroup & {
+    addSetting: jest.Mock;
+    setHeading: jest.Mock;
+    addClass: jest.Mock;
+  } {
+    // Create an object with SettingGroup in its prototype chain so instanceof works
+    const mockGroup = Object.create(SettingGroup.prototype) as SettingGroup & {
+      addSetting: jest.Mock;
+      setHeading: jest.Mock;
+      addClass: jest.Mock;
+    };
+
+    // Set up addSetting implementation with jest.fn for call tracking
+    // addSetting takes a callback that receives a Setting
+    mockGroup.addSetting = jest.fn((cb: (setting: Setting) => void) => {
+      const mockSetting = mock<Setting>();
+      cb(mockSetting);
+      return mockGroup;
+    });
+
+    // Add other methods that SettingGroup might have
+    mockGroup.setHeading = jest.fn().mockReturnValue(mockGroup);
+    mockGroup.addClass = jest.fn().mockReturnValue(mockGroup);
+
+    return mockGroup;
+  }
 
   beforeAll(() => {
     mockApp = mock<App>();
@@ -55,6 +89,45 @@ describe('settingsTabSection', () => {
 
       setNameSpy.mockRestore();
       setDescSpy.mockRestore();
+    });
+
+    it('should create a Setting via SettingGroup.addSetting() when passed SettingGroup', () => {
+      const mockGroup = createMockSettingGroup();
+      const mockSetting = mock<Setting>();
+      const name = chance.word();
+      const desc = chance.word();
+
+      // Ensure setName and setDesc are chainable
+      mockSetting.setName.mockReturnValue(mockSetting);
+      mockSetting.setDesc.mockReturnValue(mockSetting);
+
+      // Mock the callback to use our mockSetting
+      mockGroup.addSetting.mockImplementation((cb) => {
+        cb(mockSetting);
+        return mockGroup;
+      });
+
+      const setting = sut.createSetting(mockGroup, name, desc);
+
+      expect(mockGroup.addSetting).toHaveBeenCalledTimes(1);
+      expect(setting).toBe(mockSetting);
+      expect(mockSetting.setName).toHaveBeenCalledWith(name);
+      expect(mockSetting.setDesc).toHaveBeenCalledWith(desc);
+    });
+
+    it('should detect SettingGroup using instanceof check', () => {
+      const mockGroup = createMockSettingGroup();
+      const mockSetting = mock<Setting>();
+      mockGroup.addSetting.mockImplementation((cb) => {
+        cb(mockSetting);
+        return mockGroup;
+      });
+
+      const setting = sut.createSetting(mockGroup, chance.word(), chance.word());
+
+      // Verify that addSetting was called (proving instanceof check worked)
+      expect(mockGroup.addSetting).toHaveBeenCalled();
+      expect(setting).toBe(mockSetting);
     });
   });
 
@@ -173,6 +246,111 @@ describe('settingsTabSection', () => {
 
       mockReset(mockConfig);
     });
+
+    describe('with SettingGroup', () => {
+      let mockGroup: ReturnType<typeof createMockSettingGroup>;
+      let mockGroupSetting: MockProxy<Setting>;
+      let mockGroupTextComp: MockProxy<TextComponent>;
+
+      beforeEach(() => {
+        mockGroup = createMockSettingGroup();
+        mockGroupSetting = mock<Setting>();
+        mockGroupTextComp = mock<TextComponent>();
+
+        // Ensure chainable methods return the setting
+        mockGroupSetting.setName.mockReturnValue(mockGroupSetting);
+        mockGroupSetting.setDesc.mockReturnValue(mockGroupSetting);
+
+        mockGroupSetting.addText.mockImplementation((cb) => {
+          cb(mockGroupTextComp);
+          return mockGroupSetting;
+        });
+
+        mockGroup.addSetting.mockImplementation((cb) => {
+          cb(mockGroupSetting);
+          return mockGroup;
+        });
+      });
+
+      it('should create setting via SettingGroup.addSetting()', () => {
+        const name = chance.sentence();
+        const desc = chance.sentence();
+        const initValue = 'init value';
+        const placeholderValue = 'placeholder text';
+
+        const result = sut.addTextSetting(
+          mockGroup,
+          name,
+          desc,
+          initValue,
+          'editorListCommand',
+          placeholderValue,
+        );
+
+        expect(mockGroup.addSetting).toHaveBeenCalledTimes(1);
+        expect(result).toBe(mockGroupSetting);
+        expect(mockGroupSetting.setName).toHaveBeenCalledWith(name);
+        expect(mockGroupSetting.setDesc).toHaveBeenCalledWith(desc);
+        expect(mockGroupTextComp.setValue).toHaveBeenCalledWith(initValue);
+        expect(mockGroupTextComp.setPlaceholder).toHaveBeenCalledWith(placeholderValue);
+      });
+
+      it('should save the modified setting when using SettingGroup', () => {
+        mockConfig.editorListCommand = 'editor command';
+        const finalValue = 'final value';
+
+        let onChangeFn: (v: string) => void;
+        mockGroupTextComp.onChange.mockImplementationOnce((cb) => {
+          onChangeFn = cb;
+          return mockGroupTextComp;
+        });
+
+        sut.addTextSetting(
+          mockGroup,
+          chance.word(),
+          chance.sentence(),
+          mockConfig.editorListCommand,
+          'editorListCommand',
+        );
+
+        // trigger the value change here
+        onChangeFn(finalValue);
+
+        expect(mockGroupTextComp.onChange).toHaveBeenCalled();
+        expect(mockConfig.save).toHaveBeenCalled();
+        expect(mockConfig.editorListCommand).toBe(finalValue);
+
+        mockReset(mockConfig);
+      });
+
+      it('should fallback to initial value when empty string is set with SettingGroup', () => {
+        const initValue = 'editor command';
+        mockConfig.editorListCommand = initValue;
+
+        let onChangeFn: (v: string) => void;
+        mockGroupTextComp.onChange.mockImplementationOnce((cb) => {
+          onChangeFn = cb;
+          return mockGroupTextComp;
+        });
+
+        sut.addTextSetting(
+          mockGroup,
+          chance.word(),
+          chance.sentence(),
+          mockConfig.editorListCommand,
+          'editorListCommand',
+        );
+
+        // trigger the value change here
+        onChangeFn('');
+
+        expect(mockGroupTextComp.onChange).toHaveBeenCalled();
+        expect(mockConfig.save).toHaveBeenCalled();
+        expect(mockConfig.editorListCommand).toBe(initValue);
+
+        mockReset(mockConfig);
+      });
+    });
   });
 
   describe('addToggleSetting', () => {
@@ -269,6 +447,108 @@ describe('settingsTabSection', () => {
       expect(cb).toHaveBeenCalledWith(expectedValue, mockConfig);
 
       mockReset(mockConfig);
+    });
+
+    describe('with SettingGroup', () => {
+      let mockGroup: ReturnType<typeof createMockSettingGroup>;
+      let mockGroupSetting: MockProxy<Setting>;
+      let mockGroupToggleComp: MockProxy<ToggleComponent>;
+
+      beforeEach(() => {
+        mockGroup = createMockSettingGroup();
+        mockGroupSetting = mock<Setting>();
+        mockGroupToggleComp = mock<ToggleComponent>();
+
+        // Ensure chainable methods return the setting
+        mockGroupSetting.setName.mockReturnValue(mockGroupSetting);
+        mockGroupSetting.setDesc.mockReturnValue(mockGroupSetting);
+
+        mockGroupSetting.addToggle.mockImplementation((cb) => {
+          cb(mockGroupToggleComp);
+          return mockGroupSetting;
+        });
+
+        mockGroup.addSetting.mockImplementation((cb) => {
+          cb(mockGroupSetting);
+          return mockGroup;
+        });
+      });
+
+      it('should create setting via SettingGroup.addSetting()', () => {
+        const name = chance.sentence();
+        const desc = chance.sentence();
+        const initValue = true;
+
+        const result = sut.addToggleSetting(
+          mockGroup,
+          name,
+          desc,
+          initValue,
+          'alwaysNewTabForSymbols',
+        );
+
+        expect(mockGroup.addSetting).toHaveBeenCalledTimes(1);
+        expect(result).toBe(mockGroupSetting);
+        expect(mockGroupSetting.setName).toHaveBeenCalledWith(name);
+        expect(mockGroupSetting.setDesc).toHaveBeenCalledWith(desc);
+        expect(mockGroupToggleComp.setValue).toHaveBeenCalledWith(initValue);
+      });
+
+      it('should save the modified setting when using SettingGroup', () => {
+        mockConfig.alwaysNewTabForSymbols = false;
+        const finalValue = true;
+
+        let onChangeFn: (v: boolean) => void;
+        mockGroupToggleComp.onChange.mockImplementationOnce((cb) => {
+          onChangeFn = cb;
+          return mockGroupToggleComp;
+        });
+
+        sut.addToggleSetting(
+          mockGroup,
+          chance.word(),
+          chance.sentence(),
+          mockConfig.alwaysNewTabForSymbols,
+          'alwaysNewTabForSymbols',
+        );
+
+        // trigger the value change here
+        onChangeFn(finalValue);
+
+        expect(mockGroupToggleComp.onChange).toHaveBeenCalled();
+        expect(mockConfig.save).toHaveBeenCalled();
+        expect(mockConfig.alwaysNewTabForSymbols).toBe(finalValue);
+
+        mockReset(mockConfig);
+      });
+
+      it('should execute the onChange callback if supplied when using SettingGroup', () => {
+        const expectedValue = chance.bool();
+        const cb = jest.fn();
+
+        let onChangeFn: (v: boolean) => void;
+        mockGroupToggleComp.onChange.mockImplementationOnce((cb) => {
+          onChangeFn = cb;
+          return mockGroupToggleComp;
+        });
+
+        sut.addToggleSetting(
+          mockGroup,
+          chance.word(),
+          chance.sentence(),
+          mockConfig.alwaysNewTabForSymbols,
+          null,
+          cb,
+        );
+
+        // trigger the value change here
+        onChangeFn(expectedValue);
+
+        expect(mockGroupToggleComp.onChange).toHaveBeenCalled();
+        expect(cb).toHaveBeenCalledWith(expectedValue, mockConfig);
+
+        mockReset(mockConfig);
+      });
     });
   });
 
@@ -400,6 +680,141 @@ describe('settingsTabSection', () => {
 
       mockReset(mockConfig);
     });
+
+    describe('with SettingGroup', () => {
+      let mockGroup: ReturnType<typeof createMockSettingGroup>;
+      let mockGroupSetting: MockProxy<Setting>;
+      let mockGroupTextAreaComp: MockProxy<TextAreaComponent>;
+
+      beforeEach(() => {
+        mockGroup = createMockSettingGroup();
+        mockGroupSetting = mock<Setting>();
+        mockGroupTextAreaComp = mock<TextAreaComponent>();
+
+        // Ensure chainable methods return the setting
+        mockGroupSetting.setName.mockReturnValue(mockGroupSetting);
+        mockGroupSetting.setDesc.mockReturnValue(mockGroupSetting);
+
+        mockGroupSetting.addTextArea.mockImplementation((cb) => {
+          cb(mockGroupTextAreaComp);
+          return mockGroupSetting;
+        });
+
+        mockGroup.addSetting.mockImplementation((cb) => {
+          cb(mockGroupSetting);
+          return mockGroup;
+        });
+      });
+
+      it('should create setting via SettingGroup.addSetting()', () => {
+        const name = chance.sentence();
+        const desc = chance.sentence();
+        const initValue = 'init value';
+        const placeholderValue = 'placeholder text';
+
+        const result = sut.addTextAreaSetting(
+          mockGroup,
+          name,
+          desc,
+          initValue,
+          'editorListCommand',
+          placeholderValue,
+        );
+
+        expect(mockGroup.addSetting).toHaveBeenCalledTimes(1);
+        expect(result).toBe(mockGroupSetting);
+        expect(mockGroupSetting.setName).toHaveBeenCalledWith(name);
+        expect(mockGroupSetting.setDesc).toHaveBeenCalledWith(desc);
+        expect(mockGroupTextAreaComp.setValue).toHaveBeenCalledWith(initValue);
+        expect(mockGroupTextAreaComp.setPlaceholder).toHaveBeenCalledWith(
+          placeholderValue,
+        );
+      });
+
+      it('should save the modified setting as string when using SettingGroup', () => {
+        mockConfig.editorListCommand = 'editor command';
+        const finalValue = 'final value';
+
+        let onChangeFn: (v: string) => void;
+        mockGroupTextAreaComp.onChange.mockImplementationOnce((cb) => {
+          onChangeFn = cb;
+          return mockGroupTextAreaComp;
+        });
+
+        sut.addTextAreaSetting(
+          mockGroup,
+          chance.word(),
+          chance.sentence(),
+          mockConfig.editorListCommand,
+          'editorListCommand',
+        );
+
+        // trigger the value change here
+        onChangeFn(finalValue);
+
+        expect(mockGroupTextAreaComp.onChange).toHaveBeenCalled();
+        expect(mockConfig.save).toHaveBeenCalled();
+        expect(mockConfig.editorListCommand).toBe(finalValue);
+
+        mockReset(mockConfig);
+      });
+
+      it('should save the modified setting as list when using SettingGroup', () => {
+        mockConfig.includeSidePanelViewTypes = [chance.word()];
+        const finalValue = [chance.word(), chance.word(), chance.word()];
+
+        let onChangeFn: (v: string) => void;
+        mockGroupTextAreaComp.onChange.mockImplementationOnce((cb) => {
+          onChangeFn = cb;
+          return mockGroupTextAreaComp;
+        });
+
+        sut.addTextAreaSetting(
+          mockGroup,
+          chance.word(),
+          chance.sentence(),
+          mockConfig.includeSidePanelViewTypes.join('\n'),
+          'includeSidePanelViewTypes',
+        );
+
+        // trigger the value change here
+        onChangeFn(finalValue.join('\n'));
+
+        expect(mockGroupTextAreaComp.onChange).toHaveBeenCalled();
+        expect(mockConfig.save).toHaveBeenCalled();
+        expect(mockConfig.includeSidePanelViewTypes).toEqual(finalValue);
+
+        mockReset(mockConfig);
+      });
+
+      it('should fallback to initial value when empty string is set with SettingGroup', () => {
+        const initValue = [chance.word()];
+        mockConfig.includeSidePanelViewTypes = initValue;
+
+        let onChangeFn: (v: string) => void;
+        mockGroupTextAreaComp.onChange.mockImplementationOnce((cb) => {
+          onChangeFn = cb;
+          return mockGroupTextAreaComp;
+        });
+
+        sut.addTextAreaSetting(
+          mockGroup,
+          chance.word(),
+          chance.sentence(),
+          mockConfig.includeSidePanelViewTypes.join('\n'),
+          'includeSidePanelViewTypes',
+        );
+
+        // trigger the value change here
+        onChangeFn('');
+
+        expect(mockGroupTextAreaComp.onChange).toHaveBeenCalled();
+        expect(mockConfig.save).toHaveBeenCalled();
+        expect(mockConfig.includeSidePanelViewTypes).toEqual(initValue);
+
+        mockReset(mockConfig);
+      });
+    });
   });
 
   describe('addDropdown', () => {
@@ -505,6 +920,111 @@ describe('settingsTabSection', () => {
       expect(cb).toHaveBeenCalledWith(expectedValue, mockConfig);
 
       mockReset(mockConfig);
+    });
+
+    describe('with SettingGroup', () => {
+      let mockGroup: ReturnType<typeof createMockSettingGroup>;
+      let mockGroupSetting: MockProxy<Setting>;
+      let mockGroupDropdownComp: MockProxy<DropdownComponent>;
+
+      beforeEach(() => {
+        mockGroup = createMockSettingGroup();
+        mockGroupSetting = mock<Setting>();
+        mockGroupDropdownComp = mock<DropdownComponent>();
+
+        // Ensure chainable methods return the setting
+        mockGroupSetting.setName.mockReturnValue(mockGroupSetting);
+        mockGroupSetting.setDesc.mockReturnValue(mockGroupSetting);
+
+        mockGroupSetting.addDropdown.mockImplementation((cb) => {
+          cb(mockGroupDropdownComp);
+          return mockGroupSetting;
+        });
+
+        mockGroup.addSetting.mockImplementation((cb) => {
+          cb(mockGroupSetting);
+          return mockGroup;
+        });
+      });
+
+      it('should create setting via SettingGroup.addSetting()', () => {
+        const name = chance.sentence();
+        const desc = chance.sentence();
+
+        const result = sut.addDropdownSetting(
+          mockGroup,
+          name,
+          desc,
+          initValue,
+          options,
+          'editorListCommand',
+        );
+
+        expect(mockGroup.addSetting).toHaveBeenCalledTimes(1);
+        expect(result).toBe(mockGroupSetting);
+        expect(mockGroupSetting.setName).toHaveBeenCalledWith(name);
+        expect(mockGroupSetting.setDesc).toHaveBeenCalledWith(desc);
+        expect(mockGroupDropdownComp.addOptions).toHaveBeenCalledWith(options);
+        expect(mockGroupDropdownComp.setValue).toHaveBeenCalledWith(initValue);
+      });
+
+      it('should save the modified setting when using SettingGroup', () => {
+        mockConfig.editorListCommand = 'editor command';
+        const finalValue = 'final value';
+
+        let onChangeFn: (v: string) => void;
+        mockGroupDropdownComp.onChange.mockImplementationOnce((cb) => {
+          onChangeFn = cb;
+          return mockGroupDropdownComp;
+        });
+
+        sut.addDropdownSetting(
+          mockGroup,
+          chance.word(),
+          chance.sentence(),
+          initValue,
+          options,
+          'editorListCommand',
+        );
+
+        // trigger the value change here
+        onChangeFn(finalValue);
+
+        expect(mockGroupDropdownComp.onChange).toHaveBeenCalled();
+        expect(mockConfig.save).toHaveBeenCalled();
+        expect(mockConfig.editorListCommand).toBe(finalValue);
+
+        mockReset(mockConfig);
+      });
+
+      it('should execute the onChange callback if supplied when using SettingGroup', () => {
+        const expectedValue = 'final value';
+        const cb = jest.fn();
+
+        let onChangeFn: (v: string) => void;
+        mockGroupDropdownComp.onChange.mockImplementationOnce((cb) => {
+          onChangeFn = cb;
+          return mockGroupDropdownComp;
+        });
+
+        sut.addDropdownSetting(
+          mockGroup,
+          chance.word(),
+          chance.sentence(),
+          chance.word(),
+          options,
+          null,
+          cb,
+        );
+
+        // trigger the value change here
+        onChangeFn(expectedValue);
+
+        expect(mockGroupDropdownComp.onChange).toHaveBeenCalled();
+        expect(cb).toHaveBeenCalledWith(expectedValue, mockConfig);
+
+        mockReset(mockConfig);
+      });
     });
   });
 
@@ -643,6 +1163,140 @@ describe('settingsTabSection', () => {
       expect(cb).toHaveBeenCalledWith(expectedValue, mockConfig);
 
       mockReset(mockConfig);
+    });
+
+    describe('with SettingGroup', () => {
+      let mockGroup: ReturnType<typeof createMockSettingGroup>;
+      let mockGroupSetting: MockProxy<Setting>;
+      let mockGroupExtraButtonComp: MockProxy<ExtraButtonComponent>;
+      let mockGroupSliderComp: MockProxy<SliderComponent>;
+
+      beforeEach(() => {
+        mockGroup = createMockSettingGroup();
+        mockGroupSetting = mock<Setting>();
+        mockGroupExtraButtonComp = mock<ExtraButtonComponent>();
+        mockGroupSliderComp = mock<SliderComponent>();
+
+        // Ensure chainable methods return the setting
+        mockGroupSetting.setName.mockReturnValue(mockGroupSetting);
+        mockGroupSetting.setDesc.mockReturnValue(mockGroupSetting);
+
+        mockGroupSetting.components = [mockGroupExtraButtonComp, mockGroupSliderComp];
+
+        mockGroupSetting.addExtraButton.mockImplementation((cb) => {
+          cb(mockGroupExtraButtonComp);
+          return mockGroupSetting;
+        });
+
+        mockGroupSetting.addSlider.mockImplementation((cb) => {
+          cb(mockGroupSliderComp);
+          return mockGroupSetting;
+        });
+
+        mockGroup.addSetting.mockImplementation((cb) => {
+          cb(mockGroupSetting);
+          return mockGroup;
+        });
+      });
+
+      it('should create setting via SettingGroup.addSetting()', () => {
+        const name = chance.sentence();
+        const desc = chance.sentence();
+
+        const result = sut.addSliderSetting(
+          mockGroup,
+          name,
+          desc,
+          initValue,
+          limits,
+          'limit',
+        );
+
+        expect(mockGroup.addSetting).toHaveBeenCalledTimes(1);
+        expect(result).toBe(mockGroupSetting);
+        expect(mockGroupSetting.setName).toHaveBeenCalledWith(name);
+        expect(mockGroupSetting.setDesc).toHaveBeenCalledWith(desc);
+        expect(mockGroupSliderComp.setValue).toHaveBeenCalledWith(initValue);
+        expect(mockGroupSliderComp.setLimits).toHaveBeenCalledWith(
+          limits[0],
+          limits[1],
+          limits[2],
+        );
+      });
+
+      it('should create reset button when using SettingGroup', () => {
+        let onClickFn: () => void;
+        mockGroupExtraButtonComp.onClick.mockImplementationOnce((cb) => {
+          onClickFn = cb;
+          return mockGroupExtraButtonComp;
+        });
+
+        sut.addSliderSetting(mockGroup, chance.word(), '', initValue, limits, 'limit');
+
+        // simulate reset button click
+        onClickFn();
+
+        expect(mockGroupExtraButtonComp.onClick).toHaveBeenCalled();
+        expect(mockGroupSliderComp.setValue).toHaveBeenCalledWith(0);
+      });
+
+      it('should save the modified setting when using SettingGroup', () => {
+        mockConfig.limit = 0;
+        const finalValue = 0.7;
+
+        let onChangeFn: (v: number) => void;
+        mockGroupSliderComp.onChange.mockImplementationOnce((cb) => {
+          onChangeFn = cb;
+          return mockGroupSliderComp;
+        });
+
+        sut.addSliderSetting(
+          mockGroup,
+          chance.word(),
+          chance.sentence(),
+          initValue,
+          limits,
+          'limit',
+        );
+
+        // trigger the value change here
+        onChangeFn(finalValue);
+
+        expect(mockGroupSliderComp.onChange).toHaveBeenCalled();
+        expect(mockConfig.save).toHaveBeenCalled();
+        expect(mockConfig.limit).toBe(finalValue);
+
+        mockReset(mockConfig);
+      });
+
+      it('should execute the onChange callback if supplied when using SettingGroup', () => {
+        const expectedValue = 0.7;
+        const cb = jest.fn();
+
+        let onChangeFn: (v: number) => void;
+        mockGroupSliderComp.onChange.mockImplementationOnce((cb) => {
+          onChangeFn = cb;
+          return mockGroupSliderComp;
+        });
+
+        sut.addSliderSetting(
+          mockGroup,
+          chance.word(),
+          chance.sentence(),
+          initValue,
+          limits,
+          null,
+          cb,
+        );
+
+        // trigger the value change here
+        onChangeFn(expectedValue);
+
+        expect(mockGroupSliderComp.onChange).toHaveBeenCalled();
+        expect(cb).toHaveBeenCalledWith(expectedValue, mockConfig);
+
+        mockReset(mockConfig);
+      });
     });
   });
 });

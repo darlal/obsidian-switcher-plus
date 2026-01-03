@@ -34,7 +34,7 @@ describe('relatedItemsSettingsTabSection', () => {
 
     expect(addSectionTitleSpy).toHaveBeenCalledWith(
       mockContainerEl,
-      'Related Items List Mode Settings',
+      'Related Items List Mode',
     );
 
     addSectionTitleSpy.mockRestore();

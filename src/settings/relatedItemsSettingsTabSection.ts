@@ -7,7 +7,7 @@ export class RelatedItemsSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
     const { config } = this;
 
-    this.addSectionTitle(containerEl, 'Related Items List Mode Settings');
+    this.addSectionTitle(containerEl, 'Related Items List Mode');
 
     this.addTextSetting(
       containerEl,
