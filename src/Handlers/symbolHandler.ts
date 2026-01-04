@@ -12,6 +12,7 @@ import {
   BasesConfigFile,
   BaseViewData,
   CanvasFileView,
+  CachedMetadata,
   LinkCache,
   parseYaml,
   Pos,
@@ -21,6 +22,7 @@ import {
   SectionCache,
   setIcon,
   sortSearchResults,
+  TagCache,
   TFile,
   View,
   WorkspaceLeaf,
@@ -40,7 +42,13 @@ import {
   Facet,
   SessionOpts,
 } from 'src/types';
-import { getLinkType, isCalloutCache, isHeadingCache, isTagCache } from 'src/utils';
+import {
+  FrontMatterParser,
+  getLinkType,
+  isCalloutCache,
+  isHeadingCache,
+  isTagCache,
+} from 'src/utils';
 import { InputInfo, ParsedCommand, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler } from './handler';
 import {
@@ -354,12 +362,20 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       );
 
       if (headings.length) {
-        found = headings.reduce((acc, curr) => {
-          const { line: currLine } = curr.symbol.position.start;
-          const accLine = acc ? acc.symbol.position.start.line : -1;
+        found = headings.reduce(
+          (acc, curr) => {
+            const { line: currLine } = curr.symbol.position.start;
+            const accLine = acc ? acc.symbol.position.start.line : -1;
 
-          return currLine > accLine && currLine <= cursorLine ? curr : acc;
-        });
+            // If acc is null (first iteration), use curr if it meets the condition
+            if (!acc) {
+              return currLine <= cursorLine ? curr : null;
+            }
+
+            return currLine > accLine && currLine <= cursorLine ? curr : acc;
+          },
+          null as SymbolInfoExcludingSpecialFiles | null,
+        );
       }
 
       if (found) {
@@ -399,7 +415,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
           };
 
           push(symbolData.headings, SymbolType.Heading);
-          push(symbolData.tags, SymbolType.Tag);
+          this.addTagsFromSource(symbolData, ret, activeFacetIds);
           this.addLinksFromSource(symbolData.links, ret, activeFacetIds);
           push(symbolData.embeds, SymbolType.Embed);
 
@@ -602,6 +618,73 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
             symbolType: SymbolType.Link,
           });
         }
+      }
+    }
+  }
+
+  /**
+   * Adds tags from both inline content and frontmatter to the symbol list.
+   * Inline tags are added first (they have accurate position data), then frontmatter tags
+   * are added with deduplication to avoid duplicates. Frontmatter tags use frontmatterPosition
+   * for positioning, falling back to line 0 if not available.
+   *
+   * @param symbolData - The cached metadata containing tags and optional frontmatter
+   * @param symbolList - The array to add symbol info objects to
+   * @param activeFacetIds - Set of active facet IDs for filtering
+   */
+  private addTagsFromSource(
+    symbolData: CachedMetadata,
+    symbolList: SymbolInfo[],
+    activeFacetIds: Set<string>,
+  ): void {
+    if (!this.shouldIncludeSymbol(SymbolType.Tag, activeFacetIds)) {
+      return;
+    }
+
+    // Track tags we've already added (to avoid duplicates between inline and frontmatter)
+    const addedTags = new Set<string>();
+
+    // First, add inline tags (these have accurate position data)
+    const inlineTags = symbolData.tags ?? [];
+    for (const tag of inlineTags) {
+      addedTags.add(tag.tag.toLowerCase());
+      symbolList.push({
+        type: 'symbolInfo',
+        symbol: tag,
+        symbolType: SymbolType.Tag,
+      });
+    }
+
+    // Then, add frontmatter tags that aren't already in inline tags
+    const frontmatter = symbolData.frontmatter;
+    if (frontmatter) {
+      const fmTags = FrontMatterParser.getTags(frontmatter);
+
+      // Use frontmatterPosition if available, otherwise default to line 0
+      const fmPosition = symbolData.frontmatterPosition ?? {
+        start: { line: 0, col: 0, offset: 0 },
+        end: { line: 0, col: 0, offset: 0 },
+      };
+
+      for (const tagStr of fmTags) {
+        const normalizedTag = tagStr.startsWith('#') ? tagStr : `#${tagStr}`;
+
+        // Skip if we already have this tag from inline
+        if (addedTags.has(normalizedTag.toLowerCase())) {
+          continue;
+        }
+
+        // Create a TagCache-like object for frontmatter tags
+        const fmTagCache: TagCache = {
+          tag: normalizedTag,
+          position: fmPosition,
+        };
+
+        symbolList.push({
+          type: 'symbolInfo',
+          symbol: fmTagCache,
+          symbolType: SymbolType.Tag,
+        });
       }
     }
   }

@@ -67,6 +67,7 @@ import {
   makeBaseFileContentStringEmptyViews,
   makeBaseFileContentStringNoViews,
   makeBaseFileContentStringInvalid,
+  makeLoc,
 } from '@fixtures';
 import { CanvasData, CanvasFileData, CanvasGroupData } from 'obsidian/canvas';
 import { mock, MockProxy, mockClear, mockFn } from 'jest-mock-extended';
@@ -487,6 +488,320 @@ describe('symbolHandler', () => {
       expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(
         mockRootSplitLeaf.view.file,
       );
+
+      selectNearestHeadingSpy.mockReset();
+    });
+
+    test('with selectNearestHeading set to true, it should handle headings that are after the cursor by keeping the previous heading', async () => {
+      // Arrange
+      // This test covers the branch on line 367 where currLine > cursorLine (returns acc)
+      const selectNearestHeadingSpy = jest
+        .spyOn(settings, 'selectNearestHeading', 'get')
+        .mockReturnValue(true);
+
+      // Create headings: one before cursor, one after cursor
+      const headingBeforeCursor = makeHeading(
+        'Heading Before',
+        1,
+        makeLoc(5, 0, 0),
+        makeLoc(5, 15, 15),
+      );
+
+      const headingAfterCursor = makeHeading(
+        'Heading After',
+        1,
+        makeLoc(15, 0, 0),
+        makeLoc(15, 15, 15),
+      );
+      const cursorLine = 10; // Between the two headings
+
+      const metadata = getCachedMetadata();
+      metadata.headings = [headingBeforeCursor, headingAfterCursor];
+      mockMetadataCache.getFileCache.mockReturnValueOnce(metadata);
+
+      const mockEditor = (mockRootSplitLeaf.view as MarkdownView)
+        .editor as MockProxy<Editor>;
+      mockEditor.getCursor.mockReturnValueOnce({
+        line: cursorLine,
+        ch: 0,
+      });
+
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      // Act
+      const results = await sut.getSuggestions(inputInfo);
+
+      // Assert
+      // Should select the heading before cursor, not the one after
+      const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
+      expect(selectedSuggestions).toHaveLength(1);
+      expect(selectedSuggestions[0].item.symbol).toBe(headingBeforeCursor);
+      expect(selectedSuggestions[0].item.symbol).not.toBe(headingAfterCursor);
+
+      selectNearestHeadingSpy.mockReset();
+    });
+
+    test('with selectNearestHeading set to true, it should handle headings at the same or earlier line by keeping the previous heading', async () => {
+      // Arrange
+      // This test covers the branch on line 367 where currLine <= accLine (returns acc)
+      const selectNearestHeadingSpy = jest
+        .spyOn(settings, 'selectNearestHeading', 'get')
+        .mockReturnValue(true);
+
+      // Create headings: first at line 5, second at line 3 (earlier), cursor at line 10
+      const heading1 = makeHeading(
+        'Heading First',
+        1,
+        makeLoc(5, 0, 0),
+        makeLoc(5, 15, 15),
+      );
+
+      const heading2 = makeHeading(
+        'Heading Earlier',
+        1,
+        makeLoc(3, 0, 0),
+        makeLoc(3, 18, 18),
+      );
+      const cursorLine = 10;
+
+      const metadata = getCachedMetadata();
+      // Add headings in order: first heading1, then heading2 (which is earlier)
+      metadata.headings = [heading1, heading2];
+      mockMetadataCache.getFileCache.mockReturnValueOnce(metadata);
+
+      const mockEditor = (mockRootSplitLeaf.view as MarkdownView)
+        .editor as MockProxy<Editor>;
+      mockEditor.getCursor.mockReturnValueOnce({
+        line: cursorLine,
+        ch: 0,
+      });
+
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      // Act
+      const results = await sut.getSuggestions(inputInfo);
+
+      // Assert
+      // Should select heading1 (the first one that meets the condition),
+      // not heading2 (which is earlier and doesn't meet currLine > accLine)
+      const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
+      expect(selectedSuggestions).toHaveLength(1);
+      expect(selectedSuggestions[0].item.symbol).toBe(heading1);
+      expect(selectedSuggestions[0].item.symbol).not.toBe(heading2);
+
+      selectNearestHeadingSpy.mockReset();
+    });
+
+    test('with selectNearestHeading set to true, it should handle headings that are both earlier than previous and after cursor by keeping the previous heading', async () => {
+      // Arrange
+      // This test covers the branch on line 369 where both conditions are false:
+      // currLine <= accLine && currLine > cursorLine (returns acc)
+      const selectNearestHeadingSpy = jest
+        .spyOn(settings, 'selectNearestHeading', 'get')
+        .mockReturnValue(true);
+
+      // Create headings: first at line 3, second at line 2 (earlier), cursor at line 1
+      // heading2 is both: earlier than heading1 (2 <= 3) AND after cursor (2 > 1)
+      // heading1 meets: 3 > -1 && 3 <= 1 → false, so acc stays null
+      // heading2 meets: 2 > -1 && 2 <= 1 → false, so acc stays null
+      // But we need heading1 to be selected first, then heading2 should not replace it
+      // So let's put cursor at line 4, heading1 at line 3, heading2 at line 2
+      const heading1 = makeHeading(
+        'Heading First',
+        1,
+        makeLoc(3, 0, 0),
+        makeLoc(3, 15, 15),
+      );
+
+      const heading2 = makeHeading(
+        'Heading Earlier After Cursor',
+        1,
+        makeLoc(2, 0, 0),
+        makeLoc(2, 25, 25),
+      );
+      const cursorLine = 4; // After both headings
+
+      const metadata = getCachedMetadata();
+      // Add headings in order: first heading1, then heading2 (which is earlier)
+      metadata.headings = [heading1, heading2];
+      mockMetadataCache.getFileCache.mockReturnValueOnce(metadata);
+
+      const mockEditor = (mockRootSplitLeaf.view as MarkdownView)
+        .editor as MockProxy<Editor>;
+      mockEditor.getCursor.mockReturnValueOnce({
+        line: cursorLine,
+        ch: 0,
+      });
+
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      // Act
+      const results = await sut.getSuggestions(inputInfo);
+
+      // Assert
+      // heading1: 3 > -1 && 3 <= 4 → true && true → true → returns heading1
+      // heading2: 2 > 3 && 2 <= 4 → false && true → false → returns heading1 (acc)
+      // So heading1 should be selected
+      const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
+      expect(selectedSuggestions).toHaveLength(1);
+      expect(selectedSuggestions[0].item.symbol).toBe(heading1);
+      expect(selectedSuggestions[0].item.symbol).not.toBe(heading2);
+
+      selectNearestHeadingSpy.mockReset();
+    });
+
+    test('with selectNearestHeading set to true, it should handle headings at the same line by keeping the previous heading', async () => {
+      // Arrange
+      // This test covers the branch on line 369 where currLine === accLine (returns acc)
+      const selectNearestHeadingSpy = jest
+        .spyOn(settings, 'selectNearestHeading', 'get')
+        .mockReturnValue(true);
+
+      // Create headings: both at line 5, cursor at line 10
+      // heading2 is at the same line as heading1 (currLine === accLine)
+      const heading1 = makeHeading(
+        'Heading First',
+        1,
+        makeLoc(5, 0, 0),
+        makeLoc(5, 15, 15),
+      );
+
+      const heading2 = makeHeading(
+        'Heading Same Line',
+        2,
+        makeLoc(5, 20, 20),
+        makeLoc(5, 40, 40),
+      );
+      const cursorLine = 10;
+
+      const metadata = getCachedMetadata();
+      // Add headings in order: first heading1, then heading2 (at same line)
+      metadata.headings = [heading1, heading2];
+      mockMetadataCache.getFileCache.mockReturnValueOnce(metadata);
+
+      const mockEditor = (mockRootSplitLeaf.view as MarkdownView)
+        .editor as MockProxy<Editor>;
+      mockEditor.getCursor.mockReturnValueOnce({
+        line: cursorLine,
+        ch: 0,
+      });
+
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      // Act
+      const results = await sut.getSuggestions(inputInfo);
+
+      // Assert
+      // Should select heading1 (the first one that meets the condition),
+      // not heading2 (which is at the same line and doesn't meet currLine > accLine)
+      const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
+      expect(selectedSuggestions).toHaveLength(1);
+      expect(selectedSuggestions[0].item.symbol).toBe(heading1);
+      expect(selectedSuggestions[0].item.symbol).not.toBe(heading2);
+
+      selectNearestHeadingSpy.mockReset();
+    });
+
+    test('with selectNearestHeading set to true, it should handle headings exactly at the cursor line', async () => {
+      // Arrange
+      // This test covers the branch on line 369 where currLine === cursorLine
+      const selectNearestHeadingSpy = jest
+        .spyOn(settings, 'selectNearestHeading', 'get')
+        .mockReturnValue(true);
+
+      // Create headings: first at line 5, second at line 10 (exactly at cursor)
+      const heading1 = makeHeading(
+        'Heading Before',
+        1,
+        makeLoc(5, 0, 0),
+        makeLoc(5, 15, 15),
+      );
+
+      const heading2 = makeHeading(
+        'Heading At Cursor',
+        1,
+        makeLoc(10, 0, 0),
+        makeLoc(10, 18, 18),
+      );
+      const cursorLine = 10; // Same as heading2
+
+      const metadata = getCachedMetadata();
+      metadata.headings = [heading1, heading2];
+      mockMetadataCache.getFileCache.mockReturnValueOnce(metadata);
+
+      const mockEditor = (mockRootSplitLeaf.view as MarkdownView)
+        .editor as MockProxy<Editor>;
+      mockEditor.getCursor.mockReturnValueOnce({
+        line: cursorLine,
+        ch: 0,
+      });
+
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      // Act
+      const results = await sut.getSuggestions(inputInfo);
+
+      // Assert
+      // Should select heading2 (at cursor line, meets currLine > accLine && currLine <= cursorLine)
+      const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
+      expect(selectedSuggestions).toHaveLength(1);
+      expect(selectedSuggestions[0].item.symbol).toBe(heading2);
+      expect(selectedSuggestions[0].item.symbol).not.toBe(heading1);
+
+      selectNearestHeadingSpy.mockReset();
+    });
+
+    test('with selectNearestHeading set to true, it should handle first heading when acc is null (covers falsy branch on line 367)', async () => {
+      // Arrange
+      // This test covers the falsy branch on line 367: accLine = acc ? ... : -1
+      // When acc is null (first iteration of reduce), accLine should be -1
+      const selectNearestHeadingSpy = jest
+        .spyOn(settings, 'selectNearestHeading', 'get')
+        .mockReturnValue(true);
+
+      // Create a single heading before cursor to test first iteration with acc=null
+      const heading = makeHeading(
+        'First Heading',
+        1,
+        makeLoc(5, 0, 0),
+        makeLoc(5, 15, 15),
+      );
+      const cursorLine = 10; // After the heading
+
+      const metadata = getCachedMetadata();
+      metadata.headings = [heading];
+      mockMetadataCache.getFileCache.mockReturnValueOnce(metadata);
+
+      const mockEditor = (mockRootSplitLeaf.view as MarkdownView)
+        .editor as MockProxy<Editor>;
+      mockEditor.getCursor.mockReturnValueOnce({
+        line: cursorLine,
+        ch: 0,
+      });
+
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      // Act
+      const results = await sut.getSuggestions(inputInfo);
+
+      // Assert
+      // With acc=null on first iteration, accLine=-1, so condition is: 5 > -1 && 5 <= 10 → true
+      // Heading should be selected
+      const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
+      expect(selectedSuggestions).toHaveLength(1);
+      expect(selectedSuggestions[0].item.symbol).toBe(heading);
 
       selectNearestHeadingSpy.mockReset();
     });
@@ -2692,6 +3007,544 @@ describe('symbolHandler', () => {
 
       renderMarkdownSpy.mockRestore();
       getSuggestionTextSpy.mockRestore();
+    });
+  });
+
+  describe('getSymbolsFromSource - frontmatter tags', () => {
+    const mockFile = new TFile();
+
+    beforeEach(() => {
+      mockMetadataCache.getFileCache.mockClear();
+    });
+
+    it('should include frontmatter tags in symbol list', async () => {
+      // Arrange
+      const metadata = getCachedMetadata({
+        includeFrontmatter: true,
+        frontmatterTags: ['frontmatter-tag1', 'frontmatter-tag2'],
+        frontmatterStartLine: 0,
+        frontmatterEndLine: 2,
+      });
+      mockMetadataCache.getFileCache.mockReturnValue(metadata);
+      const sourceInfo: SourceInfo = {
+        file: mockFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo,
+      });
+
+      // Act
+      const results = await sut.getSymbolsFromSource(sourceInfo, false);
+
+      // Assert
+      const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
+      expect(tagSymbols.length).toBeGreaterThanOrEqual(2);
+
+      const frontmatterTagSymbols = tagSymbols.filter((r) => {
+        const tag = r.symbol as TagCache;
+        return tag.tag === '#frontmatter-tag1' || tag.tag === '#frontmatter-tag2';
+      });
+      expect(frontmatterTagSymbols.length).toBe(2);
+
+      frontmatterTagSymbols.forEach((symbolInfo) => {
+        expect(symbolInfo.symbolType).toBe(SymbolType.Tag);
+        expect(symbolInfo.type).toBe('symbolInfo');
+        const tag = symbolInfo.symbol as TagCache;
+        expect(tag.tag).toMatch(/^#frontmatter-tag[12]$/);
+      });
+    });
+
+    it('should not duplicate tags when same tag exists in both inline and frontmatter', async () => {
+      // Arrange
+      // Create metadata with inline tag '#tag1' and frontmatter tag 'tag1'
+      const inlineTags = getTags(); // Contains #tag1 and #tag2
+      const metadata = getCachedMetadata({
+        includeFrontmatter: true,
+        frontmatterTags: ['tag1'], // Same as inline tag1 (case-insensitive)
+        frontmatterStartLine: 0,
+        frontmatterEndLine: 2,
+      });
+      metadata.tags = inlineTags; // Override with inline tags
+      mockMetadataCache.getFileCache.mockReturnValue(metadata);
+      const sourceInfo: SourceInfo = {
+        file: mockFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo,
+      });
+
+      // Act
+      const results = await sut.getSymbolsFromSource(sourceInfo, false);
+
+      // Assert
+      const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
+      const tag1Symbols = tagSymbols.filter((r) => {
+        const tag = r.symbol as TagCache;
+        return tag.tag.toLowerCase() === '#tag1';
+      });
+
+      // Should only have one #tag1 (the inline version)
+      expect(tag1Symbols.length).toBe(1);
+      const tag1Symbol = tag1Symbols[0];
+      const tag1 = tag1Symbol.symbol as TagCache;
+      // Should be the inline version (has original position from getTags fixture)
+      expect(tag1.position.start.line).toBe(20); // From getTags fixture
+    });
+
+    it('should use frontmatterPosition for frontmatter tags when available', async () => {
+      // Arrange
+      const startLine = 0;
+      const endLine = 3;
+      const metadata = getCachedMetadata({
+        includeFrontmatter: true,
+        frontmatterTags: ['fm-tag1', 'fm-tag2'],
+        frontmatterStartLine: startLine,
+        frontmatterEndLine: endLine,
+      });
+      // Remove inline tags to test only frontmatter tags
+      metadata.tags = [];
+      mockMetadataCache.getFileCache.mockReturnValue(metadata);
+      const sourceInfo: SourceInfo = {
+        file: mockFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo,
+      });
+
+      // Act
+      const results = await sut.getSymbolsFromSource(sourceInfo, false);
+
+      // Assert
+      const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
+      expect(tagSymbols.length).toBe(2);
+
+      tagSymbols.forEach((symbolInfo) => {
+        const tag = symbolInfo.symbol as TagCache;
+        expect(tag.position.start.line).toBe(startLine);
+        expect(tag.position.end.line).toBe(endLine);
+      });
+    });
+
+    it('should fallback to line 0 position when frontmatterPosition is not available', async () => {
+      // Arrange
+      const metadata = getCachedMetadata({
+        includeFrontmatter: true,
+        frontmatterTags: ['fm-tag1'],
+        frontmatterStartLine: 0,
+        frontmatterEndLine: 2,
+      });
+      // Remove frontmatterPosition
+      metadata.frontmatterPosition = undefined;
+      // Remove inline tags to test only frontmatter tags
+      metadata.tags = [];
+      mockMetadataCache.getFileCache.mockReturnValue(metadata);
+      const sourceInfo: SourceInfo = {
+        file: mockFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo,
+      });
+
+      // Act
+      const results = await sut.getSymbolsFromSource(sourceInfo, false);
+
+      // Assert
+      const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
+      expect(tagSymbols.length).toBe(1);
+
+      const tag = tagSymbols[0].symbol as TagCache;
+      expect(tag.position.start.line).toBe(0);
+      expect(tag.position.start.col).toBe(0);
+      expect(tag.position.start.offset).toBe(0);
+      expect(tag.position.end.line).toBe(0);
+      expect(tag.position.end.col).toBe(0);
+      expect(tag.position.end.offset).toBe(0);
+    });
+
+    it('should normalize frontmatter tags by adding # prefix when missing', async () => {
+      // Arrange
+      const metadata = getCachedMetadata({
+        includeFrontmatter: true,
+        frontmatterTags: ['tag-without-prefix', '#tag-with-prefix'],
+        frontmatterStartLine: 0,
+        frontmatterEndLine: 2,
+      });
+      // Remove inline tags to test only frontmatter tags
+      metadata.tags = [];
+      mockMetadataCache.getFileCache.mockReturnValue(metadata);
+      const sourceInfo: SourceInfo = {
+        file: mockFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo,
+      });
+
+      // Act
+      const results = await sut.getSymbolsFromSource(sourceInfo, false);
+
+      // Assert
+      const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
+      expect(tagSymbols.length).toBe(2);
+
+      const tag1 = tagSymbols.find((r) => {
+        const tag = r.symbol as TagCache;
+        return tag.tag === '#tag-without-prefix';
+      });
+      const tag2 = tagSymbols.find((r) => {
+        const tag = r.symbol as TagCache;
+        return tag.tag === '#tag-with-prefix';
+      });
+
+      expect(tag1).toBeDefined();
+      expect(tag2).toBeDefined();
+      expect((tag1.symbol as TagCache).tag).toBe('#tag-without-prefix');
+      expect((tag2.symbol as TagCache).tag).toBe('#tag-with-prefix');
+    });
+
+    it('should perform case-insensitive deduplication between inline and frontmatter tags', async () => {
+      // Arrange
+      const inlineTags = getTags(); // Contains #tag1 and #tag2
+      const metadata = getCachedMetadata({
+        includeFrontmatter: true,
+        frontmatterTags: ['TAG1', 'Tag2'], // Different case
+        frontmatterStartLine: 0,
+        frontmatterEndLine: 2,
+      });
+      metadata.tags = inlineTags;
+      mockMetadataCache.getFileCache.mockReturnValue(metadata);
+      const sourceInfo: SourceInfo = {
+        file: mockFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo,
+      });
+
+      // Act
+      const results = await sut.getSymbolsFromSource(sourceInfo, false);
+
+      // Assert
+      const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
+      // Should only have 2 tags (inline versions), not 4
+      expect(tagSymbols.length).toBe(2);
+
+      const uniqueTags = new Set(
+        tagSymbols.map((r) => (r.symbol as TagCache).tag.toLowerCase()),
+      );
+      expect(uniqueTags.size).toBe(2);
+      expect(uniqueTags.has('#tag1')).toBe(true);
+      expect(uniqueTags.has('#tag2')).toBe(true);
+    });
+
+    it('should only include inline tags when no frontmatter is present', async () => {
+      // Arrange
+      const metadata = getCachedMetadata(); // No frontmatter
+      mockMetadataCache.getFileCache.mockReturnValue(metadata);
+      const sourceInfo: SourceInfo = {
+        file: mockFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo,
+      });
+
+      // Act
+      const results = await sut.getSymbolsFromSource(sourceInfo, false);
+
+      // Assert
+      const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
+      // Should only have inline tags from getTags fixture
+      expect(tagSymbols.length).toBe(2);
+
+      tagSymbols.forEach((symbolInfo) => {
+        const tag = symbolInfo.symbol as TagCache;
+        // Inline tags should have their original positions (from getTags fixture)
+        expect(tag.position.start.line).toBe(20);
+      });
+    });
+
+    it('should not add frontmatter tags when frontmatter tags array is empty', async () => {
+      // Arrange
+      const metadata = getCachedMetadata({
+        includeFrontmatter: true,
+        frontmatterTags: [], // Empty array
+        frontmatterStartLine: 0,
+        frontmatterEndLine: 2,
+      });
+      // Remove inline tags to test only frontmatter behavior
+      metadata.tags = [];
+      mockMetadataCache.getFileCache.mockReturnValue(metadata);
+      const sourceInfo: SourceInfo = {
+        file: mockFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo,
+      });
+
+      // Act
+      const results = await sut.getSymbolsFromSource(sourceInfo, false);
+
+      // Assert
+      const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
+      expect(tagSymbols.length).toBe(0);
+    });
+
+    it('should prefer inline tag over frontmatter tag when both exist', async () => {
+      // Arrange
+      const inlineTags = getTags(); // Contains #tag1 at line 20
+      const metadata = getCachedMetadata({
+        includeFrontmatter: true,
+        frontmatterTags: ['tag1'], // Same tag in frontmatter
+        frontmatterStartLine: 0,
+        frontmatterEndLine: 2,
+      });
+      metadata.tags = inlineTags;
+      mockMetadataCache.getFileCache.mockReturnValue(metadata);
+      const sourceInfo: SourceInfo = {
+        file: mockFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo,
+      });
+
+      // Act
+      const results = await sut.getSymbolsFromSource(sourceInfo, false);
+
+      // Assert
+      const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
+      const tag1Symbols = tagSymbols.filter((r) => {
+        const tag = r.symbol as TagCache;
+        return tag.tag.toLowerCase() === '#tag1';
+      });
+
+      expect(tag1Symbols.length).toBe(1);
+      const tag1 = tag1Symbols[0].symbol as TagCache;
+      // Should use inline position (line 20), not frontmatter position (line 0)
+      expect(tag1.position.start.line).toBe(20);
+    });
+
+    it('should handle frontmatter tags with string format', async () => {
+      // Arrange
+      // FrontMatterParser.getTags() should handle string format via getValueForKey
+      const metadata = getCachedMetadata({
+        includeFrontmatter: true,
+        frontmatterTags: 'single-tag', // String format
+        frontmatterStartLine: 0,
+        frontmatterEndLine: 2,
+      });
+      metadata.tags = [];
+      mockMetadataCache.getFileCache.mockReturnValue(metadata);
+      const sourceInfo: SourceInfo = {
+        file: mockFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo,
+      });
+
+      // Act
+      const results = await sut.getSymbolsFromSource(sourceInfo, false);
+
+      // Assert
+      const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
+      expect(tagSymbols.length).toBeGreaterThanOrEqual(1);
+
+      const singleTag = tagSymbols.find((r) => {
+        const tag = r.symbol as TagCache;
+        return tag.tag === '#single-tag';
+      });
+      expect(singleTag).toBeDefined();
+    });
+
+    it('should handle frontmatter tags with array format', async () => {
+      // Arrange
+      const metadata = getCachedMetadata({
+        includeFrontmatter: true,
+        frontmatterTags: ['array-tag1', 'array-tag2'], // Array format
+        frontmatterStartLine: 0,
+        frontmatterEndLine: 2,
+      });
+      metadata.tags = [];
+      mockMetadataCache.getFileCache.mockReturnValue(metadata);
+      const sourceInfo: SourceInfo = {
+        file: mockFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo,
+      });
+
+      // Act
+      const results = await sut.getSymbolsFromSource(sourceInfo, false);
+
+      // Assert
+      const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
+      expect(tagSymbols.length).toBe(2);
+
+      const tag1 = tagSymbols.find((r) => {
+        const tag = r.symbol as TagCache;
+        return tag.tag === '#array-tag1';
+      });
+      const tag2 = tagSymbols.find((r) => {
+        const tag = r.symbol as TagCache;
+        return tag.tag === '#array-tag2';
+      });
+
+      expect(tag1).toBeDefined();
+      expect(tag2).toBeDefined();
+    });
+
+    it('should not include frontmatter tags when Tag symbol type is disabled', async () => {
+      // Arrange
+      const metadata = getCachedMetadata({
+        includeFrontmatter: true,
+        frontmatterTags: ['fm-tag1', 'fm-tag2'],
+        frontmatterStartLine: 0,
+        frontmatterEndLine: 2,
+      });
+      metadata.tags = [];
+      mockMetadataCache.getFileCache.mockReturnValue(metadata);
+
+      const isSymbolTypeEnabledSpy = jest
+        .spyOn(settings, 'isSymbolTypeEnabled')
+        .mockImplementation((type) => (type === SymbolType.Tag ? false : true));
+
+      const sourceInfo: SourceInfo = {
+        file: mockFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo,
+      });
+
+      // Act
+      const results = await sut.getSymbolsFromSource(sourceInfo, false);
+
+      // Assert
+      const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
+      expect(tagSymbols.length).toBe(0);
+
+      isSymbolTypeEnabledSpy.mockRestore();
+    });
+
+    it('should include both inline and frontmatter tags when they are different', async () => {
+      // Arrange
+      const inlineTags = getTags(); // Contains #tag1 and #tag2
+      const metadata = getCachedMetadata({
+        includeFrontmatter: true,
+        frontmatterTags: ['fm-tag1', 'fm-tag2'], // Different tags
+        frontmatterStartLine: 0,
+        frontmatterEndLine: 2,
+      });
+      metadata.tags = inlineTags;
+      mockMetadataCache.getFileCache.mockReturnValue(metadata);
+      const sourceInfo: SourceInfo = {
+        file: mockFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo,
+      });
+
+      // Act
+      const results = await sut.getSymbolsFromSource(sourceInfo, false);
+
+      // Assert
+      const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
+      // Should have 2 inline + 2 frontmatter = 4 total
+      expect(tagSymbols.length).toBe(4);
+
+      const tagNames = tagSymbols.map((r) => (r.symbol as TagCache).tag.toLowerCase());
+      expect(tagNames).toContain('#tag1');
+      expect(tagNames).toContain('#tag2');
+      expect(tagNames).toContain('#fm-tag1');
+      expect(tagNames).toContain('#fm-tag2');
+    });
+
+    it('should create proper SymbolInfo structure for frontmatter tags', async () => {
+      // Arrange
+      const metadata = getCachedMetadata({
+        includeFrontmatter: true,
+        frontmatterTags: ['test-tag'],
+        frontmatterStartLine: 0,
+        frontmatterEndLine: 2,
+      });
+      metadata.tags = [];
+      mockMetadataCache.getFileCache.mockReturnValue(metadata);
+      const sourceInfo: SourceInfo = {
+        file: mockFile,
+        leaf: null,
+        suggestion: null,
+        isValidSource: true,
+      };
+      sut.inputInfo = makeInputInfo({
+        mode: Mode.SymbolList,
+        sourceInfo,
+      });
+
+      // Act
+      const results = await sut.getSymbolsFromSource(sourceInfo, false);
+
+      // Assert
+      const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
+      expect(tagSymbols.length).toBe(1);
+
+      const symbolInfo = tagSymbols[0];
+      expect(symbolInfo.type).toBe('symbolInfo');
+      expect(symbolInfo.symbolType).toBe(SymbolType.Tag);
+      expect(symbolInfo.symbol).toBeDefined();
+
+      const tag = symbolInfo.symbol as TagCache;
+      expect(tag.tag).toBe('#test-tag');
+      expect(tag.position).toBeDefined();
+      expect(tag.position.start).toBeDefined();
+      expect(tag.position.end).toBeDefined();
     });
   });
 });

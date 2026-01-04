@@ -11,6 +11,23 @@ export class FrontMatterParser {
     return aliases;
   }
 
+  /**
+   * Extracts tags from frontmatter, supporting both 'tag' (singular) and 'tags' (plural) keys.
+   * Handles both string (comma-separated) and array formats.
+   *
+   * @param frontMatter - The frontmatter cache object from Obsidian
+   * @returns An array of tag strings, empty array if no tags found or frontmatter is falsy
+   */
+  static getTags(frontMatter: FrontMatterCache): string[] {
+    let tags: string[] = [];
+
+    if (frontMatter) {
+      tags = FrontMatterParser.getValueForKey(frontMatter, /^tags?$/i);
+    }
+
+    return tags;
+  }
+
   private static getValueForKey(
     frontMatter: FrontMatterCache,
     keyPattern: RegExp,

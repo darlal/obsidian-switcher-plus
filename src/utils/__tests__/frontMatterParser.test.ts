@@ -101,4 +101,104 @@ describe('FrontMatterParser', () => {
       );
     });
   });
+
+  describe('getTags', () => {
+    it('should return empty array with falsy input', () => {
+      const results = FrontMatterParser.getTags(null);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(0);
+    });
+
+    it('should return empty array with missing key', () => {
+      const fm: FrontMatterCache = {
+        position: null,
+      };
+
+      const results = FrontMatterParser.getTags(fm);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(0);
+    });
+
+    it('should parse tag key', () => {
+      const fm: FrontMatterCache = {
+        tag: 'foo',
+        position: null,
+      };
+
+      const results = FrontMatterParser.getTags(fm);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(1);
+      expect(results[0]).toBe('foo');
+    });
+
+    it('should parse tags key', () => {
+      const fm: FrontMatterCache = {
+        tags: 'foo',
+        position: null,
+      };
+
+      const results = FrontMatterParser.getTags(fm);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(1);
+      expect(results[0]).toBe('foo');
+    });
+
+    it('should parse string values', () => {
+      const fm: FrontMatterCache = {
+        tags: 'one, two ,three',
+        position: null,
+      };
+
+      const results = FrontMatterParser.getTags(fm);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(3);
+      expect(results).toEqual((fm.tags as string).split(',').map((val) => val.trim()));
+    });
+
+    it('should parse array values', () => {
+      const fm: FrontMatterCache = {
+        tags: ['one', 'two   ', 'three'],
+        position: null,
+      };
+
+      const results = FrontMatterParser.getTags(fm);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(3);
+      expect(results).toEqual((fm.tags as string[]).map((val) => val.trim()));
+    });
+
+    it('should ignore non-string/non-array values', () => {
+      const fm: FrontMatterCache = {
+        tags: {},
+        position: null,
+      };
+
+      const results = FrontMatterParser.getTags(fm);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(0);
+    });
+
+    it('should ignore nested non-string values', () => {
+      const fm: FrontMatterCache = {
+        tags: ['one', ['two'], 'three'],
+        position: null,
+      };
+
+      const results = FrontMatterParser.getTags(fm);
+
+      expect(results).toBeInstanceOf(Array);
+      expect(results).toHaveLength(2);
+      expect(results).toEqual(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (fm.tags as any[]).filter((val) => typeof val === 'string'),
+      );
+    });
+  });
 });

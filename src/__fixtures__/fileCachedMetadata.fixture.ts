@@ -1,6 +1,7 @@
 import {
   CachedMetadata,
   EmbedCache,
+  FrontMatterCache,
   LinkCache,
   TagCache,
   HeadingCache,
@@ -142,12 +143,60 @@ export function getCallouts(): SectionCache[] {
   return [makeSectionCache('callout', makeLoc(1, 0, 1), makeLoc(2, 18, 43))];
 }
 
-export function getCachedMetadata(): CachedMetadata {
+/**
+ * Creates a FrontMatterCache object with tags.
+ * Supports both single string and array of strings for tags.
+ *
+ * @param tags - A single tag string or array of tag strings
+ * @returns A FrontMatterCache object with the tags in array format
+ */
+export function makeFrontmatterWithTags(tags: string | string[]): FrontMatterCache {
+  const tagsArray = Array.isArray(tags) ? tags : [tags];
+
   return {
+    tags: tagsArray,
+    position: null,
+  };
+}
+
+export interface GetCachedMetadataOptions {
+  includeFrontmatter?: boolean;
+  frontmatterTags?: string | string[];
+  frontmatterStartLine?: number;
+  frontmatterEndLine?: number;
+}
+
+/**
+ * Creates a CachedMetadata object with optional frontmatter support.
+ * When includeFrontmatter is true, includes both frontmatter and frontmatterPosition.
+ *
+ * @param options - Optional configuration for frontmatter inclusion
+ * @param options.includeFrontmatter - If true, includes frontmatter and frontmatterPosition
+ * @param options.frontmatterTags - Tags to include in frontmatter (defaults to ['tag1', 'tag2'])
+ * @param options.frontmatterStartLine - Start line for frontmatter position (defaults to 0)
+ * @param options.frontmatterEndLine - End line for frontmatter position (defaults to 2)
+ * @returns A CachedMetadata object with optional frontmatter data
+ */
+export function getCachedMetadata(options?: GetCachedMetadataOptions): CachedMetadata {
+  const metadata: CachedMetadata = {
     links: getLinks(),
     embeds: getEmbeds(),
     tags: getTags(),
     headings: getHeadings(),
     sections: [...getCallouts()],
   };
+
+  if (options?.includeFrontmatter) {
+    const tags = options.frontmatterTags ?? ['tag1', 'tag2'];
+    const startLine = options.frontmatterStartLine ?? 0;
+    const endLine = options.frontmatterEndLine ?? 2;
+
+    metadata.frontmatter = makeFrontmatterWithTags(tags);
+    metadata.frontmatterPosition = makePos(
+      makeLoc(startLine, 0, 0),
+      makeLoc(endLine, 0, 0),
+    );
+  }
+
+  return metadata;
 }
