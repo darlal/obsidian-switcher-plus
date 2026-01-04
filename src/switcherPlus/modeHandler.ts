@@ -144,7 +144,12 @@ export class ModeHandler implements ModeDispatcher {
     // This method should only run once per session opening.
     this.sessionOpts.mode = null;
 
-    const prevInputText = this.previousInputHistory[mode]?.inputText;
+    // Extract only the parsedInput (filter text) from the previous session, not the full inputText.
+    // This ensures that when restoring input for sourced modes (Symbol/RelatedItems), we correctly
+    // use the current session's command variant (e.g., active editor vs embedded command) rather
+    // than restoring the previous session's full input which may have used a different command variant.
+    const prevParsedInput =
+      this.previousInputHistory[mode]?.parsedCommand(mode)?.parsedInput;
     const handler = this.handlerRegistry.getHandler(mode);
     const commandString =
       mode !== Mode.Standard ? handler.getCommandString(this.sessionOpts) : '';
@@ -153,8 +158,10 @@ export class ModeHandler implements ModeDispatcher {
       (mode === Mode.CommandList && this.settings.preserveCommandPaletteLastInput) ||
       (mode !== Mode.CommandList && this.settings.preserveQuickSwitcherLastInput);
 
-    if (shouldPreserveInput && prevInputText) {
-      inputEl.value = prevInputText;
+    if (shouldPreserveInput && prevParsedInput !== undefined) {
+      // Reconstruct the input by combining the current session's command string with the previous filter text.
+      // This ensures the restored input uses the correct command variant for the current session.
+      inputEl.value = commandString + prevParsedInput;
       const selectionStart = commandString?.length ?? 0;
       inputEl.setSelectionRange(selectionStart, inputEl.value.length);
     } else if (commandString) {

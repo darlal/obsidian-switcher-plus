@@ -378,6 +378,8 @@ describe('modeHandler', () => {
       it('should restore previous input for CommandList mode', () => {
         mockSettings.preserveCommandPaletteLastInput = true;
         const previousInput = `${commandTrigger} some command`;
+        // Extract the parsedInput (the part after the command trigger)
+        const parsedInput = previousInput.substring(commandTrigger.length);
 
         // Simulate a previous session
         sut.updateSuggestions(previousInput, mockChooser, null);
@@ -386,10 +388,12 @@ describe('modeHandler', () => {
         sut.setSessionOpenMode(mockChooser, { mode: Mode.CommandList });
         sut.setInitialInputForSession(mockInputEl);
 
-        expect(mockInputEl.value).toBe(previousInput);
+        // Verify the input is reconstructed from commandString + parsedInput
+        const expectedInput = commandTrigger + parsedInput;
+        expect(mockInputEl.value).toBe(expectedInput);
         expect(mockInputEl.setSelectionRange).toHaveBeenCalledWith(
           commandTrigger.length,
-          previousInput.length,
+          expectedInput.length,
         );
 
         mockSettings.preserveCommandPaletteLastInput = false;
@@ -398,6 +402,8 @@ describe('modeHandler', () => {
       it('should restore previous input for other modes (e.g., EditorList)', () => {
         mockSettings.preserveQuickSwitcherLastInput = true;
         const previousInput = `${editorTrigger} some file`;
+        // Extract the parsedInput (the part after the editor trigger)
+        const parsedInput = previousInput.substring(editorTrigger.length);
 
         // Simulate a previous session
         sut.updateSuggestions(previousInput, mockChooser, null);
@@ -406,10 +412,12 @@ describe('modeHandler', () => {
         sut.setSessionOpenMode(mockChooser, { mode: Mode.EditorList });
         sut.setInitialInputForSession(mockInputEl);
 
-        expect(mockInputEl.value).toBe(previousInput);
+        // Verify the input is reconstructed from commandString + parsedInput
+        const expectedInput = editorTrigger + parsedInput;
+        expect(mockInputEl.value).toBe(expectedInput);
         expect(mockInputEl.setSelectionRange).toHaveBeenCalledWith(
           editorTrigger.length,
-          previousInput.length,
+          expectedInput.length,
         );
 
         mockSettings.preserveQuickSwitcherLastInput = false;
@@ -430,6 +438,164 @@ describe('modeHandler', () => {
         expect(mockInputEl.value).toBe(headingsTrigger);
 
         mockSettings.preserveQuickSwitcherLastInput = false;
+      });
+    });
+
+    describe('Restoring previous session input for sourced modes with different command variants', () => {
+      describe('SymbolList mode', () => {
+        let getActiveSuggestionSpy: jest.SpyInstance;
+        let getActiveLeafSpy: jest.SpyInstance;
+        const mockFile = new TFile();
+        const mockLeaf = makeLeaf();
+
+        beforeEach(() => {
+          // Symbol mode requires an active file suggestion to validate the command
+          getActiveSuggestionSpy = jest
+            .spyOn(ModeHandler, 'getActiveSuggestion')
+            .mockReturnValue(makeFileSuggestion(mockFile));
+          // Mock active leaf for active editor trigger cases
+          getActiveLeafSpy = jest
+            .spyOn(Handler, 'getActiveLeaf')
+            .mockReturnValue(mockLeaf);
+        });
+
+        afterEach(() => {
+          getActiveSuggestionSpy.mockRestore();
+          getActiveLeafSpy.mockRestore();
+        });
+
+        test('symbol mode should restore filter text when switching from sourced trigger to active editor trigger', () => {
+          mockSettings.preserveQuickSwitcherLastInput = true;
+          const filterText = 'heading search';
+          const previousInput = `${symbolTrigger}${filterText}`;
+
+          // Simulate a previous session with sourced trigger
+          sut.updateSuggestions(previousInput, mockChooser, null);
+
+          // Start a new session with active editor trigger
+          sut.setSessionOpenMode(mockChooser, {
+            mode: Mode.SymbolList,
+            useActiveEditorAsSource: true,
+          });
+          sut.setInitialInputForSession(mockInputEl);
+
+          // Verify the input is reconstructed using current command string (active editor trigger) + previous parsedInput
+          const expectedInput = symbolActiveTrigger + filterText;
+          expect(mockInputEl.value).toBe(expectedInput);
+          expect(mockInputEl.setSelectionRange).toHaveBeenCalledWith(
+            symbolActiveTrigger.length,
+            expectedInput.length,
+          );
+
+          mockSettings.preserveQuickSwitcherLastInput = false;
+        });
+
+        test('symbol mode should restore filter text when switching from active editor trigger to sourced trigger', () => {
+          mockSettings.preserveQuickSwitcherLastInput = true;
+          const filterText = 'heading search';
+          const previousInput = `${symbolActiveTrigger}${filterText}`;
+
+          // Simulate a previous session with active editor trigger
+          sut.updateSuggestions(previousInput, mockChooser, null);
+
+          // Start a new session with sourced trigger
+          sut.setSessionOpenMode(mockChooser, {
+            mode: Mode.SymbolList,
+            useActiveEditorAsSource: false,
+          });
+          sut.setInitialInputForSession(mockInputEl);
+
+          // Verify the input is reconstructed using current command string (sourced trigger) + previous parsedInput
+          const expectedInput = symbolTrigger + filterText;
+          expect(mockInputEl.value).toBe(expectedInput);
+          expect(mockInputEl.setSelectionRange).toHaveBeenCalledWith(
+            symbolTrigger.length,
+            expectedInput.length,
+          );
+
+          mockSettings.preserveQuickSwitcherLastInput = false;
+        });
+
+        it('should restore only filter text from embedded command, discard prefix', () => {
+          mockSettings.preserveQuickSwitcherLastInput = true;
+          const prefix = 'test file';
+          const filterText = 'heading search';
+          const previousInput = `${prefix}${symbolTrigger}${filterText}`;
+
+          // Simulate a previous session with embedded command (file prefix + trigger + filter)
+          sut.updateSuggestions(previousInput, mockChooser, null);
+
+          // Start a new session with active editor trigger
+          sut.setSessionOpenMode(mockChooser, {
+            mode: Mode.SymbolList,
+            useActiveEditorAsSource: true,
+          });
+          sut.setInitialInputForSession(mockInputEl);
+
+          // Verify the input is reconstructed using current command string + previous parsedInput (no prefix)
+          // The parsedInput should only be the filter text after the trigger, not including the prefix
+          const expectedInput = symbolActiveTrigger + filterText;
+          expect(mockInputEl.value).toBe(expectedInput);
+          expect(mockInputEl.value).not.toContain(prefix);
+          expect(mockInputEl.setSelectionRange).toHaveBeenCalledWith(
+            symbolActiveTrigger.length,
+            expectedInput.length,
+          );
+
+          mockSettings.preserveQuickSwitcherLastInput = false;
+        });
+
+        it('relatedItems mode should restore filter text when switching from sourced trigger to active editor trigger', () => {
+          mockSettings.preserveQuickSwitcherLastInput = true;
+          const filterText = 'related search';
+          const previousInput = `${relatedItemsTrigger}${filterText}`;
+
+          // Simulate a previous session with sourced trigger
+          sut.updateSuggestions(previousInput, mockChooser, null);
+
+          // Start a new session with active editor trigger
+          sut.setSessionOpenMode(mockChooser, {
+            mode: Mode.RelatedItemsList,
+            useActiveEditorAsSource: true,
+          });
+          sut.setInitialInputForSession(mockInputEl);
+
+          // Verify the input is reconstructed using current command string (active editor trigger) + previous parsedInput
+          const expectedInput = relatedItemsActiveTrigger + filterText;
+          expect(mockInputEl.value).toBe(expectedInput);
+          expect(mockInputEl.setSelectionRange).toHaveBeenCalledWith(
+            relatedItemsActiveTrigger.length,
+            expectedInput.length,
+          );
+
+          mockSettings.preserveQuickSwitcherLastInput = false;
+        });
+
+        it('relatedItems mode should restore filter text when switching from active editor trigger to sourced trigger', () => {
+          mockSettings.preserveQuickSwitcherLastInput = true;
+          const filterText = 'related search';
+          const previousInput = `${relatedItemsActiveTrigger}${filterText}`;
+
+          // Simulate a previous session with active editor trigger
+          sut.updateSuggestions(previousInput, mockChooser, null);
+
+          // Start a new session with sourced trigger
+          sut.setSessionOpenMode(mockChooser, {
+            mode: Mode.RelatedItemsList,
+            useActiveEditorAsSource: false,
+          });
+          sut.setInitialInputForSession(mockInputEl);
+
+          // Verify the input is reconstructed using current command string (sourced trigger) + previous parsedInput
+          const expectedInput = relatedItemsTrigger + filterText;
+          expect(mockInputEl.value).toBe(expectedInput);
+          expect(mockInputEl.setSelectionRange).toHaveBeenCalledWith(
+            relatedItemsTrigger.length,
+            expectedInput.length,
+          );
+
+          mockSettings.preserveQuickSwitcherLastInput = false;
+        });
       });
     });
 
