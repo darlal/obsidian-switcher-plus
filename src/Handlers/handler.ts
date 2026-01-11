@@ -49,6 +49,8 @@ import {
   stripMDExtensionFromPath,
   getTFileFromLeaf,
   getDestinationFileForSuggestion,
+  getHeadingBreadcrumbs,
+  formatHeadingBreadcrumbs,
 } from 'src/utils';
 
 export abstract class Handler<T extends AnySuggestion> {
@@ -648,27 +650,109 @@ export abstract class Handler<T extends AnySuggestion> {
     match?: SearchResult,
     overridePathFormat?: boolean,
   ): void {
-    if (parentEl && file) {
-      const isRoot = file.parent.isRoot();
-      let format = this.settings.pathDisplayFormat;
-      let hidePath =
-        format === PathDisplayFormat.None || (isRoot && this.settings.hidePathIfRoot);
+    if (!parentEl || !file) {
+      return;
+    }
 
-      if (overridePathFormat) {
-        format = PathDisplayFormat.FolderPathFilenameOptional;
-        hidePath = false;
-      }
+    const isRoot = file.parent.isRoot();
+    let format = this.settings.pathDisplayFormat;
+    let hidePath =
+      format === PathDisplayFormat.None || (isRoot && this.settings.hidePathIfRoot);
 
-      if (!hidePath) {
-        const wrapperEl = parentEl.createDiv({ cls: ['suggestion-note', 'qsp-note'] });
-        const path = this.getPathDisplayText(file, format, excludeOptionalFilename);
+    if (overridePathFormat) {
+      format = PathDisplayFormat.FolderPathFilenameOptional;
+      hidePath = false;
+    }
 
-        const iconEl = wrapperEl.createSpan({ cls: ['qsp-path-indicator'] });
-        setIcon(iconEl, 'folder');
+    if (!hidePath) {
+      const path = this.getPathDisplayText(file, format, excludeOptionalFilename);
+      this.renderBreadcrumb(parentEl, path, 'lucide-folder-open', match, ['qsp-path']);
+    }
+  }
 
-        const pathEl = wrapperEl.createSpan({ cls: 'qsp-path' });
-        renderResults(pathEl, path, match);
-      }
+  /**
+   * Renders a breadcrumb UI element with an icon and content text.
+   * This is a generalized method that can be used to render various types of
+   * breadcrumbs (folder paths, headings, tags, etc.) with different icons.
+   *
+   * @param parentEl - The containing element, typically the element with
+   *   "suggestion-content" style
+   * @param content - The text content to display in the breadcrumb
+   * @param iconName - The name of the icon to display (e.g., 'lucide-folder-open',
+   *   'lucide-heading', 'lucide-tags')
+   * @param match - Optional search result for highlighting matched text in the content
+   * @param cssClasses - Optional additional CSS classes to apply to the wrapper element
+   * @returns void
+   */
+  renderBreadcrumb(
+    parentEl: HTMLElement,
+    content: string,
+    iconName: string,
+    match?: SearchResult,
+    cssClasses?: string[],
+  ): void {
+    if (!parentEl || !content) {
+      return;
+    }
+
+    const baseClasses = ['suggestion-note', 'qsp-note'];
+    if (cssClasses) {
+      baseClasses.push(...cssClasses);
+    }
+
+    const wrapperEl = parentEl.createDiv({ cls: baseClasses });
+    const iconEl = wrapperEl.createSpan({ cls: ['qsp-breadcrumb-indicator'] });
+    setIcon(iconEl, iconName);
+
+    const contentEl = wrapperEl.createSpan({ cls: 'qsp-breadcrumb' });
+    renderResults(contentEl, content, match);
+  }
+
+  /**
+   * Renders heading breadcrumbs for a given heading, showing the hierarchical path
+   * of parent headings leading to the current heading. Breadcrumbs are only rendered
+   * if the setting is enabled and the heading has parent headings (H1 headings have
+   * no breadcrumbs).
+   *
+   * @param parentEl - The containing element, typically the element with
+   *   "suggestion-content" style
+   * @param item - The heading for which to render breadcrumbs
+   * @param file - The file containing the heading
+   * @param enabledSetting - Optional boolean to override the default setting check.
+   *   If not provided, defaults to checking `this.settings.showHeadingBreadcrumbs`
+   * @returns void
+   */
+  renderHeadingBreadcrumbs(
+    parentEl: HTMLElement,
+    item: HeadingCache,
+    file: TFile,
+    enabledSetting?: boolean,
+  ): void {
+    const isEnabled = enabledSetting ?? this.settings.showHeadingBreadcrumbs;
+
+    if (!isEnabled || !parentEl || !item || !file) {
+      return;
+    }
+
+    // H1 headings have no parent headings, so no breadcrumbs to render
+    if (item.level === 1) {
+      return;
+    }
+
+    const breadcrumbs = getHeadingBreadcrumbs(item, file, this.app.metadataCache);
+
+    if (breadcrumbs.length === 0) {
+      return;
+    }
+
+    const formattedBreadcrumbs = formatHeadingBreadcrumbs(
+      breadcrumbs,
+      this.settings.headingBreadcrumbSeparator,
+      this.settings.maxBreadcrumbDepth,
+    );
+
+    if (formattedBreadcrumbs) {
+      this.renderBreadcrumb(parentEl, formattedBreadcrumbs, 'lucide-heading');
     }
   }
 

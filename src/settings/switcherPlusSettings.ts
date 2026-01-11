@@ -20,6 +20,7 @@ import {
   RenderMarkdownContentConfig,
   SettingsData,
   SymbolType,
+  TagSource,
   TitleSource,
 } from 'src/types';
 
@@ -199,6 +200,16 @@ export class SwitcherPlusSettings {
         ],
       },
       saveWorkspaceAndSwitchKeys: { modifiers: ['Mod', 'Shift'], key: 's' },
+      showHeadingBreadcrumbs: true,
+      headingBreadcrumbSeparator: ' > ',
+      maxBreadcrumbDepth: 0,
+      showHeadingBreadcrumbsInSymbolMode: false,
+      showTagsInSuggestions: false,
+      tagSource: TagSource.Both,
+      excludeTagsFromDisplay: [],
+      tagDisplaySeparator: ' ',
+      removeHashPrefixFromTags: false,
+      maxTagsToDisplay: 0,
     };
   }
 
@@ -816,6 +827,86 @@ export class SwitcherPlusSettings {
 
   set saveWorkspaceAndSwitchKeys(value: Hotkey) {
     this.data.saveWorkspaceAndSwitchKeys = value;
+  }
+
+  get showHeadingBreadcrumbs(): boolean {
+    return this.data.showHeadingBreadcrumbs;
+  }
+
+  set showHeadingBreadcrumbs(value: boolean) {
+    this.data.showHeadingBreadcrumbs = value;
+  }
+
+  get headingBreadcrumbSeparator(): string {
+    return this.data.headingBreadcrumbSeparator;
+  }
+
+  set headingBreadcrumbSeparator(value: string) {
+    this.data.headingBreadcrumbSeparator = value;
+  }
+
+  get maxBreadcrumbDepth(): number {
+    return this.data.maxBreadcrumbDepth;
+  }
+
+  set maxBreadcrumbDepth(value: number) {
+    this.data.maxBreadcrumbDepth = value;
+  }
+
+  get showHeadingBreadcrumbsInSymbolMode(): boolean {
+    return this.data.showHeadingBreadcrumbsInSymbolMode;
+  }
+
+  set showHeadingBreadcrumbsInSymbolMode(value: boolean) {
+    this.data.showHeadingBreadcrumbsInSymbolMode = value;
+  }
+
+  get showTagsInSuggestions(): boolean {
+    return this.data.showTagsInSuggestions;
+  }
+
+  set showTagsInSuggestions(value: boolean) {
+    this.data.showTagsInSuggestions = value;
+  }
+
+  get tagSource(): TagSource {
+    return this.data.tagSource;
+  }
+
+  set tagSource(value: TagSource) {
+    this.data.tagSource = value;
+  }
+
+  get excludeTagsFromDisplay(): Array<string> {
+    return this.data.excludeTagsFromDisplay;
+  }
+
+  set excludeTagsFromDisplay(value: Array<string>) {
+    this.data.excludeTagsFromDisplay = value;
+  }
+
+  get tagDisplaySeparator(): string {
+    return this.data.tagDisplaySeparator;
+  }
+
+  set tagDisplaySeparator(value: string) {
+    this.data.tagDisplaySeparator = value;
+  }
+
+  get removeHashPrefixFromTags(): boolean {
+    return this.data.removeHashPrefixFromTags;
+  }
+
+  set removeHashPrefixFromTags(value: boolean) {
+    this.data.removeHashPrefixFromTags = value;
+  }
+
+  get maxTagsToDisplay(): number {
+    return this.data.maxTagsToDisplay;
+  }
+
+  set maxTagsToDisplay(value: number) {
+    this.data.maxTagsToDisplay = value;
   }
 
   constructor(private plugin: SwitcherPlusPlugin) {

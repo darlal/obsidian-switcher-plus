@@ -71,6 +71,18 @@ export enum LinkType {
   Block = 4,
 }
 
+/**
+ * Controls the source of tags to display in suggestions.
+ * - Both: Display tags from both inline (in document body) and frontmatter
+ * - Inline: Display only tags found inline in the document body
+ * - Frontmatter: Display only tags found in the frontmatter
+ */
+export enum TagSource {
+  Both = 'both',
+  Inline = 'inline',
+  Frontmatter = 'frontmatter',
+}
+
 type AllSymbols = {
   [type in SymbolType]: string;
 };
@@ -680,4 +692,45 @@ export interface SettingsData {
    * @type {Hotkey}
    */
   saveWorkspaceAndSwitchKeys: Hotkey;
+  /**
+   * Whether to display heading breadcrumbs in suggestions, showing the hierarchical
+   * path of headings leading to the current suggestion.
+   */
+  showHeadingBreadcrumbs: boolean;
+  /**
+   * The separator string used between heading levels in breadcrumbs.
+   */
+  headingBreadcrumbSeparator: string;
+  /**
+   * Maximum depth of heading breadcrumbs to display. A value of 0 means unlimited depth.
+   */
+  maxBreadcrumbDepth: number;
+  /**
+   * Whether to show heading breadcrumbs when in symbol mode.
+   */
+  showHeadingBreadcrumbsInSymbolMode: boolean;
+  /**
+   * Whether to display tags in suggestions.
+   */
+  showTagsInSuggestions: boolean;
+  /**
+   * Controls which source of tags to display (inline, frontmatter, or both).
+   */
+  tagSource: TagSource;
+  /**
+   * Array of tag names to exclude from display in suggestions.
+   */
+  excludeTagsFromDisplay: string[];
+  /**
+   * The separator string used between multiple tags in suggestions.
+   */
+  tagDisplaySeparator: string;
+  /**
+   * Whether to remove the '#' prefix from tags when displaying them.
+   */
+  removeHashPrefixFromTags: boolean;
+  /**
+   * Maximum number of tags to display per suggestion. A value of 0 means unlimited.
+   */
+  maxTagsToDisplay: number;
 }

@@ -43,6 +43,14 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
       'selectNearestHeading',
     );
 
+    this.addToggleSetting(
+      containerEl,
+      'Show heading breadcrumbs in Symbol mode',
+      'Enabled, display the hierarchical path of parent headings when showing heading symbols in Symbol mode.',
+      config.showHeadingBreadcrumbsInSymbolMode,
+      'showHeadingBreadcrumbsInSymbolMode',
+    );
+
     this.showEnableSymbolTypesToggle(containerEl, config);
     this.showEnableLinksToggle(containerEl, config);
     this.showSymbolTabNavigationBehavior(containerEl, config);

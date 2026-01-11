@@ -163,7 +163,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       }
 
       this.addClassesToSuggestionContainer(parentEl, parentElClasses);
-      const { titleEl } = Handler.createContentStructureElements(parentEl);
+      const { contentEl, titleEl } = Handler.createContentStructureElements(parentEl);
 
       SymbolHandler.renderSymbolContent(
         this.app,
@@ -173,6 +173,8 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
         file,
         match,
       );
+
+      this.renderHeadingBreadcrumbsInSymbolMode(contentEl, item.symbol, file);
 
       this.addSymbolIndicator(item, parentEl);
       handled = true;
@@ -907,6 +909,32 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
       this.renderIndicator(flairContainerEl, flairElClasses, null, indicator);
     }
+  }
+
+  /**
+   * Renders heading breadcrumbs when displaying a heading symbol in symbol mode.
+   * This wraps the base class `renderHeadingBreadcrumbs()` method with a type guard
+   * to ensure the symbol is a heading, and passes the symbol mode setting.
+   *
+   * @param contentEl - The containing element for the breadcrumb
+   * @param symbol - The symbol payload to check and render
+   * @param file - The file containing the heading
+   */
+  private renderHeadingBreadcrumbsInSymbolMode(
+    contentEl: HTMLElement,
+    symbol: AnySymbolInfoPayload,
+    file: TFile,
+  ): void {
+    if (!isHeadingCache(symbol)) {
+      return;
+    }
+
+    this.renderHeadingBreadcrumbs(
+      contentEl,
+      symbol,
+      file,
+      this.settings.showHeadingBreadcrumbsInSymbolMode,
+    );
   }
 
   static isCanvasSymbolPayload(

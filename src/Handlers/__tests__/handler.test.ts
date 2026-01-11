@@ -32,6 +32,7 @@ import {
   makeFileSuggestion,
   makeHeadingSuggestion,
   makeLeafDeferred,
+  makeHeading,
 } from '@fixtures';
 import {
   AnySuggestion,
@@ -45,12 +46,26 @@ import {
   BookmarksItemInfo,
   SettingsData,
 } from 'src/types';
+import {
+  stripMDExtensionFromPath,
+  getHeadingBreadcrumbs,
+  formatHeadingBreadcrumbs,
+} from 'src/utils';
 import { mock, mockClear, mockFn, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
 import { SwitcherPlusSettings } from 'src/settings';
-import { stripMDExtensionFromPath } from 'src/utils';
 import { Chance } from 'chance';
 import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
+
+// Mock the utility functions for renderHeadingBreadcrumbs tests
+jest.mock('src/utils', () => {
+  return {
+    __esModule: true,
+    ...jest.requireActual<typeof import('src/utils')>('src/utils'),
+    getHeadingBreadcrumbs: jest.fn(),
+    formatHeadingBreadcrumbs: jest.fn(),
+  };
+});
 
 const chance = new Chance();
 
@@ -1462,6 +1477,338 @@ describe('Handler', () => {
       );
 
       getDisplayTextSpy.mockRestore();
+    });
+  });
+
+  describe('renderBreadcrumb', () => {
+    const mockSetIcon = jest.mocked(setIcon);
+    const mockRenderResults = jest.mocked(renderResults);
+    let mockParentEl: MockProxy<HTMLElement>;
+    let mockWrapperEl: MockProxy<HTMLDivElement>;
+    let mockIconEl: MockProxy<HTMLSpanElement>;
+    let mockContentEl: MockProxy<HTMLSpanElement>;
+
+    beforeAll(() => {
+      mockParentEl = mock<HTMLElement>();
+      mockWrapperEl = mock<HTMLDivElement>();
+      mockIconEl = mock<HTMLSpanElement>();
+      mockContentEl = mock<HTMLSpanElement>();
+
+      mockParentEl.createDiv.mockReturnValue(mockWrapperEl);
+      mockWrapperEl.createSpan.mockImplementation(
+        (options?: { cls: string | string[] }) => {
+          const classes = Array.isArray(options?.cls) ? options.cls : [options?.cls];
+          if (classes.includes('qsp-breadcrumb-indicator')) {
+            return mockIconEl;
+          }
+          if (classes.includes('qsp-breadcrumb')) {
+            return mockContentEl;
+          }
+          return mock<HTMLSpanElement>();
+        },
+      );
+    });
+
+    afterEach(() => {
+      mockClear(mockParentEl);
+      mockClear(mockWrapperEl);
+      mockClear(mockIconEl);
+      mockClear(mockContentEl);
+      mockSetIcon.mockClear();
+      mockRenderResults.mockClear();
+    });
+
+    it('should not throw on falsy parentEl', () => {
+      expect(() => sut.renderBreadcrumb(null, 'content', 'icon')).not.toThrow();
+    });
+
+    it('should not throw on falsy content', () => {
+      expect(() => sut.renderBreadcrumb(mockParentEl, null, 'icon')).not.toThrow();
+    });
+
+    it('should not render anything when parentEl is null', () => {
+      sut.renderBreadcrumb(null, 'content', 'icon');
+
+      expect(mockParentEl.createDiv).not.toHaveBeenCalled();
+      expect(mockSetIcon).not.toHaveBeenCalled();
+      expect(mockRenderResults).not.toHaveBeenCalled();
+    });
+
+    it('should not render anything when content is empty', () => {
+      sut.renderBreadcrumb(mockParentEl, '', 'icon');
+
+      expect(mockParentEl.createDiv).not.toHaveBeenCalled();
+      expect(mockSetIcon).not.toHaveBeenCalled();
+      expect(mockRenderResults).not.toHaveBeenCalled();
+    });
+
+    it('should render breadcrumb with base classes', () => {
+      const content = 'Test Content';
+      const iconName = 'lucide-folder-open';
+
+      sut.renderBreadcrumb(mockParentEl, content, iconName);
+
+      expect(mockParentEl.createDiv).toHaveBeenCalledWith({
+        cls: ['suggestion-note', 'qsp-note'],
+      });
+      expect(mockWrapperEl.createSpan).toHaveBeenCalledWith({
+        cls: ['qsp-breadcrumb-indicator'],
+      });
+      expect(mockSetIcon).toHaveBeenCalledWith(mockIconEl, iconName);
+      expect(mockWrapperEl.createSpan).toHaveBeenCalledWith({
+        cls: 'qsp-breadcrumb',
+      });
+      expect(mockRenderResults).toHaveBeenCalledWith(mockContentEl, content, undefined);
+    });
+
+    it('should render breadcrumb with custom CSS classes', () => {
+      const content = 'Test Content';
+      const iconName = 'lucide-heading';
+      const cssClasses = ['custom-class-1', 'custom-class-2'];
+
+      sut.renderBreadcrumb(mockParentEl, content, iconName, undefined, cssClasses);
+
+      expect(mockParentEl.createDiv).toHaveBeenCalledWith({
+        cls: ['suggestion-note', 'qsp-note', ...cssClasses],
+      });
+    });
+
+    it('should render breadcrumb with search result match', () => {
+      const content = 'Test Content';
+      const iconName = 'lucide-tags';
+      const match = makeFuzzyMatch([[0, 4]], -0.5);
+
+      sut.renderBreadcrumb(mockParentEl, content, iconName, match);
+
+      expect(mockRenderResults).toHaveBeenCalledWith(mockContentEl, content, match);
+    });
+
+    it('should render breadcrumb with different icon names', () => {
+      const content = 'Test Content';
+      const iconNames = ['lucide-folder-open', 'lucide-heading', 'lucide-tags'];
+
+      iconNames.forEach((iconName) => {
+        mockSetIcon.mockClear();
+        sut.renderBreadcrumb(mockParentEl, content, iconName);
+        expect(mockSetIcon).toHaveBeenCalledWith(mockIconEl, iconName);
+      });
+    });
+
+    it('should match DOM structure of renderPath', () => {
+      const content = 'Test Content';
+      const iconName = 'lucide-folder-open';
+
+      sut.renderBreadcrumb(mockParentEl, content, iconName);
+
+      // Verify structure matches renderPath pattern:
+      // 1. Wrapper div with base classes
+      expect(mockParentEl.createDiv).toHaveBeenCalledWith({
+        cls: expect.arrayContaining(['suggestion-note', 'qsp-note']) as string[],
+      });
+
+      // 2. Icon span with indicator class
+      expect(mockWrapperEl.createSpan).toHaveBeenCalledWith({
+        cls: ['qsp-breadcrumb-indicator'],
+      });
+
+      // 3. Content span with breadcrumb class
+      expect(mockWrapperEl.createSpan).toHaveBeenCalledWith({
+        cls: 'qsp-breadcrumb',
+      });
+
+      // 4. Icon is set
+      expect(mockSetIcon).toHaveBeenCalled();
+
+      // 5. Content is rendered with renderResults
+      expect(mockRenderResults).toHaveBeenCalled();
+    });
+  });
+
+  describe('renderHeadingBreadcrumbs', () => {
+    const mockGetHeadingBreadcrumbs =
+      jest.mocked<typeof getHeadingBreadcrumbs>(getHeadingBreadcrumbs);
+    const mockFormatHeadingBreadcrumbs = jest.mocked<typeof formatHeadingBreadcrumbs>(
+      formatHeadingBreadcrumbs,
+    );
+    let mockRenderBreadcrumb: jest.SpyInstance;
+    let mockParentEl: MockProxy<HTMLElement>;
+    let mockWrapperEl: MockProxy<HTMLDivElement>;
+    let mockFile: TFile;
+    let mockHeading: HeadingCache;
+
+    beforeAll(() => {
+      mockParentEl = mock<HTMLElement>();
+      mockWrapperEl = mock<HTMLDivElement>();
+      mockParentEl.createDiv.mockReturnValue(mockWrapperEl);
+      mockFile = new TFile();
+      mockHeading = makeHeading('Test Heading', 2);
+      mockRenderBreadcrumb = jest.spyOn(Handler.prototype, 'renderBreadcrumb');
+    });
+
+    beforeEach(() => {
+      mockReset(mockSettings);
+      mockSettings.showHeadingBreadcrumbs = true;
+      mockSettings.headingBreadcrumbSeparator = ' > ';
+      mockSettings.maxBreadcrumbDepth = 0;
+      jest.clearAllMocks();
+    });
+
+    afterAll(() => {
+      mockRenderBreadcrumb.mockRestore();
+    });
+
+    it('should render breadcrumbs when data exists', () => {
+      // Arrange
+      const h1 = makeHeading('Parent Heading', 1);
+      const breadcrumbs = [h1];
+      const formattedBreadcrumbs = 'Parent Heading';
+
+      mockGetHeadingBreadcrumbs.mockReturnValueOnce(breadcrumbs);
+      mockFormatHeadingBreadcrumbs.mockReturnValueOnce(formattedBreadcrumbs);
+
+      // Act
+      sut.renderHeadingBreadcrumbs(mockParentEl, mockHeading, mockFile);
+
+      // Assert
+      expect(mockGetHeadingBreadcrumbs).toHaveBeenCalledWith(
+        mockHeading,
+        mockFile,
+        mockMetadataCache,
+      );
+      expect(mockFormatHeadingBreadcrumbs).toHaveBeenCalledWith(
+        breadcrumbs,
+        mockSettings.headingBreadcrumbSeparator,
+        mockSettings.maxBreadcrumbDepth,
+      );
+      expect(mockRenderBreadcrumb).toHaveBeenCalledWith(
+        mockParentEl,
+        formattedBreadcrumbs,
+        'lucide-heading',
+      );
+    });
+
+    it('should not render anything for H1 heading (no breadcrumbs)', () => {
+      // Arrange
+      const h1Heading = makeHeading('H1 Heading', 1);
+
+      // Act
+      sut.renderHeadingBreadcrumbs(mockParentEl, h1Heading, mockFile);
+
+      // Assert
+      expect(mockGetHeadingBreadcrumbs).not.toHaveBeenCalled();
+      expect(mockFormatHeadingBreadcrumbs).not.toHaveBeenCalled();
+      expect(mockRenderBreadcrumb).not.toHaveBeenCalled();
+    });
+
+    it('should not render when showHeadingBreadcrumbs setting is disabled', () => {
+      // Arrange
+      mockSettings.showHeadingBreadcrumbs = false;
+
+      // Act
+      sut.renderHeadingBreadcrumbs(mockParentEl, mockHeading, mockFile);
+
+      // Assert
+      expect(mockGetHeadingBreadcrumbs).not.toHaveBeenCalled();
+      expect(mockFormatHeadingBreadcrumbs).not.toHaveBeenCalled();
+      expect(mockRenderBreadcrumb).not.toHaveBeenCalled();
+    });
+
+    it('should not render when parentEl is null', () => {
+      // Act
+      sut.renderHeadingBreadcrumbs(null, mockHeading, mockFile);
+
+      // Assert
+      expect(mockGetHeadingBreadcrumbs).not.toHaveBeenCalled();
+      expect(mockFormatHeadingBreadcrumbs).not.toHaveBeenCalled();
+      expect(mockRenderBreadcrumb).not.toHaveBeenCalled();
+    });
+
+    it('should not render when item is null', () => {
+      // Act
+      sut.renderHeadingBreadcrumbs(mockParentEl, null, mockFile);
+
+      // Assert
+      expect(mockGetHeadingBreadcrumbs).not.toHaveBeenCalled();
+      expect(mockFormatHeadingBreadcrumbs).not.toHaveBeenCalled();
+      expect(mockRenderBreadcrumb).not.toHaveBeenCalled();
+    });
+
+    it('should not render when file is null', () => {
+      // Act
+      sut.renderHeadingBreadcrumbs(mockParentEl, mockHeading, null);
+
+      // Assert
+      expect(mockGetHeadingBreadcrumbs).not.toHaveBeenCalled();
+      expect(mockFormatHeadingBreadcrumbs).not.toHaveBeenCalled();
+      expect(mockRenderBreadcrumb).not.toHaveBeenCalled();
+    });
+
+    it('should not render when breadcrumbs array is empty', () => {
+      // Arrange
+      mockGetHeadingBreadcrumbs.mockReturnValueOnce([]);
+
+      // Act
+      sut.renderHeadingBreadcrumbs(mockParentEl, mockHeading, mockFile);
+
+      // Assert
+      expect(mockGetHeadingBreadcrumbs).toHaveBeenCalled();
+      expect(mockFormatHeadingBreadcrumbs).not.toHaveBeenCalled();
+      expect(mockRenderBreadcrumb).not.toHaveBeenCalled();
+    });
+
+    it('should not render when formatted breadcrumbs is empty string', () => {
+      // Arrange
+      const breadcrumbs = [makeHeading('Parent', 1)];
+      mockGetHeadingBreadcrumbs.mockReturnValueOnce(breadcrumbs);
+      mockFormatHeadingBreadcrumbs.mockReturnValueOnce('');
+
+      // Act
+      sut.renderHeadingBreadcrumbs(mockParentEl, mockHeading, mockFile);
+
+      // Assert
+      expect(mockGetHeadingBreadcrumbs).toHaveBeenCalled();
+      expect(mockFormatHeadingBreadcrumbs).toHaveBeenCalled();
+      expect(mockRenderBreadcrumb).not.toHaveBeenCalled();
+    });
+
+    it('should pass maxBreadcrumbDepth setting to formatHeadingBreadcrumbs', () => {
+      // Arrange
+      const breadcrumbs = [makeHeading('Parent', 1)];
+      const formattedBreadcrumbs = 'Parent';
+      mockSettings.maxBreadcrumbDepth = 2;
+
+      mockGetHeadingBreadcrumbs.mockReturnValueOnce(breadcrumbs);
+      mockFormatHeadingBreadcrumbs.mockReturnValueOnce(formattedBreadcrumbs);
+
+      // Act
+      sut.renderHeadingBreadcrumbs(mockParentEl, mockHeading, mockFile);
+
+      // Assert
+      expect(mockFormatHeadingBreadcrumbs).toHaveBeenCalledWith(
+        breadcrumbs,
+        mockSettings.headingBreadcrumbSeparator,
+        2,
+      );
+    });
+
+    it('should pass headingBreadcrumbSeparator setting to formatHeadingBreadcrumbs', () => {
+      // Arrange
+      const breadcrumbs = [makeHeading('Parent', 1)];
+      const formattedBreadcrumbs = 'Parent';
+      mockSettings.headingBreadcrumbSeparator = ' / ';
+
+      mockGetHeadingBreadcrumbs.mockReturnValueOnce(breadcrumbs);
+      mockFormatHeadingBreadcrumbs.mockReturnValueOnce(formattedBreadcrumbs);
+
+      // Act
+      sut.renderHeadingBreadcrumbs(mockParentEl, mockHeading, mockFile);
+
+      // Assert
+      expect(mockFormatHeadingBreadcrumbs).toHaveBeenCalledWith(
+        breadcrumbs,
+        ' / ',
+        mockSettings.maxBreadcrumbDepth,
+      );
     });
   });
 

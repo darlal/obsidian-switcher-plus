@@ -1110,6 +1110,59 @@ describe('symbolHandler', () => {
       renderSymbolContentSpy.mockRestore();
     });
 
+    it('should render heading breadcrumbs when enabled', () => {
+      const headingSugg = makeSymbolSuggestion(
+        getHeadings()[3],
+        SymbolType.Heading,
+        new TFile(),
+      );
+      mockMetadataCache.getFileCache.mockReturnValueOnce(rootFixture.cachedMetadata);
+      const previousValue = settings.showHeadingBreadcrumbsInSymbolMode;
+      settings.showHeadingBreadcrumbsInSymbolMode = true;
+      const renderBreadcrumbSpy = jest
+        .spyOn(sut, 'renderBreadcrumb')
+        .mockReturnValueOnce();
+
+      sut.renderSuggestion(headingSugg, mockParentEl);
+
+      expect(renderBreadcrumbSpy).toHaveBeenCalledTimes(1);
+
+      renderBreadcrumbSpy.mockRestore();
+      settings.showHeadingBreadcrumbsInSymbolMode = previousValue;
+    });
+
+    it('should not render heading breadcrumbs for non-heading symbols', () => {
+      const tagSugg = makeSymbolSuggestion(getTags()[0], SymbolType.Tag);
+      const previousValue = settings.showHeadingBreadcrumbsInSymbolMode;
+      settings.showHeadingBreadcrumbsInSymbolMode = true;
+      const renderBreadcrumbSpy = jest.spyOn(sut, 'renderBreadcrumb');
+
+      sut.renderSuggestion(tagSugg, mockParentEl);
+
+      expect(renderBreadcrumbSpy).not.toHaveBeenCalled();
+
+      renderBreadcrumbSpy.mockRestore();
+      settings.showHeadingBreadcrumbsInSymbolMode = previousValue;
+    });
+
+    it('should skip heading breadcrumbs when disabled', () => {
+      const headingSugg = makeSymbolSuggestion(
+        getHeadings()[3],
+        SymbolType.Heading,
+        new TFile(),
+      );
+      const previousValue = settings.showHeadingBreadcrumbsInSymbolMode;
+      settings.showHeadingBreadcrumbsInSymbolMode = false;
+      const renderBreadcrumbSpy = jest.spyOn(sut, 'renderBreadcrumb');
+
+      sut.renderSuggestion(headingSugg, mockParentEl);
+
+      expect(renderBreadcrumbSpy).not.toHaveBeenCalled();
+
+      renderBreadcrumbSpy.mockRestore();
+      settings.showHeadingBreadcrumbsInSymbolMode = previousValue;
+    });
+
     it('should render Tag suggestion', () => {
       const tagSugg = makeSymbolSuggestion(getTags()[0], SymbolType.Tag);
 

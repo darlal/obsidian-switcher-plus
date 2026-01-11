@@ -108,6 +108,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
       const { contentEl, titleEl } = Handler.createContentStructureElements(parentEl);
       HeadingsHandler.renderHeadingContent(app, settings, titleEl, item, file, match);
+      this.renderHeadingBreadcrumbs(contentEl, item, file);
       this.renderPath(contentEl, file);
 
       // render the flair icons

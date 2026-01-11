@@ -1,4 +1,12 @@
-import { FileManager, TFile, Vault, normalizePath, parseLinktext } from 'obsidian';
+import {
+  FileManager,
+  TFile,
+  Vault,
+  normalizePath,
+  parseLinktext,
+  MetadataCache,
+  HeadingCache,
+} from 'obsidian';
 import {
   BookmarksSuggestion,
   LinkType,
@@ -15,6 +23,8 @@ import {
   generateMarkdownLink,
   leafHasLoadedViewOfType,
   getTFileFromLeaf,
+  getHeadingBreadcrumbs,
+  formatHeadingBreadcrumbs,
 } from 'src/utils';
 import {
   getTags,
@@ -31,6 +41,7 @@ import {
   makeRelatedItemsSuggestion,
   makeSymbolSuggestion,
   makeUnresolvedSuggestion,
+  makeLoc,
 } from '@fixtures';
 import { MockProxy, mock, mockClear, mockReset } from 'jest-mock-extended';
 import { Chance } from 'chance';
@@ -524,6 +535,332 @@ describe('utils', () => {
       const result = leafHasLoadedViewOfType(mockLeaf, 'markdown');
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('getHeadingBreadcrumbs', () => {
+    let mockMetadataCache: MockProxy<MetadataCache>;
+    let mockFile: TFile;
+
+    beforeEach(() => {
+      mockMetadataCache = mock<MetadataCache>();
+      mockFile = new TFile();
+    });
+
+    afterEach(() => {
+      mockReset(mockMetadataCache);
+    });
+
+    it('should return empty array for H1 heading (no breadcrumbs)', () => {
+      // Arrange
+      const h1 = makeHeading('Title', 1, makeLoc(0, 0, 0), makeLoc(0, 5, 5));
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h1],
+      });
+
+      // Act
+      const result = getHeadingBreadcrumbs(h1, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual([]);
+      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(mockFile);
+    });
+
+    it('should return correct breadcrumbs for normal hierarchy (H1 → H2 → H3)', () => {
+      // Arrange
+      const h1 = makeHeading('Big Idea', 1, makeLoc(0, 0, 0), makeLoc(0, 8, 8));
+      const h2 = makeHeading('Section', 2, makeLoc(5, 0, 50), makeLoc(5, 7, 57));
+      const h3 = makeHeading('Subsection', 3, makeLoc(10, 0, 100), makeLoc(10, 10, 110));
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h1, h2, h3],
+      });
+
+      // Act
+      const result = getHeadingBreadcrumbs(h3, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBe(h1);
+      expect(result[1]).toBe(h2);
+      expect(result[0].level).toBe(1);
+      expect(result[1].level).toBe(2);
+    });
+
+    it('should handle skipped levels (H1 → H3, no H2)', () => {
+      // Arrange
+      const h1 = makeHeading('Big Idea', 1, makeLoc(0, 0, 0), makeLoc(0, 8, 8));
+      const h3 = makeHeading('Subsection', 3, makeLoc(10, 0, 100), makeLoc(10, 10, 110));
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h1, h3],
+      });
+
+      // Act
+      const result = getHeadingBreadcrumbs(h3, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0]).toBe(h1);
+      expect(result[0].level).toBe(1);
+    });
+
+    it('should handle multiple H1s in file correctly', () => {
+      // Arrange
+      const h1a = makeHeading('First H1', 1, makeLoc(0, 0, 0), makeLoc(0, 8, 8));
+      const h2a = makeHeading('Section A', 2, makeLoc(5, 0, 50), makeLoc(5, 9, 59));
+      const h1b = makeHeading('Second H1', 1, makeLoc(20, 0, 200), makeLoc(20, 11, 211));
+      const h2b = makeHeading('Section B', 2, makeLoc(25, 0, 250), makeLoc(25, 9, 259));
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h1a, h2a, h1b, h2b],
+      });
+
+      // Act
+      const result = getHeadingBreadcrumbs(h2b, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0]).toBe(h1b);
+      expect(result[0].heading).toBe('Second H1');
+    });
+
+    it('should return empty array when file has no headings', () => {
+      // Arrange
+      const h1 = makeHeading('Title', 1, makeLoc(0, 0, 0), makeLoc(0, 5, 5));
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [],
+      });
+
+      // Act
+      const result = getHeadingBreadcrumbs(h1, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array when file cache is null', () => {
+      // Arrange
+      const h1 = makeHeading('Title', 1, makeLoc(0, 0, 0), makeLoc(0, 5, 5));
+      mockMetadataCache.getFileCache.mockReturnValue(null);
+
+      // Act
+      const result = getHeadingBreadcrumbs(h1, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array when file cache is undefined', () => {
+      // Arrange
+      const h1 = makeHeading('Title', 1, makeLoc(0, 0, 0), makeLoc(0, 5, 5));
+      mockMetadataCache.getFileCache.mockReturnValue(undefined);
+
+      // Act
+      const result = getHeadingBreadcrumbs(h1, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual([]);
+    });
+
+    it('should handle heading at line 0 (first line)', () => {
+      // Arrange
+      const h1 = makeHeading('First Heading', 1, makeLoc(0, 0, 0), makeLoc(0, 12, 12));
+      const h2 = makeHeading('Second Heading', 2, makeLoc(1, 0, 13), makeLoc(1, 14, 27));
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h1, h2],
+      });
+
+      // Act
+      const result = getHeadingBreadcrumbs(h2, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0]).toBe(h1);
+    });
+
+    it('should handle very deep hierarchy (H1 → H2 → H3 → H4 → H5 → H6)', () => {
+      // Arrange
+      const h1 = makeHeading('Level 1', 1, makeLoc(0, 0, 0), makeLoc(0, 7, 7));
+      const h2 = makeHeading('Level 2', 2, makeLoc(1, 0, 8), makeLoc(1, 7, 15));
+      const h3 = makeHeading('Level 3', 3, makeLoc(2, 0, 16), makeLoc(2, 7, 23));
+      const h4 = makeHeading('Level 4', 4, makeLoc(3, 0, 24), makeLoc(3, 7, 31));
+      const h5 = makeHeading('Level 5', 5, makeLoc(4, 0, 32), makeLoc(4, 7, 39));
+      const h6 = makeHeading('Level 6', 6, makeLoc(5, 0, 40), makeLoc(5, 7, 47));
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h1, h2, h3, h4, h5, h6],
+      });
+
+      // Act
+      const result = getHeadingBreadcrumbs(h6, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toHaveLength(5);
+      expect(result[0].level).toBe(1);
+      expect(result[1].level).toBe(2);
+      expect(result[2].level).toBe(3);
+      expect(result[3].level).toBe(4);
+      expect(result[4].level).toBe(5);
+    });
+
+    it('should find closest preceding heading when multiple headings exist at same level', () => {
+      // Arrange
+      const h1a = makeHeading('First H1', 1, makeLoc(0, 0, 0), makeLoc(0, 8, 8));
+      const h2a = makeHeading('First H2', 2, makeLoc(5, 0, 50), makeLoc(5, 8, 58));
+      const h1b = makeHeading('Second H1', 1, makeLoc(10, 0, 100), makeLoc(10, 9, 109));
+      const h2b = makeHeading('Second H2', 2, makeLoc(15, 0, 150), makeLoc(15, 9, 159));
+      const h3 = makeHeading(
+        'H3 under second H2',
+        3,
+        makeLoc(20, 0, 200),
+        makeLoc(20, 18, 218),
+      );
+
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h1a, h2a, h1b, h2b, h3],
+      });
+
+      // Act
+      const result = getHeadingBreadcrumbs(h3, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBe(h1b);
+      expect(result[1]).toBe(h2b);
+    });
+  });
+
+  describe('formatHeadingBreadcrumbs', () => {
+    it('should format breadcrumbs with default separator', () => {
+      // Arrange
+      const h1 = makeHeading('Big Idea', 1);
+      const h2 = makeHeading('Section', 2);
+      const breadcrumbs = [h1, h2];
+
+      // Act
+      const result = formatHeadingBreadcrumbs(breadcrumbs);
+
+      // Assert
+      expect(result).toBe('Big Idea > Section');
+    });
+
+    it('should format breadcrumbs with custom separator', () => {
+      // Arrange
+      const h1 = makeHeading('Big Idea', 1);
+      const h2 = makeHeading('Section', 2);
+      const breadcrumbs = [h1, h2];
+
+      // Act
+      const result = formatHeadingBreadcrumbs(breadcrumbs, ' / ');
+
+      // Assert
+      expect(result).toBe('Big Idea / Section');
+    });
+
+    it('should return empty string for empty breadcrumbs array', () => {
+      // Arrange
+      const breadcrumbs: HeadingCache[] = [];
+
+      // Act
+      const result = formatHeadingBreadcrumbs(breadcrumbs);
+
+      // Assert
+      expect(result).toBe('');
+    });
+
+    it('should handle single breadcrumb', () => {
+      // Arrange
+      const h1 = makeHeading('Single Heading', 1);
+      const breadcrumbs = [h1];
+
+      // Act
+      const result = formatHeadingBreadcrumbs(breadcrumbs);
+
+      // Assert
+      expect(result).toBe('Single Heading');
+    });
+
+    it('should truncate to rightmost N breadcrumbs when maxDepth is set', () => {
+      // Arrange
+      const h1 = makeHeading('Level 1', 1);
+      const h2 = makeHeading('Level 2', 2);
+      const h3 = makeHeading('Level 3', 3);
+      const h4 = makeHeading('Level 4', 4);
+      const breadcrumbs = [h1, h2, h3, h4];
+
+      // Act
+      const result = formatHeadingBreadcrumbs(breadcrumbs, ' > ', 2);
+
+      // Assert
+      expect(result).toBe('Level 3 > Level 4');
+    });
+
+    it('should show all breadcrumbs when maxDepth is 0 (unlimited)', () => {
+      // Arrange
+      const h1 = makeHeading('Level 1', 1);
+      const h2 = makeHeading('Level 2', 2);
+      const h3 = makeHeading('Level 3', 3);
+      const breadcrumbs = [h1, h2, h3];
+
+      // Act
+      const result = formatHeadingBreadcrumbs(breadcrumbs, ' > ', 0);
+
+      // Assert
+      expect(result).toBe('Level 1 > Level 2 > Level 3');
+    });
+
+    it('should show only most immediate parent when maxDepth is 1', () => {
+      // Arrange
+      const h1 = makeHeading('Level 1', 1);
+      const h2 = makeHeading('Level 2', 2);
+      const h3 = makeHeading('Level 3', 3);
+      const breadcrumbs = [h1, h2, h3];
+
+      // Act
+      const result = formatHeadingBreadcrumbs(breadcrumbs, ' > ', 1);
+
+      // Assert
+      expect(result).toBe('Level 3');
+    });
+
+    it('should not truncate when breadcrumbs length equals maxDepth', () => {
+      // Arrange
+      const h1 = makeHeading('Level 1', 1);
+      const h2 = makeHeading('Level 2', 2);
+      const breadcrumbs = [h1, h2];
+
+      // Act
+      const result = formatHeadingBreadcrumbs(breadcrumbs, ' > ', 2);
+
+      // Assert
+      expect(result).toBe('Level 1 > Level 2');
+    });
+
+    it('should not truncate when breadcrumbs length is less than maxDepth', () => {
+      // Arrange
+      const h1 = makeHeading('Level 1', 1);
+      const h2 = makeHeading('Level 2', 2);
+      const breadcrumbs = [h1, h2];
+
+      // Act
+      const result = formatHeadingBreadcrumbs(breadcrumbs, ' > ', 5);
+
+      // Assert
+      expect(result).toBe('Level 1 > Level 2');
+    });
+
+    it('should handle very deep hierarchy with maxDepth truncation', () => {
+      // Arrange
+      const h1 = makeHeading('Level 1', 1);
+      const h2 = makeHeading('Level 2', 2);
+      const h3 = makeHeading('Level 3', 3);
+      const h4 = makeHeading('Level 4', 4);
+      const h5 = makeHeading('Level 5', 5);
+      const h6 = makeHeading('Level 6', 6);
+      const breadcrumbs = [h1, h2, h3, h4, h5, h6];
+
+      // Act
+      const result = formatHeadingBreadcrumbs(breadcrumbs, ' > ', 3);
+
+      // Assert
+      expect(result).toBe('Level 4 > Level 5 > Level 6');
     });
   });
 });

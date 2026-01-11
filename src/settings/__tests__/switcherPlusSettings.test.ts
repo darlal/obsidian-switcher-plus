@@ -6,6 +6,7 @@ import {
   SettingsData,
   RecentCommandDisplayOrder,
   SymbolType,
+  TagSource,
 } from 'src/types';
 import SwitcherPlusPlugin from 'src/main';
 import { SwitcherPlusSettings, getFacetMap } from 'src/settings';
@@ -196,6 +197,16 @@ function getDefaultSettingsData(): SettingsData {
       ],
     },
     saveWorkspaceAndSwitchKeys: { modifiers: ['Mod', 'Shift'], key: 's' },
+    showHeadingBreadcrumbs: true,
+    headingBreadcrumbSeparator: ' > ',
+    maxBreadcrumbDepth: 0,
+    showHeadingBreadcrumbsInSymbolMode: false,
+    showTagsInSuggestions: false,
+    tagSource: TagSource.Both,
+    excludeTagsFromDisplay: [],
+    tagDisplaySeparator: ' ',
+    removeHashPrefixFromTags: false,
+    maxTagsToDisplay: 0,
   };
 
   return data;
@@ -383,6 +394,19 @@ function getTransientSettingsData(): SettingsData {
       modifiers: chance.pickset(['Alt', 'Ctrl'], 1),
       key: chance.letter(),
     },
+    showHeadingBreadcrumbs: chance.bool(),
+    headingBreadcrumbSeparator: chance.string(),
+    maxBreadcrumbDepth: chance.integer({ min: 0, max: 10 }),
+    showHeadingBreadcrumbsInSymbolMode: chance.bool(),
+    showTagsInSuggestions: chance.bool(),
+    tagSource: chance.pickone(Object.values(TagSource)),
+    excludeTagsFromDisplay: chance.n(
+      () => chance.word(),
+      chance.integer({ min: 0, max: 5 }),
+    ),
+    tagDisplaySeparator: chance.string(),
+    removeHashPrefixFromTags: chance.bool(),
+    maxTagsToDisplay: chance.integer({ min: 0, max: 20 }),
   };
 
   return data;

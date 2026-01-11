@@ -15,6 +15,7 @@ import {
   WorkspaceLeaf,
   stripHeadingForLink,
   GlobalSearchPluginInstance,
+  MetadataCache,
 } from 'obsidian';
 import {
   SymbolSuggestion,
@@ -425,6 +426,92 @@ function generateMarkdownLinkForReferenceCache(
   }
 
   return linkStr;
+}
+
+/**
+ * Extracts the hierarchical parent headings for a given heading by finding the closest
+ * preceding heading at each level from 1 to (heading.level - 1). This builds a breadcrumb
+ * trail that represents the heading's position in the document hierarchy.
+ *
+ * The algorithm works by:
+ * 1. Finding all headings that come before the target heading by line number
+ * 2. For each level from 1 to (heading.level - 1), finding the closest preceding heading
+ *    at that level (the one with the highest line number)
+ * 3. Sorting the result by level (ascending) to ensure H1 → H2 → H3 ordering
+ *
+ * @param heading - The heading for which to extract breadcrumbs
+ * @param file - The file containing the heading
+ * @param metadataCache - The Obsidian metadata cache to retrieve file headings
+ * @returns Array of HeadingCache objects representing parent headings, sorted by level (H1 → H2 → H3)
+ */
+export function getHeadingBreadcrumbs(
+  heading: HeadingCache,
+  file: TFile,
+  metadataCache: MetadataCache,
+): HeadingCache[] {
+  const allHeadings = metadataCache.getFileCache(file)?.headings ?? [];
+  const headingLine = heading.position.start.line;
+
+  // Track the closest (most recent) heading at each level that comes before our heading
+  const closestByLevel = new Map<number, HeadingCache>();
+
+  // Single pass through headings: find closest parent at each level
+  for (const h of allHeadings) {
+    const hLine = h.position.start.line;
+
+    // Only consider headings that come before our target heading
+    if (hLine >= headingLine) {
+      continue;
+    }
+
+    // Only consider headings at levels that are parents of our heading
+    if (h.level >= heading.level) {
+      continue;
+    }
+
+    // Update if this is the closest heading we've seen at this level
+    const existing = closestByLevel.get(h.level);
+    if (!existing || hLine > existing.position.start.line) {
+      closestByLevel.set(h.level, h);
+    }
+  }
+
+  // Convert map to array and sort by level (H1 → H2 → H3)
+  const breadcrumbs: HeadingCache[] = [];
+  for (let level = 1; level < heading.level; level++) {
+    const parent = closestByLevel.get(level);
+    if (parent) {
+      breadcrumbs.push(parent);
+    }
+  }
+
+  return breadcrumbs;
+}
+
+/**
+ * Formats a breadcrumbs array into a display string with optional depth truncation.
+ * When maxDepth is set to N > 0 and breadcrumbs exceed it, only the rightmost N
+ * breadcrumbs (most immediate parents) are kept. This allows showing only the most
+ * relevant parent context when the hierarchy is deep.
+ *
+ * @param breadcrumbs - Array of HeadingCache objects to format
+ * @param separator - String to use between breadcrumb items (default: ' > ')
+ * @param maxDepth - Maximum number of breadcrumbs to display. 0 = unlimited (default: 0)
+ * @returns Formatted string like "Big Idea > Section" or empty string if no breadcrumbs
+ */
+export function formatHeadingBreadcrumbs(
+  breadcrumbs: HeadingCache[],
+  separator: string = ' > ',
+  maxDepth: number = 0, // 0 = unlimited
+): string {
+  let crumbs = breadcrumbs;
+
+  // If maxDepth is set and breadcrumbs exceed it, keep only the rightmost N
+  if (maxDepth > 0 && breadcrumbs.length > maxDepth) {
+    crumbs = breadcrumbs.slice(-maxDepth);
+  }
+
+  return crumbs.map((h) => h.heading).join(separator);
 }
 
 /**

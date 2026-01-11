@@ -590,12 +590,21 @@ describe('headingsHandler', () => {
       const mockParentEl = mock<HTMLElement>();
       mockParentEl.createDiv.mockReturnValue(mockContentEl);
 
+      const renderHeadingBreadcrumbsSpy = jest
+        .spyOn(Handler.prototype, 'renderHeadingBreadcrumbs')
+        .mockReturnValueOnce();
+
       const renderPathSpy = jest
         .spyOn(Handler.prototype, 'renderPath')
         .mockReturnValueOnce();
 
       sut.renderSuggestion(headingSugg, mockParentEl);
 
+      expect(renderHeadingBreadcrumbsSpy).toHaveBeenCalledWith(
+        mockContentEl,
+        headingSugg.item,
+        headingSugg.file,
+      );
       expect(renderPathSpy).toHaveBeenCalledWith(mockContentEl, headingSugg.file);
 
       // Check that the first call to renderResults has the expected content passed in
@@ -611,6 +620,7 @@ describe('headingsHandler', () => {
       );
 
       mockRenderResults.mockRestore();
+      renderHeadingBreadcrumbsSpy.mockRestore();
       renderPathSpy.mockRestore();
     });
 

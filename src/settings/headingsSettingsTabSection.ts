@@ -92,6 +92,8 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
         config.searchAllHeadings,
         'searchAllHeadings',
       );
+
+      this.showBreadcrumbSettings(group, config);
     }
   }
 
@@ -159,6 +161,36 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
         }
       });
     });
+  }
+
+  showBreadcrumbSettings(
+    containerEl: HTMLElement | SettingGroup,
+    config: SwitcherPlusSettings,
+  ): void {
+    this.addToggleSetting(
+      containerEl,
+      'Show heading breadcrumbs',
+      'Enabled, display the hierarchical path of parent headings leading to each heading suggestion.',
+      config.showHeadingBreadcrumbs,
+      'showHeadingBreadcrumbs',
+    );
+
+    this.addTextSetting(
+      containerEl,
+      'Breadcrumb separator',
+      'The string used to separate heading levels in breadcrumbs',
+      config.headingBreadcrumbSeparator,
+      'headingBreadcrumbSeparator',
+    );
+
+    this.addSliderSetting(
+      containerEl,
+      'Max breadcrumb depth',
+      'Maximum number of heading levels to show in breadcrumbs. Set to 0 for unlimited depth.',
+      config.maxBreadcrumbDepth,
+      [0, 6, 1, 0],
+      'maxBreadcrumbDepth',
+    );
   }
 
   validateExcludeFolderList(settingName: string, excludes: string[]) {
