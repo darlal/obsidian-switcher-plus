@@ -1895,6 +1895,327 @@ describe('SwitcherPlusKeymap', () => {
     });
   });
 
+  describe('Facet hash caching', () => {
+    let sut: SwitcherPlusKeymap;
+    const mockInstructionsEl = mock<HTMLElement>();
+
+    beforeAll(() => {
+      mockModalEl.querySelector.calledWith(selector).mockReturnValue(mockInstructionsEl);
+    });
+
+    beforeEach(() => {
+      // Ensure renderMarkdownContentInSuggestions is set (may be null from prior test cleanup)
+      mockConfig.renderMarkdownContentInSuggestions = {
+        isEnabled: false,
+        renderHeadings: false,
+        renderLinks: false,
+        renderTags: false,
+        renderCallouts: false,
+        toggleContentRenderingKeys: null,
+      };
+
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        mockModal,
+        mockConfig,
+      );
+
+      mockReset(mockInstructionsEl);
+      mockReset(mockScope);
+      mockScope.keys = [];
+
+      mockClear(mockModalEl);
+      mockClear(mockModal);
+      mockClear(mockInstructionsContainerEl);
+      mockClear(mockInstructionEl);
+      mockClear(createInstructionElFn);
+      mockClear(createInstructionsContainerElFn);
+    });
+
+    it('should unregister and re-register facet keys when facet list changes', () => {
+      const facetA = mock<Facet>({
+        id: 'a',
+        isActive: true,
+        modifiers: undefined,
+        key: null,
+      });
+      const facetB = mock<Facet>({
+        id: 'b',
+        isActive: false,
+        modifiers: undefined,
+        key: null,
+      });
+      const facetSettings = mock<FacetSettingsData>({
+        modifiers: ['Alt'],
+        keyList: ['1', '2'],
+        resetKey: 'r',
+        resetModifiers: ['Alt'],
+      });
+
+      const keymapConfig1 = mock<KeymapConfig>({
+        mode: Mode.HeadingsList,
+        facets: {
+          facetList: [facetA],
+          facetSettings,
+          onToggleFacet: mockFn(),
+        },
+      });
+
+      const unregisterKeysSpy = jest.spyOn(sut, 'unregisterKeys').mockReturnValue([]);
+      const registerFacetSpy = jest.spyOn(sut, 'registerFacetBinding').mockReturnValue();
+
+      // First call - facets are new, should register
+      sut.updateKeymapForMode(keymapConfig1);
+      expect(registerFacetSpy).toHaveBeenCalledWith(mockScope, keymapConfig1);
+
+      registerFacetSpy.mockClear();
+      unregisterKeysSpy.mockClear();
+
+      // Second call with different facet list
+      const keymapConfig2 = mock<KeymapConfig>({
+        mode: Mode.HeadingsList,
+        facets: {
+          facetList: [facetA, facetB],
+          facetSettings,
+          onToggleFacet: mockFn(),
+        },
+      });
+
+      sut.updateKeymapForMode(keymapConfig2);
+      expect(registerFacetSpy).toHaveBeenCalledWith(mockScope, keymapConfig2);
+
+      unregisterKeysSpy.mockRestore();
+      registerFacetSpy.mockRestore();
+    });
+
+    it('should skip facet unregister/register when facet hash is unchanged', () => {
+      const facetA = mock<Facet>({
+        id: 'a',
+        isActive: true,
+        modifiers: undefined,
+        key: null,
+      });
+      const facetSettings = mock<FacetSettingsData>({
+        modifiers: ['Alt'],
+        keyList: ['1'],
+        resetKey: 'r',
+        resetModifiers: ['Alt'],
+      });
+
+      const keymapConfig = mock<KeymapConfig>({
+        mode: Mode.HeadingsList,
+        facets: {
+          facetList: [facetA],
+          facetSettings,
+          onToggleFacet: mockFn(),
+        },
+      });
+
+      const unregisterKeysSpy = jest.spyOn(sut, 'unregisterKeys').mockReturnValue([]);
+      const registerFacetSpy = jest.spyOn(sut, 'registerFacetBinding').mockReturnValue();
+
+      // First call - should register
+      sut.updateKeymapForMode(keymapConfig);
+      expect(registerFacetSpy).toHaveBeenCalledTimes(1);
+
+      // Simulate that facetKeysInfo was populated by registerFacetBinding
+      sut.facetKeysInfo.push({
+        facet: facetA,
+        command: '1',
+        purpose: 'test',
+        modifiers: ['Alt'],
+        key: '1',
+      });
+
+      registerFacetSpy.mockClear();
+      unregisterKeysSpy.mockClear();
+
+      // Second call with same facets - should NOT unregister facet keys or re-register
+      sut.updateKeymapForMode(keymapConfig);
+      // unregisterKeys is called once for customKeymaps but NOT for facetKeysInfo
+      expect(unregisterKeysSpy).not.toHaveBeenCalledWith(mockScope, sut.facetKeysInfo);
+      expect(registerFacetSpy).not.toHaveBeenCalled();
+
+      unregisterKeysSpy.mockRestore();
+      registerFacetSpy.mockRestore();
+    });
+
+    it('should rebuild facet keys when isActive state changes', () => {
+      const facetA = mock<Facet>({
+        id: 'a',
+        isActive: false,
+        modifiers: undefined,
+        key: null,
+      });
+      const facetSettings = mock<FacetSettingsData>({
+        modifiers: ['Alt'],
+        keyList: ['1'],
+        resetKey: 'r',
+        resetModifiers: ['Alt'],
+      });
+
+      const keymapConfig1 = mock<KeymapConfig>({
+        mode: Mode.HeadingsList,
+        facets: {
+          facetList: [facetA],
+          facetSettings,
+          onToggleFacet: mockFn(),
+        },
+      });
+
+      const unregisterKeysSpy = jest.spyOn(sut, 'unregisterKeys').mockReturnValue([]);
+      const registerFacetSpy = jest.spyOn(sut, 'registerFacetBinding').mockReturnValue();
+
+      // First call
+      sut.updateKeymapForMode(keymapConfig1);
+      expect(registerFacetSpy).toHaveBeenCalledTimes(1);
+
+      // Simulate that facetKeysInfo was populated
+      sut.facetKeysInfo.push({
+        facet: facetA,
+        command: '1',
+        purpose: 'test',
+        modifiers: ['Alt'],
+        key: '1',
+      });
+
+      registerFacetSpy.mockClear();
+
+      // Change isActive state
+      const facetAActive = mock<Facet>({
+        id: 'a',
+        isActive: true,
+        modifiers: undefined,
+        key: null,
+      });
+      const keymapConfig2 = mock<KeymapConfig>({
+        mode: Mode.HeadingsList,
+        facets: {
+          facetList: [facetAActive],
+          facetSettings,
+          onToggleFacet: mockFn(),
+        },
+      });
+
+      sut.updateKeymapForMode(keymapConfig2);
+      expect(registerFacetSpy).toHaveBeenCalledTimes(1);
+
+      unregisterKeysSpy.mockRestore();
+      registerFacetSpy.mockRestore();
+    });
+
+    it('should reset facet hash when isOpen is set to false', () => {
+      const facetA = mock<Facet>({
+        id: 'a',
+        isActive: true,
+        modifiers: undefined,
+        key: null,
+      });
+      const facetSettings = mock<FacetSettingsData>({
+        modifiers: ['Alt'],
+        keyList: ['1'],
+        resetKey: 'r',
+        resetModifiers: ['Alt'],
+      });
+
+      const keymapConfig = mock<KeymapConfig>({
+        mode: Mode.HeadingsList,
+        facets: {
+          facetList: [facetA],
+          facetSettings,
+          onToggleFacet: mockFn(),
+        },
+      });
+
+      const unregisterKeysSpy = jest.spyOn(sut, 'unregisterKeys').mockReturnValue([]);
+      const registerFacetSpy = jest.spyOn(sut, 'registerFacetBinding').mockReturnValue();
+
+      // First call - registers facets
+      sut.updateKeymapForMode(keymapConfig);
+      expect(registerFacetSpy).toHaveBeenCalledTimes(1);
+
+      // Simulate that facetKeysInfo was populated
+      sut.facetKeysInfo.push({
+        facet: facetA,
+        command: '1',
+        purpose: 'test',
+        modifiers: ['Alt'],
+        key: '1',
+      });
+
+      registerFacetSpy.mockClear();
+
+      // Same config again - should skip
+      sut.updateKeymapForMode(keymapConfig);
+      expect(registerFacetSpy).not.toHaveBeenCalled();
+
+      registerFacetSpy.mockClear();
+
+      // Simulate close
+      sut.isOpen = false;
+
+      // Same config again after close - should re-register because hash was reset
+      sut.updateKeymapForMode(keymapConfig);
+      expect(registerFacetSpy).toHaveBeenCalledTimes(1);
+
+      unregisterKeysSpy.mockRestore();
+      registerFacetSpy.mockRestore();
+    });
+
+    it('should not reset facet hash when isOpen is set to true', () => {
+      const facetA = mock<Facet>({
+        id: 'a',
+        isActive: true,
+        modifiers: undefined,
+        key: null,
+      });
+      const facetSettings = mock<FacetSettingsData>({
+        modifiers: ['Alt'],
+        keyList: ['1'],
+        resetKey: 'r',
+        resetModifiers: ['Alt'],
+      });
+
+      const keymapConfig = mock<KeymapConfig>({
+        mode: Mode.HeadingsList,
+        facets: {
+          facetList: [facetA],
+          facetSettings,
+          onToggleFacet: mockFn(),
+        },
+      });
+
+      const unregisterKeysSpy = jest.spyOn(sut, 'unregisterKeys').mockReturnValue([]);
+      const registerFacetSpy = jest.spyOn(sut, 'registerFacetBinding').mockReturnValue();
+
+      // First call - registers facets
+      sut.updateKeymapForMode(keymapConfig);
+
+      // Simulate that facetKeysInfo was populated
+      sut.facetKeysInfo.push({
+        facet: facetA,
+        command: '1',
+        purpose: 'test',
+        modifiers: ['Alt'],
+        key: '1',
+      });
+
+      registerFacetSpy.mockClear();
+
+      // Set isOpen to true - should NOT reset hash
+      sut.isOpen = true;
+
+      // Same config again - should skip since hash wasn't reset
+      sut.updateKeymapForMode(keymapConfig);
+      expect(registerFacetSpy).not.toHaveBeenCalled();
+
+      unregisterKeysSpy.mockRestore();
+      registerFacetSpy.mockRestore();
+    });
+  });
+
   describe('saveCurrentAndOpenSelectedWorkspace', () => {
     let sut: SwitcherPlusKeymap;
     let mockWorkspaceSugg: MockProxy<WorkspaceSuggestion>;

@@ -226,7 +226,7 @@ export class RelatedItemsHandler extends Handler<
     const shouldIncludeRelation = (relationType: RelationType) => {
       return (
         enabledRelatedItems.has(relationType) &&
-        this.isFacetedWith(activeFacetIds, relationType)
+        this.isIncludedByFacetFilter(activeFacetIds, relationType)
       );
     };
 

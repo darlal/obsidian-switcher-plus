@@ -252,14 +252,7 @@ export class ModeHandler implements ModeDispatcher {
     const facetList = handler?.getAvailableFacets(inputInfo) ?? [];
 
     const handleFacetKeyEvent = (facets: Facet[], isReset: boolean) => {
-      if (isReset) {
-        // cycle between making all facets active/inactive
-        const hasActive = facets.some((v) => v.isActive === true);
-        handler.activateFacet(facets, !hasActive);
-      } else {
-        // expect facets to contain only one item that needs to be toggled
-        handler.activateFacet(facets, !facets[0].isActive);
-      }
+      handler.activateFacet(facets, { isReset });
 
       // refresh the suggestion list after changing the list of active facets
       this.updatedKeymapForMode(

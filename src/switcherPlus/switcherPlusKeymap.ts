@@ -49,6 +49,7 @@ import {
   SymbolHandler,
   WorkspaceHandler,
 } from 'src/Handlers';
+import { FacetInstructionRenderer } from './facetInstructionRenderer';
 
 /**
  * Mapping of special keys to their string representation for display purposes.
@@ -124,6 +125,7 @@ export class SwitcherPlusKeymap {
   readonly standardInstructionsEl: HTMLElement;
   readonly facetKeysInfo: Array<CustomKeymapInfo & { facet: Facet }> = [];
   readonly insertIntoEditorKeysInfo: CustomKeymapInfo[] = [];
+  private lastFacetHash: string = '';
 
   get isOpen(): boolean {
     return this._isOpen;
@@ -131,6 +133,10 @@ export class SwitcherPlusKeymap {
 
   set isOpen(value: boolean) {
     this._isOpen = value;
+
+    if (!value) {
+      this.lastFacetHash = '';
+    }
   }
 
   /**
@@ -525,6 +531,11 @@ export class SwitcherPlusKeymap {
     return keyInfo;
   }
 
+  private computeFacetHash(facetList: Facet[] | undefined): string {
+    if (!facetList?.length) return '';
+    return facetList.map((f) => `${f.id}:${f.isActive}`).join('|');
+  }
+
   updateKeymapForMode(keymapConfig: KeymapConfig): void {
     const { mode, activeLeaf } = keymapConfig;
     const {
@@ -547,9 +558,13 @@ export class SwitcherPlusKeymap {
     const customKeymaps = customKeysInfo.filter((v) => !v.isInstructionOnly);
     this.unregisterKeys(scope, customKeymaps);
 
-    // Remove facet keys and reset storage array
-    this.unregisterKeys(scope, facetKeysInfo);
-    facetKeysInfo.length = 0;
+    // Remove facet keys and reset storage array only if facets changed
+    const currentFacetHash = this.computeFacetHash(keymapConfig.facets?.facetList);
+    if (currentFacetHash !== this.lastFacetHash) {
+      this.unregisterKeys(scope, facetKeysInfo);
+      facetKeysInfo.length = 0;
+      this.lastFacetHash = currentFacetHash;
+    }
 
     // Filter to just the list of custom keys that should be
     // registered in the current mode
@@ -631,7 +646,12 @@ export class SwitcherPlusKeymap {
     }
 
     this.registerKeys(scope, customKeysToAdd);
-    this.registerFacetBinding(scope, keymapConfig);
+
+    // Only re-register facet bindings if they were cleared (hash changed)
+    if (facetKeysInfo.length === 0) {
+      this.registerFacetBinding(scope, keymapConfig);
+    }
+
     this.showCustomInstructions(modal, keymapConfig, customKeysInfo, facetKeysInfo);
   }
 
@@ -730,54 +750,11 @@ export class SwitcherPlusKeymap {
     facetSettings: FacetSettingsData,
     facetKeysInfo: Array<CustomKeymapInfo & { facet: Facet }>,
   ): void {
-    if (facetKeysInfo?.length && facetSettings.shouldShowFacetInstructions) {
-      const facetInstructionsEl = this.getCustomInstructionsEl('facets', parentEl);
-
-      facetInstructionsEl.empty();
-      parentEl.appendChild(facetInstructionsEl);
-
-      // render the preamble
-      const preamble = `filters | ${SwitcherPlusKeymap.commandDisplayStr(facetSettings.modifiers)}`;
-      this.createPromptInstructionCommandEl(facetInstructionsEl, preamble);
-
-      // render each key instruction
-      facetKeysInfo.forEach((facetKeyInfo) => {
-        const { facet, command, purpose } = facetKeyInfo;
-        let modifiers: Modifier[];
-        let key: string;
-        let activeCls: string[] = null;
-
-        if (facet) {
-          // Note: the command only contain the key, the modifiers has to be derived
-          key = command;
-          modifiers = facet.modifiers;
-
-          if (facet.isActive) {
-            activeCls = ['qsp-filter-active'];
-          }
-        } else {
-          // Note: only the reset key is expected to not have an associated facet
-          key = facetSettings.resetKey;
-          modifiers = facetSettings.resetModifiers;
-        }
-
-        // if a modifier is specified for this specific facet, it overrides the
-        // default modifier so display that too. Otherwise, just show the key alone.
-        // Note: In this case the modifier is purposely displayed separately in parenthesis
-        // to indicate to the user that it's not the "standard" modifier.
-        const commandDisplayText = modifiers
-          ? `(${SwitcherPlusKeymap.commandDisplayStr(modifiers)}) ${key}`
-          : `${key}`;
-
-        this.createPromptInstructionCommandEl(
-          facetInstructionsEl,
-          commandDisplayText,
-          purpose,
-          [],
-          activeCls,
-        );
-      });
-    }
+    FacetInstructionRenderer.render(parentEl, facetSettings, facetKeysInfo, {
+      getCustomInstructionsEl: this.getCustomInstructionsEl.bind(this),
+      createPromptInstructionCommandEl: this.createPromptInstructionCommandEl.bind(this),
+      commandDisplayStr: SwitcherPlusKeymap.commandDisplayStr.bind(SwitcherPlusKeymap),
+    });
   }
 
   renderCustomInstructions(parentEl: HTMLElement, keymapInfo: CustomKeymapInfo[]): void {

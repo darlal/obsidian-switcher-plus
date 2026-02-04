@@ -4,7 +4,11 @@ import { EditorHandler } from './editorHandler';
 import { BookmarksHandler } from './bookmarksHandler';
 import { SymbolHandler } from './symbolHandler';
 import { Searcher, StringSearcher } from 'src/search';
-import { HeadingsListFacetIds, SwitcherPlusSettings } from 'src/settings';
+import {
+  HeadingsListFacetIds,
+  HeadingsListFacetId,
+  SwitcherPlusSettings,
+} from 'src/settings';
 import {
   HeadingCache,
   SearchResult,
@@ -193,7 +197,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     const externalFilesEnabled = showAttachments || showAllFileTypes;
 
     // List of facetIds that depend on the corresponding feature being enabled
-    const featureEnablementStatus: Partial<Record<HeadingsListFacetIds, boolean>> = {
+    const featureEnablementStatus: Partial<Record<HeadingsListFacetId, boolean>> = {
       [HeadingsListFacetIds.RecentFiles]: shouldSearchRecentFiles,
       [HeadingsListFacetIds.Bookmarks]: shouldSearchBookmarks,
       [HeadingsListFacetIds.Filenames]: shouldSearchFilenames,
@@ -205,7 +209,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       // If the facetId exists in the feature list, set its availability to the
       // corresponding feature availability
       if (Object.prototype.hasOwnProperty.call(featureEnablementStatus, facet.id)) {
-        facet.isAvailable = featureEnablementStatus[facet.id as HeadingsListFacetIds];
+        facet.isAvailable = featureEnablementStatus[facet.id as HeadingsListFacetId];
       }
 
       return facet.isAvailable;
@@ -218,8 +222,8 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     if (inputInfo) {
       const { hasSearchTerm } = inputInfo.parsedInputQuery;
       const { settings } = this;
-      const activeFacetIds = this.getActiveFacetIds(inputInfo);
-      const hasActiveFacets = !!activeFacetIds.size;
+      const { ids: activeFacetIds, hasActive: hasActiveFacets } =
+        this.getActiveFacetContext(inputInfo);
 
       if (hasSearchTerm || hasActiveFacets) {
         const { limit } = settings;
@@ -272,7 +276,6 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       unresolved?: boolean;
     },
   ): void {
-    const hasActiveFacets = !!activeFacetIds.size;
     const searcher = Searcher.create(inputInfo.parsedInputQuery.query);
 
     // Editors and recent files should only be displayed when there's no search term, or when
@@ -317,7 +320,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
     // Since there's no facet for unresolved, they should never show up when
     // facets are active.
-    if (options.unresolved && !hasActiveFacets) {
+    if (options.unresolved && !activeFacetIds.size) {
       this.addUnresolvedSuggestions(collection as UnresolvedSuggestion[], searcher);
     }
   }
@@ -332,10 +335,9 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       nonFileBookmarks?: boolean;
     },
   ): void {
-    const hasActiveFacets = !!activeFacetIds.size;
     const { fileBookmarks, nonFileBookmarks } = inputInfo.currentWorkspaceEnvList;
 
-    if (hasActiveFacets) {
+    if (activeFacetIds.size) {
       const isBookmarkFacetEnabled = activeFacetIds.has(HeadingsListFacetIds.Bookmarks);
 
       options = Object.assign(options, {
@@ -380,15 +382,13 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       filenameAsFallback?: boolean;
     },
   ): void {
-    const hasActiveFacets = !!activeFacetIds.size;
-
-    if (hasActiveFacets) {
-      const isHeadingsEnabled = this.isFacetedWith(
+    if (activeFacetIds.size) {
+      const isHeadingsEnabled = this.isIncludedByFacetFilter(
         activeFacetIds,
         HeadingsListFacetIds.Headings,
       );
 
-      const isExternalFilesEnabled = this.isFacetedWith(
+      const isExternalFilesEnabled = this.isIncludedByFacetFilter(
         activeFacetIds,
         HeadingsListFacetIds.ExternalFiles,
       );
@@ -397,7 +397,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       // facet is active
       const isFilenameEnabled =
         isExternalFilesEnabled ||
-        this.isFacetedWith(activeFacetIds, HeadingsListFacetIds.Filenames);
+        this.isIncludedByFacetFilter(activeFacetIds, HeadingsListFacetIds.Filenames);
 
       let allHeadings = new Set<number>();
       let filenameAsFallback = false;

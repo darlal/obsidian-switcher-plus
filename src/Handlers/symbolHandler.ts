@@ -252,8 +252,8 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     const isBaseFile = SymbolHandler.isBaseFile(cmd?.source?.file);
     const isCanvasFile = SymbolHandler.isCanvasFile(cmd?.source?.file);
     const facets = this.getFacets(inputInfo.mode);
-    const baseViewFacetIds = new Set(Object.values(BASE_VIEW_FACET_ID_MAP));
-    const canvasFacetIds = new Set(Object.values(CANVAS_NODE_FACET_ID_MAP));
+    const baseViewFacetIds = new Set<string>(Object.values(BASE_VIEW_FACET_ID_MAP));
+    const canvasFacetIds = new Set<string>(Object.values(CANVAS_NODE_FACET_ID_MAP));
 
     // get only the string values of SymbolType as they are used as the face ids
     const mdFacetIds = new Set(Object.values(SymbolType).filter((v) => isNaN(Number(v))));
@@ -454,11 +454,11 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     let shouldInclude = false;
 
     if (typeof symbolType === 'string') {
-      shouldInclude = this.isFacetedWith(activeFacetIds, symbolType);
+      shouldInclude = this.isIncludedByFacetFilter(activeFacetIds, symbolType);
     } else {
       shouldInclude =
         this.settings.isSymbolTypeEnabled(symbolType) &&
-        this.isFacetedWith(activeFacetIds, SymbolType[symbolType]);
+        this.isIncludedByFacetFilter(activeFacetIds, SymbolType[symbolType]);
     }
 
     return shouldInclude;
@@ -528,7 +528,8 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
     if (parsedData?.views && Array.isArray(parsedData.views)) {
       parsedData.views.forEach((view) => {
-        const facetId = BASE_VIEW_FACET_ID_MAP[view.type];
+        const facetId =
+          BASE_VIEW_FACET_ID_MAP[view.type as keyof typeof BASE_VIEW_FACET_ID_MAP];
 
         // For unknown view types (not in the facet map), include them only when no facets
         // are active. This allows custom view types to be shown in the default unfiltered

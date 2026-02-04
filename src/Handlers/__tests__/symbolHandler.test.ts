@@ -2554,7 +2554,7 @@ describe('symbolHandler', () => {
 
   describe('getAvailableFacets', () => {
     let inputInfo: InputInfo;
-    const baseViewFacetIds = new Set(Object.values(BASE_VIEW_FACET_ID_MAP));
+    const baseViewFacetIds = new Set<string>(Object.values(BASE_VIEW_FACET_ID_MAP));
     const mdFacetIds = new Set(Object.values(SymbolType).filter((v) => isNaN(Number(v))));
 
     beforeEach(() => {
@@ -2584,7 +2584,7 @@ describe('symbolHandler', () => {
       // Verify no markdown facets are included
       expect(results.some((facet) => mdFacetIds.has(facet.id))).toBe(false);
       // Verify no canvas facets are included
-      const canvasFacetIds = new Set(Object.values(CANVAS_NODE_FACET_ID_MAP));
+      const canvasFacetIds = new Set<string>(Object.values(CANVAS_NODE_FACET_ID_MAP));
       expect(results.some((facet) => canvasFacetIds.has(facet.id))).toBe(false);
     });
 
@@ -2605,7 +2605,7 @@ describe('symbolHandler', () => {
       const results = sut.getAvailableFacets(inputInfo);
 
       // Assert
-      const canvasFacetIds = new Set(Object.values(CANVAS_NODE_FACET_ID_MAP));
+      const canvasFacetIds = new Set<string>(Object.values(CANVAS_NODE_FACET_ID_MAP));
       expect(results.length).toBeGreaterThan(0);
       expect(results.every((facet) => canvasFacetIds.has(facet.id))).toBe(true);
       // Verify no markdown facets are included
@@ -2634,7 +2634,7 @@ describe('symbolHandler', () => {
       expect(results.length).toBeGreaterThan(0);
       expect(results.every((facet) => mdFacetIds.has(facet.id))).toBe(true);
       // Verify no canvas facets are included
-      const canvasFacetIds = new Set(Object.values(CANVAS_NODE_FACET_ID_MAP));
+      const canvasFacetIds = new Set<string>(Object.values(CANVAS_NODE_FACET_ID_MAP));
       expect(results.some((facet) => canvasFacetIds.has(facet.id))).toBe(false);
       // Verify no base view facets are included
       expect(results.some((facet) => baseViewFacetIds.has(facet.id))).toBe(false);
@@ -2662,7 +2662,7 @@ describe('symbolHandler', () => {
       // Should return Base view facets, not Canvas facets
       expect(results.length).toBeGreaterThan(0);
       expect(results.every((facet) => baseViewFacetIds.has(facet.id))).toBe(true);
-      const canvasFacetIds = new Set(Object.values(CANVAS_NODE_FACET_ID_MAP));
+      const canvasFacetIds = new Set<string>(Object.values(CANVAS_NODE_FACET_ID_MAP));
       expect(results.some((facet) => canvasFacetIds.has(facet.id))).toBe(false);
     });
 

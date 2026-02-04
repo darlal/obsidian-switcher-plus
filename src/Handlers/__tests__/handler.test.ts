@@ -3102,17 +3102,59 @@ describe('Handler', () => {
   });
 
   describe('activateFacet', () => {
-    test('withshouldResetActiveFacets disabled, it should save changes to active facet status', () => {
-      const finalValue = true;
+    test('with shouldResetActiveFacets disabled, it should save changes and toggle facet', () => {
       const mockFacet = mock<Facet>({ isActive: false });
       mockSettings.quickFilters = mock<FacetSettingsData>({
         shouldResetActiveFacets: false,
       });
 
-      sut.activateFacet([mockFacet], finalValue);
+      sut.activateFacet([mockFacet]);
 
-      expect(mockFacet.isActive).toBe(finalValue);
+      expect(mockFacet.isActive).toBe(true);
       expect(mockSettings.save).toHaveBeenCalledWith();
+    });
+
+    test('with isReset, it should deactivate all facets when some are active', () => {
+      const mockFacets = [
+        mock<Facet>({ isActive: true }),
+        mock<Facet>({ isActive: false }),
+      ];
+      mockSettings.quickFilters = mock<FacetSettingsData>({
+        shouldResetActiveFacets: false,
+      });
+
+      sut.activateFacet(mockFacets, { isReset: true });
+
+      expect(mockFacets[0].isActive).toBe(false);
+      expect(mockFacets[1].isActive).toBe(false);
+    });
+
+    test('with isReset, it should activate all facets when none are active', () => {
+      const mockFacets = [
+        mock<Facet>({ isActive: false }),
+        mock<Facet>({ isActive: false }),
+      ];
+      mockSettings.quickFilters = mock<FacetSettingsData>({
+        shouldResetActiveFacets: false,
+      });
+
+      sut.activateFacet(mockFacets, { isReset: true });
+
+      expect(mockFacets[0].isActive).toBe(true);
+      expect(mockFacets[1].isActive).toBe(true);
+    });
+
+    test('with shouldResetActiveFacets enabled, it should not save changes', () => {
+      const mockFacet = mock<Facet>({ isActive: false });
+      mockSettings.quickFilters = mock<FacetSettingsData>({
+        shouldResetActiveFacets: true,
+      });
+      mockSettings.save.mockClear();
+
+      sut.activateFacet([mockFacet]);
+
+      expect(mockFacet.isActive).toBe(true);
+      expect(mockSettings.save).not.toHaveBeenCalled();
     });
   });
 });

@@ -219,7 +219,12 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
           if (BookmarksHandler.isBookmarksPluginGroupItem(bookmark)) {
             traverseBookmarks(bookmark.items, `${path}${bookmark.title}/`);
           } else if (
-            this.isFacetedWith(activeFacetIds, BOOKMARKS_FACET_ID_MAP[bookmark.type])
+            this.isIncludedByFacetFilter(
+              activeFacetIds,
+              BOOKMARKS_FACET_ID_MAP[
+                bookmark.type as keyof typeof BOOKMARKS_FACET_ID_MAP
+              ],
+            )
           ) {
             let bookmarkInfo: BookmarksItemInfo;
 

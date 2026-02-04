@@ -105,8 +105,14 @@ export abstract class Handler<T extends AnySuggestion> {
     return this.getFacets(inputInfo.mode).filter((v) => v.isAvailable);
   }
 
-  activateFacet(facets: Facet[], isActive: boolean): void {
-    facets.forEach((v) => (v.isActive = isActive));
+  activateFacet(facets: Facet[], options: { isReset?: boolean } = {}): void {
+    if (options.isReset) {
+      const hasActive = facets.some((v) => v.isActive);
+      facets.forEach((v) => (v.isActive = !hasActive));
+    } else {
+      // Expect facets to contain a single item to toggle
+      facets.forEach((v) => (v.isActive = !v.isActive));
+    }
 
     if (!this.settings.quickFilters.shouldResetActiveFacets) {
       this.settings.save();
@@ -121,9 +127,13 @@ export abstract class Handler<T extends AnySuggestion> {
     return new Set(facetIds);
   }
 
-  isFacetedWith(activeFacetIds: Set<string>, facetId: string): boolean {
-    const hasActiveFacets = !!activeFacetIds.size;
-    return (hasActiveFacets && activeFacetIds.has(facetId)) || !hasActiveFacets;
+  getActiveFacetContext(inputInfo: InputInfo): { ids: Set<string>; hasActive: boolean } {
+    const ids = this.getActiveFacetIds(inputInfo);
+    return { ids, hasActive: ids.size > 0 };
+  }
+
+  isIncludedByFacetFilter(activeFacetIds: Set<string>, facetId: string): boolean {
+    return !activeFacetIds.size || activeFacetIds.has(facetId);
   }
 
   getEditorInfo(leaf: WorkspaceLeaf): SourceInfo {

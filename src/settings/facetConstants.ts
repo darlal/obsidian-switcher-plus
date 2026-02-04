@@ -1,23 +1,29 @@
 import { Facet, Mode, RelationType, SymbolType } from 'src/types';
 
 // map Canvas node data types to facet id
-export const CANVAS_NODE_FACET_ID_MAP: Record<string, string> = {
+export const CANVAS_NODE_FACET_ID_MAP = {
   file: 'canvas-node-file',
   text: 'canvas-node-text',
   link: 'canvas-node-link',
   group: 'canvas-node-group',
-};
+} as const;
+
+export type CanvasNodeFacetId =
+  (typeof CANVAS_NODE_FACET_ID_MAP)[keyof typeof CANVAS_NODE_FACET_ID_MAP];
 
 /**
  * Maps Base view types to their corresponding facet IDs.
  * These are the common built-in view types (table, list, cards) that can be filtered
  * in Symbol mode. Custom view types registered by plugins do not have facets.
  */
-export const BASE_VIEW_FACET_ID_MAP: Record<string, string> = {
+export const BASE_VIEW_FACET_ID_MAP = {
   table: 'base-view-table',
   list: 'base-view-list',
   cards: 'base-view-cards',
-};
+} as const;
+
+export type BaseViewFacetId =
+  (typeof BASE_VIEW_FACET_ID_MAP)[keyof typeof BASE_VIEW_FACET_ID_MAP];
 
 export const SYMBOL_MODE_FACETS: Facet[] = [
   {
@@ -130,12 +136,15 @@ export const RELATED_ITEMS_MODE_FACETS: Facet[] = [
   },
 ];
 
-export const BOOKMARKS_FACET_ID_MAP: Record<string, string> = {
+export const BOOKMARKS_FACET_ID_MAP = {
   file: 'bookmarks-file',
   folder: 'bookmarks-folder',
   search: 'bookmarks-search',
   group: 'bookmarks-group',
-};
+} as const;
+
+export type BookmarksFacetId =
+  (typeof BOOKMARKS_FACET_ID_MAP)[keyof typeof BOOKMARKS_FACET_ID_MAP];
 
 export const BOOKMARKS_MODE_FACETS: Facet[] = [
   {
@@ -161,10 +170,13 @@ export const BOOKMARKS_MODE_FACETS: Facet[] = [
   },
 ];
 
-export enum CommandListFacetIds {
-  Pinned = 'pinnedCommands',
-  Recent = 'recentCommands',
-}
+export const CommandListFacetIds = {
+  Pinned: 'pinnedCommands',
+  Recent: 'recentCommands',
+} as const;
+
+export type CommandListFacetId =
+  (typeof CommandListFacetIds)[keyof typeof CommandListFacetIds];
 
 export const COMMAND_MODE_FACETS: Facet[] = [
   {
@@ -183,13 +195,16 @@ export const COMMAND_MODE_FACETS: Facet[] = [
   },
 ];
 
-export enum HeadingsListFacetIds {
-  RecentFiles = 'recentFilesSearch',
-  Bookmarks = 'bookmarksSearch',
-  Filenames = 'filenamesSearch',
-  Headings = 'headingsSearch',
-  ExternalFiles = 'externalFilesSearch',
-}
+export const HeadingsListFacetIds = {
+  RecentFiles: 'recentFilesSearch',
+  Bookmarks: 'bookmarksSearch',
+  Filenames: 'filenamesSearch',
+  Headings: 'headingsSearch',
+  ExternalFiles: 'externalFilesSearch',
+} as const;
+
+export type HeadingsListFacetId =
+  (typeof HeadingsListFacetIds)[keyof typeof HeadingsListFacetIds];
 
 export const HEADINGS_MODE_FACETS: Facet[] = [
   {

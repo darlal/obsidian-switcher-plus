@@ -150,8 +150,8 @@ export class CommandHandler extends Handler<CommandSuggestion> {
 
   getItems(inputInfo: InputInfo, includeAllCommands: boolean): CommandInfo[] {
     let items: CommandInfo[] = [];
-    const activeFacetIds = this.getActiveFacetIds(inputInfo);
-    const hasActiveFacets = !!activeFacetIds.size;
+    const { ids: activeFacetIds, hasActive: hasActiveFacets } =
+      this.getActiveFacetContext(inputInfo);
 
     if (hasActiveFacets) {
       items = this.getPinnedAndRecentCommands(activeFacetIds);
@@ -186,7 +186,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     };
 
     const addCommandInfo = (facetId: string, cmdIds: string[]) => {
-      if (this.isFacetedWith(activeFacetIds, facetId)) {
+      if (this.isIncludedByFacetFilter(activeFacetIds, facetId)) {
         cmdIds.forEach((id) => {
           const cmdInfo = findCommandInfo(id);
 
@@ -199,7 +199,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
 
     addCommandInfo(CommandListFacetIds.Pinned, Array.from(pinnedIdsSet));
 
-    const isPinnedFaceted = this.isFacetedWith(
+    const isPinnedFaceted = this.isIncludedByFacetFilter(
       activeFacetIds,
       CommandListFacetIds.Pinned,
     );
