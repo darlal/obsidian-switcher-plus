@@ -18,6 +18,7 @@ module.exports = {
   },
   transformIgnorePatterns: ['\\.pnp\\.[^\\/]+$'],
   collectCoverage: true,
+  collectCoverageFrom: ['<rootDir>/src/**'],
   coverageThreshold: {
     global: {
       branches: 99,
@@ -26,7 +27,12 @@ module.exports = {
       statements: 99,
     },
   },
-  coveragePathIgnorePatterns: ['/node_modules/', '/dist/'],
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    'perf\\.test\\.ts$', // Exclude perf test files from coverage, see jest.perf.config.js
+    '<rootDir>/src/types/obsidian',
+  ],
   modulePathIgnorePatterns: ['/dist/'],
   testPathIgnorePatterns: [
     '/node_modules/',
