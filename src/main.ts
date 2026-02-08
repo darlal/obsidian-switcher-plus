@@ -1,116 +1,41 @@
 import { Plugin } from 'obsidian';
 import { SwitcherPlusSettings, SwitcherPlusSettingTab } from 'src/settings';
-import { createSwitcherPlus, EmptyTabMonitor, MobileLauncher } from 'src/switcherPlus';
+import {
+  createSwitcherPlus,
+  EmptyTabMonitor,
+  MobileLauncher,
+  getCommandDefinitions,
+  CommandDefinition,
+} from 'src/switcherPlus';
 import { Mode, SessionOpts } from 'src/types';
-
-type CommandDefinitionOpts = Pick<SessionOpts, 'useActiveEditorAsSource'>;
-type CommandDefinition = {
-  id: string;
-  name: string;
-  mode: Mode;
-  iconId: string;
-  ribbonIconEl: HTMLElement;
-  sessionOpts?: CommandDefinitionOpts;
-};
-
-const COMMAND_DATA: CommandDefinition[] = [
-  {
-    id: 'switcher-plus:open',
-    name: 'Open in Standard Mode',
-    mode: Mode.Standard,
-    iconId: 'lucide-file-search',
-    ribbonIconEl: null,
-  },
-  {
-    id: 'switcher-plus:open-editors',
-    name: 'Open in Editor Mode',
-    mode: Mode.EditorList,
-    iconId: 'lucide-file-edit',
-    ribbonIconEl: null,
-  },
-  {
-    id: 'switcher-plus:open-symbols',
-    name: 'Open Symbols for selected suggestion or editor',
-    mode: Mode.SymbolList,
-    iconId: 'lucide-dollar-sign',
-    ribbonIconEl: null,
-  },
-  {
-    id: 'switcher-plus:open-symbols-active',
-    name: 'Open Symbols for the active editor',
-    mode: Mode.SymbolList,
-    iconId: 'lucide-dollar-sign',
-    ribbonIconEl: null,
-    sessionOpts: { useActiveEditorAsSource: true },
-  },
-  {
-    id: 'switcher-plus:open-workspaces',
-    name: 'Open in Workspaces Mode',
-    mode: Mode.WorkspaceList,
-    iconId: 'lucide-album',
-    ribbonIconEl: null,
-  },
-  {
-    id: 'switcher-plus:open-headings',
-    name: 'Open in Headings Mode',
-    mode: Mode.HeadingsList,
-    iconId: 'lucide-file-search',
-    ribbonIconEl: null,
-  },
-  {
-    // Note: leaving this id with the old starred plugin name so that user
-    // don't have to update their hotkey mappings when they upgrade
-    id: 'switcher-plus:open-starred',
-    name: 'Open in Bookmarks Mode',
-    mode: Mode.BookmarksList,
-    iconId: 'lucide-bookmark',
-    ribbonIconEl: null,
-  },
-  {
-    id: 'switcher-plus:open-commands',
-    name: 'Open in Commands Mode',
-    mode: Mode.CommandList,
-    iconId: 'run-command',
-    ribbonIconEl: null,
-  },
-  {
-    id: 'switcher-plus:open-related-items',
-    name: 'Open Related Items for selected suggestion or editor',
-    mode: Mode.RelatedItemsList,
-    iconId: 'lucide-file-plus-2',
-    ribbonIconEl: null,
-  },
-  {
-    id: 'switcher-plus:open-related-items-active',
-    name: 'Open Related Items for the active editor',
-    mode: Mode.RelatedItemsList,
-    iconId: 'lucide-file-plus-2',
-    ribbonIconEl: null,
-    sessionOpts: { useActiveEditorAsSource: true },
-  },
-  {
-    id: 'switcher-plus:open-vaults',
-    name: 'Open in Vaults Mode',
-    mode: Mode.VaultList,
-    iconId: 'vault',
-    ribbonIconEl: null,
-  },
-];
 
 export default class SwitcherPlusPlugin extends Plugin {
   public options: SwitcherPlusSettings;
+  private commandDefinitions: CommandDefinition[];
+  private ribbonIconEls: Map<string, HTMLElement> = new Map();
 
   async onload(): Promise<void> {
     const options = new SwitcherPlusSettings(this);
     await options.updateDataAndLoadSettings();
     this.options = options;
 
+    this.commandDefinitions = getCommandDefinitions(options);
+
     this.addSettingTab(new SwitcherPlusSettingTab(this.app, this, options));
     this.registerRibbonCommandIcons();
     this.updateLauncherButtonOverrides(true);
 
-    COMMAND_DATA.forEach(({ id, name, mode, iconId, sessionOpts }) => {
-      this.registerCommand(id, name, mode, iconId, sessionOpts);
+    this.commandDefinitions.forEach((def) => {
+      const sessionOpts = def.parserCommand.useActiveEditorAsSource
+        ? { useActiveEditorAsSource: true }
+        : undefined;
+      this.registerCommand(
+        def.commandId,
+        def.commandName,
+        def.mode,
+        def.iconId,
+        sessionOpts,
+      );
     });
   }
 
@@ -123,7 +48,7 @@ export default class SwitcherPlusPlugin extends Plugin {
     name: string,
     mode: Mode,
     iconId?: string,
-    sessionOpts?: CommandDefinitionOpts,
+    sessionOpts?: Pick<SessionOpts, 'useActiveEditorAsSource'>,
   ): void {
     this.addCommand({
       id,
@@ -136,14 +61,10 @@ export default class SwitcherPlusPlugin extends Plugin {
   }
 
   registerRibbonCommandIcons(): void {
-    // remove any registered icons
-    COMMAND_DATA.forEach((data) => {
-      data.ribbonIconEl?.remove();
-      data.ribbonIconEl = null;
-    });
+    this.ribbonIconEls.forEach((el) => el.remove());
+    this.ribbonIconEls.clear();
 
-    // map to keyed object
-    const commandDataByMode = COMMAND_DATA.reduce(
+    const commandDataByMode = this.commandDefinitions.reduce(
       (acc, curr) => {
         acc[curr.mode] = curr;
         return acc;
@@ -155,9 +76,10 @@ export default class SwitcherPlusPlugin extends Plugin {
       const data = commandDataByMode[Mode[command]];
 
       if (data) {
-        data.ribbonIconEl = this.addRibbonIcon(data.iconId, data.name, () => {
+        const iconEl = this.addRibbonIcon(data.iconId, data.commandName, () => {
           this.createModalAndOpen(data.mode, false);
         });
+        this.ribbonIconEls.set(data.commandId, iconEl);
       }
     });
   }
@@ -165,7 +87,7 @@ export default class SwitcherPlusPlugin extends Plugin {
   createModalAndOpen(
     mode: Mode,
     isChecking: boolean,
-    sessionOpts?: CommandDefinitionOpts,
+    sessionOpts?: Pick<SessionOpts, 'useActiveEditorAsSource'>,
   ): boolean {
     if (!isChecking) {
       // modal needs to be created dynamically (same as system switcher)
@@ -204,8 +126,8 @@ export default class SwitcherPlusPlugin extends Plugin {
 
       MobileLauncher.installMobileLauncherOverride(app, mobileLauncher, onclickListener);
 
-      const modeData = COMMAND_DATA.find((cmd) => cmd.mode === openMode);
-      const buttonLabel = 'Switcher++: ' + (modeData?.name ?? '');
+      const commandDef = this.commandDefinitions.find((def) => def.mode === openMode);
+      const buttonLabel = 'Switcher++: ' + (commandDef?.commandName ?? '');
 
       EmptyTabMonitor.installEmptyTabMonitor(this, {
         isEnabled: mobileLauncher.isEnabled && mobileLauncher.isEmptyTabButtonEnabled,

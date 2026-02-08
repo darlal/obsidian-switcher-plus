@@ -1,26 +1,35 @@
 import { mock, MockProxy, mockReset } from 'jest-mock-extended';
-import { App, Command, Plugin } from 'obsidian';
+import { App, Command } from 'obsidian';
 import SwitcherPlusPlugin from 'src/main';
 import { SwitcherPlusSettings, SwitcherPlusSettingTab } from 'src/settings';
-import { createSwitcherPlus, EmptyTabMonitor, MobileLauncher } from 'src/switcherPlus';
+import {
+  createSwitcherPlus,
+  EmptyTabMonitor,
+  MobileLauncher,
+  getCommandDefinitions,
+} from 'src/switcherPlus';
 import { Mode, SwitcherPlus } from 'src/types';
 
-jest.mock('src/switcherPlus', () => ({
-  createSwitcherPlus: jest.fn(),
-  EmptyTabMonitor: {
-    installEmptyTabMonitor: jest.fn(),
-    removeEmptyTabButtons: jest.fn(),
-  },
-  MobileLauncher: {
-    installMobileLauncherOverride: jest.fn(),
-    removeMobileLauncherOverride: jest.fn(),
-  },
-}));
+jest.mock('src/switcherPlus', () => {
+  const actual =
+    jest.requireActual<typeof import('src/switcherPlus')>('src/switcherPlus');
+  return {
+    ...actual,
+    createSwitcherPlus: jest.fn(),
+    EmptyTabMonitor: {
+      installEmptyTabMonitor: jest.fn(),
+      removeEmptyTabButtons: jest.fn(),
+    },
+    MobileLauncher: {
+      installMobileLauncherOverride: jest.fn(),
+      removeMobileLauncherOverride: jest.fn(),
+    },
+  };
+});
 
 jest.mock('src/settings', () => {
-  const actualSettings = jest.requireActual<typeof import('src/settings')>(
-    'src/settings',
-  );
+  const actualSettings =
+    jest.requireActual<typeof import('src/settings')>('src/settings');
 
   class MockSwitcherPlusSettings extends actualSettings.SwitcherPlusSettings {
     async updateDataAndLoadSettings(): Promise<void> {
@@ -49,12 +58,14 @@ describe('SwitcherPlusPlugin', () => {
     mockReset(mockApp);
     jest.clearAllMocks();
 
-    sut = Object.create(SwitcherPlusPlugin.prototype);
+    sut = Object.create(SwitcherPlusPlugin.prototype) as SwitcherPlusPlugin;
     sut.app = mockApp;
-    sut.manifest = {} as any;
+    sut.manifest = {} as SwitcherPlusPlugin['manifest'];
     sut.addCommand = jest.fn();
     sut.addRibbonIcon = jest.fn();
     sut.addSettingTab = jest.fn();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+    (sut as any).ribbonIconEls = new Map();
   });
 
   describe('onload', () => {
@@ -70,84 +81,100 @@ describe('SwitcherPlusPlugin', () => {
 
       expect(sut.addCommand).toHaveBeenCalledTimes(11);
 
-      const commandCalls = (sut.addCommand as jest.Mock).mock.calls;
+      const commandCalls = (sut.addCommand as jest.Mock<Command>).mock.calls as Array<
+        [Command]
+      >;
 
-      expect(commandCalls[0][0]).toMatchObject({
+      const call0 = commandCalls[0];
+      const call1 = commandCalls[1];
+      const call2 = commandCalls[2];
+      const call3 = commandCalls[3];
+      const call4 = commandCalls[4];
+      const call5 = commandCalls[5];
+      const call6 = commandCalls[6];
+      const call7 = commandCalls[7];
+      const call8 = commandCalls[8];
+      const call9 = commandCalls[9];
+      const call10 = commandCalls[10];
+
+      /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+      expect(call0?.[0]).toMatchObject({
         id: 'switcher-plus:open',
         name: 'Open in Standard Mode',
         icon: 'lucide-file-search',
         checkCallback: expect.any(Function),
       });
 
-      expect(commandCalls[1][0]).toMatchObject({
+      expect(call1?.[0]).toMatchObject({
         id: 'switcher-plus:open-editors',
         name: 'Open in Editor Mode',
         icon: 'lucide-file-edit',
         checkCallback: expect.any(Function),
       });
 
-      expect(commandCalls[2][0]).toMatchObject({
+      expect(call2?.[0]).toMatchObject({
         id: 'switcher-plus:open-symbols',
         name: 'Open Symbols for selected suggestion or editor',
         icon: 'lucide-dollar-sign',
         checkCallback: expect.any(Function),
       });
 
-      expect(commandCalls[3][0]).toMatchObject({
+      expect(call3?.[0]).toMatchObject({
         id: 'switcher-plus:open-symbols-active',
         name: 'Open Symbols for the active editor',
         icon: 'lucide-dollar-sign',
         checkCallback: expect.any(Function),
       });
 
-      expect(commandCalls[4][0]).toMatchObject({
+      expect(call4?.[0]).toMatchObject({
         id: 'switcher-plus:open-workspaces',
         name: 'Open in Workspaces Mode',
         icon: 'lucide-album',
         checkCallback: expect.any(Function),
       });
 
-      expect(commandCalls[5][0]).toMatchObject({
+      expect(call5?.[0]).toMatchObject({
         id: 'switcher-plus:open-headings',
         name: 'Open in Headings Mode',
         icon: 'lucide-file-search',
         checkCallback: expect.any(Function),
       });
 
-      expect(commandCalls[6][0]).toMatchObject({
+      expect(call6?.[0]).toMatchObject({
         id: 'switcher-plus:open-starred',
         name: 'Open in Bookmarks Mode',
         icon: 'lucide-bookmark',
         checkCallback: expect.any(Function),
       });
 
-      expect(commandCalls[7][0]).toMatchObject({
+      expect(call7?.[0]).toMatchObject({
         id: 'switcher-plus:open-commands',
         name: 'Open in Commands Mode',
         icon: 'run-command',
         checkCallback: expect.any(Function),
       });
 
-      expect(commandCalls[8][0]).toMatchObject({
+      expect(call8?.[0]).toMatchObject({
         id: 'switcher-plus:open-related-items',
         name: 'Open Related Items for selected suggestion or editor',
         icon: 'lucide-file-plus-2',
         checkCallback: expect.any(Function),
       });
 
-      expect(commandCalls[9][0]).toMatchObject({
+      expect(call9?.[0]).toMatchObject({
         id: 'switcher-plus:open-related-items-active',
         name: 'Open Related Items for the active editor',
         icon: 'lucide-file-plus-2',
         checkCallback: expect.any(Function),
       });
 
-      expect(commandCalls[10][0]).toMatchObject({
+      expect(call10?.[0]).toMatchObject({
         id: 'switcher-plus:open-vaults',
         name: 'Open in Vaults Mode',
         icon: 'vault',
         checkCallback: expect.any(Function),
       });
+      /* eslint-enable @typescript-eslint/no-unsafe-assignment */
     });
 
     it('should call registerRibbonCommandIcons', async () => {
@@ -183,6 +210,7 @@ describe('SwitcherPlusPlugin', () => {
         id: 'test-id',
         name: 'Test Name',
         icon: 'test-icon',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         checkCallback: expect.any(Function),
       });
     });
@@ -194,6 +222,7 @@ describe('SwitcherPlusPlugin', () => {
         id: 'test-id',
         name: 'Test Name',
         icon: undefined,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         checkCallback: expect.any(Function),
       });
     });
@@ -203,10 +232,14 @@ describe('SwitcherPlusPlugin', () => {
 
       sut.registerCommand('test-id', 'Test Name', Mode.EditorList, 'test-icon');
 
-      const commandCall = (sut.addCommand as jest.Mock).mock.calls[0][0] as Command;
-      const checkCallback = commandCall.checkCallback as (checking: boolean) => boolean;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      const commandCall = (sut.addCommand as jest.Mock<Command>).mock.calls[0]?.[0];
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const checkCallback = commandCall?.checkCallback as
+        | ((checking: boolean) => boolean)
+        | undefined;
 
-      const result = checkCallback(false);
+      const result = checkCallback?.(false);
 
       expect(spy).toHaveBeenCalledWith(Mode.EditorList, false, undefined);
       expect(result).toBe(true);
@@ -226,10 +259,14 @@ describe('SwitcherPlusPlugin', () => {
         sessionOpts,
       );
 
-      const commandCall = (sut.addCommand as jest.Mock).mock.calls[0][0] as Command;
-      const checkCallback = commandCall.checkCallback as (checking: boolean) => boolean;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      const commandCall = (sut.addCommand as jest.Mock<Command>).mock.calls[0]?.[0];
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const checkCallback = commandCall?.checkCallback as
+        | ((checking: boolean) => boolean)
+        | undefined;
 
-      checkCallback(false);
+      checkCallback?.(false);
 
       expect(spy).toHaveBeenCalledWith(Mode.SymbolList, false, sessionOpts);
 
@@ -241,10 +278,14 @@ describe('SwitcherPlusPlugin', () => {
 
       sut.registerCommand('test-id', 'Test Name', Mode.Standard, 'test-icon');
 
-      const commandCall = (sut.addCommand as jest.Mock).mock.calls[0][0] as Command;
-      const checkCallback = commandCall.checkCallback as (checking: boolean) => boolean;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      const commandCall = (sut.addCommand as jest.Mock<Command>).mock.calls[0]?.[0];
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const checkCallback = commandCall?.checkCallback as
+        | ((checking: boolean) => boolean)
+        | undefined;
 
-      checkCallback(true);
+      checkCallback?.(true);
 
       expect(spy).toHaveBeenCalledWith(Mode.Standard, true, undefined);
 
@@ -255,6 +296,8 @@ describe('SwitcherPlusPlugin', () => {
   describe('registerRibbonCommandIcons', () => {
     beforeEach(() => {
       sut.options = settings;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+      (sut as any).commandDefinitions = getCommandDefinitions(settings);
       settings.enabledRibbonCommands = ['HeadingsList', 'SymbolList'];
     });
 
@@ -279,12 +322,17 @@ describe('SwitcherPlusPlugin', () => {
 
       sut.registerRibbonCommandIcons();
 
-      const ribbonCallForHeadings = (sut.addRibbonIcon as jest.Mock).mock.calls.find(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const ribbonCallForHeadings = (
+        sut.addRibbonIcon as jest.Mock<HTMLElement>
+      ).mock.calls.find(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         (call) => call[1] === 'Open in Headings Mode',
       );
-      const callback = ribbonCallForHeadings[2] as () => void;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const callback = ribbonCallForHeadings?.[2] as (() => void) | undefined;
 
-      callback();
+      callback?.();
 
       expect(spy).toHaveBeenCalledWith(Mode.HeadingsList, false);
 
@@ -375,6 +423,8 @@ describe('SwitcherPlusPlugin', () => {
   describe('updateLauncherButtonOverrides', () => {
     beforeEach(() => {
       sut.options = settings;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+      (sut as any).commandDefinitions = getCommandDefinitions(settings);
       settings.mobileLauncher.modeString = 'HeadingsList';
       settings.mobileLauncher.isEnabled = true;
       settings.mobileLauncher.isEmptyTabButtonEnabled = true;
@@ -410,6 +460,7 @@ describe('SwitcherPlusPlugin', () => {
       expect(EmptyTabMonitor.installEmptyTabMonitor).toHaveBeenCalledWith(sut, {
         isEnabled: true,
         buttonLabel: 'Switcher++: Open in Headings Mode',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         onclickListener: expect.any(Function),
       });
     });
@@ -428,6 +479,7 @@ describe('SwitcherPlusPlugin', () => {
     });
 
     it('should use empty string for button label when no command matches mode', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
       settings.mobileLauncher.modeString = 'InvalidMode' as any;
 
       sut.updateLauncherButtonOverrides(true);
@@ -446,11 +498,13 @@ describe('SwitcherPlusPlugin', () => {
 
       sut.updateLauncherButtonOverrides(true);
 
-      const installCall = (MobileLauncher.installMobileLauncherOverride as jest.Mock)
-        .mock.calls[0];
-      const onclickListener = installCall[2] as () => void;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const installCall = (MobileLauncher.installMobileLauncherOverride as jest.Mock).mock
+        .calls[0];
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const onclickListener = installCall?.[2] as (() => void) | undefined;
 
-      onclickListener();
+      onclickListener?.();
 
       expect(spy).toHaveBeenCalledWith(Mode.EditorList, false);
 
