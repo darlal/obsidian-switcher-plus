@@ -4,10 +4,11 @@ import {
   SwitcherPlusModal,
   EmptyTabMonitor,
   MobileLauncher,
+  CommandRegistrar,
   getCommandDefinitions,
   CommandDefinition,
 } from 'src/switcherPlus';
-import { Mode, SessionOpts } from 'src/types';
+import { Mode } from 'src/types';
 
 export default class SwitcherPlusPlugin extends Plugin {
   public options: SwitcherPlusSettings;
@@ -29,43 +30,11 @@ export default class SwitcherPlusPlugin extends Plugin {
     this.registerRibbonCommandIcons();
     this.updateLauncherButtonOverrides(true);
 
-    this.commandDefinitions.forEach((def) => {
-      const sessionOpts = def.parserCommand.useActiveEditorAsSource
-        ? { useActiveEditorAsSource: true }
-        : undefined;
-      this.registerCommand(
-        def.commandId,
-        def.commandName,
-        def.mode,
-        def.iconId,
-        sessionOpts,
-      );
-    });
+    CommandRegistrar.registerCommands(this, this.commandDefinitions);
   }
 
   onunload(): void {
     this.updateLauncherButtonOverrides(false);
-  }
-
-  registerCommand(
-    id: string,
-    name: string,
-    mode: Mode,
-    iconId?: string,
-    sessionOpts?: Pick<SessionOpts, 'useActiveEditorAsSource'>,
-  ): void {
-    this.addCommand({
-      id,
-      name,
-      icon: iconId,
-      checkCallback: (checking) => {
-        if (checking) {
-          return true;
-        }
-
-        return SwitcherPlusModal.createAndOpen(this.app, this, mode, sessionOpts);
-      },
-    });
   }
 
   registerRibbonCommandIcons(): void {
