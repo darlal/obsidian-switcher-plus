@@ -9,15 +9,17 @@ import {
   AnySuggestion,
   SessionOpts,
   ModeDispatcher,
+  Mode,
 } from 'src/types';
 
 interface SystemSwitcherConstructor extends SystemSwitcher {
   new (app: App, builtInOptions: QuickSwitcherOptions): SystemSwitcher;
 }
 
-export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): SwitcherPlus {
-  const SystemSwitcherModal = getSystemSwitcherInstance(app)
-    ?.QuickSwitcherModal as SystemSwitcherConstructor;
+export class SwitcherPlusModal {
+  static create(app: App, plugin: SwitcherPlusPlugin): SwitcherPlus {
+    const SystemSwitcherModal = getSystemSwitcherInstance(app)
+      ?.QuickSwitcherModal as SystemSwitcherConstructor;
 
   if (!SystemSwitcherModal) {
     logError(
@@ -26,76 +28,99 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
     return null;
   }
 
-  const SwitcherPlusModal = class extends SystemSwitcherModal implements SwitcherPlus {
-    private _exMode: ModeDispatcher;
-    get exMode(): ModeDispatcher {
-      return this._exMode;
-    }
-
-    constructor(
-      app: App,
-      public plugin: SwitcherPlusPlugin,
-    ) {
-      super(app, plugin.options.builtInSystemOptions);
-
-      const { options } = plugin;
-      options.shouldShowAlias = this.shouldShowAlias;
-      const exKeymap = new SwitcherPlusKeymap(
-        app,
-        this.scope,
-        this.chooser,
-        this,
-        options,
-      );
-      this._exMode = new ModeHandler(app, options, exKeymap);
-    }
-
-    openInMode(sessionOpts: SessionOpts): void {
-      this.exMode.setSessionOpenMode(this.chooser, sessionOpts);
-      super.open();
-    }
-
-    onOpen(): void {
-      this.exMode.onOpen();
-
-      // This call hard codes this.inputEl to an empty string, and calls updateSuggestions()
-      void super.onOpen();
-    }
-
-    onClose() {
-      super.onClose();
-      this.exMode.onClose();
-    }
-
-    protected updateSuggestions(): void {
-      const { exMode, inputEl, chooser } = this;
-      exMode.setInitialInputForSession(inputEl);
-
-      if (!exMode.updateSuggestions(inputEl.value, chooser, this)) {
-        super.updateSuggestions();
+    const CustomModal = class extends SystemSwitcherModal implements SwitcherPlus {
+      private _exMode: ModeDispatcher;
+      get exMode(): ModeDispatcher {
+        return this._exMode;
       }
-    }
 
-    getSuggestions(input: string): AnySuggestion[] {
-      const { exMode, plugin } = this;
-      const query = exMode.inputTextForStandardMode(input);
-      const results = super.getSuggestions(query);
-      exMode.addPropertiesToStandardSuggestions(results, plugin.options);
-      return results;
-    }
+      constructor(
+        app: App,
+        public plugin: SwitcherPlusPlugin,
+      ) {
+        super(app, plugin.options.builtInSystemOptions);
 
-    onChooseSuggestion(item: AnySuggestion, evt: MouseEvent | KeyboardEvent) {
-      if (!this.exMode.onChooseSuggestion(item, evt)) {
-        super.onChooseSuggestion(item, evt);
+        const { options } = plugin;
+        options.shouldShowAlias = this.shouldShowAlias;
+        const exKeymap = new SwitcherPlusKeymap(
+          app,
+          this.scope,
+          this.chooser,
+          this,
+          options,
+        );
+        this._exMode = new ModeHandler(app, options, exKeymap);
       }
-    }
 
-    renderSuggestion(value: AnySuggestion, parentEl: HTMLElement) {
-      if (!this.exMode.renderSuggestion(value, parentEl)) {
-        super.renderSuggestion(value, parentEl);
+      openInMode(sessionOpts: SessionOpts): void {
+        this.exMode.setSessionOpenMode(this.chooser, sessionOpts);
+        super.open();
       }
-    }
-  };
 
-  return new SwitcherPlusModal(app, plugin);
+      onOpen(): void {
+        this.exMode.onOpen();
+
+        // This call hard codes this.inputEl to an empty string, and calls updateSuggestions()
+        void super.onOpen();
+      }
+
+      onClose() {
+        super.onClose();
+        this.exMode.onClose();
+      }
+
+      protected updateSuggestions(): void {
+        const { exMode, inputEl, chooser } = this;
+        exMode.setInitialInputForSession(inputEl);
+
+        if (!exMode.updateSuggestions(inputEl.value, chooser, this)) {
+          super.updateSuggestions();
+        }
+      }
+
+      getSuggestions(input: string): AnySuggestion[] {
+        const { exMode, plugin } = this;
+        const query = exMode.inputTextForStandardMode(input);
+        const results = super.getSuggestions(query);
+        exMode.addPropertiesToStandardSuggestions(results, plugin.options);
+        return results;
+      }
+
+      onChooseSuggestion(item: AnySuggestion, evt: MouseEvent | KeyboardEvent) {
+        if (!this.exMode.onChooseSuggestion(item, evt)) {
+          super.onChooseSuggestion(item, evt);
+        }
+      }
+
+      renderSuggestion(value: AnySuggestion, parentEl: HTMLElement) {
+        if (!this.exMode.renderSuggestion(value, parentEl)) {
+          super.renderSuggestion(value, parentEl);
+        }
+      }
+    };
+
+    return new CustomModal(app, plugin);
+  }
+
+  /**
+   * Create the modal and open it in the given mode.
+   * Modal is created dynamically (same as system switcher) because
+   * system options are evaluated in the modal constructor.
+   * @returns true if the modal was opened, false if system switcher unavailable.
+   */
+  static createAndOpen(
+    app: App,
+    plugin: SwitcherPlusPlugin,
+    mode: Mode,
+    sessionOpts?: Pick<SessionOpts, 'useActiveEditorAsSource'>,
+  ): boolean {
+    const modal = SwitcherPlusModal.create(app, plugin);
+    if (!modal) {
+      return false;
+    }
+
+    modal.openInMode(Object.assign({ mode }, sessionOpts));
+
+    return true;
+  }
 }

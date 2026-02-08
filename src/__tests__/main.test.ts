@@ -1,53 +1,25 @@
 import { mock, MockProxy, mockReset } from 'jest-mock-extended';
 import { App, Command } from 'obsidian';
 import SwitcherPlusPlugin from 'src/main';
-import { SwitcherPlusSettings, SwitcherPlusSettingTab } from 'src/settings';
+import { SwitcherPlusSettings } from 'src/settings';
 import {
-  createSwitcherPlus,
+  SwitcherPlusModal,
   EmptyTabMonitor,
   MobileLauncher,
   getCommandDefinitions,
 } from 'src/switcherPlus';
-import { Mode, SwitcherPlus } from 'src/types';
-
-jest.mock('src/switcherPlus', () => {
-  const actual =
-    jest.requireActual<typeof import('src/switcherPlus')>('src/switcherPlus');
-  return {
-    ...actual,
-    createSwitcherPlus: jest.fn(),
-    EmptyTabMonitor: {
-      installEmptyTabMonitor: jest.fn(),
-      removeEmptyTabButtons: jest.fn(),
-    },
-    MobileLauncher: {
-      installMobileLauncherOverride: jest.fn(),
-      removeMobileLauncherOverride: jest.fn(),
-    },
-  };
-});
-
-jest.mock('src/settings', () => {
-  const actualSettings =
-    jest.requireActual<typeof import('src/settings')>('src/settings');
-
-  class MockSwitcherPlusSettings extends actualSettings.SwitcherPlusSettings {
-    async updateDataAndLoadSettings(): Promise<void> {
-      // Mock implementation - do nothing
-    }
-  }
-
-  return {
-    ...actualSettings,
-    SwitcherPlusSettings: MockSwitcherPlusSettings,
-    SwitcherPlusSettingTab: jest.fn(),
-  };
-});
+import { Mode } from 'src/types';
 
 describe('SwitcherPlusPlugin', () => {
   let mockApp: MockProxy<App>;
   let sut: SwitcherPlusPlugin;
   let settings: SwitcherPlusSettings;
+  let updateDataAndLoadSettingsSpy: jest.SpyInstance;
+  let createAndOpenSpy: jest.SpyInstance;
+  let installMobileLauncherSpy: jest.SpyInstance;
+  let removeMobileLauncherSpy: jest.SpyInstance;
+  let installEmptyTabMonitorSpy: jest.SpyInstance;
+  let removeEmptyTabButtonsSpy: jest.SpyInstance;
 
   beforeAll(() => {
     mockApp = mock<App>();
@@ -56,7 +28,30 @@ describe('SwitcherPlusPlugin', () => {
 
   beforeEach(() => {
     mockReset(mockApp);
-    jest.clearAllMocks();
+
+    updateDataAndLoadSettingsSpy = jest
+      .spyOn(SwitcherPlusSettings.prototype, 'updateDataAndLoadSettings')
+      .mockResolvedValue();
+
+    createAndOpenSpy = jest
+      .spyOn(SwitcherPlusModal, 'createAndOpen')
+      .mockReturnValue(true);
+
+    installMobileLauncherSpy = jest
+      .spyOn(MobileLauncher, 'installMobileLauncherOverride')
+      .mockReturnValue(null);
+
+    removeMobileLauncherSpy = jest
+      .spyOn(MobileLauncher, 'removeMobileLauncherOverride')
+      .mockReturnValue(false);
+
+    installEmptyTabMonitorSpy = jest
+      .spyOn(EmptyTabMonitor, 'installEmptyTabMonitor')
+      .mockImplementation();
+
+    removeEmptyTabButtonsSpy = jest
+      .spyOn(EmptyTabMonitor, 'removeEmptyTabButtons')
+      .mockImplementation();
 
     sut = Object.create(SwitcherPlusPlugin.prototype) as SwitcherPlusPlugin;
     sut.app = mockApp;
@@ -68,12 +63,20 @@ describe('SwitcherPlusPlugin', () => {
     (sut as any).ribbonIconEls = new Map();
   });
 
+  afterEach(() => {
+    updateDataAndLoadSettingsSpy.mockRestore();
+    createAndOpenSpy.mockRestore();
+    installMobileLauncherSpy.mockRestore();
+    removeMobileLauncherSpy.mockRestore();
+    installEmptyTabMonitorSpy.mockRestore();
+    removeEmptyTabButtonsSpy.mockRestore();
+  });
+
   describe('onload', () => {
-    it('should register setting tab', async () => {
+    it('should call addSettingTab', async () => {
       await sut.onload();
 
       expect(sut.addSettingTab).toHaveBeenCalledTimes(1);
-      expect(SwitcherPlusSettingTab).toHaveBeenCalledWith(mockApp, sut, sut.options);
     });
 
     it('should register all 11 commands with correct id, name, and icon', async () => {
@@ -227,9 +230,23 @@ describe('SwitcherPlusPlugin', () => {
       });
     });
 
-    it('should create checkCallback that calls createModalAndOpen with correct mode', () => {
-      const spy = jest.spyOn(sut, 'createModalAndOpen').mockReturnValue(true);
+    it('should return true without calling createAndOpen when isChecking is true', () => {
+      sut.registerCommand('test-id', 'Test Name', Mode.Standard, 'test-icon');
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      const commandCall = (sut.addCommand as jest.Mock<Command>).mock.calls[0]?.[0];
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const checkCallback = commandCall?.checkCallback as
+        | ((checking: boolean) => boolean)
+        | undefined;
+
+      const result = checkCallback?.(true);
+
+      expect(result).toBe(true);
+      expect(createAndOpenSpy).not.toHaveBeenCalled();
+    });
+
+    it('should call SwitcherPlusModal.createAndOpen with correct mode when not checking', () => {
       sut.registerCommand('test-id', 'Test Name', Mode.EditorList, 'test-icon');
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
@@ -241,14 +258,16 @@ describe('SwitcherPlusPlugin', () => {
 
       const result = checkCallback?.(false);
 
-      expect(spy).toHaveBeenCalledWith(Mode.EditorList, false, undefined);
+      expect(createAndOpenSpy).toHaveBeenCalledWith(
+        mockApp,
+        sut,
+        Mode.EditorList,
+        undefined,
+      );
       expect(result).toBe(true);
-
-      spy.mockRestore();
     });
 
-    it('should pass sessionOpts to createModalAndOpen when provided', () => {
-      const spy = jest.spyOn(sut, 'createModalAndOpen').mockReturnValue(true);
+    it('should pass sessionOpts to SwitcherPlusModal.createAndOpen when provided', () => {
       const sessionOpts = { useActiveEditorAsSource: true };
 
       sut.registerCommand(
@@ -268,36 +287,21 @@ describe('SwitcherPlusPlugin', () => {
 
       checkCallback?.(false);
 
-      expect(spy).toHaveBeenCalledWith(Mode.SymbolList, false, sessionOpts);
-
-      spy.mockRestore();
-    });
-
-    it('should pass isChecking parameter through to createModalAndOpen', () => {
-      const spy = jest.spyOn(sut, 'createModalAndOpen').mockReturnValue(true);
-
-      sut.registerCommand('test-id', 'Test Name', Mode.Standard, 'test-icon');
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      const commandCall = (sut.addCommand as jest.Mock<Command>).mock.calls[0]?.[0];
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      const checkCallback = commandCall?.checkCallback as
-        | ((checking: boolean) => boolean)
-        | undefined;
-
-      checkCallback?.(true);
-
-      expect(spy).toHaveBeenCalledWith(Mode.Standard, true, undefined);
-
-      spy.mockRestore();
+      expect(createAndOpenSpy).toHaveBeenCalledWith(
+        mockApp,
+        sut,
+        Mode.SymbolList,
+        sessionOpts,
+      );
     });
   });
 
   describe('registerRibbonCommandIcons', () => {
     beforeEach(() => {
       sut.options = settings;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-      (sut as any).commandDefinitions = getCommandDefinitions(settings);
+      jest
+        .spyOn(sut, 'commandDefinitions', 'get')
+        .mockReturnValue(getCommandDefinitions(settings));
       settings.enabledRibbonCommands = ['HeadingsList', 'SymbolList'];
     });
 
@@ -317,9 +321,7 @@ describe('SwitcherPlusPlugin', () => {
       );
     });
 
-    it('should configure ribbon icon callback to call createModalAndOpen with correct mode', () => {
-      const spy = jest.spyOn(sut, 'createModalAndOpen');
-
+    it('should configure ribbon icon callback to call SwitcherPlusModal.createAndOpen with correct mode', () => {
       sut.registerRibbonCommandIcons();
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -334,9 +336,7 @@ describe('SwitcherPlusPlugin', () => {
 
       callback?.();
 
-      expect(spy).toHaveBeenCalledWith(Mode.HeadingsList, false);
-
-      spy.mockRestore();
+      expect(createAndOpenSpy).toHaveBeenCalledWith(mockApp, sut, Mode.HeadingsList);
     });
 
     it('should remove previously registered ribbon icons when called again', () => {
@@ -374,57 +374,12 @@ describe('SwitcherPlusPlugin', () => {
     });
   });
 
-  describe('createModalAndOpen', () => {
-    beforeEach(() => {
-      sut.options = settings;
-    });
-
-    it('should return true without creating modal when isChecking is true', () => {
-      const result = sut.createModalAndOpen(Mode.Standard, true);
-
-      expect(result).toBe(true);
-      expect(createSwitcherPlus).not.toHaveBeenCalled();
-    });
-
-    it('should call createSwitcherPlus and openInMode when isChecking is false', () => {
-      const mockModal = mock<SwitcherPlus>();
-      (createSwitcherPlus as jest.Mock).mockReturnValue(mockModal);
-
-      const result = sut.createModalAndOpen(Mode.EditorList, false);
-
-      expect(createSwitcherPlus).toHaveBeenCalledWith(mockApp, sut);
-      expect(mockModal.openInMode).toHaveBeenCalledWith({ mode: Mode.EditorList });
-      expect(result).toBe(true);
-    });
-
-    it('should pass sessionOpts to openInMode when provided', () => {
-      const mockModal = mock<SwitcherPlus>();
-      (createSwitcherPlus as jest.Mock).mockReturnValue(mockModal);
-      const sessionOpts = { useActiveEditorAsSource: true };
-
-      sut.createModalAndOpen(Mode.SymbolList, false, sessionOpts);
-
-      expect(mockModal.openInMode).toHaveBeenCalledWith({
-        mode: Mode.SymbolList,
-        useActiveEditorAsSource: true,
-      });
-    });
-
-    it('should return false when createSwitcherPlus returns null', () => {
-      (createSwitcherPlus as jest.Mock).mockReturnValue(null);
-
-      const result = sut.createModalAndOpen(Mode.Standard, false);
-
-      expect(result).toBe(false);
-      expect(createSwitcherPlus).toHaveBeenCalledWith(mockApp, sut);
-    });
-  });
-
   describe('updateLauncherButtonOverrides', () => {
     beforeEach(() => {
       sut.options = settings;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-      (sut as any).commandDefinitions = getCommandDefinitions(settings);
+      jest
+        .spyOn(sut, 'commandDefinitions', 'get')
+        .mockReturnValue(getCommandDefinitions(settings));
       settings.mobileLauncher.modeString = 'HeadingsList';
       settings.mobileLauncher.isEnabled = true;
       settings.mobileLauncher.isEmptyTabButtonEnabled = true;
@@ -433,21 +388,19 @@ describe('SwitcherPlusPlugin', () => {
     it('should call MobileLauncher.removeMobileLauncherOverride when called', () => {
       sut.updateLauncherButtonOverrides(true);
 
-      expect(MobileLauncher.removeMobileLauncherOverride).toHaveBeenCalledTimes(1);
+      expect(removeMobileLauncherSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should call EmptyTabMonitor.removeEmptyTabButtons when called', () => {
       sut.updateLauncherButtonOverrides(true);
 
-      expect(EmptyTabMonitor.removeEmptyTabButtons).toHaveBeenCalledWith(
-        mockApp.workspace,
-      );
+      expect(removeEmptyTabButtonsSpy).toHaveBeenCalledWith(mockApp.workspace);
     });
 
     it('should call MobileLauncher.installMobileLauncherOverride when isInstall is true', () => {
       sut.updateLauncherButtonOverrides(true);
 
-      expect(MobileLauncher.installMobileLauncherOverride).toHaveBeenCalledWith(
+      expect(installMobileLauncherSpy).toHaveBeenCalledWith(
         mockApp,
         settings.mobileLauncher,
         expect.any(Function),
@@ -457,7 +410,7 @@ describe('SwitcherPlusPlugin', () => {
     it('should call EmptyTabMonitor.installEmptyTabMonitor when isInstall is true', () => {
       sut.updateLauncherButtonOverrides(true);
 
-      expect(EmptyTabMonitor.installEmptyTabMonitor).toHaveBeenCalledWith(sut, {
+      expect(installEmptyTabMonitorSpy).toHaveBeenCalledWith(sut, {
         isEnabled: true,
         buttonLabel: 'Switcher++: Open in Headings Mode',
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -470,7 +423,7 @@ describe('SwitcherPlusPlugin', () => {
 
       sut.updateLauncherButtonOverrides(true);
 
-      expect(EmptyTabMonitor.installEmptyTabMonitor).toHaveBeenCalledWith(
+      expect(installEmptyTabMonitorSpy).toHaveBeenCalledWith(
         sut,
         expect.objectContaining({
           buttonLabel: 'Switcher++: Open Symbols for selected suggestion or editor',
@@ -484,7 +437,7 @@ describe('SwitcherPlusPlugin', () => {
 
       sut.updateLauncherButtonOverrides(true);
 
-      expect(EmptyTabMonitor.installEmptyTabMonitor).toHaveBeenCalledWith(
+      expect(installEmptyTabMonitorSpy).toHaveBeenCalledWith(
         sut,
         expect.objectContaining({
           buttonLabel: 'Switcher++: ',
@@ -492,23 +445,17 @@ describe('SwitcherPlusPlugin', () => {
       );
     });
 
-    it('should pass onclick listener that calls createModalAndOpen with correct mode', () => {
-      const spy = jest.spyOn(sut, 'createModalAndOpen');
+    it('should pass onclick listener that calls SwitcherPlusModal.createAndOpen with correct mode', () => {
       settings.mobileLauncher.modeString = 'EditorList';
 
       sut.updateLauncherButtonOverrides(true);
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const installCall = (MobileLauncher.installMobileLauncherOverride as jest.Mock).mock
-        .calls[0];
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const installCall = installMobileLauncherSpy.mock.calls[0] as unknown[];
       const onclickListener = installCall?.[2] as (() => void) | undefined;
 
       onclickListener?.();
 
-      expect(spy).toHaveBeenCalledWith(Mode.EditorList, false);
-
-      spy.mockRestore();
+      expect(createAndOpenSpy).toHaveBeenCalledWith(mockApp, sut, Mode.EditorList);
     });
 
     it('should pass isEnabled false to EmptyTabMonitor when mobileLauncher.isEnabled is false', () => {
@@ -516,7 +463,7 @@ describe('SwitcherPlusPlugin', () => {
 
       sut.updateLauncherButtonOverrides(true);
 
-      expect(EmptyTabMonitor.installEmptyTabMonitor).toHaveBeenCalledWith(
+      expect(installEmptyTabMonitorSpy).toHaveBeenCalledWith(
         sut,
         expect.objectContaining({
           isEnabled: false,
@@ -529,7 +476,7 @@ describe('SwitcherPlusPlugin', () => {
 
       sut.updateLauncherButtonOverrides(true);
 
-      expect(EmptyTabMonitor.installEmptyTabMonitor).toHaveBeenCalledWith(
+      expect(installEmptyTabMonitorSpy).toHaveBeenCalledWith(
         sut,
         expect.objectContaining({
           isEnabled: false,
@@ -540,17 +487,15 @@ describe('SwitcherPlusPlugin', () => {
     it('should not call install methods when isInstall is false', () => {
       sut.updateLauncherButtonOverrides(false);
 
-      expect(MobileLauncher.installMobileLauncherOverride).not.toHaveBeenCalled();
-      expect(EmptyTabMonitor.installEmptyTabMonitor).not.toHaveBeenCalled();
+      expect(installMobileLauncherSpy).not.toHaveBeenCalled();
+      expect(installEmptyTabMonitorSpy).not.toHaveBeenCalled();
     });
 
     it('should still call remove methods when isInstall is false', () => {
       sut.updateLauncherButtonOverrides(false);
 
-      expect(MobileLauncher.removeMobileLauncherOverride).toHaveBeenCalledTimes(1);
-      expect(EmptyTabMonitor.removeEmptyTabButtons).toHaveBeenCalledWith(
-        mockApp.workspace,
-      );
+      expect(removeMobileLauncherSpy).toHaveBeenCalledTimes(1);
+      expect(removeEmptyTabButtonsSpy).toHaveBeenCalledWith(mockApp.workspace);
     });
   });
 

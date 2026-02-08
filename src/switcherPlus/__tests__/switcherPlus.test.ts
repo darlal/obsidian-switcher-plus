@@ -1,5 +1,5 @@
 import SwitcherPlusPlugin from 'src/main';
-import { createSwitcherPlus, HandlerRegistry, ModeHandler } from 'src/switcherPlus';
+import { SwitcherPlusModal, HandlerRegistry, ModeHandler } from 'src/switcherPlus';
 import * as Utils from 'src/utils/utils';
 import { mock, mockClear, MockProxy } from 'jest-mock-extended';
 import { App, Chooser, QuickSwitcherPluginInstance, Scope } from 'obsidian';
@@ -93,13 +93,13 @@ describe('switcherPlus', () => {
     getSystemSwitcherInstanceSpy.mockRestore();
   });
 
-  describe('createSwitcherPlus', () => {
+  describe('SwitcherPlusModal.create', () => {
     it('should route startup failures through logError when the builtin QuickSwitcherModal is not accessible', () => {
       const logErrorSpy = jest.spyOn(Utils, 'logError').mockReturnValueOnce();
 
       getSystemSwitcherInstanceSpy.mockReturnValueOnce(null);
 
-      const result = createSwitcherPlus(mockApp, mockPlugin);
+      const result = SwitcherPlusModal.create(mockApp, mockPlugin);
 
       expect(result).toBeNull();
       expect(getSystemSwitcherInstanceSpy).toHaveBeenCalledWith(mockApp);
@@ -113,11 +113,59 @@ describe('switcherPlus', () => {
     });
 
     it('should return an instance of a class that implements SwitcherPlus', () => {
-      const result = createSwitcherPlus(mockApp, mockPlugin);
+      const result = SwitcherPlusModal.create(mockApp, mockPlugin);
 
       // todo: more thorough checking needed here
       expect(result).not.toBeFalsy();
       expect(getSystemSwitcherInstanceSpy).toHaveBeenLastCalledWith(mockApp);
+    });
+  });
+
+  describe('createAndOpen', () => {
+    it('should return true and call openInMode when system switcher is available', () => {
+      const mockModal = mock<SwitcherPlus>();
+      const createSpy = jest
+        .spyOn(SwitcherPlusModal, 'create')
+        .mockReturnValue(mockModal);
+
+      const result = SwitcherPlusModal.createAndOpen(
+        mockApp,
+        mockPlugin,
+        Mode.EditorList,
+      );
+
+      expect(result).toBe(true);
+      expect(createSpy).toHaveBeenCalledWith(mockApp, mockPlugin);
+      expect(mockModal.openInMode).toHaveBeenCalledWith({ mode: Mode.EditorList });
+
+      createSpy.mockRestore();
+    });
+
+    it('should pass sessionOpts to openInMode when provided', () => {
+      const mockModal = mock<SwitcherPlus>();
+      const createSpy = jest
+        .spyOn(SwitcherPlusModal, 'create')
+        .mockReturnValue(mockModal);
+      const sessionOpts = { useActiveEditorAsSource: true };
+
+      SwitcherPlusModal.createAndOpen(mockApp, mockPlugin, Mode.SymbolList, sessionOpts);
+
+      expect(mockModal.openInMode).toHaveBeenCalledWith({
+        mode: Mode.SymbolList,
+        useActiveEditorAsSource: true,
+      });
+
+      createSpy.mockRestore();
+    });
+
+    it('should return false when system switcher is unavailable', () => {
+      const createSpy = jest.spyOn(SwitcherPlusModal, 'create').mockReturnValue(null);
+
+      const result = SwitcherPlusModal.createAndOpen(mockApp, mockPlugin, Mode.Standard);
+
+      expect(result).toBe(false);
+
+      createSpy.mockRestore();
     });
   });
 
@@ -126,7 +174,7 @@ describe('switcherPlus', () => {
 
     beforeAll(() => {
       HandlerRegistry.reset();
-      sut = createSwitcherPlus(mockApp, mockPlugin);
+      sut = SwitcherPlusModal.create(mockApp, mockPlugin);
     });
 
     test('openInMode() should forward to ModeHandler and  call super.Open()', () => {

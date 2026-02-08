@@ -1,7 +1,7 @@
 import { Plugin } from 'obsidian';
 import { SwitcherPlusSettings, SwitcherPlusSettingTab } from 'src/settings';
 import {
-  createSwitcherPlus,
+  SwitcherPlusModal,
   EmptyTabMonitor,
   MobileLauncher,
   getCommandDefinitions,
@@ -11,15 +11,19 @@ import { Mode, SessionOpts } from 'src/types';
 
 export default class SwitcherPlusPlugin extends Plugin {
   public options: SwitcherPlusSettings;
-  private commandDefinitions: CommandDefinition[];
+  private _commandDefinitions: CommandDefinition[];
   private ribbonIconEls: Map<string, HTMLElement> = new Map();
+
+  get commandDefinitions(): CommandDefinition[] {
+    return this._commandDefinitions;
+  }
 
   async onload(): Promise<void> {
     const options = new SwitcherPlusSettings(this);
     await options.updateDataAndLoadSettings();
     this.options = options;
 
-    this.commandDefinitions = getCommandDefinitions(options);
+    this._commandDefinitions = getCommandDefinitions(options);
 
     this.addSettingTab(new SwitcherPlusSettingTab(this.app, this, options));
     this.registerRibbonCommandIcons();
@@ -55,7 +59,11 @@ export default class SwitcherPlusPlugin extends Plugin {
       name,
       icon: iconId,
       checkCallback: (checking) => {
-        return this.createModalAndOpen(mode, checking, sessionOpts);
+        if (checking) {
+          return true;
+        }
+
+        return SwitcherPlusModal.createAndOpen(this.app, this, mode, sessionOpts);
       },
     });
   }
@@ -77,31 +85,11 @@ export default class SwitcherPlusPlugin extends Plugin {
 
       if (data) {
         const iconEl = this.addRibbonIcon(data.iconId, data.commandName, () => {
-          this.createModalAndOpen(data.mode, false);
+          SwitcherPlusModal.createAndOpen(this.app, this, data.mode);
         });
         this.ribbonIconEls.set(data.commandId, iconEl);
       }
     });
-  }
-
-  createModalAndOpen(
-    mode: Mode,
-    isChecking: boolean,
-    sessionOpts?: Pick<SessionOpts, 'useActiveEditorAsSource'>,
-  ): boolean {
-    if (!isChecking) {
-      // modal needs to be created dynamically (same as system switcher)
-      // as system options are evaluated in the modal constructor
-      const modal = createSwitcherPlus(this.app, this);
-      if (!modal) {
-        return false;
-      }
-
-      const opts: SessionOpts = Object.assign({ mode }, sessionOpts);
-      modal.openInMode(opts);
-    }
-
-    return true;
   }
 
   updateLauncherButtonOverrides(isInstall: boolean): void {
@@ -120,7 +108,7 @@ export default class SwitcherPlusPlugin extends Plugin {
       const openMode = Mode[modeString];
       const onclickListener = () => {
         if (openMode) {
-          this.createModalAndOpen(openMode, false);
+          SwitcherPlusModal.createAndOpen(this.app, this, openMode);
         }
       };
 
