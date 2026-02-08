@@ -5,6 +5,7 @@ import {
   EmptyTabMonitor,
   MobileLauncher,
   CommandRegistrar,
+  RibbonIconManager,
   getCommandDefinitions,
   CommandDefinition,
 } from 'src/switcherPlus';
@@ -13,7 +14,6 @@ import { Mode } from 'src/types';
 export default class SwitcherPlusPlugin extends Plugin {
   public options: SwitcherPlusSettings;
   private _commandDefinitions: CommandDefinition[];
-  private ribbonIconEls: Map<string, HTMLElement> = new Map();
 
   get commandDefinitions(): CommandDefinition[] {
     return this._commandDefinitions;
@@ -23,13 +23,11 @@ export default class SwitcherPlusPlugin extends Plugin {
     const options = new SwitcherPlusSettings(this);
     await options.updateDataAndLoadSettings();
     this.options = options;
-
     this._commandDefinitions = getCommandDefinitions(options);
 
     this.addSettingTab(new SwitcherPlusSettingTab(this.app, this, options));
     this.registerRibbonCommandIcons();
     this.updateLauncherButtonOverrides(true);
-
     CommandRegistrar.registerCommands(this, this.commandDefinitions);
   }
 
@@ -38,27 +36,7 @@ export default class SwitcherPlusPlugin extends Plugin {
   }
 
   registerRibbonCommandIcons(): void {
-    this.ribbonIconEls.forEach((el) => el.remove());
-    this.ribbonIconEls.clear();
-
-    const commandDataByMode = this.commandDefinitions.reduce(
-      (acc, curr) => {
-        acc[curr.mode] = curr;
-        return acc;
-      },
-      {} as Record<Mode, CommandDefinition>,
-    );
-
-    this.options.enabledRibbonCommands.forEach((command) => {
-      const data = commandDataByMode[Mode[command]];
-
-      if (data) {
-        const iconEl = this.addRibbonIcon(data.iconId, data.commandName, () => {
-          SwitcherPlusModal.createAndOpen(this.app, this, data.mode);
-        });
-        this.ribbonIconEls.set(data.commandId, iconEl);
-      }
-    });
+    RibbonIconManager.registerRibbonIcons(this, this.commandDefinitions);
   }
 
   updateLauncherButtonOverrides(isInstall: boolean): void {

@@ -4,8 +4,6 @@ import SwitcherPlusPlugin from 'src/main';
 
 /**
  * Registers Obsidian commands for each {@link CommandDefinition}.
- * Follows the same static-method class pattern as {@link MobileLauncher} and
- * {@link EmptyTabMonitor}.
  */
 export class CommandRegistrar {
   /**

@@ -7,6 +7,7 @@ import {
   EmptyTabMonitor,
   MobileLauncher,
   CommandRegistrar,
+  RibbonIconManager,
   getCommandDefinitions,
 } from 'src/switcherPlus';
 import { Mode } from 'src/types';
@@ -17,6 +18,7 @@ describe('SwitcherPlusPlugin', () => {
   let settings: SwitcherPlusSettings;
   let updateDataAndLoadSettingsSpy: jest.SpyInstance;
   let registerCommandsSpy: jest.SpyInstance;
+  let registerRibbonIconsSpy: jest.SpyInstance;
   let createAndOpenSpy: jest.SpyInstance;
   let installMobileLauncherSpy: jest.SpyInstance;
   let removeMobileLauncherSpy: jest.SpyInstance;
@@ -37,6 +39,10 @@ describe('SwitcherPlusPlugin', () => {
 
     registerCommandsSpy = jest
       .spyOn(CommandRegistrar, 'registerCommands')
+      .mockImplementation();
+
+    registerRibbonIconsSpy = jest
+      .spyOn(RibbonIconManager, 'registerRibbonIcons')
       .mockImplementation();
 
     createAndOpenSpy = jest
@@ -63,15 +69,13 @@ describe('SwitcherPlusPlugin', () => {
     sut.app = mockApp;
     sut.manifest = {} as SwitcherPlusPlugin['manifest'];
     sut.addCommand = jest.fn();
-    sut.addRibbonIcon = jest.fn();
     sut.addSettingTab = jest.fn();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-    (sut as any).ribbonIconEls = new Map();
   });
 
   afterEach(() => {
     updateDataAndLoadSettingsSpy.mockRestore();
     registerCommandsSpy.mockRestore();
+    registerRibbonIconsSpy.mockRestore();
     createAndOpenSpy.mockRestore();
     installMobileLauncherSpy.mockRestore();
     removeMobileLauncherSpy.mockRestore();
@@ -92,14 +96,10 @@ describe('SwitcherPlusPlugin', () => {
       expect(registerCommandsSpy).toHaveBeenCalledWith(sut, sut.commandDefinitions);
     });
 
-    it('should call registerRibbonCommandIcons', async () => {
-      const spy = jest.spyOn(sut, 'registerRibbonCommandIcons');
-
+    it('should delegate ribbon icon registration to RibbonIconManager', async () => {
       await sut.onload();
 
-      expect(spy).toHaveBeenCalledTimes(1);
-
-      spy.mockRestore();
+      expect(registerRibbonIconsSpy).toHaveBeenCalledWith(sut, sut.commandDefinitions);
     });
 
     it('should call updateLauncherButtonOverrides with true', async () => {
@@ -114,80 +114,15 @@ describe('SwitcherPlusPlugin', () => {
   });
 
   describe('registerRibbonCommandIcons', () => {
-    beforeEach(() => {
+    it('should delegate to RibbonIconManager.registerRibbonIcons', () => {
       sut.options = settings;
       jest
         .spyOn(sut, 'commandDefinitions', 'get')
         .mockReturnValue(getCommandDefinitions(settings));
-      settings.enabledRibbonCommands = ['HeadingsList', 'SymbolList'];
-    });
-
-    it('should call addRibbonIcon for each mode in enabledRibbonCommands setting', () => {
-      sut.registerRibbonCommandIcons();
-
-      expect(sut.addRibbonIcon).toHaveBeenCalledTimes(2);
-      expect(sut.addRibbonIcon).toHaveBeenCalledWith(
-        'lucide-file-search',
-        'Open in Headings Mode',
-        expect.any(Function),
-      );
-      expect(sut.addRibbonIcon).toHaveBeenCalledWith(
-        'lucide-dollar-sign',
-        'Open Symbols for the active editor',
-        expect.any(Function),
-      );
-    });
-
-    it('should configure ribbon icon callback to call SwitcherPlusModal.createAndOpen with correct mode', () => {
-      sut.registerRibbonCommandIcons();
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const ribbonCallForHeadings = (
-        sut.addRibbonIcon as jest.Mock<HTMLElement>
-      ).mock.calls.find(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        (call) => call[1] === 'Open in Headings Mode',
-      );
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      const callback = ribbonCallForHeadings?.[2] as (() => void) | undefined;
-
-      callback?.();
-
-      expect(createAndOpenSpy).toHaveBeenCalledWith(mockApp, sut, Mode.HeadingsList);
-    });
-
-    it('should remove previously registered ribbon icons when called again', () => {
-      const mockRibbonEl1 = mock<HTMLElement>();
-      const mockRibbonEl2 = mock<HTMLElement>();
-
-      (sut.addRibbonIcon as jest.Mock)
-        .mockReturnValueOnce(mockRibbonEl1)
-        .mockReturnValueOnce(mockRibbonEl2);
 
       sut.registerRibbonCommandIcons();
 
-      expect(mockRibbonEl1.remove).not.toHaveBeenCalled();
-      expect(mockRibbonEl2.remove).not.toHaveBeenCalled();
-
-      const mockRibbonEl3 = mock<HTMLElement>();
-      const mockRibbonEl4 = mock<HTMLElement>();
-
-      (sut.addRibbonIcon as jest.Mock)
-        .mockReturnValueOnce(mockRibbonEl3)
-        .mockReturnValueOnce(mockRibbonEl4);
-
-      sut.registerRibbonCommandIcons();
-
-      expect(mockRibbonEl1.remove).toHaveBeenCalledTimes(1);
-      expect(mockRibbonEl2.remove).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle empty enabledRibbonCommands setting', () => {
-      settings.enabledRibbonCommands = [];
-
-      sut.registerRibbonCommandIcons();
-
-      expect(sut.addRibbonIcon).not.toHaveBeenCalled();
+      expect(registerRibbonIconsSpy).toHaveBeenCalledWith(sut, sut.commandDefinitions);
     });
   });
 
