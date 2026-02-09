@@ -1,6 +1,8 @@
 import { App, Platform, setIcon } from 'obsidian';
 import { SwitcherPlusSettings } from 'src/settings';
-import { MobileLauncherConfig } from 'src/types';
+import { MobileLauncherConfig, Mode } from 'src/types';
+import { SwitcherPlusModal } from './switcherPlus';
+import SwitcherPlusPlugin from 'src/main';
 
 /**
  * Creates a custom launcher button element by cloning then modifying coreLauncherButtonEl
@@ -107,15 +109,15 @@ export class MobileLauncher {
   /**
    * Overrides the default functionality of the "🔍" button on mobile platforms
    * to launch Switcher++ instead of the default system switcher.
-   * @param  {App} app
-   * @param  {MobileLauncherConfig} launcherConfig
-   * @param  {()=>void} onclickListener event handler to attach to the new custom button
+   * @param plugin - The Switcher++ plugin instance.
+   * @param launcherConfig
+   * @param mode - The mode to open the switcher in when the button is clicked.
    * @returns HTMLElement the new launcher button element if created
    */
   static installMobileLauncherOverride(
-    app: App,
+    plugin: SwitcherPlusPlugin,
     launcherConfig: MobileLauncherConfig,
-    onclickListener: () => void,
+    mode: Mode,
   ): HTMLElement {
     let qspLauncherButtonEl: HTMLElement = null;
     const shouldInstall =
@@ -129,8 +131,15 @@ export class MobileLauncher {
       return null;
     }
 
+    const { app } = plugin;
     const coreLauncherButtonEl = getCoreLauncherButtonElement(app, launcherConfig);
     if (coreLauncherButtonEl) {
+      const onclickListener = () => {
+        if (mode) {
+          SwitcherPlusModal.createAndOpen(app, plugin, mode);
+        }
+      };
+
       const qspButtonEl = createQSPLauncherButton(
         coreLauncherButtonEl,
         launcherConfig,

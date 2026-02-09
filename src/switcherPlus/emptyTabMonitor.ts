@@ -1,10 +1,13 @@
-import { EventRef, Plugin, Workspace, WorkspaceLeaf } from 'obsidian';
+import { EventRef, Workspace, WorkspaceLeaf } from 'obsidian';
 import { leafHasLoadedViewOfType } from 'src/utils';
+import { Mode } from 'src/types';
+import { SwitcherPlusModal } from './switcherPlus';
+import SwitcherPlusPlugin from 'src/main';
 
 interface EmptyTabLauncherConfig {
   isEnabled: boolean;
   buttonLabel: string;
-  onclickListener: () => void;
+  mode: Mode;
 }
 
 /**
@@ -49,21 +52,24 @@ export class EmptyTabMonitor {
   static readonly emptyLeaves = new Map<WorkspaceLeaf, HTMLElement>();
   private static layoutChangeEventRef: EventRef;
 
-  static installEmptyTabMonitor(plugin: Plugin, config: EmptyTabLauncherConfig): void {
+  static installEmptyTabMonitor(
+    plugin: SwitcherPlusPlugin,
+    config: EmptyTabLauncherConfig,
+  ): void {
     if (!config?.isEnabled) {
       return;
     }
 
     const { workspace } = plugin.app;
     EmptyTabMonitor.layoutChangeEventRef = workspace.on('layout-change', () => {
-      EmptyTabMonitor.updateEmptyTabs(workspace, config);
+      EmptyTabMonitor.updateEmptyTabs(workspace, plugin, config);
     });
 
     plugin.registerEvent(EmptyTabMonitor.layoutChangeEventRef);
 
     // Initial check when monitoring starts
     workspace.onLayoutReady(() => {
-      EmptyTabMonitor.updateEmptyTabs(workspace, config);
+      EmptyTabMonitor.updateEmptyTabs(workspace, plugin, config);
     });
   }
 
@@ -81,14 +87,24 @@ export class EmptyTabMonitor {
   /**
    * Iterates through all workspace leaves and adds a custom launcher button to any
    * empty leaves that do not already have one.
-   * @param  {Workspace} workspace
-   * @param  {EmptyTabLauncherConfig} config
+   * @param workspace
+   * @param plugin - The Switcher++ plugin instance.
+   * @param config
    */
-  static updateEmptyTabs(workspace: Workspace, config: EmptyTabLauncherConfig): void {
+  static updateEmptyTabs(
+    workspace: Workspace,
+    plugin: SwitcherPlusPlugin,
+    config: EmptyTabLauncherConfig,
+  ): void {
     if (!config.isEnabled) {
       return;
     }
-    const { buttonLabel, onclickListener } = config;
+    const { buttonLabel, mode } = config;
+    const onclickListener = () => {
+      if (mode) {
+        SwitcherPlusModal.createAndOpen(plugin.app, plugin, mode);
+      }
+    };
 
     workspace.iterateAllLeaves((leaf: WorkspaceLeaf) => {
       const { emptyLeaves } = EmptyTabMonitor;

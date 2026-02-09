@@ -1900,7 +1900,7 @@ describe('SwitcherPlusKeymap', () => {
     const mockInstructionsEl = mock<HTMLElement>();
 
     beforeAll(() => {
-      mockModalEl.querySelector.calledWith(selector).mockReturnValue(mockInstructionsEl);
+      mockModalEl.find.calledWith(selector).mockReturnValue(mockInstructionsEl);
     });
 
     beforeEach(() => {

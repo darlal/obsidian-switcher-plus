@@ -1,16 +1,19 @@
 import { Chance } from 'chance';
-import { MockProxy, mock, mockFn, mockClear } from 'jest-mock-extended';
+import { MockProxy, mock, mockClear } from 'jest-mock-extended';
 import { App, Platform, setIcon } from 'obsidian';
-import { MobileLauncherConfig } from 'src/types';
-import { MobileLauncher } from 'src/switcherPlus';
+import { MobileLauncherConfig, Mode } from 'src/types';
+import { MobileLauncher, SwitcherPlusModal } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings';
+import SwitcherPlusPlugin from 'src/main';
 
 const chance = new Chance();
 
 describe('MobileLauncher', () => {
   let mockApp: MockProxy<App>;
+  let mockPlugin: MockProxy<SwitcherPlusPlugin>;
   let mockPlatform: MockProxy<typeof Platform>;
   let mockNavbarContainerEl: MockProxy<HTMLElement>;
+  let createAndOpenSpy: jest.SpyInstance;
   const sut = MobileLauncher;
 
   beforeAll(() => {
@@ -20,7 +23,16 @@ describe('MobileLauncher', () => {
         containerEl: mockNavbarContainerEl,
       },
     });
+    mockPlugin = mock<SwitcherPlusPlugin>({ app: mockApp });
     mockPlatform = jest.mocked<typeof Platform>(Platform);
+
+    createAndOpenSpy = jest
+      .spyOn(SwitcherPlusModal, 'createAndOpen')
+      .mockReturnValue(true);
+  });
+
+  afterAll(() => {
+    createAndOpenSpy.mockRestore();
   });
 
   describe('removeMobileLauncherOverride', () => {
@@ -104,7 +116,7 @@ describe('MobileLauncher', () => {
     it('should not install if the Platform is not mobile', () => {
       mockPlatform.isMobile = false;
 
-      const results = sut.installMobileLauncherOverride(mockApp, null, null);
+      const results = sut.installMobileLauncherOverride(mockPlugin, null, null);
 
       expect(results).toBeNull();
       expect(mockNavbarContainerEl.find).not.toHaveBeenCalled();
@@ -115,7 +127,7 @@ describe('MobileLauncher', () => {
     it('should not install if the launcher is disabled', () => {
       launcherConfig.isEnabled = false;
 
-      const results = sut.installMobileLauncherOverride(mockApp, launcherConfig, null);
+      const results = sut.installMobileLauncherOverride(mockPlugin, launcherConfig, null);
 
       expect(results).toBeNull();
       expect(mockNavbarContainerEl.find).not.toHaveBeenCalled();
@@ -126,7 +138,7 @@ describe('MobileLauncher', () => {
     it('should not install if the core button is already overridden', () => {
       sut.coreMobileLauncherButtonEl = mock<HTMLElement>();
 
-      const results = sut.installMobileLauncherOverride(mockApp, launcherConfig, null);
+      const results = sut.installMobileLauncherOverride(mockPlugin, launcherConfig, null);
 
       expect(results).toBeNull();
       expect(mockNavbarContainerEl.find).not.toHaveBeenCalled();
@@ -134,20 +146,34 @@ describe('MobileLauncher', () => {
       sut.coreMobileLauncherButtonEl = null;
     });
 
-    it('should create a a custom launcher button by cloning the core launcher button', () => {
-      const clickHandler = mockFn();
-
+    it('should create a custom launcher button by cloning the core launcher button', () => {
       const result = sut.installMobileLauncherOverride(
-        mockApp,
+        mockPlugin,
         launcherConfig,
-        clickHandler,
+        Mode.HeadingsList,
       );
 
       expect(result).toBe(mockQspButtonEl);
       expect(mockQspButtonEl.addClass).toHaveBeenCalledWith('qsp-mobile-launcher-button');
       expect(mockQspButtonEl.addEventListener).toHaveBeenCalledWith(
         'click',
-        clickHandler,
+        expect.any(Function),
+      );
+    });
+
+    it('should call SwitcherPlusModal.createAndOpen when the custom launcher button is clicked', () => {
+      sut.installMobileLauncherOverride(mockPlugin, launcherConfig, Mode.HeadingsList);
+
+      const clickHandler = mockQspButtonEl.addEventListener.mock.calls.find(
+        (call) => call[0] === 'click',
+      )?.[1] as (() => void) | undefined;
+
+      clickHandler?.();
+
+      expect(createAndOpenSpy).toHaveBeenCalledWith(
+        mockApp,
+        mockPlugin,
+        Mode.HeadingsList,
       );
     });
 
@@ -161,7 +187,11 @@ describe('MobileLauncher', () => {
         .calledWith(launcherConfig.coreLauncherButtonIconSelector)
         .mockReturnValueOnce(mockIconEl);
 
-      const result = sut.installMobileLauncherOverride(mockApp, launcherConfig, null);
+      const result = sut.installMobileLauncherOverride(
+        mockPlugin,
+        launcherConfig,
+        Mode.HeadingsList,
+      );
 
       expect(result).toBe(mockQspButtonEl);
       expect(mockSetIcon).toHaveBeenCalledWith(mockIconEl, launcherConfig.iconName);
@@ -175,7 +205,7 @@ describe('MobileLauncher', () => {
       mockClear(mockCoreButtonEl);
       mockClear(mockQspButtonEl);
 
-      sut.installMobileLauncherOverride(mockApp, launcherConfig, null);
+      sut.installMobileLauncherOverride(mockPlugin, launcherConfig, Mode.HeadingsList);
 
       expect(sut.coreMobileLauncherButtonEl).toBe(mockCoreButtonEl);
       expect(sut.qspMobileLauncherButtonEl).toBe(mockQspButtonEl);
@@ -196,6 +226,7 @@ describe('MobileLauncher', () => {
           containerEl: mockContainerEl,
         },
       });
+      const localPlugin = mock<SwitcherPlusPlugin>({ app: localApp });
 
       // return null when called using default selector
       mockContainerEl.find.calledWith(defaultSelector).mockReturnValue(null);
@@ -205,7 +236,11 @@ describe('MobileLauncher', () => {
         .calledWith(launcherConfig.coreLauncherButtonSelector)
         .mockReturnValue(mockCoreButtonEl);
 
-      const result = sut.installMobileLauncherOverride(localApp, launcherConfig, null);
+      const result = sut.installMobileLauncherOverride(
+        localPlugin,
+        launcherConfig,
+        Mode.HeadingsList,
+      );
 
       expect(result).toBe(mockQspButtonEl);
       expect(mockContainerEl.find).toHaveBeenCalledWith(defaultSelector);

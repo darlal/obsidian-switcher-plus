@@ -1,29 +1,46 @@
 import { mock, MockProxy, mockFn, mockClear } from 'jest-mock-extended';
-import { App, Plugin, View, Workspace, WorkspaceLeaf } from 'obsidian';
-import { EmptyTabMonitor } from 'src/switcherPlus/emptyTabMonitor';
+import { App, View, Workspace, WorkspaceLeaf } from 'obsidian';
+import { EmptyTabMonitor, SwitcherPlusModal } from 'src/switcherPlus';
 import * as Utils from 'src/utils/utils';
+import { Mode } from 'src/types';
+import SwitcherPlusPlugin from 'src/main';
 
 describe('EmptyTabMonitor', () => {
-  let mockPlugin: MockProxy<Plugin>;
+  let mockPlugin: MockProxy<SwitcherPlusPlugin>;
   let mockApp: MockProxy<App>;
   let mockWorkspace: MockProxy<Workspace>;
+  let createAndOpenSpy: jest.SpyInstance;
   let mockConfig: {
     isEnabled: boolean;
     buttonLabel: string;
-    onclickListener: jest.Mock;
+    mode: Mode;
   };
   let leafHasLoadedViewOfTypeSpy: jest.SpyInstance;
 
   beforeAll(() => {
     mockWorkspace = mock<Workspace>();
     mockApp = mock<App>({ workspace: mockWorkspace });
-    mockPlugin = mock<Plugin>({ app: mockApp });
+    mockPlugin = mock<SwitcherPlusPlugin>({ app: mockApp });
 
     mockConfig = {
       isEnabled: true,
       buttonLabel: 'Test Button',
-      onclickListener: jest.fn(),
+      mode: Mode.HeadingsList,
     };
+
+    createAndOpenSpy = jest
+      .spyOn(SwitcherPlusModal, 'createAndOpen')
+      .mockReturnValue(true);
+  });
+
+  afterAll(() => {
+    createAndOpenSpy.mockRestore();
+  });
+
+  beforeEach(() => {
+    leafHasLoadedViewOfTypeSpy = jest
+      .spyOn(Utils, 'leafHasLoadedViewOfType')
+      .mockReturnValue(undefined);
   });
 
   beforeEach(() => {
@@ -36,7 +53,7 @@ describe('EmptyTabMonitor', () => {
     EmptyTabMonitor.emptyLeaves.clear();
     mockClear(mockPlugin);
     mockClear(mockWorkspace);
-    mockClear(mockConfig.onclickListener);
+    createAndOpenSpy.mockClear();
 
     mockConfig.isEnabled = true;
     leafHasLoadedViewOfTypeSpy.mockRestore();
@@ -94,7 +111,11 @@ describe('EmptyTabMonitor', () => {
       EmptyTabMonitor.installEmptyTabMonitor(mockPlugin, mockConfig);
       layoutChangeCallback();
 
-      expect(updateEmptyTabsSpy).toHaveBeenCalledWith(mockWorkspace, mockConfig);
+      expect(updateEmptyTabsSpy).toHaveBeenCalledWith(
+        mockWorkspace,
+        mockPlugin,
+        mockConfig,
+      );
 
       updateEmptyTabsSpy.mockRestore();
     });
@@ -109,7 +130,11 @@ describe('EmptyTabMonitor', () => {
       EmptyTabMonitor.installEmptyTabMonitor(mockPlugin, mockConfig);
       layoutReadyCallback();
 
-      expect(updateEmptyTabsSpy).toHaveBeenCalledWith(mockWorkspace, mockConfig);
+      expect(updateEmptyTabsSpy).toHaveBeenCalledWith(
+        mockWorkspace,
+        mockPlugin,
+        mockConfig,
+      );
 
       updateEmptyTabsSpy.mockRestore();
     });
@@ -148,7 +173,7 @@ describe('EmptyTabMonitor', () => {
 
     it('should not look for empty tabs if config.isEnabled is false', () => {
       mockConfig.isEnabled = false;
-      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockConfig);
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
       expect(mockWorkspace.iterateAllLeaves).not.toHaveBeenCalled();
     });
@@ -156,19 +181,37 @@ describe('EmptyTabMonitor', () => {
     it('should add a button to an empty leaf that does not have one', () => {
       leafHasLoadedViewOfTypeSpy.mockReturnValue(true);
 
-      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockConfig);
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
       expect(EmptyTabMonitor.emptyLeaves.has(mockLeaf)).toBe(true);
       expect(mockButtonEl.addEventListener).toHaveBeenCalledWith(
         'click',
-        mockConfig.onclickListener,
+        expect.any(Function),
+      );
+    });
+
+    it('should call SwitcherPlusModal.createAndOpen when the button is clicked', () => {
+      leafHasLoadedViewOfTypeSpy.mockReturnValue(true);
+
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+
+      const clickHandler = mockButtonEl.addEventListener.mock.calls.find(
+        (call) => call[0] === 'click',
+      )?.[1] as (() => void) | undefined;
+
+      clickHandler?.();
+
+      expect(createAndOpenSpy).toHaveBeenCalledWith(
+        mockApp,
+        mockPlugin,
+        Mode.HeadingsList,
       );
     });
 
     it('should insert the launcher button after the first button (the "Create new note" button)', () => {
       leafHasLoadedViewOfTypeSpy.mockReturnValue(true);
 
-      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockConfig);
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
       expect(mockButtonListEl.insertAfter).toHaveBeenCalledWith(
         mockButtonEl,
@@ -179,7 +222,7 @@ describe('EmptyTabMonitor', () => {
 
     it('should not add a button if leaf is not empty', () => {
       leafHasLoadedViewOfTypeSpy.mockReturnValue(false);
-      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockConfig);
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
       expect(EmptyTabMonitor.emptyLeaves.has(mockLeaf)).toBe(false);
     });
@@ -189,7 +232,7 @@ describe('EmptyTabMonitor', () => {
       const existingButton = mock<HTMLElement>();
       EmptyTabMonitor.emptyLeaves.set(mockLeaf, existingButton);
 
-      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockConfig);
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
       expect(EmptyTabMonitor.emptyLeaves.get(mockLeaf)).toBe(existingButton);
       expect(mockButtonListEl.createDiv).not.toHaveBeenCalled();
@@ -201,7 +244,7 @@ describe('EmptyTabMonitor', () => {
         .calledWith('.empty-state-action-list')
         .mockReturnValue(null);
 
-      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockConfig);
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
       expect(EmptyTabMonitor.emptyLeaves.has(mockLeaf)).toBe(false);
     });

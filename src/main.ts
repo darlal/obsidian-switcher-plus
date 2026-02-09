@@ -1,7 +1,6 @@
 import { Plugin } from 'obsidian';
 import { SwitcherPlusSettings, SwitcherPlusSettingTab } from 'src/settings';
 import {
-  SwitcherPlusModal,
   EmptyTabMonitor,
   MobileLauncher,
   CommandRegistrar,
@@ -53,13 +52,8 @@ export default class SwitcherPlusPlugin extends Plugin {
     if (isInstall) {
       const modeString = mobileLauncher.modeString as keyof typeof Mode;
       const openMode = Mode[modeString];
-      const onclickListener = () => {
-        if (openMode) {
-          SwitcherPlusModal.createAndOpen(this.app, this, openMode);
-        }
-      };
 
-      MobileLauncher.installMobileLauncherOverride(app, mobileLauncher, onclickListener);
+      MobileLauncher.installMobileLauncherOverride(this, mobileLauncher, openMode);
 
       const commandDef = this.commandDefinitions.find((def) => def.mode === openMode);
       const buttonLabel = 'Switcher++: ' + (commandDef?.commandName ?? '');
@@ -67,7 +61,7 @@ export default class SwitcherPlusPlugin extends Plugin {
       EmptyTabMonitor.installEmptyTabMonitor(this, {
         isEnabled: mobileLauncher.isEnabled && mobileLauncher.isEmptyTabButtonEnabled,
         buttonLabel,
-        onclickListener,
+        mode: openMode,
       });
     }
   }

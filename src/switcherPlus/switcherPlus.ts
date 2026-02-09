@@ -21,12 +21,12 @@ export class SwitcherPlusModal {
     const SystemSwitcherModal = getSystemSwitcherInstance(app)
       ?.QuickSwitcherModal as SystemSwitcherConstructor;
 
-  if (!SystemSwitcherModal) {
-    logError(
-      'Unable to extend system switcher. Plugin UI will not be loaded. Use the builtin switcher instead.',
-    );
-    return null;
-  }
+    if (!SystemSwitcherModal) {
+      logError(
+        'Unable to extend system switcher. Plugin UI will not be loaded. Use the builtin switcher instead.',
+      );
+      return null;
+    }
 
     const CustomModal = class extends SystemSwitcherModal implements SwitcherPlus {
       private _exMode: ModeDispatcher;

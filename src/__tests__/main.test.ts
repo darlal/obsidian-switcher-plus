@@ -3,7 +3,6 @@ import { App } from 'obsidian';
 import SwitcherPlusPlugin from 'src/main';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
-  SwitcherPlusModal,
   EmptyTabMonitor,
   MobileLauncher,
   CommandRegistrar,
@@ -19,7 +18,6 @@ describe('SwitcherPlusPlugin', () => {
   let updateDataAndLoadSettingsSpy: jest.SpyInstance;
   let registerCommandsSpy: jest.SpyInstance;
   let registerRibbonIconsSpy: jest.SpyInstance;
-  let createAndOpenSpy: jest.SpyInstance;
   let installMobileLauncherSpy: jest.SpyInstance;
   let removeMobileLauncherSpy: jest.SpyInstance;
   let installEmptyTabMonitorSpy: jest.SpyInstance;
@@ -44,10 +42,6 @@ describe('SwitcherPlusPlugin', () => {
     registerRibbonIconsSpy = jest
       .spyOn(RibbonIconManager, 'registerRibbonIcons')
       .mockImplementation();
-
-    createAndOpenSpy = jest
-      .spyOn(SwitcherPlusModal, 'createAndOpen')
-      .mockReturnValue(true);
 
     installMobileLauncherSpy = jest
       .spyOn(MobileLauncher, 'installMobileLauncherOverride')
@@ -76,7 +70,6 @@ describe('SwitcherPlusPlugin', () => {
     updateDataAndLoadSettingsSpy.mockRestore();
     registerCommandsSpy.mockRestore();
     registerRibbonIconsSpy.mockRestore();
-    createAndOpenSpy.mockRestore();
     installMobileLauncherSpy.mockRestore();
     removeMobileLauncherSpy.mockRestore();
     installEmptyTabMonitorSpy.mockRestore();
@@ -153,9 +146,9 @@ describe('SwitcherPlusPlugin', () => {
       sut.updateLauncherButtonOverrides(true);
 
       expect(installMobileLauncherSpy).toHaveBeenCalledWith(
-        mockApp,
+        sut,
         settings.mobileLauncher,
-        expect.any(Function),
+        Mode.HeadingsList,
       );
     });
 
@@ -165,8 +158,7 @@ describe('SwitcherPlusPlugin', () => {
       expect(installEmptyTabMonitorSpy).toHaveBeenCalledWith(sut, {
         isEnabled: true,
         buttonLabel: 'Switcher++: Open in Headings Mode',
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        onclickListener: expect.any(Function),
+        mode: Mode.HeadingsList,
       });
     });
 
@@ -184,8 +176,7 @@ describe('SwitcherPlusPlugin', () => {
     });
 
     it('should use empty string for button label when no command matches mode', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
-      settings.mobileLauncher.modeString = 'InvalidMode' as any;
+      settings.mobileLauncher.modeString = 'InvalidMode';
 
       sut.updateLauncherButtonOverrides(true);
 
@@ -195,19 +186,6 @@ describe('SwitcherPlusPlugin', () => {
           buttonLabel: 'Switcher++: ',
         }),
       );
-    });
-
-    it('should pass onclick listener that calls SwitcherPlusModal.createAndOpen with correct mode', () => {
-      settings.mobileLauncher.modeString = 'EditorList';
-
-      sut.updateLauncherButtonOverrides(true);
-
-      const installCall = installMobileLauncherSpy.mock.calls[0] as unknown[];
-      const onclickListener = installCall?.[2] as (() => void) | undefined;
-
-      onclickListener?.();
-
-      expect(createAndOpenSpy).toHaveBeenCalledWith(mockApp, sut, Mode.EditorList);
     });
 
     it('should pass isEnabled false to EmptyTabMonitor when mobileLauncher.isEnabled is false', () => {
