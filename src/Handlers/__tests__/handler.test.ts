@@ -1329,25 +1329,25 @@ describe('Handler', () => {
   });
 
   describe('renderMarkdownContent', () => {
-    test('renderMarkdownContent should wrap rendered elements with a span', async () => {
+    test('renderMarkdownContent should wrap rendered elements with a div', async () => {
       const content = chance.word();
-      const mockWrapperSpan = mock<HTMLSpanElement>();
+      const mockWrapperDiv = mock<HTMLDivElement>();
       const mockMarkdownRenderer = jest.mocked<typeof MarkdownRenderer>(MarkdownRenderer);
 
       const mockContainerEl = mock<HTMLElement>({
-        createSpan: mockFn().mockReturnValueOnce(mockWrapperSpan),
+        createDiv: mockFn().mockReturnValueOnce(mockWrapperDiv),
       });
 
       await Handler.renderMarkdownContent(mockApp, mockContainerEl, content, null, null);
 
-      expect(mockContainerEl.createSpan).toHaveBeenCalledWith(
+      expect(mockContainerEl.createDiv).toHaveBeenCalledWith(
         expect.objectContaining({ cls: ['qsp-rendered-container'] }),
       );
 
       expect(mockMarkdownRenderer.render).toHaveBeenCalledWith(
         mockApp,
         content,
-        mockWrapperSpan,
+        mockWrapperDiv,
         null,
         null,
       );
@@ -1358,13 +1358,13 @@ describe('Handler', () => {
     test('renderMarkdownContent should re-parent child nodes from the paragraph container element to the .qsp-rendered-container element', async () => {
       const paraEl = mock<HTMLParagraphElement>({ nodeName: 'P' });
 
-      const mockWrapperSpan = mock<HTMLSpanElement>({
+      const mockWrapperDiv = mock<HTMLDivElement>({
         firstChild: paraEl,
         childNodes: mock<NodeListOf<ChildNode>>({ length: 1 }),
       });
 
       const mockContainerEl = mock<HTMLElement>({
-        createSpan: mockFn().mockReturnValueOnce(mockWrapperSpan),
+        createDiv: mockFn().mockReturnValueOnce(mockWrapperDiv),
       });
 
       await Handler.renderMarkdownContent(mockApp, mockContainerEl, null, null, null);

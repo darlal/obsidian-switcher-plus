@@ -971,7 +971,7 @@ export abstract class Handler<T extends AnySuggestion> {
     sourcePath: string,
     component: Component,
   ): Promise<HTMLSpanElement> {
-    const wrapperEl = containerEl.createSpan({ cls: ['qsp-rendered-container'] });
+    const wrapperEl = containerEl.createDiv({ cls: ['qsp-rendered-container'] });
     await MarkdownRenderer.render(app, content, wrapperEl, sourcePath, component);
 
     // Find the inserted <p> wrapping node and replace it with it's children

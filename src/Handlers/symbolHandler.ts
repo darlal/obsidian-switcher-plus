@@ -749,7 +749,8 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     const { symbol } = symbolInfo;
 
     if (isHeadingCache(symbol)) {
-      return symbol.heading;
+      // Escape "N." at the start to prevent markdown from treating it as an ordered list
+      return symbol.heading.replace(/^(\d+)\./, '$1\\.');
     }
 
     if (isTagCache(symbol)) {
