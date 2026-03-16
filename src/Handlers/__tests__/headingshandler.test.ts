@@ -778,7 +778,7 @@ describe('headingsHandler', () => {
       renderPathSpy.mockRestore();
     });
 
-    it('should render tags after breadcrumbs and before path', () => {
+    it('should render tags after breadcrumbs and path', () => {
       const mockContentEl = mock<HTMLDivElement>();
       const mockParentEl = mock<HTMLElement>();
       mockParentEl.createDiv.mockReturnValue(mockContentEl);
@@ -807,7 +807,7 @@ describe('headingsHandler', () => {
       sut.renderSuggestion(headingSugg, mockParentEl);
 
       // Verify order: breadcrumbs -> tags -> path
-      expect(callOrder).toEqual(['breadcrumbs', 'tags', 'path']);
+      expect(callOrder).toEqual(['breadcrumbs', 'path', 'tags']);
 
       renderHeadingBreadcrumbsSpy.mockRestore();
       renderTagsSpy.mockRestore();
