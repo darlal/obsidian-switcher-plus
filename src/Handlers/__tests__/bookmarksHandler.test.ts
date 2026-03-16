@@ -131,18 +131,13 @@ describe('bookmarksHandler', () => {
       expect(sut.renderSuggestion(null, null)).toBe(false);
     });
 
-    it('should render a file-based bookmark suggestion and call renderTags', () => {
+    it('should render a file-based bookmark suggestion', () => {
       const sugg = makeBookmarkedFileSuggestion();
-      const mockContentEl = mock<HTMLElement>();
       const mockParentEl = mock<HTMLElement>();
-      mockParentEl.querySelector.mockReturnValue(mockContentEl);
 
       const renderAsFileInfoPanelSpy = jest
         .spyOn(Handler.prototype, 'renderAsFileInfoPanel')
         .mockReturnValueOnce(null);
-      const renderTagsSpy = jest
-        .spyOn(Handler.prototype, 'renderTags')
-        .mockReturnValueOnce();
       const renderOptionalIndicatorsSpy = jest
         .spyOn(Handler.prototype, 'renderOptionalIndicators')
         .mockReturnValueOnce(null);
@@ -158,12 +153,9 @@ describe('bookmarksHandler', () => {
         sugg.matchType,
         sugg.match,
       );
-      expect(mockParentEl.querySelector).toHaveBeenCalledWith('.qsp-content');
-      expect(renderTagsSpy).toHaveBeenCalledWith(mockContentEl, sugg.file);
       expect(renderOptionalIndicatorsSpy).toHaveBeenCalledWith(mockParentEl, sugg);
 
       renderAsFileInfoPanelSpy.mockRestore();
-      renderTagsSpy.mockRestore();
       renderOptionalIndicatorsSpy.mockRestore();
     });
 
@@ -176,18 +168,13 @@ describe('bookmarksHandler', () => {
       const renderAsFileInfoPanelSpy = jest
         .spyOn(Handler.prototype, 'renderAsFileInfoPanel')
         .mockReturnValueOnce(null);
-      const renderTagsSpy = jest
-        .spyOn(Handler.prototype, 'renderTags')
-        .mockReturnValueOnce();
 
       const result = sut.renderSuggestion(sugg, mockParentEl);
 
       expect(result).toBe(false);
       expect(renderAsFileInfoPanelSpy).not.toHaveBeenCalled();
-      expect(renderTagsSpy).not.toHaveBeenCalled();
 
       renderAsFileInfoPanelSpy.mockRestore();
-      renderTagsSpy.mockRestore();
     });
 
     it('should return false for non-file bookmarks (folders) to delegate to core', () => {
@@ -199,44 +186,13 @@ describe('bookmarksHandler', () => {
       const renderAsFileInfoPanelSpy = jest
         .spyOn(Handler.prototype, 'renderAsFileInfoPanel')
         .mockReturnValueOnce(null);
-      const renderTagsSpy = jest
-        .spyOn(Handler.prototype, 'renderTags')
-        .mockReturnValueOnce();
 
       const result = sut.renderSuggestion(sugg, mockParentEl);
 
       expect(result).toBe(false);
       expect(renderAsFileInfoPanelSpy).not.toHaveBeenCalled();
-      expect(renderTagsSpy).not.toHaveBeenCalled();
 
       renderAsFileInfoPanelSpy.mockRestore();
-      renderTagsSpy.mockRestore();
-    });
-
-    it('should not call renderTags when content element is not found', () => {
-      const sugg = makeBookmarkedFileSuggestion();
-      const mockParentEl = mock<HTMLElement>();
-      mockParentEl.querySelector.mockReturnValue(null);
-
-      const renderAsFileInfoPanelSpy = jest
-        .spyOn(Handler.prototype, 'renderAsFileInfoPanel')
-        .mockReturnValueOnce(null);
-      const renderTagsSpy = jest
-        .spyOn(Handler.prototype, 'renderTags')
-        .mockReturnValueOnce();
-      const renderOptionalIndicatorsSpy = jest
-        .spyOn(Handler.prototype, 'renderOptionalIndicators')
-        .mockReturnValueOnce(null);
-
-      const result = sut.renderSuggestion(sugg, mockParentEl);
-
-      expect(result).toBe(true);
-      expect(mockParentEl.querySelector).toHaveBeenCalledWith('.qsp-content');
-      expect(renderTagsSpy).not.toHaveBeenCalled();
-
-      renderAsFileInfoPanelSpy.mockRestore();
-      renderTagsSpy.mockRestore();
-      renderOptionalIndicatorsSpy.mockRestore();
     });
   });
 

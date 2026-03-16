@@ -2360,20 +2360,24 @@ describe('Handler', () => {
     const mockContentEl = mock<HTMLDivElement>();
     const mockParentEl = mock<HTMLElement>();
     let renderContentSpy: jest.SpyInstance;
+    let renderTagsSpy: jest.SpyInstance;
     let renderPathSpy: jest.SpyInstance;
 
     beforeAll(() => {
       renderContentSpy = jest.spyOn(sut, 'renderContent');
+      renderTagsSpy = jest.spyOn(sut, 'renderTags');
       renderPathSpy = jest.spyOn(sut, 'renderPath');
     });
 
     afterAll(() => {
       renderContentSpy.mockRestore();
+      renderTagsSpy.mockRestore();
       renderPathSpy.mockRestore();
     });
 
     afterEach(() => {
       renderContentSpy.mockReset();
+      renderTagsSpy.mockReset();
       renderPathSpy.mockReset();
     });
 
@@ -2382,9 +2386,10 @@ describe('Handler', () => {
       const primaryString = chance.sentence();
 
       renderContentSpy.mockReturnValueOnce(mockContentEl);
+      renderTagsSpy.mockReturnValueOnce(undefined);
       renderPathSpy.mockReturnValueOnce(null);
 
-      sut.renderAsFileInfoPanel(
+      const result = sut.renderAsFileInfoPanel(
         mockParentEl,
         parentElStyles,
         primaryString,
@@ -2393,12 +2398,14 @@ describe('Handler', () => {
         match,
       );
 
+      expect(result).toBe(mockContentEl);
       expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, primaryString, match);
 
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining(['mod-complex', ...parentElStyles]),
       );
 
+      expect(renderTagsSpy).toHaveBeenCalledWith(mockContentEl, mockFile);
       expect(renderPathSpy).toHaveBeenCalledWith(
         mockContentEl,
         mockFile,
@@ -2413,9 +2420,10 @@ describe('Handler', () => {
       const primaryString = chance.sentence();
 
       renderContentSpy.mockReturnValueOnce(mockContentEl);
+      renderTagsSpy.mockReturnValueOnce(undefined);
       renderPathSpy.mockReturnValueOnce(null);
 
-      sut.renderAsFileInfoPanel(
+      const result = sut.renderAsFileInfoPanel(
         mockParentEl,
         parentElStyles,
         primaryString,
@@ -2424,12 +2432,14 @@ describe('Handler', () => {
         match,
       );
 
+      expect(result).toBe(mockContentEl);
       expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, primaryString, null);
 
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining(['mod-complex', ...parentElStyles]),
       );
 
+      expect(renderTagsSpy).toHaveBeenCalledWith(mockContentEl, mockFile);
       expect(renderPathSpy).toHaveBeenCalledWith(
         mockContentEl,
         mockFile,
@@ -2444,9 +2454,10 @@ describe('Handler', () => {
       const primaryString = chance.sentence();
 
       renderContentSpy.mockReturnValueOnce(mockContentEl);
+      renderTagsSpy.mockReturnValueOnce(undefined);
       renderPathSpy.mockReturnValueOnce(null);
 
-      sut.renderAsFileInfoPanel(
+      const result = sut.renderAsFileInfoPanel(
         mockParentEl,
         parentElStyles,
         primaryString,
@@ -2455,12 +2466,14 @@ describe('Handler', () => {
         match,
       );
 
+      expect(result).toBe(mockContentEl);
       expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, primaryString, null);
 
       expect(mockParentEl.addClasses).toHaveBeenCalledWith(
         expect.arrayContaining(['mod-complex', ...parentElStyles]),
       );
 
+      expect(renderTagsSpy).toHaveBeenCalledWith(mockContentEl, mockFile);
       expect(renderPathSpy).toHaveBeenCalledWith(
         mockContentEl,
         mockFile,
@@ -2474,9 +2487,10 @@ describe('Handler', () => {
       const matchType = MatchType.Basename;
 
       renderContentSpy.mockReturnValueOnce(mockContentEl);
+      renderTagsSpy.mockReturnValueOnce(undefined);
       renderPathSpy.mockReturnValueOnce(null);
 
-      sut.renderAsFileInfoPanel(
+      const result = sut.renderAsFileInfoPanel(
         mockParentEl,
         parentElStyles,
         null,
@@ -2485,6 +2499,7 @@ describe('Handler', () => {
         match,
       );
 
+      expect(result).toBe(mockContentEl);
       expect(renderContentSpy).toHaveBeenCalledWith(
         mockParentEl,
         mockFile.basename,
@@ -2495,6 +2510,7 @@ describe('Handler', () => {
         expect.arrayContaining(['mod-complex', ...parentElStyles]),
       );
 
+      expect(renderTagsSpy).toHaveBeenCalledWith(mockContentEl, mockFile);
       expect(renderPathSpy).toHaveBeenCalledWith(
         mockContentEl,
         mockFile,
@@ -2508,9 +2524,10 @@ describe('Handler', () => {
       const matchType = MatchType.Path;
 
       renderContentSpy.mockReturnValueOnce(mockContentEl);
+      renderTagsSpy.mockReturnValueOnce(undefined);
       renderPathSpy.mockReturnValueOnce(null);
 
-      sut.renderAsFileInfoPanel(
+      const result = sut.renderAsFileInfoPanel(
         mockParentEl,
         parentElStyles,
         null,
@@ -2519,6 +2536,7 @@ describe('Handler', () => {
         match,
       );
 
+      expect(result).toBe(mockContentEl);
       expect(renderContentSpy).toHaveBeenCalledWith(
         mockParentEl,
         mockFile.basename,
@@ -2529,6 +2547,7 @@ describe('Handler', () => {
         expect.arrayContaining(['mod-complex', ...parentElStyles]),
       );
 
+      expect(renderTagsSpy).toHaveBeenCalledWith(mockContentEl, mockFile);
       expect(renderPathSpy).toHaveBeenCalledWith(
         mockContentEl,
         mockFile,

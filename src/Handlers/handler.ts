@@ -1079,7 +1079,8 @@ export abstract class Handler<T extends AnySuggestion> {
   }
 
   /**
-   * Display the provided information as a suggestion with the content and path information on separate lines
+   * Display the provided information as a suggestion with the content, tags,
+   * and path information on separate lines
    * @param  {HTMLElement} parentEl
    * @param  {string[]} parentElStyles
    * @param  {string} primaryString
@@ -1087,7 +1088,7 @@ export abstract class Handler<T extends AnySuggestion> {
    * @param  {MatchType} matchType
    * @param  {SearchResult} match
    * @param  {} excludeOptionalFilename=true
-   * @returns void
+   * @returns HTMLDivElement
    */
   renderAsFileInfoPanel(
     parentEl: HTMLElement,
@@ -1097,7 +1098,7 @@ export abstract class Handler<T extends AnySuggestion> {
     matchType: MatchType,
     match: SearchResult,
     excludeOptionalFilename = true,
-  ): void {
+  ): HTMLDivElement {
     let primaryMatch: SearchResult = null;
     let pathMatch: SearchResult = null;
 
@@ -1126,6 +1127,9 @@ export abstract class Handler<T extends AnySuggestion> {
 
     const contentEl = this.renderContent(parentEl, primaryString, primaryMatch);
     this.renderPath(contentEl, file, excludeOptionalFilename, pathMatch, !!pathMatch);
+    this.renderTags(contentEl, file);
+
+    return contentEl;
   }
 
   /**
