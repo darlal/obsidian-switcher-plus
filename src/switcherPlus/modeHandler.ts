@@ -158,7 +158,7 @@ export class ModeHandler implements ModeDispatcher {
       (mode === Mode.CommandList && this.settings.preserveCommandPaletteLastInput) ||
       (mode !== Mode.CommandList && this.settings.preserveQuickSwitcherLastInput);
 
-    if (shouldPreserveInput && prevParsedInput !== undefined) {
+    if (shouldPreserveInput && prevParsedInput?.length) {
       // Reconstruct the input by combining the current session's command string with the previous filter text.
       // This ensures the restored input uses the correct command variant for the current session.
       inputEl.value = commandString + prevParsedInput;
