@@ -144,12 +144,16 @@ export class ModeHandler implements ModeDispatcher {
     // This method should only run once per session opening.
     this.sessionOpts.mode = null;
 
-    // Extract only the parsedInput (filter text) from the previous session, not the full inputText.
-    // This ensures that when restoring input for sourced modes (Symbol/RelatedItems), we correctly
-    // use the current session's command variant (e.g., active editor vs embedded command) rather
-    // than restoring the previous session's full input which may have used a different command variant.
+    // For non-Standard modes, extract only parsedInput (filter text) so the current session's
+    // command variant is used (e.g., active editor vs embedded command for sourced modes).
+    // For Standard mode, use inputText directly since Standard mode doesn't populate parsedInput
+    // through handler validation. inputText (not cleanInput) is used to preserve escape characters
+    // so re-parsing produces the same mode (e.g., "!@bar" stays Standard, not Symbol).
     const prevParsedInput =
-      this.previousInputHistory[mode]?.parsedCommand(mode)?.parsedInput;
+      mode === Mode.Standard
+        ? this.previousInputHistory[mode]?.inputText
+        : this.previousInputHistory[mode]?.parsedCommand(mode)?.parsedInput;
+
     const handler = this.handlerRegistry.getHandler(mode);
     const commandString =
       mode !== Mode.Standard ? handler.getCommandString(this.sessionOpts) : '';
