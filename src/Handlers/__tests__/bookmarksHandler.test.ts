@@ -253,6 +253,34 @@ describe('bookmarksHandler', () => {
     navigateSpy.mockRestore();
   });
 
+  test('onChooseSuggestion() should open the deep link for heading bookmarks', () => {
+    const sugg = makeBookmarkedFileSuggestion({
+      item: makeBookmarksPluginFileItem({ subpath: '#Boule' }),
+    });
+    const mockEvt = mock<KeyboardEvent>();
+
+    const navigateSpy = jest
+      .spyOn(BookmarksHandler.prototype, 'navigateToLeafOrOpenFile')
+      .mockReturnValueOnce();
+    const extractTabNavigationTypeSpy = jest
+      .spyOn(Handler.prototype, 'extractTabNavigationType')
+      .mockReturnValueOnce({ navType: false, splitDirection: 'vertical' });
+    mockWorkspace.openLinkText.mockResolvedValueOnce(undefined);
+
+    sut.onChooseSuggestion(sugg, mockEvt);
+
+    expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
+      `${sugg.file.path}#Boule`,
+      sugg.file.path,
+      false,
+      { active: true },
+    );
+    expect(navigateSpy).not.toHaveBeenCalled();
+
+    navigateSpy.mockRestore();
+    extractTabNavigationTypeSpy.mockRestore();
+  });
+
   describe('getCommandString', () => {
     it('should return bookmarksListCommand trigger for Bookmarks', () => {
       expect(sut.getCommandString()).toBe(bookmarksTrigger);

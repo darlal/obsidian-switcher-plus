@@ -121,13 +121,27 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
   ): boolean {
     let handled = false;
     if (BookmarksHandler.isBookmarksPluginFileItem(sugg?.item)) {
-      const { file } = sugg;
+      const { file, item } = sugg;
 
-      this.navigateToLeafOrOpenFile(
-        evt,
-        file,
-        `Unable to open file from BookmarkSuggestion ${file?.path}`,
-      );
+      if (item.subpath) {
+        const { navType } = this.extractTabNavigationType(evt);
+        const linkText = `${file.path}${item.subpath}`;
+
+        this.app.workspace
+          .openLinkText(linkText, file.path, navType, { active: true })
+          .catch((err) => {
+            console.log(
+              `Switcher++: Unable to open bookmark deep link ${item.subpath} in file ${file?.path}`,
+              err,
+            );
+          });
+      } else {
+        this.navigateToLeafOrOpenFile(
+          evt,
+          file,
+          `Unable to open file from BookmarkSuggestion ${file?.path}`,
+        );
+      }
 
       handled = true;
     }
