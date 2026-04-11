@@ -1,0 +1,19 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 0.5%
+        if_ci_failed: success
+    patch:
+      default:
+        target: 99%
+        if_ci_failed: success
+
+comment:
+  layout: "condensed_header, diff, files, components, footer"
+  behavior: default
+  require_changes: false
+
+github_checks:
+  annotations: true

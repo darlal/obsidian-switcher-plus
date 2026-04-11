@@ -2,14 +2,8 @@ name: Run checks
 on:
   push:
     branches: [master]
-  pull_request_target:
-    types: [opened, reopened, synchronize]
+  pull_request:
   workflow_dispatch:
-    inputs:
-      pr_number:
-        description: 'PR # from public fork'
-        required: true
-        type: number
 
 env:
   BUILD: production
@@ -20,23 +14,17 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
+      id-token: write
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: |
-            ${{
-              github.event_name == 'workflow_dispatch' && format('refs/pull/{0}/head', inputs.pr_number)
-              || github.event.pull_request.head.sha
-              || github.ref
-            }}
 
       - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22.21.1
           cache: 'npm'
 
       - name: Install dependencies
@@ -52,13 +40,13 @@ jobs:
         run: npm run package-plugin
 
       - name: Test
+        id: test
         run: npm run test
 
-      - name: Diff PR test coverage vs default branch
-        if: github.event_name == 'pull_request_target'
-        uses: anuraag016/Jest-Coverage-Diff@V1.4
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() && (steps.test.outcome == 'success' || steps.test.outcome == 'failure') }}
+        uses: codecov/codecov-action@v5
         with:
-          fullCoverageDiff: true
-          accessToken: ${{ secrets.DIFF_ACTION_TOKEN }}
-          afterSwitchCommand: "npm ci"
-          delta: 0.5
+          use_oidc: true
+          files: ./coverage/lcov.info
+          fail_ci_if_error: true
