@@ -423,6 +423,49 @@ describe('modeHandler', () => {
         mockSettings.preserveQuickSwitcherLastInput = false;
       });
 
+      it('should restore previous input for Standard mode using inputText', () => {
+        mockSettings.preserveQuickSwitcherLastInput = true;
+        const previousInput = 'some search text';
+
+        // Simulate a previous session in Standard mode
+        sut.updateSuggestions(previousInput, mockChooser, null);
+
+        // Start a new session in Standard mode
+        sut.setSessionOpenMode(mockChooser, { mode: Mode.Standard });
+        sut.setInitialInputForSession(mockInputEl);
+
+        // Verify the input is restored as the raw inputText (no command prefix for Standard)
+        expect(mockInputEl.value).toBe(previousInput);
+        expect(mockInputEl.setSelectionRange).toHaveBeenCalledWith(
+          0,
+          previousInput.length,
+        );
+
+        mockSettings.preserveQuickSwitcherLastInput = false;
+      });
+
+      it('should restore escaped command chars in Standard mode using inputText, not cleanInput', () => {
+        mockSettings.preserveQuickSwitcherLastInput = true;
+        const previousInput = `${escapeCmdCharTrigger}${symbolTrigger}bar`;
+
+        // Simulate a previous session where user escaped a command char (e.g., !@bar)
+        sut.updateSuggestions(previousInput, mockChooser, null);
+
+        // Start a new session in Standard mode
+        sut.setSessionOpenMode(mockChooser, { mode: Mode.Standard });
+        sut.setInitialInputForSession(mockInputEl);
+
+        // Verify the input is restored as inputText (with escape char preserved),
+        // NOT cleanInput (which would strip the escape and trigger Symbol mode on re-parse)
+        expect(mockInputEl.value).toBe(previousInput);
+        expect(mockInputEl.setSelectionRange).toHaveBeenCalledWith(
+          0,
+          previousInput.length,
+        );
+
+        mockSettings.preserveQuickSwitcherLastInput = false;
+      });
+
       it('should not restore input from a different mode', () => {
         mockSettings.preserveQuickSwitcherLastInput = true;
         const previousInput = `${editorTrigger} some file`;
@@ -628,6 +671,22 @@ describe('modeHandler', () => {
 
         // Should only have the trigger, not the full previous input
         expect(mockInputEl.value).toBe(editorTrigger);
+      });
+
+      it('should not restore previous input for Standard mode when the setting is disabled', () => {
+        mockSettings.preserveQuickSwitcherLastInput = false;
+        mockInputEl.value = '';
+        const previousInput = 'some search text';
+
+        // Simulate a previous session in Standard mode
+        sut.updateSuggestions(previousInput, mockChooser, null);
+
+        // Start a new session in Standard mode
+        sut.setSessionOpenMode(mockChooser, { mode: Mode.Standard });
+        sut.setInitialInputForSession(mockInputEl);
+
+        // Standard mode has no command string, so input should stay empty
+        expect(mockInputEl.value).toBe('');
       });
     });
 
