@@ -68,6 +68,7 @@ import {
   makeBaseFileContentStringNoViews,
   makeBaseFileContentStringInvalid,
   makeLoc,
+  makeFrontmatterLink,
 } from '@fixtures';
 import { CanvasData, CanvasFileData, CanvasGroupData } from 'obsidian/canvas';
 import { mock, MockProxy, mockClear, mockFn } from 'jest-mock-extended';
@@ -912,6 +913,112 @@ describe('symbolHandler', () => {
       );
 
       isSymbolTypeEnabledSpy.mockRestore();
+    });
+
+    it('should include frontmatter links in symbol list', async () => {
+      const inputInfo = new InputInfo(symbolTrigger);
+
+      mockMetadataCache.getFileCache.mockReturnValueOnce({
+        links: null,
+        frontmatterLinks: [
+          // Second link has displayText to exercise the synthesis branch that copies it.
+          makeFrontmatterLink('NoteB', '[[NoteB]]', 'related'),
+          makeFrontmatterLink('NoteC', '[[NoteC|alias]]', 'related', 'alias'),
+        ],
+      });
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      const results = await sut.getSuggestions(inputInfo);
+
+      const linkSuggestions = results.filter(
+        (r) => r.item.symbolType === SymbolType.Link,
+      );
+      expect(linkSuggestions).toHaveLength(2);
+      expect(
+        linkSuggestions.map((r) => (r.item.symbol as { link: string }).link),
+      ).toEqual(expect.arrayContaining(['NoteB', 'NoteC']));
+
+      // Verify displayText was carried through synthesis.
+      const noteCSugg = linkSuggestions.find(
+        (r) => (r.item.symbol as { link: string }).link === 'NoteC',
+      );
+      expect((noteCSugg.item.symbol as { displayText?: string }).displayText).toBe(
+        'alias',
+      );
+    });
+
+    it('should use a zero position for frontmatter links when frontmatterPosition is absent', async () => {
+      const inputInfo = new InputInfo(symbolTrigger);
+
+      mockMetadataCache.getFileCache.mockReturnValueOnce({
+        links: null,
+        frontmatterLinks: [makeFrontmatterLink('NoteB', '[[NoteB]]', 'related')],
+        frontmatterPosition: undefined,
+      });
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+
+      const results = await sut.getSuggestions(inputInfo);
+
+      const linkSuggestions = results.filter(
+        (r) => r.item.symbolType === SymbolType.Link,
+      );
+      expect(linkSuggestions).toHaveLength(1);
+      const symbol = linkSuggestions[0].item.symbol as { position: Pos };
+      expect(symbol.position.start.line).toBe(0);
+      expect(symbol.position.end.line).toBe(0);
+    });
+
+    it('should use frontmatterPosition for frontmatter link positions when available', async () => {
+      const inputInfo = new InputInfo(symbolTrigger);
+      const fmPos: Pos = {
+        start: { line: 2, col: 0, offset: 4 },
+        end: { line: 5, col: 0, offset: 80 },
+      };
+
+      mockMetadataCache.getFileCache.mockReturnValueOnce({
+        links: null,
+        frontmatterLinks: [makeFrontmatterLink('NoteB', '[[NoteB]]', 'related')],
+        frontmatterPosition: fmPos,
+      });
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+
+      const results = await sut.getSuggestions(inputInfo);
+
+      const linkSuggestions = results.filter(
+        (r) => r.item.symbolType === SymbolType.Link,
+      );
+      expect(linkSuggestions).toHaveLength(1);
+      const symbol = linkSuggestions[0].item.symbol as { position: Pos };
+      expect(symbol.position).toBe(fmPos);
+    });
+
+    it('should apply excludeLinkSubTypes mask to frontmatter links', async () => {
+      const inputInfo = new InputInfo(symbolTrigger);
+
+      const excludeLinkSubTypesSpy = jest
+        .spyOn(settings, 'excludeLinkSubTypes', 'get')
+        .mockReturnValue(LinkType.Heading);
+
+      mockMetadataCache.getFileCache.mockReturnValueOnce({
+        links: null,
+        frontmatterLinks: [
+          makeFrontmatterLink('NoteB', '[[NoteB]]', 'related'),
+          makeFrontmatterLink('NoteC#section', '[[NoteC#section]]', 'related'),
+        ],
+      });
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+
+      const results = await sut.getSuggestions(inputInfo);
+
+      const linkSuggestions = results.filter(
+        (r) => r.item.symbolType === SymbolType.Link,
+      );
+      // The heading-style link is excluded; only the normal link survives.
+      expect(linkSuggestions).toHaveLength(1);
+      expect((linkSuggestions[0].item.symbol as { link: string }).link).toBe('NoteB');
+
+      excludeLinkSubTypesSpy.mockRestore();
     });
 
     it('should not return suggestions for links if the Link symbol type is disabled', async () => {

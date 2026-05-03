@@ -29,7 +29,6 @@ import {
   makeEditorSuggestion,
   makeRelatedItemsSuggestion,
   makeUnresolvedSuggestion,
-  makeLink,
   makeBookmarkedFileSuggestion,
   relatedItemsActiveTrigger,
   makeHeading,
@@ -393,21 +392,25 @@ describe('relatedItemsHandler', () => {
       mockMetadataCache.getFirstLinkpathDest
         .calledWith(file1.path, mockRootSplitFile.path)
         .mockReturnValue(file1);
-      mockMetadataCache.getFileCache.mockReturnValueOnce({
-        links: [makeLink(file1.path, null)],
-      });
+      mockMetadataCache.resolvedLinks = {
+        [mockRootSplitFile.path]: { [file1.path]: 1 },
+      };
+      // Also surface an unresolved outgoing link so the resulting UnresolvedSuggestion
+      // path through searchAndCreateSuggestion is exercised end-to-end.
+      mockMetadataCache.unresolvedLinks = {
+        [mockRootSplitFile.path]: { 'no exist': 1 },
+      };
 
-      const results = sut
-        .getSuggestions(inputInfo)
-        .filter(
-          (v): v is RelatedItemsSuggestion =>
-            !isUnresolvedSuggestion(v) &&
-            v.item.relationType === RelationType.OutgoingLink,
-        );
+      const allResults = sut.getSuggestions(inputInfo);
+      const outgoingResults = allResults.filter(
+        (v): v is RelatedItemsSuggestion =>
+          !isUnresolvedSuggestion(v) && v.item.relationType === RelationType.OutgoingLink,
+      );
+      const unresolvedResults = allResults.filter(isUnresolvedSuggestion);
 
-      expect(results).toHaveLength(1);
-      expect(results[0].file).toBe(file1);
-      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(mockRootSplitFile);
+      expect(outgoingResults).toHaveLength(1);
+      expect(outgoingResults[0].file).toBe(file1);
+      expect(unresolvedResults).toHaveLength(1);
       expect(mockMetadataCache.getFirstLinkpathDest).toHaveBeenCalledWith(
         file1.path,
         mockRootSplitFile.path,
@@ -797,40 +800,43 @@ describe('relatedItemsHandler', () => {
   });
 
   describe('addOutgoingLinks', () => {
-    it('should not throw when .getFileCache does not contain any links', () => {
-      mockMetadataCache.getFileCache.mockReturnValueOnce({ links: null });
+    afterEach(() => {
+      mockMetadataCache.getFirstLinkpathDest.mockReset();
+      mockMetadataCache.resolvedLinks = {};
+      mockMetadataCache.unresolvedLinks = {};
+    });
+
+    it('should not throw when sourceFile has no entry in resolvedLinks or unresolvedLinks', () => {
+      mockMetadataCache.resolvedLinks = {};
+      mockMetadataCache.unresolvedLinks = {};
 
       expect(() => sut.addOutgoingLinks(file1, [])).not.toThrow();
     });
 
-    it('should not add an item for a file that references itself', () => {
-      mockMetadataCache.getFirstLinkpathDest
-        .calledWith(file1.path, file1.path)
-        .mockReturnValue(file1);
-      mockMetadataCache.getFileCache.mockReturnValueOnce({
-        links: [makeLink(file1.path, null)],
-      });
+    it('should not throw when sourceFile is null', () => {
+      expect(() => sut.addOutgoingLinks(null, [])).not.toThrow();
+    });
+
+    it('should not add an item for a self-reference', () => {
+      mockMetadataCache.resolvedLinks = {
+        [file1.path]: { [file1.path]: 1 },
+      };
 
       const results: RelatedItemsInfo[] = [];
       sut.addOutgoingLinks(file1, results);
 
       expect(results).toHaveLength(0);
-      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(file1);
-      expect(mockMetadataCache.getFirstLinkpathDest).toHaveBeenCalledWith(
-        file1.path,
-        file1.path,
-      );
-
-      mockMetadataCache.getFirstLinkpathDest.mockReset();
     });
 
-    test('that a single item is added for a file link even if it is referenced multiple times', () => {
+    test('that a resolvedLinks entry produces one item with the count from the index', () => {
+      // resolvedLinks aggregates both body and frontmatter outgoing references with
+      // summed counts, so reading it covers frontmatter outgoing links by design.
+      mockMetadataCache.resolvedLinks = {
+        [file1.path]: { [file2.path]: 3 },
+      };
       mockMetadataCache.getFirstLinkpathDest
         .calledWith(file2.path, file1.path)
         .mockReturnValue(file2);
-      mockMetadataCache.getFileCache.mockReturnValueOnce({
-        links: [makeLink(file2.path, null), makeLink(file2.path, null)],
-      });
 
       const results: RelatedItemsInfo[] = [];
       sut.addOutgoingLinks(file1, results);
@@ -838,28 +844,59 @@ describe('relatedItemsHandler', () => {
       expect(results).toHaveLength(1);
       expect(results[0].file).toBe(file2);
       expect(results[0].relationType).toBe(RelationType.OutgoingLink);
-      expect(results[0].count).toBe(2);
-      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(file1);
-      expect(mockMetadataCache.getFirstLinkpathDest).toHaveBeenCalledWith(
-        file2.path,
-        file1.path,
-      );
-
-      mockMetadataCache.getFirstLinkpathDest.mockReset();
+      expect(results[0].count).toBe(3);
     });
 
-    test('that a single item is added for an unresolved link even if it is referenced multiple times', () => {
-      mockMetadataCache.getFileCache.mockReturnValueOnce({
-        links: [makeLink('no exist', null), makeLink('no exist', null)],
-      });
+    test('that an unresolvedLinks entry produces one unresolved item with the count from the index', () => {
+      mockMetadataCache.resolvedLinks = {};
+      mockMetadataCache.unresolvedLinks = {
+        [file1.path]: { 'no exist': 2 },
+      };
 
       const results: RelatedItemsInfo[] = [];
       sut.addOutgoingLinks(file1, results);
 
       expect(results).toHaveLength(1);
+      expect(results[0].file).toBeNull();
       expect(results[0].unresolvedText).toBe('no exist');
       expect(results[0].count).toBe(2);
-      expect(mockMetadataCache.getFileCache).toHaveBeenCalledWith(file1);
+    });
+
+    test('that multiple distinct destinations each produce their own item', () => {
+      mockMetadataCache.resolvedLinks = {
+        [file1.path]: { [file2.path]: 1, [file3.path]: 1 },
+      };
+      mockMetadataCache.getFirstLinkpathDest
+        .calledWith(file2.path, file1.path)
+        .mockReturnValue(file2);
+      mockMetadataCache.getFirstLinkpathDest
+        .calledWith(file3.path, file1.path)
+        .mockReturnValue(file3);
+
+      const results: RelatedItemsInfo[] = [];
+      sut.addOutgoingLinks(file1, results);
+
+      expect(results).toHaveLength(2);
+      expect(results.map((r) => r.file)).toEqual(expect.arrayContaining([file2, file3]));
+    });
+
+    test('that resolved and unresolved entries can both surface in one call', () => {
+      mockMetadataCache.resolvedLinks = {
+        [file1.path]: { [file2.path]: 1 },
+      };
+      mockMetadataCache.unresolvedLinks = {
+        [file1.path]: { ghost: 1 },
+      };
+      mockMetadataCache.getFirstLinkpathDest
+        .calledWith(file2.path, file1.path)
+        .mockReturnValue(file2);
+
+      const results: RelatedItemsInfo[] = [];
+      sut.addOutgoingLinks(file1, results);
+
+      expect(results).toHaveLength(2);
+      expect(results.find((r) => r.file === file2)?.count).toBe(1);
+      expect(results.find((r) => r.unresolvedText === 'ghost')?.count).toBe(1);
     });
   });
 });

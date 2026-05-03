@@ -425,7 +425,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
 
           push(symbolData.headings, SymbolType.Heading);
           this.addTagsFromSource(symbolData, ret, activeFacetIds);
-          this.addLinksFromSource(symbolData.links, ret, activeFacetIds);
+          this.addLinksFromSource(symbolData, ret, activeFacetIds);
           push(symbolData.embeds, SymbolType.Embed);
 
           await this.addCalloutsFromSource(
@@ -599,25 +599,47 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
   }
 
   private addLinksFromSource(
-    linkData: LinkCache[],
+    symbolData: CachedMetadata,
     symbolList: SymbolInfo[],
     activeFacetIds: Set<string>,
   ): void {
     const { settings } = this;
-    linkData = linkData ?? [];
 
-    if (this.shouldIncludeSymbol(SymbolType.Link, activeFacetIds)) {
-      for (const link of linkData) {
-        const type: number = getLinkType(link);
-        const isExcluded = (settings.excludeLinkSubTypes & type) === type;
+    if (!this.shouldIncludeSymbol(SymbolType.Link, activeFacetIds)) {
+      return;
+    }
 
-        if (!isExcluded) {
-          symbolList.push({
-            type: 'symbolInfo',
-            symbol: link,
-            symbolType: SymbolType.Link,
-          });
-        }
+    const inlineLinks = symbolData?.links ?? [];
+    const frontmatterLinks = symbolData?.frontmatterLinks ?? [];
+
+    // Frontmatter links lack position data — fall back to frontmatterPosition,
+    // or zeros if that is also missing. Mirrors addTagsFromSource() behavior.
+    const fmPosition = SymbolHandler.getFrontmatterPositionOrZero(symbolData);
+
+    const synthesizedFmLinks: LinkCache[] = frontmatterLinks.map((fmLink) => {
+      const synthesized: LinkCache = {
+        link: fmLink.link,
+        original: fmLink.original,
+        position: fmPosition,
+      };
+      if (fmLink.displayText) {
+        synthesized.displayText = fmLink.displayText;
+      }
+      return synthesized;
+    });
+
+    const allLinks: LinkCache[] = [...inlineLinks, ...synthesizedFmLinks];
+
+    for (const link of allLinks) {
+      const type: number = getLinkType(link);
+      const isExcluded = (settings.excludeLinkSubTypes & type) === type;
+
+      if (!isExcluded) {
+        symbolList.push({
+          type: 'symbolInfo',
+          symbol: link,
+          symbolType: SymbolType.Link,
+        });
       }
     }
   }
@@ -661,10 +683,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       const fmTags = FrontMatterParser.getTags(frontmatter);
 
       // Use frontmatterPosition if available, otherwise default to line 0
-      const fmPosition = symbolData.frontmatterPosition ?? {
-        start: { line: 0, col: 0, offset: 0 },
-        end: { line: 0, col: 0, offset: 0 },
-      };
+      const fmPosition = SymbolHandler.getFrontmatterPositionOrZero(symbolData);
 
       for (const tagStr of fmTags) {
         const normalizedTag = tagStr.startsWith('#') ? tagStr : `#${tagStr}`;
@@ -933,6 +952,21 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       symbol,
       file,
       this.settings.showHeadingBreadcrumbsInSymbolMode,
+    );
+  }
+
+  /**
+   * Returns the frontmatter position from the cached metadata, falling back to
+   * a zero Pos when the cache lacks one. Used to synthesize positions for
+   * frontmatter-derived symbols (links, tags) that don't carry their own
+   * position data.
+   */
+  private static getFrontmatterPositionOrZero(symbolData: CachedMetadata): Pos {
+    return (
+      symbolData.frontmatterPosition ?? {
+        start: { line: 0, col: 0, offset: 0 },
+        end: { line: 0, col: 0, offset: 0 },
+      }
     );
   }
 

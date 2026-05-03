@@ -2,6 +2,7 @@ import {
   CachedMetadata,
   EmbedCache,
   FrontMatterCache,
+  FrontmatterLinkCache,
   LinkCache,
   TagCache,
   HeadingCache,
@@ -49,6 +50,25 @@ export function makeLink(
   }
 
   return refCache;
+}
+
+export function makeFrontmatterLink(
+  link: string,
+  original: string,
+  key: string,
+  displayText?: string,
+): FrontmatterLinkCache {
+  const fmLink: FrontmatterLinkCache = {
+    link,
+    original,
+    key,
+  };
+
+  if (displayText) {
+    fmLink.displayText = displayText;
+  }
+
+  return fmLink;
 }
 
 function makeTag(tag: string, startLoc: Loc, endLoc: Loc): TagCache {

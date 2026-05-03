@@ -280,38 +280,38 @@ export class RelatedItemsHandler extends Handler<
   }
 
   addOutgoingLinks(sourceFile: TFile, collection: RelatedItemsInfo[]): void {
-    if (sourceFile) {
-      const destUnresolved = new Map<string, RelatedItemsInfo>();
-      const destFiles = new Map<TFile, RelatedItemsInfo>();
-      const { metadataCache } = this.app;
-      const outgoingLinks = metadataCache.getFileCache(sourceFile).links ?? [];
-      const incrementCount = (info: RelatedItemsInfo) =>
-        info ? !!(info.count += 1) : false;
+    if (!sourceFile) {
+      return;
+    }
 
-      outgoingLinks.forEach((linkCache) => {
-        const destPath = linkCache.link;
-        const destFile = metadataCache.getFirstLinkpathDest(destPath, sourceFile.path);
-        let info: RelatedItemsInfo;
+    const { metadataCache } = this.app;
+    const sourcePath = sourceFile.path;
 
-        if (destFile) {
-          if (!incrementCount(destFiles.get(destFile)) && destFile !== sourceFile) {
-            info = { file: destFile, relationType: RelationType.OutgoingLink, count: 1 };
-            destFiles.set(destFile, info);
-            collection.push(info);
-          }
-        } else {
-          if (!incrementCount(destUnresolved.get(destPath))) {
-            info = {
-              file: null,
-              relationType: RelationType.OutgoingLink,
-              unresolvedText: destPath,
-              count: 1,
-            };
+    // resolvedLinks/unresolvedLinks already aggregate body and frontmatter outgoing
+    // links with summed counts.
+    const resolved = metadataCache.resolvedLinks[sourcePath] ?? {};
+    for (const [destPath, count] of Object.entries(resolved)) {
+      if (destPath === sourcePath) {
+        continue;
+      }
 
-            destUnresolved.set(destPath, info);
-            collection.push(info);
-          }
-        }
+      const destFile = metadataCache.getFirstLinkpathDest(destPath, sourcePath);
+      if (destFile) {
+        collection.push({
+          file: destFile,
+          relationType: RelationType.OutgoingLink,
+          count,
+        });
+      }
+    }
+
+    const unresolved = metadataCache.unresolvedLinks[sourcePath] ?? {};
+    for (const [destPath, count] of Object.entries(unresolved)) {
+      collection.push({
+        file: null,
+        relationType: RelationType.OutgoingLink,
+        unresolvedText: destPath,
+        count,
       });
     }
   }
