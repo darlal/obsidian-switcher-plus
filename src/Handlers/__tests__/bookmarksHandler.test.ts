@@ -594,7 +594,7 @@ describe('bookmarksHandler', () => {
     test('with preferredSourceForTitle as H1, it should return the first heading for file bookmarks', () => {
       const file = new TFile();
       const titleText = 'expected title';
-      const mockBookmarkItem = mock<BookmarksPluginItem>();
+      const mockBookmarkItem = mock<BookmarksPluginItem>({ title: undefined });
       const mockPluginInstance = mock<BookmarksPluginInstance>({
         getItemTitle: () => 'filename#heading',
       });
@@ -640,7 +640,7 @@ describe('bookmarksHandler', () => {
     test('with preferredSourceForTitle as FrontMatter and valid property, it should return the frontmatter value', () => {
       const file = new TFile();
       const customTitle = 'Custom Document Title';
-      const mockBookmarkItem = mock<BookmarksPluginItem>();
+      const mockBookmarkItem = mock<BookmarksPluginItem>({ title: undefined });
       const mockPluginInstance = mock<BookmarksPluginInstance>({
         getItemTitle: () => 'filename#heading',
       });
@@ -707,6 +707,55 @@ describe('bookmarksHandler', () => {
       );
 
       expect(result).toBe(titleText);
+    });
+
+    test('with preferredSourceForTitle as H1 but bookmark has an explicit title, it should return the item title without H1 substitution', () => {
+      const file = new TFile();
+      const explicitTitle = 'User Set Title';
+      const mockBookmarkItem = mock<BookmarksPluginItem>({ title: explicitTitle });
+      const mockPluginInstance = mock<BookmarksPluginInstance>({
+        getItemTitle: () => explicitTitle,
+      });
+
+      const getFirstH1Spy = jest.spyOn(sut, 'getFirstH1');
+
+      const result = sut.getPreferredTitle(
+        mockPluginInstance,
+        mockBookmarkItem,
+        file,
+        'H1',
+      );
+
+      expect(result).toBe(explicitTitle);
+      expect(getFirstH1Spy).not.toHaveBeenCalled();
+
+      getFirstH1Spy.mockRestore();
+    });
+
+    test('with preferredSourceForTitle as FrontMatter but bookmark has an explicit title, it should return the item title without frontmatter substitution', () => {
+      const file = new TFile();
+      const explicitTitle = 'User Set Title';
+      const mockBookmarkItem = mock<BookmarksPluginItem>({ title: explicitTitle });
+      const mockPluginInstance = mock<BookmarksPluginInstance>({
+        getItemTitle: () => explicitTitle,
+      });
+
+      const getFrontmatterPropertySpy: GetFrontmatterPropertySpy = jest.spyOn(
+        Handler,
+        'getFrontmatterProperty',
+      );
+
+      const result = sut.getPreferredTitle(
+        mockPluginInstance,
+        mockBookmarkItem,
+        file,
+        'FrontMatter',
+      );
+
+      expect(result).toBe(explicitTitle);
+      expect(getFrontmatterPropertySpy).not.toHaveBeenCalled();
+
+      getFrontmatterPropertySpy.mockRestore();
     });
   });
 

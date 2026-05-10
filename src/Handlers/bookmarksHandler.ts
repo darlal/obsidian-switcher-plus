@@ -167,7 +167,10 @@ export class BookmarksHandler extends Handler<BookmarksSuggestion> {
   ): string {
     let text = pluginInstance.getItemTitle(bookmark);
 
-    if (file) {
+    // Only derive the title from H1/frontmatter when the bookmark has no explicit
+    // user-set title. An explicit title represents user intent and must be preserved
+    // as-is so it remains searchable and visible.
+    if (file && !bookmark.title) {
       if (titleSource === 'H1') {
         const h1 = this.getFirstH1(file);
 
