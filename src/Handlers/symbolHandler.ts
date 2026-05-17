@@ -184,56 +184,64 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
   }
 
   onChooseSuggestion(sugg: SymbolSuggestion, evt: MouseEvent | KeyboardEvent): boolean {
-    let handled = false;
-    if (sugg) {
-      const symbolCmd = this.inputInfo.parsedCommand() as SourcedParsedCommand;
-      const { leaf, file } = symbolCmd.source;
-      const openState = this.getOpenViewState(sugg);
-      const { item } = sugg;
+    if (!sugg) {
+      return false;
+    }
 
-      this.navigateToLeafOrOpenFileAsync(
+    void this.navigateAndCompleteSymbol(evt, sugg);
+    return true;
+  }
+
+  async navigateAndCompleteSymbol(
+    evt: MouseEvent | KeyboardEvent,
+    sugg: SymbolSuggestion,
+  ): Promise<void> {
+    const symbolCmd = this.inputInfo.parsedCommand() as SourcedParsedCommand;
+    const { leaf, file } = symbolCmd.source;
+    const openState = this.getOpenViewState(sugg);
+    const { item } = sugg;
+
+    try {
+      await this.navigateToLeafOrOpenFileAsync(
         evt,
         file,
         openState,
         leaf,
         Mode.SymbolList,
-      ).then(
-        () => {
-          if (SymbolHandler.isCanvasSymbolPayload(item)) {
-            this.zoomToCanvasNode(this.getActiveLeaf().view, item.symbol);
-          }
-
-          if (SymbolHandler.isBaseViewSymbolPayload(item)) {
-            const baseView = item.symbol as BaseViewData;
-            const filePath = sugg.file?.path;
-            const linktext = `${filePath}#${baseView.name}`;
-
-            // Dec 2025: there is not an API available to open/navigate to a specific
-            // base file view, so use openLinkText() to simulate the open, hopefully this
-            // should cause Obsidian to configure any internal state needed for the view.
-            // Doing this after navigateToLeafOrOpenFileAsync() allows us to respect the
-            // navigation preferences the user has configured, passing false as the last
-            // param should force the 'open' to happen in the current tab.
-            this.app.workspace.openLinkText(linktext, filePath, false).catch((err) => {
-              console.log(
-                `Switcher++: Unable to navigate to Base view ${baseView.name} in file ${filePath}`,
-                err,
-              );
-            });
-          }
-        },
-        (reason) => {
-          console.log(
-            `Switcher++: Unable to navigate to symbols for file ${file?.path}`,
-            reason,
-          );
-        },
       );
-
-      handled = true;
+    } catch (reason) {
+      console.log(
+        `Switcher++: Unable to navigate to symbols for file ${file?.path}`,
+        reason,
+      );
+      return;
     }
 
-    return handled;
+    if (SymbolHandler.isCanvasSymbolPayload(item)) {
+      this.zoomToCanvasNode(this.getActiveLeaf().view, item.symbol);
+      return;
+    }
+
+    if (SymbolHandler.isBaseViewSymbolPayload(item)) {
+      const baseView = item.symbol as BaseViewData;
+      const filePath = sugg.file?.path;
+      const linktext = `${filePath}#${baseView.name}`;
+
+      // Dec 2025: there is not an API available to open/navigate to a specific
+      // base file view, so use openLinkText() to simulate the open, hopefully this
+      // should cause Obsidian to configure any internal state needed for the view.
+      // Doing this after navigateToLeafOrOpenFileAsync() allows us to respect the
+      // navigation preferences the user has configured, passing false as the last
+      // param should force the 'open' to happen in the current tab.
+      try {
+        await this.app.workspace.openLinkText(linktext, filePath, false);
+      } catch (err) {
+        console.log(
+          `Switcher++: Unable to navigate to Base view ${baseView.name} in file ${filePath}`,
+          err,
+        );
+      }
+    }
   }
 
   override reset(): void {

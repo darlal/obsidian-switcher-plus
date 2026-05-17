@@ -1581,11 +1581,10 @@ describe('symbolHandler', () => {
           SymbolType.BaseView,
           mockBaseFile,
         );
-        const promise = Promise.resolve();
         const openLinkTextError = new Error('Failed to open link');
         const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValue();
 
-        mockWorkspace.openLinkText = mockFn().mockRejectedValue(openLinkTextError);
+        mockWorkspace.openLinkText = mockFn().mockRejectedValueOnce(openLinkTextError);
 
         const mockLeaf = makeLeaf(mockBaseFile);
         sut.inputInfo = makeInputInfo({
@@ -1593,13 +1592,10 @@ describe('symbolHandler', () => {
           sourceInfo: { file: mockBaseFile, leaf: mockLeaf },
         });
 
-        navigateToLeafOrOpenFileSpy.mockReturnValueOnce(promise);
+        navigateToLeafOrOpenFileSpy.mockResolvedValueOnce(undefined);
 
         // Act
-        sut.onChooseSuggestion(baseViewSugg, null);
-        await promise;
-        // Wait for openLinkText promise to reject
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        await sut.navigateAndCompleteSymbol(null, baseViewSugg);
 
         // Assert
         expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(

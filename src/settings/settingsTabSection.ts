@@ -317,11 +317,7 @@ export abstract class SettingsTabSection {
    *   segments within a row are separated by single br elements; rows are
    *   separated by an additional br for visual spacing
    */
-  showErrorPopup(
-    title: string,
-    intro: string,
-    rows: Array<ErrorPopupSegment[]>,
-  ): void {
+  showErrorPopup(title: string, intro: string, rows: Array<ErrorPopupSegment[]>): void {
     const popup = new Modal(this.app);
 
     popup.titleEl.setText(title);

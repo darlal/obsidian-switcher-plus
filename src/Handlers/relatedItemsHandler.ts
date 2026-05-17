@@ -1,10 +1,5 @@
 import { StandardExHandler } from './standardExHandler';
-import {
-  sortSearchResults,
-  WorkspaceLeaf,
-  TFile,
-  TAbstractFile,
-} from 'obsidian';
+import { sortSearchResults, WorkspaceLeaf, TFile, TAbstractFile } from 'obsidian';
 import {
   AnySuggestion,
   MatchType,
