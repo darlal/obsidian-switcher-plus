@@ -19,6 +19,7 @@ import {
   filenameFromPath,
   stripMDExtensionFromPath,
   isSystemSuggestion,
+  isTFolder,
   matcherFnForRegExList,
   getLinkType,
   generateMarkdownLink,
@@ -72,6 +73,30 @@ describe('utils', () => {
 
       const result = isSystemSuggestion(sugg);
       expect(result).toBe(true);
+    });
+  });
+
+  describe('isTFolder', () => {
+    it('should return true for an object with a children array', () => {
+      const folderLike = { children: [] as unknown[], path: '/', name: '' };
+      expect(isTFolder(folderLike)).toBe(true);
+    });
+
+    it('should return false for a file-like object (no children property)', () => {
+      const fileLike = { extension: 'md', path: 'x.md', name: 'x.md' };
+      expect(isTFolder(fileLike)).toBe(false);
+    });
+
+    it('should return false for null', () => {
+      expect(isTFolder(null)).toBe(false);
+    });
+
+    it('should return false for undefined', () => {
+      expect(isTFolder(undefined)).toBe(false);
+    });
+
+    it('should return false for an object without a children property', () => {
+      expect(isTFolder({ path: '/x', name: 'x' })).toBe(false);
     });
   });
 

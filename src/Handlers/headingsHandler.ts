@@ -12,7 +12,6 @@ import {
   TAbstractFile,
   sortSearchResults,
   WorkspaceLeaf,
-  TFolder,
   ViewRegistry,
   App,
   Pos,
@@ -39,6 +38,7 @@ import {
 } from 'src/types';
 import {
   isTFile,
+  isTFolder,
   FrontMatterParser,
   matcherFnForRegExList,
   getTFileFromLeaf,
@@ -444,8 +444,8 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
           if (this.shouldIncludeFile(node, activeFacetIds)) {
             this.addSuggestionsForFile(inputInfo, searcher, collection, node, options);
           }
-        } else if (!isExcludedFolder(node.path)) {
-          nodes = nodes.concat((node as TFolder).children);
+        } else if (isTFolder(node) && !isExcludedFolder(node.path)) {
+          nodes = nodes.concat(node.children);
         }
       }
     }

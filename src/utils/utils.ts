@@ -6,6 +6,7 @@ import {
   QuickSwitcherPluginInstance,
   TagCache,
   TFile,
+  TFolder,
   PluginInstance,
   FileManager,
   ReferenceCache,
@@ -103,6 +104,10 @@ export function isCalloutCache(obj: unknown): obj is CalloutCache {
 
 export function isTFile(obj: unknown): obj is TFile {
   return isOfType<TFile>(obj, 'extension');
+}
+
+export function isTFolder(obj: unknown): obj is TFolder {
+  return isOfType<TFolder>(obj, 'children');
 }
 
 export function getInternalPluginById(app: App, id: string): InstalledPlugin {

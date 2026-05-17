@@ -4,7 +4,6 @@ import {
   WorkspaceLeaf,
   TFile,
   TAbstractFile,
-  TFolder,
 } from 'obsidian';
 import {
   AnySuggestion,
@@ -27,7 +26,12 @@ import {
   WorkspaceEnvList,
 } from 'src/switcherPlus';
 import { Handler } from './handler';
-import { isTFile, isUnresolvedSuggestion, matcherFnForRegExList } from 'src/utils';
+import {
+  isTFile,
+  isTFolder,
+  isUnresolvedSuggestion,
+  matcherFnForRegExList,
+} from 'src/utils';
 import { Searcher, StringSearcher } from 'src/search';
 
 export class RelatedItemsHandler extends Handler<
@@ -273,8 +277,8 @@ export class RelatedItemsHandler extends Handler<
           if (!isExcluded) {
             collection.push({ file: node, relationType: RelationType.DiskLocation });
           }
-        } else if (!isExcludedFolder(node.path)) {
-          nodes = nodes.concat((node as TFolder).children);
+        } else if (isTFolder(node) && !isExcludedFolder(node.path)) {
+          nodes = nodes.concat(node.children);
         }
       }
     }
