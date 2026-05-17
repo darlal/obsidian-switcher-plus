@@ -56,16 +56,14 @@ function replaceCoreLauncherButtonWithQSPButton(
   let isSuccessful = false;
 
   if (coreButtonEl && qspButtonEl) {
-    // Hide the button before adding to DOM
-    const initialDisplay = qspButtonEl.style.display;
-    qspButtonEl.style.display = 'none';
+    qspButtonEl.toggleClass('qsp-hidden', true);
 
     if (coreButtonEl.insertAdjacentElement('beforebegin', qspButtonEl)) {
       coreButtonEl.remove();
       isSuccessful = true;
     }
 
-    qspButtonEl.style.display = initialDisplay;
+    qspButtonEl.toggleClass('qsp-hidden', false);
   }
 
   return isSuccessful;
@@ -166,8 +164,7 @@ export class MobileLauncher {
       const qspButtonEl = MobileLauncher.qspMobileLauncherButtonEl;
       const coreButtonEl = MobileLauncher.coreMobileLauncherButtonEl;
 
-      const initialDisplay = coreButtonEl.style.display;
-      coreButtonEl.style.display = 'none';
+      coreButtonEl.toggleClass('qsp-hidden', true);
 
       if (qspButtonEl.insertAdjacentElement('beforebegin', coreButtonEl)) {
         qspButtonEl.remove();
@@ -177,7 +174,7 @@ export class MobileLauncher {
         isSuccessful = true;
       }
 
-      coreButtonEl.style.display = initialDisplay;
+      coreButtonEl.toggleClass('qsp-hidden', false);
     }
 
     return isSuccessful;

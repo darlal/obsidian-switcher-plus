@@ -1488,13 +1488,13 @@ export abstract class Handler<T extends AnySuggestion> {
   }
 
   /**
-   * Returns the position of the active line for a View.
+   * Returns the position of the active line for a View. Subclasses override
+   * to consume the suggestion; the base implementation ignores it.
    *
-   * @param {?T} [sugg]
+   * @param {?T} [_sugg]
    * @returns {Pos}
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  getPreferredViewLinePosition(sugg?: T): Pos {
+  getPreferredViewLinePosition(_sugg?: T): Pos {
     const loc: Loc = { line: 0, col: 0, offset: 0 };
     return { start: loc, end: loc };
   }

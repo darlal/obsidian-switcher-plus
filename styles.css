@@ -31,6 +31,10 @@
   color: var(--text-error);
 }
 
+.qsp-hidden {
+  display: none;
+}
+
 .qsp-tag {
   background-color: var(--background-modifier-hover);
   border-radius: var(--radius-s);
