@@ -431,6 +431,32 @@ describe('generalSettingsTabSection', () => {
 
       saveSpy.mockRestore();
     });
+
+    it('should call showErrorPopup with the rows derived from invalid mode values', () => {
+      const popupSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'showErrorPopup')
+        .mockImplementation(() => {});
+
+      let focusoutFn: EventListener;
+      mockInputEl.addEventListener.mockImplementation(
+        (evtStr: string, listener: EventListenerOrEventListenerObject) => {
+          focusoutFn = listener as EventListener;
+        },
+      );
+
+      mockTextComp.getValue.mockReturnValue('badMode1\nbadMode2');
+
+      sut.showEnabledRibbonCommands(mockContainerEl, config);
+      focusoutFn(null);
+
+      expect(popupSpy).toHaveBeenCalledWith(
+        'Invalid mode',
+        expect.stringContaining('Available modes are:'),
+        [[{ text: 'badMode1' }], [{ text: 'badMode2' }]],
+      );
+
+      popupSpy.mockRestore();
+    });
   });
 
   describe('showLauncherButtonOverrides', () => {

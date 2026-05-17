@@ -578,5 +578,31 @@ describe('headingsSettingsTabSection', () => {
     it('should not throw falsy input', () => {
       expect(() => sut.validateExcludeFolderList(null, [])).not.toThrow();
     });
+
+    it('should call showErrorPopup with the settingName, intro, and rows containing qsp-warning regex + error segments', () => {
+      const popupSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'showErrorPopup')
+        .mockImplementation(() => {});
+
+      sut.validateExcludeFolderList('Exclude folders', ['**', '[unterminated']);
+
+      expect(popupSpy).toHaveBeenCalledTimes(1);
+      expect(popupSpy).toHaveBeenCalledWith(
+        'Exclude folders',
+        'Changes not saved. The following regex contain errors:',
+        [
+          [
+            { text: '**', cls: 'qsp-warning' },
+            { text: expect.stringContaining('SyntaxError') as unknown as string },
+          ],
+          [
+            { text: '[unterminated', cls: 'qsp-warning' },
+            { text: expect.stringContaining('SyntaxError') as unknown as string },
+          ],
+        ],
+      );
+
+      popupSpy.mockRestore();
+    });
   });
 });

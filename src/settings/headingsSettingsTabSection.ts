@@ -1,6 +1,6 @@
 import { SwitcherPlusSettings } from './switcherPlusSettings';
 import { SettingsTabSection } from './settingsTabSection';
-import { Modal, SettingGroup } from 'obsidian';
+import { SettingGroup } from 'obsidian';
 
 export class HeadingsSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
@@ -195,22 +195,26 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
 
   validateExcludeFolderList(settingName: string, excludes: string[]) {
     let isValid = true;
-    let failedMsg = '';
+    const failures: Array<{ regex: string; error: Error }> = [];
 
     for (const str of excludes) {
       try {
         new RegExp(str);
       } catch (err) {
-        failedMsg += `<span class="qsp-warning">${str}</span><br/>${err}<br/><br/>`;
+        failures.push({ regex: str, error: err as Error });
         isValid = false;
       }
     }
 
     if (!isValid) {
-      const popup = new Modal(this.app);
-      popup.titleEl.setText(settingName);
-      popup.contentEl.innerHTML = `Changes not saved. The following regex contain errors:<br/><br/>${failedMsg}`;
-      popup.open();
+      this.showErrorPopup(
+        settingName,
+        'Changes not saved. The following regex contain errors:',
+        failures.map(({ regex, error }) => [
+          { text: regex, cls: 'qsp-warning' },
+          { text: error.toString() },
+        ]),
+      );
     }
 
     return isValid;

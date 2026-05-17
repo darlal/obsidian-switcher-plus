@@ -1,4 +1,4 @@
-import { Modal, SettingGroup } from 'obsidian';
+import { SettingGroup } from 'obsidian';
 import { SwitcherPlusSettings } from 'src/settings';
 import { Mode, PathDisplayFormat, TagSource, TitleSource } from 'src/types';
 import { SettingsTabSection } from './settingsTabSection';
@@ -227,7 +227,11 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         );
 
         if (invalidValues.length) {
-          this.showErrorPopup(invalidValues.join('<br/>'), modeNamesStr);
+          this.showErrorPopup(
+            'Invalid mode',
+            `Changes not saved. Available modes are: ${modeNamesStr}. The following are invalid:`,
+            invalidValues.map((v) => [{ text: v }]),
+          );
         } else {
           config.enabledRibbonCommands = values as Array<keyof typeof Mode>;
           config.save();
@@ -238,14 +242,6 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         }
       });
     });
-  }
-
-  showErrorPopup(invalidValues: string, validModes: string): void {
-    const popup = new Modal(this.app);
-
-    popup.titleEl.setText('Invalid mode');
-    popup.contentEl.innerHTML = `Changes not saved. Available modes are: ${validModes}. The following are invalid:<br/><br/>${invalidValues}`;
-    popup.open();
   }
 
   showLauncherButtonOverrides(

@@ -10,6 +10,7 @@ import {
   App,
   DropdownComponent,
   ExtraButtonComponent,
+  Modal,
   Setting,
   SettingGroup,
   SliderComponent,
@@ -1326,6 +1327,52 @@ describe('settingsTabSection', () => {
 
         mockReset(mockConfig);
       });
+    });
+  });
+
+  describe('showErrorPopup', () => {
+    let mockContentEl: MockProxy<HTMLElement>;
+    let mockTitleEl: MockProxy<HTMLElement>;
+    let mockPopup: MockProxy<Modal>;
+
+    beforeEach(() => {
+      mockContentEl = mock<HTMLElement>();
+      mockTitleEl = mock<HTMLElement>();
+      mockPopup = mock<Modal>({
+        contentEl: mockContentEl,
+        titleEl: mockTitleEl,
+      });
+      (Modal as jest.Mock).mockImplementationOnce(() => mockPopup);
+    });
+
+    it('should set the title, empty contentEl, render the intro span, render each segment via createSpan honoring the optional cls, separate segments and rows with br elements, and open the popup', () => {
+      sut.showErrorPopup('Invalid mode', 'Available modes: A, B.', [
+        [{ text: 'badRow1' }],
+        [{ text: 'badRow2', cls: 'qsp-warning' }, { text: 'extra detail' }],
+      ]);
+
+      expect(mockTitleEl.setText).toHaveBeenCalledWith('Invalid mode');
+      expect(mockContentEl.empty).toHaveBeenCalled();
+      expect(mockContentEl.createSpan).toHaveBeenCalledWith({
+        text: 'Available modes: A, B.',
+      });
+      expect(mockContentEl.createSpan).toHaveBeenCalledWith({ text: 'badRow1' });
+      expect(mockContentEl.createSpan).toHaveBeenCalledWith({
+        text: 'badRow2',
+        cls: 'qsp-warning',
+      });
+      expect(mockContentEl.createSpan).toHaveBeenCalledWith({ text: 'extra detail' });
+      expect(mockContentEl.createEl).toHaveBeenCalledWith('br');
+      expect(mockPopup.open).toHaveBeenCalled();
+    });
+
+    it('should not call createSpan for any row segment when the rows array is empty (intro only)', () => {
+      sut.showErrorPopup('t', 'intro', []);
+
+      expect(mockContentEl.empty).toHaveBeenCalled();
+      expect(mockContentEl.createSpan).toHaveBeenCalledWith({ text: 'intro' });
+      expect(mockContentEl.createSpan).toHaveBeenCalledTimes(1);
+      expect(mockPopup.open).toHaveBeenCalled();
     });
   });
 });

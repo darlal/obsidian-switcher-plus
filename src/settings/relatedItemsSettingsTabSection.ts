@@ -1,4 +1,3 @@
-import { Modal } from 'obsidian';
 import { SwitcherPlusSettings } from 'src/settings';
 import { RelationType } from 'src/types';
 import { SettingsTabSection } from './settingsTabSection';
@@ -59,7 +58,11 @@ export class RelatedItemsSettingsTabSection extends SettingsTabSection {
           );
 
           if (invalidValues?.length) {
-            this.showErrorPopup(invalidValues.join('<br/>'), relationTypesStr);
+            this.showErrorPopup(
+              'Invalid related item type',
+              `Changes not saved. Available relation types are: ${relationTypesStr}. The following types are invalid:`,
+              invalidValues.map((v) => [{ text: v }]),
+            );
           } else {
             config.enabledRelatedItems = values as RelationType[];
             config.save();
@@ -67,13 +70,5 @@ export class RelatedItemsSettingsTabSection extends SettingsTabSection {
         });
       },
     );
-  }
-
-  showErrorPopup(invalidTypes: string, relationTypes: string): void {
-    const popup = new Modal(this.app);
-
-    popup.titleEl.setText('Invalid related item type');
-    popup.contentEl.innerHTML = `Changes not saved. Available relation types are: ${relationTypes}. The following types are invalid:<br/><br/>${invalidTypes}`;
-    popup.open();
   }
 }

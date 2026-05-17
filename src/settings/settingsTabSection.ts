@@ -1,6 +1,6 @@
 import { SwitcherPlusSettings } from './switcherPlusSettings';
 import { SwitcherPlusSettingTab } from './switcherPlusSettingTab';
-import { App, Setting, SettingGroup, SliderComponent } from 'obsidian';
+import { App, Modal, Setting, SettingGroup, SliderComponent } from 'obsidian';
 import { WritableKeysWithValueOfType } from 'src/types';
 import { WritableKeys } from 'ts-essentials';
 
@@ -11,6 +11,8 @@ type ListTypedConfigKey = WritableKeysWithValueOfType<
   SwitcherPlusSettings,
   Array<string>
 >;
+
+export type ErrorPopupSegment = { text: string; cls?: string };
 
 export abstract class SettingsTabSection {
   constructor(
@@ -302,5 +304,48 @@ export abstract class SettingsTabSection {
       config[configStorageKey] = value;
       config.save();
     }
+  }
+
+  /**
+   * Renders an error modal with a title, an introductory line, and a list of
+   * rows. Each row is a sequence of styled text segments displayed on
+   * consecutive lines.
+   *
+   * @param  {string} title shown in the modal title bar
+   * @param  {string} intro single-line description displayed first
+   * @param  {Array<ErrorPopupSegment[]>} rows each inner array is one row;
+   *   segments within a row are separated by single br elements; rows are
+   *   separated by an additional br for visual spacing
+   */
+  showErrorPopup(
+    title: string,
+    intro: string,
+    rows: Array<ErrorPopupSegment[]>,
+  ): void {
+    const popup = new Modal(this.app);
+
+    popup.titleEl.setText(title);
+    popup.contentEl.empty();
+    popup.contentEl.createSpan({ text: intro });
+    popup.contentEl.createEl('br');
+    popup.contentEl.createEl('br');
+
+    rows.forEach((row, rowIdx) => {
+      if (rowIdx > 0) {
+        popup.contentEl.createEl('br');
+      }
+      row.forEach((seg, segIdx) => {
+        if (segIdx > 0) {
+          popup.contentEl.createEl('br');
+        }
+        const opts: { text: string; cls?: string } = { text: seg.text };
+        if (seg.cls !== undefined) {
+          opts.cls = seg.cls;
+        }
+        popup.contentEl.createSpan(opts);
+      });
+    });
+
+    popup.open();
   }
 }

@@ -180,5 +180,31 @@ describe('relatedItemsSettingsTabSection', () => {
 
       saveSpy.mockRestore();
     });
+
+    it('should call showErrorPopup with the rows derived from invalid values', () => {
+      const popupSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'showErrorPopup')
+        .mockImplementation(() => {});
+
+      let focusoutFn: EventListener;
+      mockInputEl.addEventListener.mockImplementation(
+        (evtStr: string, listener: EventListenerOrEventListenerObject) => {
+          focusoutFn = listener as EventListener;
+        },
+      );
+
+      mockTextComp.getValue.mockReturnValue('badType1\nbadType2');
+
+      sut.showEnabledRelatedItems(mockContainerEl, config);
+      focusoutFn(null);
+
+      expect(popupSpy).toHaveBeenCalledWith(
+        'Invalid related item type',
+        expect.stringContaining('Available relation types are:'),
+        [[{ text: 'badType1' }], [{ text: 'badType2' }]],
+      );
+
+      popupSpy.mockRestore();
+    });
   });
 });
