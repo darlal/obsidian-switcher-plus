@@ -1974,7 +1974,7 @@ describe('symbolHandler', () => {
         // The fixture includes a 'custom' view type which is not in BASE_VIEW_FACET_ID_MAP
         const customView = results.find((r) => {
           if (SymbolHandler.isBaseViewSymbolPayload(r)) {
-            const baseView = r as SymbolInfo & { symbol: BaseViewData };
+            const baseView = r;
             return baseView.symbol.type === 'custom';
           }
           return false;
@@ -2012,7 +2012,7 @@ describe('symbolHandler', () => {
         // Custom view should be excluded when facets are active
         const customView = results.find((r) => {
           if (SymbolHandler.isBaseViewSymbolPayload(r)) {
-            const baseView = r as SymbolInfo & { symbol: BaseViewData };
+            const baseView = r;
             return baseView.symbol.type === 'custom';
           }
           return false;
@@ -2215,7 +2215,7 @@ describe('symbolHandler', () => {
         const viewTypes = results
           .filter((r) => SymbolHandler.isBaseViewSymbolPayload(r))
           .map((r) => {
-            const baseView = r as SymbolInfo & { symbol: BaseViewData };
+            const baseView = r;
             return baseView.symbol.type;
           });
         expect(viewTypes).toContain('table');
@@ -2642,7 +2642,7 @@ describe('symbolHandler', () => {
       // Arrange
       const link = getLinks()[1]; // This link has original markdown
       const symbolInfo = makeSymbolSuggestion(link, SymbolType.Link).item;
-      const refCache = link as ReferenceCache;
+      const refCache = link;
 
       // Act
       const result = SymbolHandler.getMarkdownContentForSymbol(symbolInfo, mockFile);
@@ -2655,7 +2655,7 @@ describe('symbolHandler', () => {
       // Arrange
       const link = getLinks()[0]; // This link has original markdown
       const symbolInfo = makeSymbolSuggestion(link, SymbolType.Link).item;
-      const refCache = link as ReferenceCache;
+      const refCache = link;
 
       // Act
       const result = SymbolHandler.getMarkdownContentForSymbol(symbolInfo, mockFile);
@@ -3033,7 +3033,7 @@ describe('symbolHandler', () => {
       );
 
       // Assert
-      const refCache = link as ReferenceCache;
+      const refCache = link;
       expect(renderMarkdownSpy).toHaveBeenCalledWith(
         mockApp,
         mockTitleEl,

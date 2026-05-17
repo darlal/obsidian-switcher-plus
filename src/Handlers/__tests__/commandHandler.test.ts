@@ -522,9 +522,7 @@ describe('commandHandler', () => {
       settings.recentCommandDisplayOrder = 'desc';
       CommandHandler.recentlyUsedCommandIds.push('cmd2', 'cmd1'); // cmd2 is most recent
 
-      mockFindCommand.mockImplementation(
-        (id) => ({ id, name: `Command ${id}` }) as Command,
-      );
+      mockFindCommand.mockImplementation((id) => ({ id, name: `Command ${id}` }));
 
       const getPinnedSpy = jest
         .spyOn(sut, 'getPinnedCommandIds')
@@ -544,9 +542,7 @@ describe('commandHandler', () => {
       settings.recentCommandDisplayOrder = 'asc';
       CommandHandler.recentlyUsedCommandIds.push('cmd2', 'cmd1'); // cmd2 is most recent
 
-      mockFindCommand.mockImplementation(
-        (id) => ({ id, name: `Command ${id}` }) as Command,
-      );
+      mockFindCommand.mockImplementation((id) => ({ id, name: `Command ${id}` }));
       const getPinnedSpy = jest
         .spyOn(sut, 'getPinnedCommandIds')
         .mockReturnValue(new Set());

@@ -543,7 +543,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
             symbol: {
               type: view.type,
               name: view.name,
-            } as BaseViewData,
+            },
           });
         }
       });

@@ -1,17 +1,8 @@
-import { FlatCompat } from '@eslint/eslintrc';
 import js from '@eslint/js';
-import typescriptEslint from '@typescript-eslint/eslint-plugin';
-import typescriptParser from '@typescript-eslint/parser';
 import jestPlugin from 'eslint-plugin-jest';
-import prettierPlugin from 'eslint-plugin-prettier';
-import prettierConfig from 'eslint-config-prettier';
+import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
+import tseslint from 'typescript-eslint';
 import globals from 'globals';
-import { fileURLToPath } from 'node:url';
-
-const compat = new FlatCompat({
-  baseDirectory: fileURLToPath(new URL('.', import.meta.url)),
-  recommendedConfig: js.configs.recommended,
-});
 
 export default [
   // Ignore patterns
@@ -28,32 +19,23 @@ export default [
       'benchmark/extra/**',
     ],
   },
-  // Base configs using FlatCompat for eslintrc-style extends
-  ...compat.extends(
-    'eslint:recommended',
-    'plugin:jest/recommended',
-    'plugin:@typescript-eslint/eslint-recommended',
-    'plugin:@typescript-eslint/recommended',
-    'plugin:@typescript-eslint/recommended-requiring-type-checking',
-    'plugin:prettier/recommended',
-  ),
-  // Main TypeScript configuration
+  // ESLint core recommended
+  js.configs.recommended,
+  // TypeScript: parser + plugin + recommended-type-checked rules
+  ...tseslint.configs.recommendedTypeChecked,
+  // Main TypeScript configuration: scope parserOptions.project to .ts/.tsx
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
-      parser: typescriptParser,
       parserOptions: {
         ecmaVersion: 2020,
         sourceType: 'module',
         project: './tsconfig.json',
+        tsconfigRootDir: import.meta.dirname,
       },
       globals: {
         ...globals.node,
       },
-    },
-    plugins: {
-      '@typescript-eslint': typescriptEslint,
-      prettier: prettierPlugin,
     },
     rules: {
       '@typescript-eslint/unbound-method': 'error',
@@ -66,19 +48,21 @@ export default [
       ],
     },
   },
-  // Test files override
+  // Jest: recommended rules, scoped to test files
   {
     files: ['src/**/*.test.ts'],
-    plugins: {
-      jest: jestPlugin,
-    },
+    ...jestPlugin.configs['flat/recommended'],
+  },
+  // Test files override (note: must come AFTER the jest spread so
+  // the unbound-method swap wins on rule merge)
+  {
+    files: ['src/**/*.test.ts'],
     rules: {
       // you should turn the original rule off *only* for test files
       '@typescript-eslint/unbound-method': 'off',
       'jest/unbound-method': 'error',
     },
   },
-  // Prettier config (disables conflicting rules)
-  prettierConfig,
+  // Prettier (must be last so it disables conflicting stylistic rules)
+  eslintPluginPrettierRecommended,
 ];
-

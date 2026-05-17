@@ -4,7 +4,6 @@ import {
   PathDisplayFormat,
   RelationType,
   SettingsData,
-  RecentCommandDisplayOrder,
   SymbolType,
   TagSource,
 } from 'src/types';
@@ -241,10 +240,7 @@ function getTransientSettingsData(): SettingsData {
     headingsListCommand: chance.word(),
     bookmarksListCommand: chance.word(),
     commandListCommand: chance.word(),
-    recentCommandDisplayOrder: chance.pickone([
-      'asc',
-      'desc',
-    ]) as RecentCommandDisplayOrder,
+    recentCommandDisplayOrder: chance.pickone(['asc', 'desc']),
     maxRecentCommands: chance.integer({ min: 1, max: 100 }),
     vaultListCommand: chance.word(),
     shouldSearchHeadings: chance.bool(),
