@@ -18,7 +18,7 @@ export default [
       'dist/**',
       'node_modules/**',
       'support/demo_template/sample.js',
-      'benchmark/extra/**',
+      'benchmark/**',
     ],
   },
   // Obsidian recommended first; typescript-eslint's recommendedTypeChecked
