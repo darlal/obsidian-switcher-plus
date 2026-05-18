@@ -815,6 +815,7 @@ describe('Handler', () => {
       await sut.activateLeaf(mockLeaf);
 
       expect(mockWorkspace.revealLeaf).toHaveBeenCalledWith(mockLeaf);
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- mock-typing artifact: setActiveLeaf has a deprecated overload that TS picks at property references; the prod call (handler.ts:445) uses the non-deprecated form
       expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, { focus: true });
       expect(mockView.setEphemeralState).toHaveBeenCalled();
     });
