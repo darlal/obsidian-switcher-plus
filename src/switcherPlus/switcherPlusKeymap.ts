@@ -153,8 +153,7 @@ export class SwitcherPlusKeymap {
     this.initKeysInfo(config, scope);
     this.renderModeTriggerInstructions(modal.modalEl, config);
 
-    this.standardInstructionsEl =
-      modal.modalEl.querySelector<HTMLElement>('.prompt-instructions');
+    this.standardInstructionsEl = modal.modalEl.find('.prompt-instructions');
   }
 
   initKeysInfo(config: SwitcherPlusSettings, scope: Scope): void {
@@ -995,11 +994,14 @@ export class SwitcherPlusKeymap {
     // Check if this symbol type supports rendering and proceed with rendering
     if (symbolInfo && file && config.shouldRenderSymbolAsHTML(symbolInfo.symbolType)) {
       const parentEl = chooser.suggestions[chooser.selectedItem];
-      const titleEl = parentEl.querySelector<HTMLElement>('.qsp-title');
+      const titleEl = parentEl.find('.qsp-title');
 
       // If the .qsp-rendered-container element exists then the suggestion is
       // currently rendered as HTML, so toggle it to disable HTML rendering.
-      const shouldRenderAsHTML = !titleEl.querySelector('.qsp-rendered-container');
+      // (findAll-based existence check sidesteps the non-null return type
+      // of HTMLElement.find, which would make `!titleEl.find(...)` narrow
+      // to always-false in TS even though it works correctly at runtime.)
+      const shouldRenderAsHTML = titleEl.findAll('.qsp-rendered-container').length === 0;
 
       // Remove the child nodes from titleEl container since they will be re-rendered.
       titleEl.empty();

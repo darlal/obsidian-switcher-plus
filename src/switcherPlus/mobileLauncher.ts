@@ -32,10 +32,10 @@ function createQSPLauncherButton(
 
       if (iconName?.length) {
         // Override the core icon, if a custom icon file name is provided
-        const iconEl = qspLauncherButtonEl.querySelector(coreLauncherButtonIconSelector);
+        const iconEl = qspLauncherButtonEl.find(coreLauncherButtonIconSelector);
 
         if (iconEl) {
-          setIcon(iconEl as HTMLElement, iconName);
+          setIcon(iconEl, iconName);
         }
       }
     }
@@ -83,15 +83,13 @@ function getCoreLauncherButtonElement(
   const containerEl = app?.mobileNavbar?.containerEl;
 
   if (containerEl) {
-    coreLauncherButtonEl = containerEl.querySelector(
+    coreLauncherButtonEl = containerEl.find(
       SwitcherPlusSettings.defaults.mobileLauncher.coreLauncherButtonSelector,
     );
 
     if (!coreLauncherButtonEl) {
       // Element wasn't found using the default selector, try using the custom selector
-      coreLauncherButtonEl = containerEl.querySelector(
-        launcherConfig.coreLauncherButtonSelector,
-      );
+      coreLauncherButtonEl = containerEl.find(launcherConfig.coreLauncherButtonSelector);
     }
   }
 

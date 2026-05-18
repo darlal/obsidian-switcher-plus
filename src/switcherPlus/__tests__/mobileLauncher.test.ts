@@ -71,13 +71,13 @@ describe('MobileLauncher', () => {
 
   describe('installMobileLauncherOverride', () => {
     let launcherConfig: MockProxy<MobileLauncherConfig>;
-    let mockCoreButtonEl: MockProxy<Element>;
+    let mockCoreButtonEl: MockProxy<HTMLElement>;
     let mockQspButtonEl: MockProxy<HTMLElement>;
 
     beforeAll(() => {
       launcherConfig = mock<MobileLauncherConfig>({ isEnabled: true });
       mockQspButtonEl = mock<HTMLElement>();
-      mockCoreButtonEl = mock<Element>();
+      mockCoreButtonEl = mock<HTMLElement>();
 
       // .cloneNode is how the qsp button is created
       mockCoreButtonEl.cloneNode.mockReturnValue(mockQspButtonEl);
@@ -87,7 +87,7 @@ describe('MobileLauncher', () => {
 
       // Used for finding the core button in DOM
       launcherConfig.coreLauncherButtonSelector = chance.word();
-      mockNavbarContainerEl.querySelector
+      mockNavbarContainerEl.find
         .calledWith(launcherConfig.coreLauncherButtonSelector)
         .mockReturnValue(mockCoreButtonEl);
     });
@@ -107,7 +107,7 @@ describe('MobileLauncher', () => {
       const results = sut.installMobileLauncherOverride(mockApp, null, null);
 
       expect(results).toBeNull();
-      expect(mockNavbarContainerEl.querySelector).not.toHaveBeenCalled();
+      expect(mockNavbarContainerEl.find).not.toHaveBeenCalled();
 
       mockPlatform.isMobile = true;
     });
@@ -118,7 +118,7 @@ describe('MobileLauncher', () => {
       const results = sut.installMobileLauncherOverride(mockApp, launcherConfig, null);
 
       expect(results).toBeNull();
-      expect(mockNavbarContainerEl.querySelector).not.toHaveBeenCalled();
+      expect(mockNavbarContainerEl.find).not.toHaveBeenCalled();
 
       launcherConfig.isEnabled = true;
     });
@@ -129,7 +129,7 @@ describe('MobileLauncher', () => {
       const results = sut.installMobileLauncherOverride(mockApp, launcherConfig, null);
 
       expect(results).toBeNull();
-      expect(mockNavbarContainerEl.querySelector).not.toHaveBeenCalled();
+      expect(mockNavbarContainerEl.find).not.toHaveBeenCalled();
 
       sut.coreMobileLauncherButtonEl = null;
     });
@@ -152,12 +152,12 @@ describe('MobileLauncher', () => {
     });
 
     test('custom launcher button should use a custom icon when iconName is provided', () => {
-      const mockIconEl = mock<Element>();
+      const mockIconEl = mock<HTMLElement>();
       const mockSetIcon = jest.mocked<typeof setIcon>(setIcon);
       launcherConfig.iconName = chance.word();
       launcherConfig.coreLauncherButtonIconSelector = chance.word();
 
-      mockQspButtonEl.querySelector
+      mockQspButtonEl.find
         .calledWith(launcherConfig.coreLauncherButtonIconSelector)
         .mockReturnValueOnce(mockIconEl);
 
@@ -166,7 +166,7 @@ describe('MobileLauncher', () => {
       expect(result).toBe(mockQspButtonEl);
       expect(mockSetIcon).toHaveBeenCalledWith(mockIconEl, launcherConfig.iconName);
 
-      mockQspButtonEl.querySelector.mockReset();
+      mockQspButtonEl.find.mockReset();
       launcherConfig.iconName = '';
       launcherConfig.coreLauncherButtonIconSelector = '';
     });
@@ -198,18 +198,18 @@ describe('MobileLauncher', () => {
       });
 
       // return null when called using default selector
-      mockContainerEl.querySelector.calledWith(defaultSelector).mockReturnValue(null);
+      mockContainerEl.find.calledWith(defaultSelector).mockReturnValue(null);
 
       // return expected value when called using stored selector
-      mockContainerEl.querySelector
+      mockContainerEl.find
         .calledWith(launcherConfig.coreLauncherButtonSelector)
         .mockReturnValue(mockCoreButtonEl);
 
       const result = sut.installMobileLauncherOverride(localApp, launcherConfig, null);
 
       expect(result).toBe(mockQspButtonEl);
-      expect(mockContainerEl.querySelector).toHaveBeenCalledWith(defaultSelector);
-      expect(mockContainerEl.querySelector).toHaveBeenCalledWith(
+      expect(mockContainerEl.find).toHaveBeenCalledWith(defaultSelector);
+      expect(mockContainerEl.find).toHaveBeenCalledWith(
         launcherConfig.coreLauncherButtonSelector,
       );
     });

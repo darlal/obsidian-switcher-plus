@@ -136,7 +136,7 @@ describe('EmptyTabMonitor', () => {
       });
 
       mockViewContainerEl = mock<HTMLElement>();
-      mockViewContainerEl.querySelector
+      mockViewContainerEl.find
         .calledWith('.empty-state-action-list')
         .mockReturnValue(mockButtonListEl);
 
@@ -202,7 +202,7 @@ describe('EmptyTabMonitor', () => {
 
     it('should not add button if buttonListEl is not found', () => {
       mockLeafHasLoadedViewOfType.mockReturnValue(true);
-      mockViewContainerEl.querySelector
+      mockViewContainerEl.find
         .calledWith('.empty-state-action-list')
         .mockReturnValue(null);
 

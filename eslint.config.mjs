@@ -16,7 +16,7 @@ export default [
       'dist/**',
       'node_modules/**',
       'support/demo_template/sample.js',
-      'benchmark/extra/**',
+      'benchmark/**',
     ],
   },
   // ESLint core recommended
@@ -37,6 +37,10 @@ export default [
     },
     rules: {
       '@typescript-eslint/unbound-method': 'error',
+      // Enabled to keep parity with eslint.obsidian.config.mjs so that
+      // inline `eslint-disable @typescript-eslint/no-deprecated` directives
+      // in test files aren't flagged as unused by `npm run lint`.
+      '@typescript-eslint/no-deprecated': 'error',
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',

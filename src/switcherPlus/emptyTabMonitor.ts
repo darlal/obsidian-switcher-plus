@@ -24,7 +24,7 @@ function addLauncherButton(
   // Find the button list container element
   // June 2025: The empty tab page contains a div with empty-state-action-list class
   // that wraps the individual button divs.
-  const buttonListEl = containerEl.querySelector('.empty-state-action-list');
+  const buttonListEl = containerEl.find('.empty-state-action-list');
 
   if (buttonListEl) {
     qspButton = buttonListEl.createDiv({

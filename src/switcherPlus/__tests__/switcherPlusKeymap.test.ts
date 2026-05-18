@@ -621,7 +621,7 @@ describe('SwitcherPlusKeymap', () => {
     });
 
     beforeAll(() => {
-      mockModalEl.querySelector.calledWith(selector).mockReturnValue(mockInstructionsEl);
+      mockModalEl.find.calledWith(selector).mockReturnValue(mockInstructionsEl);
     });
 
     beforeEach(() => {
@@ -1571,8 +1571,11 @@ describe('SwitcherPlusKeymap', () => {
       sut = new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, config);
 
       mockTitleEl = mock<HTMLElement>();
+      // Default: no .qsp-rendered-container found → shouldRenderAsHTML = true.
+      // Individual tests override with mockReturnValueOnce for the toggle-off case.
+      mockTitleEl.findAll.calledWith('.qsp-rendered-container').mockReturnValue([]);
       mockSuggParentEl = mock<HTMLDivElement>({
-        querySelector: mockFn().calledWith('.qsp-title').mockReturnValue(mockTitleEl),
+        find: mockFn().calledWith('.qsp-title').mockReturnValue(mockTitleEl),
       });
 
       mockConfig.renderMarkdownContentInSuggestions = {
@@ -1671,11 +1674,11 @@ describe('SwitcherPlusKeymap', () => {
       mockChooser.suggestions = [mockSuggParentEl];
       mockChooser.selectedItem = 0;
 
-      // Return a value here to indicate that the suggestion is currently being displayed
-      // as HTML and therefore should be toggled to raw text
-      mockTitleEl.querySelector
+      // Return a non-empty array here to indicate that the suggestion is currently
+      // being displayed as HTML and therefore should be toggled to raw text
+      mockTitleEl.findAll
         .calledWith('.qsp-rendered-container')
-        .mockReturnValueOnce(mock<Element>());
+        .mockReturnValueOnce([mock<HTMLElement>()]);
 
       sut.toggleMarkdownContentRendering(null, null);
 
@@ -1706,11 +1709,9 @@ describe('SwitcherPlusKeymap', () => {
       mockChooser.suggestions = [mockSuggParentEl];
       mockChooser.selectedItem = 0;
 
-      // Return null here to indicate that the suggestion is currently being displayed
-      // as raw text and should be toggled to HTML
-      mockTitleEl.querySelector
-        .calledWith('.qsp-rendered-container')
-        .mockReturnValueOnce(null);
+      // Return an empty array here to indicate that the suggestion is currently
+      // being displayed as raw text and should be toggled to HTML
+      mockTitleEl.findAll.calledWith('.qsp-rendered-container').mockReturnValueOnce([]);
 
       sut.toggleMarkdownContentRendering(null, null);
 
