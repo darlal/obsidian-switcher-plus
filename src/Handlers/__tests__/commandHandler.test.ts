@@ -5,6 +5,7 @@ import { InputInfo } from 'src/switcherPlus';
 import { CommandHandler, COMMAND_PALETTE_PLUGIN_ID, Handler } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
 import { CommandListFacetIds } from 'src/settings';
+import * as Utils from 'src/utils/utils';
 import {
   App,
   InstalledPlugin,
@@ -453,9 +454,9 @@ describe('commandHandler', () => {
       expect(mockFlairContainer.createEl).not.toHaveBeenCalledWith();
     });
 
-    it('should log errors to the console', () => {
+    it('should route failures through logError', () => {
       const id = chance.word();
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const logErrorSpy = jest.spyOn(Utils, 'logError').mockReturnValueOnce();
 
       mockGetDefaultHotkeys.mockReturnValueOnce([mock<Hotkey>()]);
 
@@ -466,9 +467,9 @@ describe('commandHandler', () => {
 
       sut.renderHotkeyForCommand(id, mockApp, null);
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), id, error);
+      expect(logErrorSpy).toHaveBeenCalledWith(expect.any(String), id, error);
 
-      consoleLogSpy.mockRestore();
+      logErrorSpy.mockRestore();
     });
   });
 

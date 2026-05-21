@@ -5,6 +5,8 @@ import {
   isHeadingSuggestion,
   isSymbolSuggestion,
   getSystemGlobalSearchInstance,
+  logWarn,
+  notifyError,
 } from 'src/utils';
 import {
   AnySuggestion,
@@ -232,8 +234,8 @@ export class SwitcherPlusKeymap {
           ++currKeyListIndex;
         } else {
           // override key is not defined and no default keys left
-          console.log(
-            `Switcher++: unable to register hotkey for facet: ${facet.label} in mode: ${Mode[mode]} because a trigger key is not specified`,
+          logWarn(
+            `Unable to register hotkey for facet: ${facet.label} in mode: ${Mode[mode]} because a trigger key is not specified`,
           );
           continue;
         }
@@ -1044,9 +1046,9 @@ export class SwitcherPlusKeymap {
 
     if (suggFile && !excludeFileExtensions.includes(suggFile.extension)) {
       // The file extension is not excluded try to launch the default app
-      const message = `Switcher++: error opening file (${suggFile.path}) in default app. `;
+      const message = `Error opening file (${suggFile.path}) in default app. `;
       app.openWithDefaultApp(suggFile.path).catch((reason) => {
-        console.log(message, reason);
+        notifyError(message, reason);
       });
     }
 

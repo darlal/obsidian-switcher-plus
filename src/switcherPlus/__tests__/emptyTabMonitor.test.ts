@@ -1,15 +1,7 @@
 import { mock, MockProxy, mockFn, mockClear } from 'jest-mock-extended';
 import { App, Plugin, View, Workspace, WorkspaceLeaf } from 'obsidian';
 import { EmptyTabMonitor } from 'src/switcherPlus/emptyTabMonitor';
-import { leafHasLoadedViewOfType } from 'src/utils';
-
-jest.mock('src/utils', () => {
-  return {
-    __esModule: true,
-    ...jest.requireActual<typeof import('src/utils')>('src/utils'),
-    leafHasLoadedViewOfType: jest.fn(),
-  };
-});
+import * as Utils from 'src/utils/utils';
 
 describe('EmptyTabMonitor', () => {
   let mockPlugin: MockProxy<Plugin>;
@@ -20,10 +12,7 @@ describe('EmptyTabMonitor', () => {
     buttonLabel: string;
     onclickListener: jest.Mock;
   };
-
-  const mockLeafHasLoadedViewOfType = jest.mocked<typeof leafHasLoadedViewOfType>(
-    leafHasLoadedViewOfType,
-  );
+  let leafHasLoadedViewOfTypeSpy: jest.SpyInstance;
 
   beforeAll(() => {
     mockWorkspace = mock<Workspace>();
@@ -37,6 +26,12 @@ describe('EmptyTabMonitor', () => {
     };
   });
 
+  beforeEach(() => {
+    leafHasLoadedViewOfTypeSpy = jest
+      .spyOn(Utils, 'leafHasLoadedViewOfType')
+      .mockReturnValue(undefined);
+  });
+
   afterEach(() => {
     EmptyTabMonitor.emptyLeaves.clear();
     mockClear(mockPlugin);
@@ -44,7 +39,7 @@ describe('EmptyTabMonitor', () => {
     mockClear(mockConfig.onclickListener);
 
     mockConfig.isEnabled = true;
-    mockLeafHasLoadedViewOfType.mockClear();
+    leafHasLoadedViewOfTypeSpy.mockRestore();
   });
 
   it('should detach and remove all buttons from emptyLeaves map', () => {
@@ -159,7 +154,7 @@ describe('EmptyTabMonitor', () => {
     });
 
     it('should add a button to an empty leaf that does not have one', () => {
-      mockLeafHasLoadedViewOfType.mockReturnValue(true);
+      leafHasLoadedViewOfTypeSpy.mockReturnValue(true);
 
       EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockConfig);
 
@@ -171,7 +166,7 @@ describe('EmptyTabMonitor', () => {
     });
 
     it('should insert the launcher button after the first button (the "Create new note" button)', () => {
-      mockLeafHasLoadedViewOfType.mockReturnValue(true);
+      leafHasLoadedViewOfTypeSpy.mockReturnValue(true);
 
       EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockConfig);
 
@@ -183,14 +178,14 @@ describe('EmptyTabMonitor', () => {
     });
 
     it('should not add a button if leaf is not empty', () => {
-      mockLeafHasLoadedViewOfType.mockReturnValue(false);
+      leafHasLoadedViewOfTypeSpy.mockReturnValue(false);
       EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockConfig);
 
       expect(EmptyTabMonitor.emptyLeaves.has(mockLeaf)).toBe(false);
     });
 
     it('should not add a button if a button already exists for the leaf', () => {
-      mockLeafHasLoadedViewOfType.mockReturnValue(true);
+      leafHasLoadedViewOfTypeSpy.mockReturnValue(true);
       const existingButton = mock<HTMLElement>();
       EmptyTabMonitor.emptyLeaves.set(mockLeaf, existingButton);
 
@@ -201,7 +196,7 @@ describe('EmptyTabMonitor', () => {
     });
 
     it('should not add button if buttonListEl is not found', () => {
-      mockLeafHasLoadedViewOfType.mockReturnValue(true);
+      leafHasLoadedViewOfTypeSpy.mockReturnValue(true);
       mockViewContainerEl.find
         .calledWith('.empty-state-action-list')
         .mockReturnValue(null);

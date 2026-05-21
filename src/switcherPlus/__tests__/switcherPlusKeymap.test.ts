@@ -1,7 +1,6 @@
 import { Chance } from 'chance';
 import { SwitcherPlusSettings } from 'src/settings';
 import { CustomKeymapInfo, SwitcherPlusKeymap } from 'src/switcherPlus';
-import { generateMarkdownLink, getSystemGlobalSearchInstance } from 'src/utils';
 import { CommandHandler, SymbolHandler, WorkspaceHandler } from 'src/Handlers';
 import {
   MockProxy,
@@ -33,6 +32,7 @@ import {
   GlobalSearchPluginInstance,
   WorkspacesPluginInstance,
 } from 'obsidian';
+import * as Utils from 'src/utils/utils';
 import {
   AnySuggestion,
   KeymapConfig,
@@ -58,15 +58,6 @@ import {
   makeHeadingSuggestion,
   makeSymbolSuggestion,
 } from '@fixtures';
-
-jest.mock('src/utils', () => {
-  return {
-    __esModule: true,
-    ...jest.requireActual<typeof import('src/utils')>('src/utils'),
-    generateMarkdownLink: jest.fn(),
-    getSystemGlobalSearchInstance: jest.fn(),
-  };
-});
 
 const chance = new Chance();
 
@@ -303,16 +294,19 @@ describe('SwitcherPlusKeymap', () => {
   describe('Launching fulltext search', () => {
     let sut: SwitcherPlusKeymap;
     let mockGlobalSearchPluginInstance: MockProxy<GlobalSearchPluginInstance>;
-
-    const mockGetGlobalSearchPlugin = jest.mocked<typeof getSystemGlobalSearchInstance>(
-      getSystemGlobalSearchInstance,
-    );
+    let getSystemGlobalSearchInstanceSpy: jest.SpyInstance;
 
     beforeAll(() => {
       sut = new SwitcherPlusKeymap(mockApp, mockScope, mockChooser, mockModal, config);
 
       mockGlobalSearchPluginInstance = mock<GlobalSearchPluginInstance>();
-      mockGetGlobalSearchPlugin.mockReturnValue(mockGlobalSearchPluginInstance);
+      getSystemGlobalSearchInstanceSpy = jest
+        .spyOn(Utils, 'getSystemGlobalSearchInstance')
+        .mockReturnValue(mockGlobalSearchPluginInstance);
+    });
+
+    afterAll(() => {
+      getSystemGlobalSearchInstanceSpy.mockRestore();
     });
 
     it('should register the hotkey to trigger fulltext search', () => {
@@ -562,7 +556,9 @@ describe('SwitcherPlusKeymap', () => {
       mockView.file = new TFile();
 
       mockWorkspace.getActiveViewOfType.mockReturnValueOnce(mockView);
-      jest.mocked(generateMarkdownLink).mockReturnValueOnce(linkText);
+      const generateMarkdownLinkSpy = jest
+        .spyOn(Utils, 'generateMarkdownLink')
+        .mockReturnValueOnce(linkText);
 
       const result = sut.updateInsertIntoEditorCommand(
         mode,
@@ -575,6 +571,8 @@ describe('SwitcherPlusKeymap', () => {
       result.eventListener(mock<KeyboardEvent>(), mock<KeymapContext>());
 
       expect(mockView.editor.replaceSelection).toHaveBeenCalledWith(linkText);
+
+      generateMarkdownLinkSpy.mockRestore();
     });
   });
 
@@ -863,7 +861,7 @@ describe('SwitcherPlusKeymap', () => {
     });
 
     test('should log error to the console when the list of default shortcut keys is used up', () => {
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockReturnValueOnce();
       const facet = mock<Facet>({
         modifiers: null,
         key: null,
@@ -879,11 +877,11 @@ describe('SwitcherPlusKeymap', () => {
 
       sut.registerFacetBinding(mockScope, mockKeymapConfig);
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Switcher++: unable to register hotkey for facet:'),
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Switcher++: Unable to register hotkey for facet:'),
       );
 
-      consoleLogSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
     });
 
     test('should toggle all facets using resetModifiers shortcut key', () => {
@@ -1780,8 +1778,8 @@ describe('SwitcherPlusKeymap', () => {
       config.openDefaultApp.excludeFileExtensions.pop();
     });
 
-    it('should log errors to the console when the default app cannot be opened', async () => {
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+    it('should route open-default-app failures through notifyError', async () => {
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
 
       const errorMsg = 'openDefaultApp unit test error';
       const rejectedPromise = Promise.reject(new Error(errorMsg));
@@ -1790,12 +1788,12 @@ describe('SwitcherPlusKeymap', () => {
       sut.openDefaultApp(null, null);
 
       await expect(rejectedPromise).rejects.toBeTruthy();
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(notifyErrorSpy).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ message: errorMsg }),
       );
 
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
   });
 

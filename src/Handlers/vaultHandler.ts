@@ -1,4 +1,4 @@
-import { filenameFromPath } from 'src/utils';
+import { filenameFromPath, logError, notifyError } from 'src/utils';
 import {
   AnySuggestion,
   MatchType,
@@ -156,7 +156,7 @@ export class VaultHandler extends Handler<VaultSuggestion> {
           items.push(sugg);
         }
       } catch (err) {
-        console.log('Switcher++: error parsing vault data. ', err);
+        logError('Error parsing vault data. ', err);
       }
     } else {
       items.push(this.mobileVaultChooserMarker);
@@ -205,7 +205,7 @@ export class VaultHandler extends Handler<VaultSuggestion> {
         false, // true to create if it doesn't exist
       );
     } catch (error) {
-      console.log(`Switcher++: error opening vault with path: ${vaultPath} `, error);
+      notifyError(`Error opening vault with path: ${vaultPath} `, error);
     }
   }
 
@@ -223,7 +223,7 @@ export class VaultHandler extends Handler<VaultSuggestion> {
       try {
         data = ipcRenderer.sendSync('vault-list') as VaultData;
       } catch (error) {
-        console.log('Switcher++: error retrieving list of available vaults. ', error);
+        notifyError('Error retrieving list of available vaults.', error);
       }
     }
 

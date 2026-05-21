@@ -48,6 +48,7 @@ import {
   ViewRegistry,
   Platform,
 } from 'obsidian';
+import * as Utils from 'src/utils/utils';
 import {
   editorTrigger,
   symbolTrigger,
@@ -740,10 +741,10 @@ describe('modeHandler', () => {
       expect(result).toBe(false);
     });
 
-    it('should log errors from async handlers to the console', async () => {
+    it('should route async handler failures through notifyError', async () => {
       const errorMsg = 'managing suggestions Unit test error';
       const rejectedPromise = Promise.reject(new Error(errorMsg));
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
 
       // Spy on SymbolHandler for the test here because it returns a promise.
       const getSuggestionSpy = jest
@@ -753,13 +754,13 @@ describe('modeHandler', () => {
       sut.updateSuggestions(symbolTrigger, mockChooser, null);
 
       await expect(rejectedPromise).rejects.toBeTruthy();
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(notifyErrorSpy).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ message: errorMsg }),
       );
 
       getSuggestionSpy.mockRestore();
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
 
     it('should debounce searches in Headings mode with filter text', () => {
@@ -1219,17 +1220,17 @@ describe('modeHandler', () => {
       expect(results).not.toContain(exempt);
     });
 
-    it('should log errors to the console', () => {
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+    it('should route ViewRegistry failures through logError', () => {
+      const logErrorSpy = jest.spyOn(Utils, 'logError').mockReturnValueOnce();
 
       sut.getAttachmentFileExtensions(null, null);
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        'Switcher++: error retrieving attachment list from ViewRegistry',
+      expect(logErrorSpy).toHaveBeenCalledWith(
+        'Error retrieving attachment list from ViewRegistry',
         expect.anything(),
       );
 
-      consoleLogSpy.mockRestore();
+      logErrorSpy.mockRestore();
     });
   });
 
@@ -1451,23 +1452,23 @@ describe('modeHandler', () => {
       sut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
     });
 
-    it('should log errors to the console if the destination file cannot be found', () => {
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+    it('should route missing-destination failures through notifyError', () => {
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
 
       sut.openSuggestionInBackground(null, null, null);
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Switcher++: error cannot open in background'),
+      expect(notifyErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error cannot open in background'),
         null,
       );
 
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
 
-    it('should log errors to the console of the destination file fails to open in a WorkspaceLeaf', async () => {
+    it('should route open-in-leaf failures through notifyError', async () => {
       const errorMsg = '.openSuggestionInBackground() fail open unit test error';
       const rejectedPromise = Promise.reject(new Error(errorMsg));
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
 
       const openFileInLeafSpy = jest
         .spyOn(Handler, 'openFileInLeaf')
@@ -1478,13 +1479,13 @@ describe('modeHandler', () => {
       await expect(rejectedPromise).rejects.toEqual(
         expect.objectContaining({ message: errorMsg }),
       );
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(notifyErrorSpy).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ message: errorMsg }),
       );
 
       openFileInLeafSpy.mockRestore();
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
   });
 });

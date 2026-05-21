@@ -2,7 +2,7 @@ import { SettingGroup } from 'obsidian';
 import { SwitcherPlusSettings } from 'src/settings';
 import { Mode, PathDisplayFormat, TagSource, TitleSource } from 'src/types';
 import { SettingsTabSection } from './settingsTabSection';
-import { getModeNames } from 'src/utils';
+import { getModeNames, notifyError } from 'src/utils';
 
 export class GeneralSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
@@ -358,10 +358,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
             this.mainSettingsTab.display();
           },
           (reason) =>
-            console.log(
-              'Switcher++: error saving "Result Priority Adjustments" setting. ',
-              reason,
-            ),
+            notifyError('Error saving "Result Priority Adjustments" setting. ', reason),
         );
       },
     );
@@ -433,8 +430,8 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
             this.mainSettingsTab.display();
           },
           (reason) =>
-            console.log(
-              'Switcher++: error saving "Display markdown content as Live Preview" setting. ',
+            notifyError(
+              'Error saving "Display markdown content as Live Preview" setting. ',
               reason,
             ),
         );
@@ -558,10 +555,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
             this.mainSettingsTab.display();
           },
           (reason) =>
-            console.log(
-              'Switcher++: error saving "Show tags in suggestions" setting. ',
-              reason,
-            ),
+            notifyError('Error saving "Show tags in suggestions" setting. ', reason),
         );
       },
     );

@@ -1,4 +1,4 @@
-import { getInternalEnabledPluginById } from 'src/utils';
+import { getInternalEnabledPluginById, logError } from 'src/utils';
 import { Searcher } from 'src/search';
 import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import { CommandListFacetIds } from 'src/settings';
@@ -120,7 +120,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
         }
       }
     } catch (err) {
-      console.log('Switcher++: error rendering hotkey for command id: ', id, err);
+      logError('Error rendering hotkey for command id: ', id, err);
     }
   }
 

@@ -48,6 +48,8 @@ import {
   isCalloutCache,
   isHeadingCache,
   isTagCache,
+  logError,
+  notifyError,
 } from 'src/utils';
 import { InputInfo, ParsedCommand, SourcedParsedCommand } from 'src/switcherPlus';
 import { Handler } from './handler';
@@ -210,10 +212,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
         Mode.SymbolList,
       );
     } catch (reason) {
-      console.log(
-        `Switcher++: Unable to navigate to symbols for file ${file?.path}`,
-        reason,
-      );
+      notifyError(`Unable to navigate to symbols for file ${file?.path}`, reason);
       return;
     }
 
@@ -236,8 +235,8 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       try {
         await this.app.workspace.openLinkText(linktext, filePath, false);
       } catch (err) {
-        console.log(
-          `Switcher++: Unable to navigate to Base view ${baseView.name} in file ${filePath}`,
+        notifyError(
+          `Unable to navigate to Base view ${baseView.name} in file ${filePath}`,
           err,
         );
       }
@@ -476,10 +475,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       const fileContent = await this.app.vault.cachedRead(file);
       canvasNodes = (JSON.parse(fileContent) as CanvasData).nodes;
     } catch (e) {
-      console.log(
-        `Switcher++: error reading file to extract canvas node information. ${file.path} `,
-        e,
-      );
+      logError(`Error reading file to extract canvas node information. ${file.path} `, e);
     }
 
     if (Array.isArray(canvasNodes)) {
@@ -521,10 +517,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       const fileContent = await this.app.vault.cachedRead(file);
       parsedData = parseYaml(fileContent) as BasesConfigFile;
     } catch (e) {
-      console.log(
-        `Switcher++: error reading file to extract base view information. ${file.path} `,
-        e,
-      );
+      logError(`Error reading file to extract base view information. ${file.path} `, e);
       return;
     }
 
@@ -576,10 +569,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       try {
         fileContent = await vault.cachedRead(file);
       } catch (e) {
-        console.log(
-          `Switcher++: error reading file to extract callout information. ${file.path} `,
-          e,
-        );
+        logError(`Error reading file to extract callout information. ${file.path} `, e);
       }
 
       if (fileContent) {

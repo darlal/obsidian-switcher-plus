@@ -2,6 +2,7 @@ import { SettingGroup } from 'obsidian';
 import { SwitcherPlusSettings } from './switcherPlusSettings';
 import { SettingsTabSection } from './settingsTabSection';
 import { LinkType, SymbolType } from 'src/types';
+import { notifyError } from 'src/utils';
 
 export class SymbolSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
@@ -127,8 +128,7 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
           // controls to be shown/hidden based on isLinksEnabled status
           this.mainSettingsTab.display();
         },
-        (reason) =>
-          console.log('Switcher++: error saving "Show Links" setting. ', reason),
+        (reason) => notifyError('Error saving "Show Links" setting. ', reason),
       );
     });
 

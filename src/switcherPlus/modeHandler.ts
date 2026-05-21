@@ -21,6 +21,8 @@ import {
   isFileSuggestion,
   isAliasSuggestion,
   getDestinationFileForSuggestion,
+  logError,
+  notifyError,
 } from 'src/utils';
 import {
   Mode,
@@ -410,7 +412,7 @@ export class ModeHandler implements ModeDispatcher {
           setSuggestions(values);
         },
         (reason) => {
-          console.log('Switcher++: error retrieving suggestions as Promise. ', reason);
+          notifyError('Error retrieving suggestions as Promise. ', reason);
         },
       );
     }
@@ -513,7 +515,7 @@ export class ModeHandler implements ModeDispatcher {
         return collection;
       }, extList);
     } catch (err) {
-      console.log('Switcher++: error retrieving attachment list from ViewRegistry', err);
+      logError('Error retrieving attachment list from ViewRegistry', err);
     }
 
     return extList;
@@ -636,8 +638,8 @@ export class ModeHandler implements ModeDispatcher {
   ): void {
     const destFile = getDestinationFileForSuggestion(sugg);
     if (!destFile) {
-      console.log(
-        `Switcher++: error cannot open in background. The selected suggestion object does not seem to have an associated file. Suggestion obj: `,
+      notifyError(
+        'Error cannot open in background. The selected suggestion object does not seem to have an associated file.',
         sugg,
       );
       return;
@@ -655,10 +657,7 @@ export class ModeHandler implements ModeDispatcher {
       openState,
       splitDirection,
     ).catch((reason) => {
-      console.log(
-        `Switcher++: error opening file (${destFile?.path}) in background. `,
-        reason,
-      );
+      notifyError(`Error opening file (${destFile?.path}) in background. `, reason);
     });
   }
 }

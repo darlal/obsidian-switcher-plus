@@ -6,6 +6,7 @@ import {
 } from 'src/settings';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { App, Setting, SettingGroup, TextAreaComponent, ViewRegistry } from 'obsidian';
+import * as Utils from 'src/utils/utils';
 
 describe('headingsSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
@@ -198,10 +199,10 @@ describe('headingsSettingsTabSection', () => {
       mockPluginSettingTab.display.mockClear();
     });
 
-    it('should log error to the console when setting cannot be saved', async () => {
+    it('should route save failures through notifyError', async () => {
       const errorMsg = 'showHeadingOptions Unit test error';
       const rejectedPromise = Promise.reject(new Error(errorMsg));
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
 
       addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
         if (args[1] === 'Search Headings') {
@@ -220,13 +221,13 @@ describe('headingsSettingsTabSection', () => {
 
       await expect(rejectedPromise).rejects.toBeTruthy();
       expect(saveSettingsSpy).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(notifyErrorSpy).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ message: errorMsg }),
       );
 
       addToggleSettingSpy.mockReset();
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
 
     it('should call addToggleSetting with SettingGroup instead of containerEl for master toggle', () => {

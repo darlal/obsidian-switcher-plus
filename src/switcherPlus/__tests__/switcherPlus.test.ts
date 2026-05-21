@@ -1,6 +1,6 @@
 import SwitcherPlusPlugin from 'src/main';
 import { createSwitcherPlus, HandlerRegistry, ModeHandler } from 'src/switcherPlus';
-import { getSystemSwitcherInstance } from 'src/utils';
+import * as Utils from 'src/utils/utils';
 import { mock, mockClear, MockProxy } from 'jest-mock-extended';
 import { App, Chooser, QuickSwitcherPluginInstance, Scope } from 'obsidian';
 import { Chance } from 'chance';
@@ -14,16 +14,6 @@ import {
 } from 'src/types';
 
 jest.mock('src/switcherPlus/switcherPlusKeymap');
-jest.mock('src/utils', () => {
-  return {
-    __esModule: true,
-    ...jest.requireActual<typeof import('src/utils')>('src/utils'),
-
-    // This needs to be mocked since at test time access to the actual Obsidian builtin
-    // system switcher is not available.
-    getSystemSwitcherInstance: jest.fn(),
-  };
-});
 
 const chance = new Chance();
 const mockChooser = mock<Chooser<AnySuggestion>>();
@@ -77,13 +67,17 @@ describe('switcherPlus', () => {
     QuickSwitcherModal: MockSystemSwitcherModal,
   });
 
-  // mock of utils function that retrieves the builtin switcher plugin instance
-  // defaults to returning the mocked version of the plugin instance
-  const mockGetSystemSwitcherInstance = jest
-    .mocked(getSystemSwitcherInstance)
-    .mockReturnValue(mockSystemSwitcherPluginInstance);
+  // Spy on the utility that retrieves the builtin switcher plugin instance.
+  // Set up in beforeAll because the inner describe's beforeAll calls
+  // createSwitcherPlus(), which needs this spy active. Default return value
+  // is the mocked plugin instance; tests override per-call as needed.
+  let getSystemSwitcherInstanceSpy: jest.SpyInstance;
 
   beforeAll(() => {
+    getSystemSwitcherInstanceSpy = jest
+      .spyOn(Utils, 'getSystemSwitcherInstance')
+      .mockReturnValue(mockSystemSwitcherPluginInstance);
+
     mockApp = mock<App>();
     mockPlugin = mock<SwitcherPlusPlugin>({ app: mockApp });
 
@@ -95,23 +89,27 @@ describe('switcherPlus', () => {
     config.preserveQuickSwitcherLastInput = false;
   });
 
-  describe('createSwitcherPlus', () => {
-    it('should log error to the console if the builtin QuickSwitcherModal is not accessible', () => {
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+  afterAll(() => {
+    getSystemSwitcherInstanceSpy.mockRestore();
+  });
 
-      mockGetSystemSwitcherInstance.mockReturnValueOnce(null);
+  describe('createSwitcherPlus', () => {
+    it('should route startup failures through logError when the builtin QuickSwitcherModal is not accessible', () => {
+      const logErrorSpy = jest.spyOn(Utils, 'logError').mockReturnValueOnce();
+
+      getSystemSwitcherInstanceSpy.mockReturnValueOnce(null);
 
       const result = createSwitcherPlus(mockApp, mockPlugin);
 
       expect(result).toBeNull();
-      expect(mockGetSystemSwitcherInstance).toHaveBeenCalledWith(mockApp);
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(getSystemSwitcherInstanceSpy).toHaveBeenCalledWith(mockApp);
+      expect(logErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining(
-          'Switcher++: unable to extend system switcher. Plugin UI will not be loaded.',
+          'Unable to extend system switcher. Plugin UI will not be loaded.',
         ),
       );
 
-      consoleLogSpy.mockRestore();
+      logErrorSpy.mockRestore();
     });
 
     it('should return an instance of a class that implements SwitcherPlus', () => {
@@ -119,7 +117,7 @@ describe('switcherPlus', () => {
 
       // todo: more thorough checking needed here
       expect(result).not.toBeFalsy();
-      expect(mockGetSystemSwitcherInstance).toHaveBeenLastCalledWith(mockApp);
+      expect(getSystemSwitcherInstanceSpy).toHaveBeenLastCalledWith(mockApp);
     });
   });
 

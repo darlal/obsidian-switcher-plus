@@ -73,6 +73,7 @@ import { CanvasData, CanvasFileData, CanvasGroupData } from 'obsidian/canvas';
 import { mock, MockProxy, mockClear, mockFn } from 'jest-mock-extended';
 import { Chance } from 'chance';
 import { Searcher } from 'src/search';
+import * as Utils from 'src/utils/utils';
 
 const chance = new Chance();
 
@@ -1385,11 +1386,11 @@ describe('symbolHandler', () => {
       getActiveLeafSpy.mockRestore();
     });
 
-    it('should log any navigation errors to the console', async () => {
+    it('should route navigation failures through notifyError', async () => {
       const canvasSugg = makeSymbolSuggestion(null, SymbolType.CanvasNode, new TFile());
       const errorMsg = 'SymbolHandler onChooseSuggestion Unit test error';
       const rejectedPromise = Promise.reject(new Error(errorMsg));
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
 
       sut.inputInfo = makeInputInfo({
         mode: Mode.SymbolList,
@@ -1401,13 +1402,13 @@ describe('symbolHandler', () => {
       sut.onChooseSuggestion(canvasSugg, null);
 
       await expect(rejectedPromise).rejects.toBeTruthy();
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(notifyErrorSpy).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ message: errorMsg }),
       );
 
       navigateToLeafOrOpenFileSpy.mockReset();
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
 
     describe('Base view navigation', () => {
@@ -1582,7 +1583,7 @@ describe('symbolHandler', () => {
           mockBaseFile,
         );
         const openLinkTextError = new Error('Failed to open link');
-        const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValue();
+        const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValue();
 
         mockWorkspace.openLinkText = mockFn().mockRejectedValueOnce(openLinkTextError);
 
@@ -1603,14 +1604,14 @@ describe('symbolHandler', () => {
           mockBaseFile.path,
           false,
         );
-        expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect(notifyErrorSpy).toHaveBeenCalledWith(
           expect.stringContaining('Unable to navigate to Base view'),
           openLinkTextError,
         );
 
         navigateToLeafOrOpenFileSpy.mockReset();
         mockWorkspace.openLinkText.mockReset();
-        consoleLogSpy.mockRestore();
+        notifyErrorSpy.mockRestore();
       });
 
       it('should navigate to Base view after file navigation completes', async () => {
@@ -1800,10 +1801,10 @@ describe('symbolHandler', () => {
       expect(results).toHaveLength(calloutSectionCache.length);
     });
 
-    it('should log any exceptions reading a file to the console', async () => {
-      const expectedMsg = `Switcher++: error reading file to extract callout information. ${mockFile.path} `;
+    it('should route read failures through logError', async () => {
+      const expectedMsg = `Error reading file to extract callout information. ${mockFile.path} `;
       const errorMsg = 'addCalloutsFromSource Unit test error';
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const logErrorSpy = jest.spyOn(Utils, 'logError').mockReturnValueOnce();
 
       mockVault.cachedRead.mockRejectedValueOnce(errorMsg);
 
@@ -1814,10 +1815,10 @@ describe('symbolHandler', () => {
         new Set<string>(),
       );
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(expectedMsg, errorMsg);
+      expect(logErrorSpy).toHaveBeenCalledWith(expectedMsg, errorMsg);
       expect(mockVault.cachedRead).toHaveBeenCalledWith(mockFile);
 
-      consoleLogSpy.mockRestore();
+      logErrorSpy.mockRestore();
     });
   });
 
@@ -1836,19 +1837,19 @@ describe('symbolHandler', () => {
       expect(results).toHaveLength(canvasNodes.length);
     });
 
-    it('should log any exceptions reading a file to the console', async () => {
-      const expectedMsg = `Switcher++: error reading file to extract canvas node information. ${mockFile.path} `;
+    it('should route read failures through logError', async () => {
+      const expectedMsg = `Error reading file to extract canvas node information. ${mockFile.path} `;
       const errorMsg = 'addCanvasSymbolsFromSource Unit test error';
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const logErrorSpy = jest.spyOn(Utils, 'logError').mockReturnValueOnce();
 
       mockVault.cachedRead.mockRejectedValueOnce(errorMsg);
 
       await sut.addCanvasSymbolsFromSource(mockFile, [], new Set<string>());
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(expectedMsg, errorMsg);
+      expect(logErrorSpy).toHaveBeenCalledWith(expectedMsg, errorMsg);
       expect(mockVault.cachedRead).toHaveBeenCalledWith(mockFile);
 
-      consoleLogSpy.mockRestore();
+      logErrorSpy.mockRestore();
     });
   });
 
@@ -2067,28 +2068,28 @@ describe('symbolHandler', () => {
         expect(results).toHaveLength(0);
       });
 
-      it('should log any exceptions reading a file to the console', async () => {
+      it('should route read failures through logError', async () => {
         // Arrange
-        const expectedMsg = `Switcher++: error reading file to extract base view information. ${mockFile.path} `;
+        const expectedMsg = `Error reading file to extract base view information. ${mockFile.path} `;
         const errorMsg = 'addBaseViewsFromSource Unit test error';
-        const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+        const logErrorSpy = jest.spyOn(Utils, 'logError').mockReturnValueOnce();
         mockVault.cachedRead.mockRejectedValueOnce(errorMsg);
 
         // Act
         await sut.addBaseViewsFromSource(mockFile, [], new Set<string>());
 
         // Assert
-        expect(consoleLogSpy).toHaveBeenCalledWith(expectedMsg, errorMsg);
+        expect(logErrorSpy).toHaveBeenCalledWith(expectedMsg, errorMsg);
         expect(mockVault.cachedRead).toHaveBeenCalledWith(mockFile);
 
-        consoleLogSpy.mockRestore();
+        logErrorSpy.mockRestore();
       });
 
       it('should handle YAML parse errors gracefully', async () => {
         // Arrange
         const results: SymbolInfo[] = [];
         const fileContent = makeBaseFileContentStringInvalid();
-        const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValue();
+        const logErrorSpy = jest.spyOn(Utils, 'logError').mockReturnValue();
         mockVault.cachedRead.mockResolvedValueOnce(fileContent);
         // Mock parseYaml to return null for invalid YAML
         mockParseYamlFn.mockReturnValue(null);
@@ -2101,7 +2102,7 @@ describe('symbolHandler', () => {
         expect(results).toHaveLength(0);
         expect(mockParseYamlFn).toHaveBeenCalledWith(fileContent);
 
-        consoleLogSpy.mockRestore();
+        logErrorSpy.mockRestore();
       });
     });
 

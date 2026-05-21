@@ -54,13 +54,18 @@ import {
   getFileTags,
   formatTags,
 } from 'src/utils';
+import * as Utils from 'src/utils';
 import { mock, mockClear, mockFn, MockProxy, mockReset } from 'jest-mock-extended';
 import { Handler } from '../handler';
 import { SwitcherPlusSettings } from 'src/settings';
 import { Chance } from 'chance';
 import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 
-// Mock the utility functions for renderHeadingBreadcrumbs and renderTags tests
+// Factory mock used here because this file has 19 call sites across 4 utility
+// functions — establishing them once at module load is meaningfully more concise
+// than per-test `jest.spyOn` setup. For files that mock only one or two utils
+// used in a handful of tests, prefer `import * as Utils from 'src/utils/utils'`
+// with `jest.spyOn(Utils, 'fn')` (see switcherPlus.test.ts for that pattern).
 jest.mock('src/utils', () => {
   return {
     __esModule: true,
@@ -820,16 +825,16 @@ describe('Handler', () => {
       expect(mockView.setEphemeralState).toHaveBeenCalled();
     });
 
-    it('should log errors to the console when it fails to reveal a WorkspaceLeaf', async () => {
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+    it('should route revealLeaf failures through notifyError', async () => {
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
       const errorMsg = 'RevealLeaf unit test error';
       mockWorkspace.revealLeaf.mockRejectedValueOnce(errorMsg);
 
       await sut.activateLeaf(mockLeaf);
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
+      expect(notifyErrorSpy).toHaveBeenCalledWith(expect.any(String), errorMsg);
 
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
   });
 
@@ -923,10 +928,10 @@ describe('Handler', () => {
   });
 
   describe('navigateToLeafOrOpenFile', () => {
-    it('should log errors to the console', async () => {
+    it('should route async failures through notifyError', async () => {
       const errorMsg = 'navigateToLeafOrOpenFile unit test error';
       const rejectedPromise = Promise.reject(new Error(errorMsg));
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
 
       const navigateToLeafOrOpenFileAsyncSpy = jest
         .spyOn(Handler.prototype, 'navigateToLeafOrOpenFileAsync')
@@ -935,13 +940,13 @@ describe('Handler', () => {
       sut.navigateToLeafOrOpenFile(null, null, errorMsg);
 
       await expect(rejectedPromise).rejects.toBeTruthy();
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(notifyErrorSpy).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ message: errorMsg }),
       );
 
       navigateToLeafOrOpenFileAsyncSpy.mockRestore();
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
   });
 
@@ -1374,11 +1379,11 @@ describe('Handler', () => {
       expect(paraEl.replaceWith).toHaveBeenCalled();
     });
 
-    test('renderMarkdownContentAsync should log errors to the console', async () => {
+    test('renderMarkdownContentAsync should route failures through logError', async () => {
       const errorMsg = 'renderMarkdownContent unit test error';
       const rejectedPromise = Promise.reject(new Error(errorMsg));
       const content = chance.word();
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const logErrorSpy = jest.spyOn(Utils, 'logError').mockReturnValueOnce();
 
       const renderMarkdownContentSpy = jest
         .spyOn(Handler, 'renderMarkdownContent')
@@ -1387,14 +1392,14 @@ describe('Handler', () => {
       Handler.renderMarkdownContentAsync(null, null, content, null);
 
       await expect(rejectedPromise).rejects.toBeTruthy();
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(logErrorSpy).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ message: errorMsg }),
         `content: ${content}`,
       );
 
       renderMarkdownContentSpy.mockRestore();
-      consoleLogSpy.mockRestore();
+      logErrorSpy.mockRestore();
     });
   });
 
@@ -3069,18 +3074,18 @@ describe('Handler', () => {
       mockWorkspace.openLinkText.mockReset();
     });
 
-    it('should log any errors to the console while trying to create a new file', async () => {
+    it('should route createFile failures through notifyError', async () => {
       const filename = chance.word();
       const errorMsg = 'createFile Unit test error';
       const rejectedPromise = Promise.reject(new Error(errorMsg));
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
 
       mockWorkspace.openLinkText.mockReturnValueOnce(rejectedPromise);
 
       sut.createFile(filename, null);
 
       await expect(rejectedPromise).rejects.toBeTruthy();
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(notifyErrorSpy).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ message: errorMsg }),
       );
@@ -3092,7 +3097,7 @@ describe('Handler', () => {
       );
 
       mockWorkspace.openLinkText.mockReset();
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
   });
 

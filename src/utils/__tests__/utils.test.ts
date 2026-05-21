@@ -6,6 +6,7 @@ import {
   parseLinktext,
   MetadataCache,
   HeadingCache,
+  Notice,
 } from 'obsidian';
 import {
   BookmarksSuggestion,
@@ -29,6 +30,9 @@ import {
   formatHeadingBreadcrumbs,
   getFileTags,
   formatTags,
+  notifyError,
+  logError,
+  logWarn,
 } from 'src/utils';
 import {
   getTags,
@@ -172,16 +176,16 @@ describe('utils', () => {
     });
 
     it('should log invalid regex strings to the console', () => {
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockReturnValueOnce();
 
       matcherFnForRegExList(['*']); // invalid regex
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Switcher++: error creating RegExp from string:'),
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error creating RegExp from string:'),
         expect.any(Error),
       );
 
-      consoleLogSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
     });
 
     test('that matcher function does not throw on falsy input', () => {
@@ -1287,6 +1291,108 @@ describe('utils', () => {
 
       // Assert
       expect(result).toBe('alpha / beta / gamma');
+    });
+  });
+
+  describe('notifyError', () => {
+    let consoleErrorSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockReturnValue();
+      (Notice as jest.Mock).mockClear();
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should construct a Notice prefixed with "Switcher++:" containing the user message', () => {
+      const message = chance.sentence();
+
+      notifyError(message);
+
+      expect(Notice).toHaveBeenCalledWith(`Switcher++: ${message}`);
+    });
+
+    it('should log the prefixed message and the error value to console.error', () => {
+      const message = chance.sentence();
+      const err = new Error(chance.sentence());
+
+      notifyError(message, err);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(`Switcher++: ${message}`, err);
+    });
+
+    it('should still log when err is omitted', () => {
+      const message = chance.sentence();
+
+      notifyError(message);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(`Switcher++: ${message}`, undefined);
+    });
+  });
+
+  describe('logError', () => {
+    let consoleErrorSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockReturnValue();
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should forward the message and rest args to console.error', () => {
+      const message = chance.sentence();
+      const err = new Error(chance.sentence());
+      const extra = chance.word();
+
+      logError(message, err, extra);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(`Switcher++: ${message}`, err, extra);
+    });
+
+    it('should log when called with only a message', () => {
+      const message = chance.sentence();
+
+      logError(message);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(`Switcher++: ${message}`);
+    });
+  });
+
+  describe('logWarn', () => {
+    let consoleWarnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleWarnSpy = jest.spyOn(console, 'warn').mockReturnValue();
+    });
+
+    afterEach(() => {
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should forward the message and rest args to console.warn', () => {
+      const message = chance.sentence();
+      const detail = chance.word();
+      const extra = chance.word();
+
+      logWarn(message, detail, extra);
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        `Switcher++: ${message}`,
+        detail,
+        extra,
+      );
+    });
+
+    it('should log when called with only a message', () => {
+      const message = chance.sentence();
+
+      logWarn(message);
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(`Switcher++: ${message}`);
     });
   });
 });

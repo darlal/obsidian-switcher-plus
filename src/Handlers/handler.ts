@@ -53,6 +53,8 @@ import {
   formatHeadingBreadcrumbs,
   getFileTags,
   formatTags,
+  logError,
+  notifyError,
 } from 'src/utils';
 
 export abstract class Handler<T extends AnySuggestion> {
@@ -446,7 +448,7 @@ export abstract class Handler<T extends AnySuggestion> {
       leaf.view.setEphemeralState({ focus: true, ...eState });
     } catch (err) {
       const title = leaf?.getDisplayText();
-      console.log(`Switcher++: error activating WorkspaceLeaf with title: ${title}`, err);
+      notifyError(`Error activating WorkspaceLeaf with title: ${title}`, err);
     }
   }
 
@@ -551,7 +553,7 @@ export abstract class Handler<T extends AnySuggestion> {
       mode,
       shouldIncludeRefViews,
     ).catch((reason) => {
-      console.log(`Switcher++: error navigating to open file. ${errorContext}`, reason);
+      notifyError(`Error navigating to open file. ${errorContext}`, reason);
     });
   }
 
@@ -944,11 +946,7 @@ export abstract class Handler<T extends AnySuggestion> {
       sourcePath,
       ComponentManager.getRootComponent(),
     ).catch((reason) => {
-      console.log(
-        'Switcher++: error rendering markdown to html. ',
-        reason,
-        `content: ${content}`,
-      );
+      logError('Error rendering markdown to html. ', reason, `content: ${content}`);
     });
   }
 
@@ -1444,7 +1442,7 @@ export abstract class Handler<T extends AnySuggestion> {
     workspace
       .openLinkText(filename, sourcePath, navType, { active: true })
       .catch((err) => {
-        console.log('Switcher++: error creating new file. ', err);
+        notifyError('Error creating new file. ', err);
       });
   }
 

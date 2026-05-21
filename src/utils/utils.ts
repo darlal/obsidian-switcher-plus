@@ -17,6 +17,7 @@ import {
   stripHeadingForLink,
   GlobalSearchPluginInstance,
   MetadataCache,
+  Notice,
 } from 'obsidian';
 import {
   SymbolSuggestion,
@@ -177,6 +178,49 @@ export function filenameFromPath(path: string): string {
   return filename;
 }
 
+/**
+ * Shows an Obsidian Notice toast prefixed with "Switcher++:" and logs the
+ * details to console.error. Use for runtime failures that the user initiated
+ * and should be told about (e.g. navigation or IO operations that failed
+ * silently). For settings input-validation errors with structured per-item
+ * details, use `SettingsTabSection.showErrorPopup` instead. For background or
+ * per-item failures where a toast would spam, use {@link logError}.
+ *
+ * @param userMessage - body of the toast; will be prefixed with "Switcher++: "
+ * @param err - optional value to pass alongside the message to console.error
+ */
+export function notifyError(userMessage: string, err?: unknown): void {
+  new Notice(`Switcher++: ${userMessage}`);
+  logError(userMessage, err);
+}
+
+/**
+ * Logs a message to the developer console via console.error prefixed with "Switcher++: ".
+ * Use for background or per-item failures that should not interrupt the user (e.g.
+ * per-file parse errors during symbol enumeration, or one-shot startup
+ * failures the user can't act on). For user-initiated failures that warrant
+ * a toast, use {@link notifyError}.
+ *
+ * @param message - log message
+ * @param rest - additional values to log (e.g. the error object)
+ */
+export function logError(message: string, ...rest: unknown[]): void {
+  console.error(`Switcher++: ${message}`, ...rest);
+}
+
+/**
+ * Logs a message to the developer console via console.warn prefixed with "Switcher++: ".
+ * Use for non-error conditions worth surfacing to developers — misconfiguration,
+ * duplicate initialization, or other "shouldn't happen but we'll continue" cases.
+ * For actual failures use {@link logError} or {@link notifyError}.
+ *
+ * @param message - log message
+ * @param rest - additional values to log
+ */
+export function logWarn(message: string, ...rest: unknown[]): void {
+  console.warn(`Switcher++: ${message}`, ...rest);
+}
+
 export function matcherFnForRegExList(
   regExStrings: string[],
 ): (input: string) => boolean {
@@ -188,7 +232,7 @@ export function matcherFnForRegExList(
       const rx = new RegExp(str);
       regExList.push(rx);
     } catch (err) {
-      console.log(`Switcher++: error creating RegExp from string: ${str}`, err);
+      logError(`Error creating RegExp from string: ${str}`, err);
     }
   }
 

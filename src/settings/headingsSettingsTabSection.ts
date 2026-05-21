@@ -1,6 +1,7 @@
 import { SwitcherPlusSettings } from './switcherPlusSettings';
 import { SettingsTabSection } from './settingsTabSection';
 import { SettingGroup } from 'obsidian';
+import { notifyError } from 'src/utils';
 
 export class HeadingsSettingsTabSection extends SettingsTabSection {
   display(containerEl: HTMLElement): void {
@@ -70,8 +71,7 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
             // controls to be shown/hidden based on isEnabled status
             this.mainSettingsTab.display();
           },
-          (reason) =>
-            console.log('Switcher++: error saving "Search Headings" setting. ', reason),
+          (reason) => notifyError('Error saving "Search Headings" setting. ', reason),
         );
       },
     );

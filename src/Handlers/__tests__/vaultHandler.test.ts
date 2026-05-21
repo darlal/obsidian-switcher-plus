@@ -4,6 +4,7 @@ import { InputInfo } from 'src/switcherPlus';
 import { Handler, VaultHandler, VaultData } from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
 import { App, setIcon, renderResults, Platform } from 'obsidian';
+import * as Utils from 'src/utils/utils';
 import {
   makeFuzzyMatch,
   commandTrigger,
@@ -84,9 +85,9 @@ describe('vaultHandler', () => {
       expect(results).toHaveLength(0);
     });
 
-    test('.getVaultListDataOnDesktop() should log errors to the console', () => {
+    test('.getVaultListDataOnDesktop() should route IPC failures through notifyError', () => {
       mockPlatform.isDesktop = true;
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
 
       const error = new Error('vaultHandler.getVaultListDataOnDesktop unit test error');
       mockIpcRenderer.sendSync.mockImplementationOnce(() => {
@@ -95,13 +96,13 @@ describe('vaultHandler', () => {
 
       sut.getVaultListDataOnDesktop();
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), error);
+      expect(notifyErrorSpy).toHaveBeenCalledWith(expect.any(String), error);
 
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
 
-    test('.getItems() should log errors to the console', () => {
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+    test('.getItems() should route parse failures through logError', () => {
+      const logErrorSpy = jest.spyOn(Utils, 'logError').mockReturnValueOnce();
 
       const error = new Error('vaultHandler.getItems unit test error');
       const getVaultListDataSpy = jest
@@ -113,9 +114,9 @@ describe('vaultHandler', () => {
       sut.getItems();
 
       expect(getVaultListDataSpy).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), error);
+      expect(logErrorSpy).toHaveBeenCalledWith(expect.any(String), error);
 
-      consoleLogSpy.mockRestore();
+      logErrorSpy.mockRestore();
       getVaultListDataSpy.mockRestore();
     });
 
@@ -258,9 +259,9 @@ describe('vaultHandler', () => {
       mockPlatform.isDesktop = true;
     });
 
-    test('.openVaultOnDesktop() should log errors to the console', () => {
+    test('.openVaultOnDesktop() should route failures through notifyError', () => {
       mockPlatform.isDesktop = true;
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
 
       const error = new Error('vaultHandler.openVaultOnDesktop unit test error');
       mockIpcRenderer.sendSync.mockImplementationOnce(() => {
@@ -269,9 +270,9 @@ describe('vaultHandler', () => {
 
       sut.openVaultOnDesktop(null);
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), error);
+      expect(notifyErrorSpy).toHaveBeenCalledWith(expect.any(String), error);
 
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
 
     it('should open the vault on desktop platforms', () => {

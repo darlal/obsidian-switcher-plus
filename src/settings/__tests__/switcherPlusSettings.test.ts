@@ -19,6 +19,7 @@ import {
 } from 'obsidian';
 import { mock, mockClear, MockProxy, mockReset } from 'jest-mock-extended';
 import { merge } from 'ts-deepmerge';
+import * as Utils from 'src/utils/utils';
 
 const chance = new Chance();
 const sidePanelOptions = ['backlink', 'image', 'markdown', 'pdf'];
@@ -645,17 +646,17 @@ describe('SwitcherPlusSettings', () => {
     mockInternalPlugins.getPluginById.mockReset();
   });
 
-  test('.loadSettings() should log errors to the console', async () => {
-    const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+  test('.loadSettings() should route failures through logError', async () => {
+    const logErrorSpy = jest.spyOn(Utils, 'logError').mockReturnValueOnce();
 
     const error = new Error('loadSettings unit test error');
     mockPlugin.loadData.mockRejectedValueOnce(error);
 
     await sut.loadSettings();
 
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), error);
+    expect(logErrorSpy).toHaveBeenCalledWith(expect.any(String), error);
 
-    consoleLogSpy.mockRestore();
+    logErrorSpy.mockRestore();
   });
 
   test('.loadSettings() should merge the "matchPriorityAdjustments" saved values with the default values', async () => {
@@ -672,8 +673,8 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.matchPriorityAdjustments).toEqual(expected);
   });
 
-  it('should log errors to console on fire and forget save operation', async () => {
-    const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+  it('should route fire-and-forget save failures through logError', async () => {
+    const logErrorSpy = jest.spyOn(Utils, 'logError').mockReturnValueOnce();
 
     const errorMsg = 'saveData() unit test mock error';
     const rejectedPromise = Promise.reject(new Error(errorMsg));
@@ -683,12 +684,12 @@ describe('SwitcherPlusSettings', () => {
 
     await expect(rejectedPromise).rejects.toBeTruthy();
     expect(mockPlugin.saveData).toHaveBeenCalled();
-    expect(consoleLogSpy).toHaveBeenCalledWith(
+    expect(logErrorSpy).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ message: errorMsg }),
     );
 
-    consoleLogSpy.mockRestore();
+    logErrorSpy.mockRestore();
   });
 
   test('updateDataAndLoadSettings() should update settings', async () => {
@@ -727,8 +728,8 @@ describe('SwitcherPlusSettings', () => {
       expect(mockPlugin.saveData).not.toHaveBeenCalled();
     });
 
-    it('should log errors to the console', async () => {
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+    it('should route failures through logError', async () => {
+      const logErrorSpy = jest.spyOn(Utils, 'logError').mockReturnValueOnce();
 
       const error = 'transformDataFileToV1 unit test error';
       mockPlugin.loadData.mockRejectedValueOnce(error);
@@ -736,9 +737,9 @@ describe('SwitcherPlusSettings', () => {
       const result = await SwitcherPlusSettings.transformDataFileToV1(mockPlugin, null);
 
       expect(result).toBe(false);
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), error);
+      expect(logErrorSpy).toHaveBeenCalledWith(expect.any(String), error);
 
-      consoleLogSpy.mockRestore();
+      logErrorSpy.mockRestore();
     });
 
     it('should set the version to 1.0.0', async () => {
@@ -845,8 +846,8 @@ describe('SwitcherPlusSettings', () => {
       expect(mockPlugin.saveData).not.toHaveBeenCalled();
     });
 
-    it('should log errors to the console', async () => {
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+    it('should route failures through logError', async () => {
+      const logErrorSpy = jest.spyOn(Utils, 'logError').mockReturnValueOnce();
 
       const error = 'transformDataFileToV2 unit test error';
       mockPlugin.loadData.mockRejectedValueOnce(error);
@@ -854,9 +855,9 @@ describe('SwitcherPlusSettings', () => {
       const result = await SwitcherPlusSettings.transformDataFileToV2(mockPlugin, null);
 
       expect(result).toBe(false);
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.any(String), error);
+      expect(logErrorSpy).toHaveBeenCalledWith(expect.any(String), error);
 
-      consoleLogSpy.mockRestore();
+      logErrorSpy.mockRestore();
     });
 
     it('should transform matchPriorityAdjustments', async () => {

@@ -3,7 +3,7 @@ import { Handler } from 'src/Handlers';
 import { AnySuggestion, Mode, SuggestionType } from 'src/types';
 import { App } from 'obsidian';
 import { SwitcherPlusSettings } from 'src/settings';
-import { isOfType } from 'src/utils';
+import { isOfType, logWarn } from 'src/utils';
 
 /**
  * A singleton registry for managing and providing access to various {@link Handler} instances.
@@ -64,7 +64,7 @@ export class HandlerRegistry {
     commandDefinitions: CommandDefinition[],
   ): void {
     if (this.instance) {
-      console.warn('Switcher++: HandlerRegistry already initialized.');
+      logWarn('HandlerRegistry already initialized.');
       return;
     }
 

@@ -11,6 +11,7 @@ import {
   TFile,
   Keymap,
   Modal,
+  Notice,
   normalizePath,
   setIcon,
   parseLinktext,
@@ -55,6 +56,13 @@ const mockModal = jest.fn<Modal, [app: App]>((app) => {
     titleEl: mock<HTMLElement>(),
     contentEl: mock<HTMLElement>(),
   });
+});
+
+const mockNotice = jest.fn<
+  Notice,
+  [message: string | DocumentFragment, duration?: number]
+>(() => {
+  return mock<Notice>();
 });
 
 const mockPlugin = jest.fn<Plugin, [app: App, manifest: PluginManifest]>(
@@ -123,6 +131,7 @@ const mockParseYaml = mockFn<typeof parseYaml>();
 export {
   mockPlatform as Platform,
   mockModal as Modal,
+  mockNotice as Notice,
   mockPlugin as Plugin,
   MockPluginSettingTab as PluginSettingTab,
   mockTFile as TFile,

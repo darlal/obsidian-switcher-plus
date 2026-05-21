@@ -7,6 +7,7 @@ import {
 } from 'src/settings';
 import { mock, mockClear, MockProxy } from 'jest-mock-extended';
 import { App, Setting, SettingGroup, ViewRegistry } from 'obsidian';
+import * as Utils from 'src/utils/utils';
 
 describe('symbolSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
@@ -341,12 +342,12 @@ describe('symbolSettingsTabSection', () => {
       mockPluginSettingTab.display.mockClear();
     });
 
-    it('should log error to the console when setting cannot be saved', async () => {
+    it('should route save failures through notifyError', async () => {
       const initialEnabledValue = false;
       const finalEnabledValue = true;
       const errorMsg = 'showEnableLinksToggle Unit test error';
       const rejectedPromise = Promise.reject(new Error(errorMsg));
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
 
       addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
         if (args[1] === 'Show Links') {
@@ -366,13 +367,13 @@ describe('symbolSettingsTabSection', () => {
 
       await expect(rejectedPromise).rejects.toBeTruthy();
       expect(mockConfig.saveSettings).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(notifyErrorSpy).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ message: errorMsg }),
       );
 
       addToggleSettingSpy.mockReset();
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
 
     it('should save sublink type settings changes', () => {

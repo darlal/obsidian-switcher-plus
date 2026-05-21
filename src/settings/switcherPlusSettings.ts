@@ -1,4 +1,4 @@
-import { getSystemSwitcherInstance } from 'src/utils';
+import { getSystemSwitcherInstance, logError } from 'src/utils';
 import type SwitcherPlusPlugin from 'src/main';
 import { Hotkey, QuickSwitcherOptions } from 'obsidian';
 import { getFacetMap } from './facetConstants';
@@ -955,7 +955,7 @@ export class SwitcherPlusSettings {
         copy(savedData, this.data, keys);
       }
     } catch (err) {
-      console.log('Switcher++: error loading settings, using defaults. ', err);
+      logError('Error loading settings, using defaults. ', err);
     }
   }
 
@@ -966,7 +966,7 @@ export class SwitcherPlusSettings {
 
   save(): void {
     this.saveSettings().catch((e) => {
-      console.log('Switcher++: error saving changes to settings', e);
+      logError('Error saving changes to settings', e);
     });
   }
 
@@ -1080,7 +1080,7 @@ export class SwitcherPlusSettings {
         }
       }
     } catch (error) {
-      console.log('Switcher++: error transforming data.json to v1.0.0', error);
+      logError('Error transforming data.json to v1.0.0', error);
     }
 
     return isTransformed;
@@ -1145,7 +1145,7 @@ export class SwitcherPlusSettings {
         }
       }
     } catch (error) {
-      console.log('Switcher++: error transforming data.json to v2.0.0', error);
+      logError('Error transforming data.json to v2.0.0', error);
     }
 
     return isTransformed;

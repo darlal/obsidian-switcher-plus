@@ -1,5 +1,5 @@
 import { SwitcherPlusKeymap } from './switcherPlusKeymap';
-import { getSystemSwitcherInstance } from 'src/utils';
+import { getSystemSwitcherInstance, logError } from 'src/utils';
 import { ModeHandler } from './modeHandler';
 import SwitcherPlusPlugin from 'src/main';
 import { App, QuickSwitcherOptions } from 'obsidian';
@@ -20,8 +20,8 @@ export function createSwitcherPlus(app: App, plugin: SwitcherPlusPlugin): Switch
     ?.QuickSwitcherModal as SystemSwitcherConstructor;
 
   if (!SystemSwitcherModal) {
-    console.log(
-      'Switcher++: unable to extend system switcher. Plugin UI will not be loaded. Use the builtin switcher instead.',
+    logError(
+      'Unable to extend system switcher. Plugin UI will not be loaded. Use the builtin switcher instead.',
     );
     return null;
   }

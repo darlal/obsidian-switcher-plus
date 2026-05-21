@@ -309,7 +309,10 @@ export abstract class SettingsTabSection {
   /**
    * Renders an error modal with a title, an introductory line, and a list of
    * rows. Each row is a sequence of styled text segments displayed on
-   * consecutive lines.
+   * consecutive lines. Use for settings input-validation errors with structured
+   * per-item details (e.g. a list of invalid regex strings with their parse
+   * errors). For transient runtime failures from user-initiated actions
+   * (navigation, IO), use the `notifyError` helper in `src/utils` instead.
    *
    * @param  {string} title shown in the modal title bar
    * @param  {string} intro single-line description displayed first

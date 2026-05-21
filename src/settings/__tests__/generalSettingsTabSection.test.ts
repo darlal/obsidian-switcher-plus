@@ -6,6 +6,7 @@ import {
 } from 'src/settings';
 import { mock, mockFn, MockProxy, mockReset } from 'jest-mock-extended';
 import { App, Setting, SettingGroup, TextAreaComponent } from 'obsidian';
+import * as Utils from 'src/utils/utils';
 import { Mode, PathDisplayFormat, TagSource } from 'src/types';
 
 describe('generalSettingsTabSection', () => {
@@ -697,10 +698,10 @@ describe('generalSettingsTabSection', () => {
       mockPluginSettingTab.display.mockClear();
     });
 
-    it('should log error to the console when setting cannot be saved', async () => {
+    it('should route save failures through notifyError', async () => {
       const errorMsg = 'showMatchPriorityAdjustments Unit test error';
       const rejectedPromise = Promise.reject(new Error(errorMsg));
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
 
       addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
         if (args[1] === 'Result priority adjustments') {
@@ -719,13 +720,13 @@ describe('generalSettingsTabSection', () => {
 
       await expect(rejectedPromise).rejects.toBeTruthy();
       expect(saveSettingsSpy).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(notifyErrorSpy).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ message: errorMsg }),
       );
 
       addToggleSettingSpy.mockReset();
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
 
     it('should call addSliderSetting with SettingGroup instead of containerEl when enabled', () => {
@@ -916,10 +917,10 @@ describe('generalSettingsTabSection', () => {
       saveSpy.mockRestore();
     });
 
-    it('should log error to the console when setting cannot be saved', async () => {
+    it('should route save failures through notifyError', async () => {
       const errorMsg = 'showRenderMarkdownContentAsHTML Unit test error';
       const rejectedPromise = Promise.reject(new Error(errorMsg));
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
 
       addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
         if (args[1] === 'Display markdown content as Live Preview') {
@@ -938,13 +939,13 @@ describe('generalSettingsTabSection', () => {
 
       await expect(rejectedPromise).rejects.toBeTruthy();
       expect(saveSettingsSpy).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(notifyErrorSpy).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ message: errorMsg }),
       );
 
       addToggleSettingSpy.mockReset();
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
 
     it('should call addToggleSetting with SettingGroup instead of containerEl for master toggle', () => {
@@ -1340,10 +1341,10 @@ describe('generalSettingsTabSection', () => {
       mockPluginSettingTab.display.mockClear();
     });
 
-    it('should log error to the console when setting cannot be saved', async () => {
+    it('should route save failures through notifyError', async () => {
       const errorMsg = 'showTagDisplaySettings Unit test error';
       const rejectedPromise = Promise.reject(new Error(errorMsg));
-      const consoleLogSpy = jest.spyOn(console, 'log').mockReturnValueOnce();
+      const notifyErrorSpy = jest.spyOn(Utils, 'notifyError').mockReturnValueOnce();
 
       addToggleSettingSpy.mockImplementation((...args: addToggleSettingArgs) => {
         if (args[1] === 'Show tags in suggestions') {
@@ -1362,12 +1363,12 @@ describe('generalSettingsTabSection', () => {
 
       await expect(rejectedPromise).rejects.toBeTruthy();
       expect(saveSettingsSpy).toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(notifyErrorSpy).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ message: errorMsg }),
       );
 
-      consoleLogSpy.mockRestore();
+      notifyErrorSpy.mockRestore();
     });
 
     it('should show tag source dropdown when master toggle is enabled', () => {
