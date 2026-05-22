@@ -1,5 +1,6 @@
 import js from '@eslint/js';
 import jestPlugin from 'eslint-plugin-jest';
+import obsidianmd from 'eslint-plugin-obsidianmd';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import tseslint from 'typescript-eslint';
 import globals from 'globals';
@@ -21,7 +22,17 @@ export default [
   },
   // ESLint core recommended
   js.configs.recommended,
-  // TypeScript: parser + plugin + recommended-type-checked rules
+  // 5/22/2026: Obsidian plugin recommended bundle. Note: the bundle declares
+  // package.json-scoped blocks that apply the TypeScript parser to JSON;
+  // do not broaden the lint glob (currently "**/*.{js,ts}") to include
+  // package.json or it will fail to parse. The bundle's `validate-manifest`
+  // and `validate-license` rules already run as a side-effect of JS/TS
+  // linting, so no glob expansion is needed.
+  ...obsidianmd.configs.recommended,
+  // TypeScript: parser + plugin + recommended-type-checked rules. Spread
+  // AFTER obsidian so its `eslintRecommended` carry-over turns `no-undef`
+  // off for TS files (obsidian re-enables it; left on it flags every
+  // imported type as undefined).
   ...tseslint.configs.recommendedTypeChecked,
   // Main TypeScript configuration: scope parserOptions.project to .ts/.tsx
   {
@@ -37,10 +48,6 @@ export default [
     },
     rules: {
       '@typescript-eslint/unbound-method': 'error',
-      // Enabled to keep parity with eslint.obsidian.config.mjs so that
-      // inline `eslint-disable @typescript-eslint/no-deprecated` directives
-      // in test files aren't flagged as unused by `npm run lint`.
-      '@typescript-eslint/no-deprecated': 'error',
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',

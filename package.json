@@ -18,7 +18,6 @@
     "build:watch": "onchange 'src/**/*.ts' -- npm run build:fast",
     "ci": "npm run lint && npm run test && BUILD=production npm run build:fast",
     "lint": "eslint \"**/*.{js,ts}\"",
-    "lint:obsidian": "eslint --config eslint.obsidian.config.mjs \"**/*.{js,ts}\"",
     "test": "jest",
     "test:watch": "jest --watchAll",
     "test:cov": "serve coverage/lcov-report",
