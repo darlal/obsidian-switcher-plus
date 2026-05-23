@@ -37,7 +37,7 @@ jobs:
           popd > /dev/null
 
       - name: Attest build artifacts
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest@v4
         with:
           subject-path: |
             dist/dist.zip
