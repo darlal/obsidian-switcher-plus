@@ -11,6 +11,10 @@ env:
 jobs:
   build-publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write       # required by Create release step
+      id-token: write       # required to mint OIDC token for Sigstore signing
+      attestations: write   # required to write attestation to the repo
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -31,6 +35,16 @@ jobs:
           pushd ./dist > /dev/null
           zip -r dist.zip ${{ env.PLUGIN_NAME }}
           popd > /dev/null
+
+      - name: Attest build artifacts
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/dist.zip
+            dist/${{ env.PLUGIN_NAME }}/main.js
+            dist/${{ env.PLUGIN_NAME }}/manifest.json
+            dist/${{ env.PLUGIN_NAME }}/styles.css
+            dist/${{ env.PLUGIN_NAME }}/versions.json
 
       - name: Create release
         # https://github.com/ncipollo/release-action
