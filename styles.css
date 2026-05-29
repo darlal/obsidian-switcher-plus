@@ -66,16 +66,6 @@
   justify-content: left;
 }
 
-/* highlight recently used file suggestions */
-.suggestion-item.qsp-recent-file .qsp-title {
-  text-decoration: underline dotted var(--text-muted);
-}
-
-/* highlight currently open editor suggestions */
-.suggestion-item.qsp-open-editor .qsp-title {
-  text-decoration: underline var(--text-accent);
-}
-
 /* highlight the open editor flair icon */
 .suggestion-item.qsp-open-editor .suggestion-aux.qsp-aux .qsp-editor-indicator,
 .suggestion-item.qsp-open-editor .suggestion-aux.qsp-aux .qsp-editor-indicator svg {
