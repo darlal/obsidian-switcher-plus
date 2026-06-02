@@ -267,6 +267,70 @@ describe('editorHandler', () => {
     });
   });
 
+  describe('getItems', () => {
+    it('should order pinned leaves before unpinned leaves, preserving relative order within each group', () => {
+      const unpinnedA = makeLeaf(undefined, { pinned: false });
+      const pinnedB = makeLeaf(undefined, { pinned: true });
+      const unpinnedC = makeLeaf(undefined, { pinned: false });
+      const pinnedD = makeLeaf(undefined, { pinned: true });
+
+      const getOpenLeavesSpy = jest
+        .spyOn(sut, 'getOpenLeaves')
+        .mockReturnValueOnce([unpinnedA, pinnedB, unpinnedC, pinnedD]);
+
+      const results = sut.getItems();
+
+      expect(results).toEqual([pinnedB, pinnedD, unpinnedA, unpinnedC]);
+
+      getOpenLeavesSpy.mockRestore();
+    });
+
+    it('should return leaves unchanged when none are pinned', () => {
+      const leafA = makeLeaf(undefined, { pinned: false });
+      const leafB = makeLeaf(undefined, { pinned: false });
+
+      const getOpenLeavesSpy = jest
+        .spyOn(sut, 'getOpenLeaves')
+        .mockReturnValueOnce([leafA, leafB]);
+
+      const results = sut.getItems();
+
+      expect(results).toEqual([leafA, leafB]);
+
+      getOpenLeavesSpy.mockRestore();
+    });
+  });
+
+  describe('createSuggestion', () => {
+    it('should set isPinned to true when the leaf is pinned', () => {
+      const mockLeaf = makeLeaf(undefined, { pinned: true });
+
+      const sugg = EditorHandler.createSuggestion(
+        new InputInfo().currentWorkspaceEnvList,
+        mockLeaf,
+        new TFile(),
+        settings,
+        mockApp.metadataCache,
+      );
+
+      expect(sugg.isPinned).toBe(true);
+    });
+
+    it('should set isPinned to false when the leaf is not pinned', () => {
+      const mockLeaf = makeLeaf();
+
+      const sugg = EditorHandler.createSuggestion(
+        new InputInfo().currentWorkspaceEnvList,
+        mockLeaf,
+        new TFile(),
+        settings,
+        mockApp.metadataCache,
+      );
+
+      expect(sugg.isPinned).toBe(false);
+    });
+  });
+
   describe('getPreferredTitle', () => {
     test('with preferredSourceForTitle as H1, it should return the first heading', () => {
       const file = new TFile();
@@ -398,6 +462,65 @@ describe('editorHandler', () => {
       );
 
       renderAsFileInfoPanelSpy.mockRestore();
+    });
+
+    it('should render a pin flair for a pinned suggestion', () => {
+      const mockLeaf = makeLeafWithRoot('foo', null);
+      const mockParentEl = mock<HTMLElement>();
+      const mockFlairContainerEl = mock<HTMLDivElement>();
+
+      const sugg = makeEditorSuggestion(mockLeaf);
+      sugg.isPinned = true;
+
+      const renderAsFileInfoPanelSpy = jest
+        .spyOn(Handler.prototype, 'renderAsFileInfoPanel')
+        .mockReturnValueOnce(null);
+      const renderOptionalIndicatorsSpy = jest
+        .spyOn(Handler.prototype, 'renderOptionalIndicators')
+        .mockReturnValueOnce(mockFlairContainerEl);
+      const renderIndicatorSpy = jest
+        .spyOn(Handler.prototype, 'renderIndicator')
+        .mockReturnValueOnce(null);
+
+      sut.renderSuggestion(sugg, mockParentEl);
+
+      expect(renderIndicatorSpy).toHaveBeenCalledWith(
+        mockFlairContainerEl,
+        [],
+        'filled-pin',
+      );
+
+      renderAsFileInfoPanelSpy.mockRestore();
+      renderOptionalIndicatorsSpy.mockRestore();
+      renderIndicatorSpy.mockRestore();
+    });
+
+    it('should not render a pin flair for an unpinned suggestion', () => {
+      const mockLeaf = makeLeafWithRoot('foo', null);
+      const mockParentEl = mock<HTMLElement>();
+
+      const sugg = makeEditorSuggestion(mockLeaf);
+      sugg.isPinned = false;
+
+      const renderAsFileInfoPanelSpy = jest
+        .spyOn(Handler.prototype, 'renderAsFileInfoPanel')
+        .mockReturnValueOnce(null);
+      const renderOptionalIndicatorsSpy = jest
+        .spyOn(Handler.prototype, 'renderOptionalIndicators')
+        .mockReturnValueOnce(mock<HTMLDivElement>());
+      const renderIndicatorSpy = jest.spyOn(Handler.prototype, 'renderIndicator');
+
+      sut.renderSuggestion(sugg, mockParentEl);
+
+      expect(renderIndicatorSpy).not.toHaveBeenCalledWith(
+        expect.anything(),
+        [],
+        'filled-pin',
+      );
+
+      renderAsFileInfoPanelSpy.mockRestore();
+      renderOptionalIndicatorsSpy.mockRestore();
+      renderIndicatorSpy.mockRestore();
     });
   });
 

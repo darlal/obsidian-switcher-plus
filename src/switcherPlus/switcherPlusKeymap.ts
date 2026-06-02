@@ -16,6 +16,7 @@ import {
   FacetSettingsData,
   InsertLinkConfig,
   KeymapConfig,
+  EditorSuggestion,
   Mode,
   ModeDispatcher,
   NavigationKeysConfig,
@@ -42,7 +43,12 @@ import {
   PaneType,
   SplitDirection,
 } from 'obsidian';
-import { CommandHandler, SymbolHandler, WorkspaceHandler } from 'src/Handlers';
+import {
+  CommandHandler,
+  EditorHandler,
+  SymbolHandler,
+  WorkspaceHandler,
+} from 'src/Handlers';
 
 /**
  * Mapping of special keys to their string representation for display purposes.
@@ -973,6 +979,34 @@ export class SwitcherPlusKeymap {
     return false;
   }
 
+  /**
+   * Toggles the pinned state of the WorkspaceLeaf for the currently selected Editor
+   * suggestion in the Chooser, then re-renders that suggestion in place.
+   *
+   * @param {KeyboardEvent} _evt
+   * @param {KeymapContext} _ctx
+   * @returns {(boolean | void)}
+   */
+  toggleEditorLeafPinned(_evt: KeyboardEvent, _ctx: KeymapContext): boolean | void {
+    const { chooser } = this;
+    const selectedSugg = chooser.values?.[chooser.selectedItem] as EditorSuggestion;
+
+    if (selectedSugg) {
+      const leaf = selectedSugg.item;
+
+      leaf.togglePinned();
+      selectedSugg.isPinned = EditorHandler.isLeafPinned(leaf);
+
+      // Re-render the selected suggestion in place to update the pin flair.
+      const parentEl = chooser.suggestions[chooser.selectedItem];
+      parentEl.empty();
+      this.exModeHandler.renderSuggestion(selectedSugg, parentEl);
+    }
+
+    // Return false to prevent default
+    return false;
+  }
+
   toggleMarkdownContentRendering(
     _evt: KeyboardEvent,
     _ctx: KeymapContext,
@@ -1317,6 +1351,15 @@ export class SwitcherPlusKeymap {
       [Mode.CommandList],
       config.togglePinnedCommandKeys,
       this.togglePinnedCommand.bind(this),
+    );
+
+    // Toggles the pin state for the selected editor leaf. Shares the same hotkey as
+    // the Command-mode toggle; the modes are mutually exclusive so there is no conflict.
+    this.createCustomKeymap(
+      'toggle pinned',
+      [Mode.EditorList],
+      config.togglePinnedCommandKeys,
+      this.toggleEditorLeafPinned.bind(this),
     );
 
     // Toggles between showing raw text content for a symbol (with search match

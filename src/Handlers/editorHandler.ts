@@ -127,9 +127,38 @@ export class EditorHandler extends Handler<EditorSuggestion> {
       orderEditorListByAccessTime: orderByAccessTime,
     } = this.settings;
 
-    return this.getOpenLeaves(excludeViewTypes, includeSidePanelViewTypes, {
+    const leaves = this.getOpenLeaves(excludeViewTypes, includeSidePanelViewTypes, {
       orderByAccessTime,
     });
+
+    return EditorHandler.orderByPinnedStatus(leaves);
+  }
+
+  /**
+   * Partitions leaves into pinned and unpinned groups and returns a new array with
+   * the pinned leaves first. The relative order within each group is preserved, so
+   * any access-time ordering applied upstream is retained per group.
+   */
+  static orderByPinnedStatus(leaves: WorkspaceLeaf[]): WorkspaceLeaf[] {
+    const pinned: WorkspaceLeaf[] = [];
+    const unpinned: WorkspaceLeaf[] = [];
+
+    leaves.forEach((leaf) => {
+      (EditorHandler.isLeafPinned(leaf) ? pinned : unpinned).push(leaf);
+    });
+
+    return [...pinned, ...unpinned];
+  }
+
+  /**
+   * Source-of-truth check for whether a leaf is pinned. The pinned flag lives on the
+   * leaf's ViewState (not directly on WorkspaceLeaf), so it is read via getViewState().
+   *
+   * @param {WorkspaceLeaf} leaf
+   * @returns {boolean} true when the leaf's ViewState reports pinned.
+   */
+  static isLeafPinned(leaf: WorkspaceLeaf): boolean {
+    return leaf.getViewState()?.pinned === true;
   }
 
   renderSuggestion(sugg: EditorSuggestion, parentEl: HTMLElement): boolean {
@@ -148,7 +177,12 @@ export class EditorHandler extends Handler<EditorSuggestion> {
         hideBasename,
       );
 
-      this.renderOptionalIndicators(parentEl, sugg);
+      const flairContainerEl = this.renderOptionalIndicators(parentEl, sugg);
+
+      if (sugg.isPinned) {
+        this.renderIndicator(flairContainerEl, [], 'filled-pin');
+      }
+
       handled = true;
     }
 
@@ -207,6 +241,7 @@ export class EditorHandler extends Handler<EditorSuggestion> {
       item: leaf,
       file,
       preferredTitle,
+      isPinned: EditorHandler.isLeafPinned(leaf),
       type: SuggestionType.EditorList,
       ...result,
     };

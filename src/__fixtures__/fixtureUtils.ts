@@ -38,17 +38,36 @@ export const defaultOpenViewState = {
   eState: { active: true, focus: true },
 };
 
-export function makeLeaf(sourceFile?: TFile): MockProxy<WorkspaceLeaf> {
+/**
+ * Returns a WorkspaceLeaf mock backed by a markdown MarkdownView.
+ *
+ * @export
+ * @param {?TFile} [sourceFile] file to back the leaf's view; defaults to a new TFile.
+ * @param {?{ pinned?: boolean }} [options] when `pinned` is provided, the leaf's
+ *   getViewState() is mocked to report that pinned state; otherwise getViewState()
+ *   is left unmocked (returns undefined).
+ * @returns {MockProxy<WorkspaceLeaf>}
+ */
+export function makeLeaf(
+  sourceFile?: TFile,
+  options?: { pinned?: boolean },
+): MockProxy<WorkspaceLeaf> {
   const mockView = mock<MarkdownView>({
     file: sourceFile ?? new TFile(),
     editor: mock<Editor>(),
     getViewType: mockFn().mockReturnValue('markdown'),
   });
 
-  return mock<WorkspaceLeaf>({
+  const leaf = mock<WorkspaceLeaf>({
     view: mockView,
     isDeferred: false,
   });
+
+  if (options?.pinned !== undefined) {
+    leaf.getViewState.mockReturnValue(mock<ViewState>({ pinned: options.pinned }));
+  }
+
+  return leaf;
 }
 
 /**

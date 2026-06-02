@@ -31,6 +31,7 @@ import {
   InternalPlugins,
   GlobalSearchPluginInstance,
   WorkspacesPluginInstance,
+  ViewState,
 } from 'obsidian';
 import * as Utils from 'src/utils/utils';
 import {
@@ -51,12 +52,14 @@ import {
   HeadingSuggestion,
   OpenInBackgroundConfig,
   WorkspaceSuggestion,
+  EditorSuggestion,
 } from 'src/types';
 import {
   makeFileSuggestion,
   makeHeading,
   makeHeadingSuggestion,
   makeSymbolSuggestion,
+  makeLeaf,
 } from '@fixtures';
 
 const chance = new Chance();
@@ -1553,6 +1556,101 @@ describe('SwitcherPlusKeymap', () => {
       // Expect it to first clear all the child elements
       expect(mockSuggParentEl.empty).toHaveBeenCalled();
       expect(renderSuggestionSpy).toHaveBeenCalledWith(mockCommandSugg, mockSuggParentEl);
+    });
+  });
+
+  describe('toggleEditorLeafPinned', () => {
+    let sut: SwitcherPlusKeymap;
+    let mockEditorSugg: MockProxy<EditorSuggestion>;
+    let mockLeaf: MockProxy<WorkspaceLeaf>;
+    let mockSuggParentEl: MockProxy<HTMLElement>;
+    let mockChooserLocal: MockProxy<Chooser<AnySuggestion>>;
+
+    beforeAll(() => {
+      mockSuggParentEl = mock<HTMLElement>();
+      mockLeaf = makeLeaf();
+      mockEditorSugg = mock<EditorSuggestion>({
+        type: SuggestionType.EditorList,
+        item: mockLeaf,
+      });
+
+      mockChooserLocal = mock<Chooser<AnySuggestion>>({
+        values: [mockEditorSugg],
+        suggestions: [mockSuggParentEl],
+        selectedItem: 0,
+      });
+
+      sut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooserLocal,
+        mockModal,
+        config,
+      );
+    });
+
+    afterEach(() => {
+      mockClear(mockLeaf);
+      mockClear(mockSuggParentEl);
+      mockClear(mockExMode);
+    });
+
+    it('should return false to prevent default', () => {
+      const result = sut.toggleEditorLeafPinned(null, null);
+
+      expect(result).toBe(false);
+    });
+
+    it('should toggle the leaf pinned state via the native API', () => {
+      sut.toggleEditorLeafPinned(null, null);
+
+      expect(mockLeaf.togglePinned).toHaveBeenCalled();
+    });
+
+    it('should update isPinned on the suggestion from the leaf view state', () => {
+      mockLeaf.getViewState.mockReturnValue(mock<ViewState>({ pinned: true }));
+
+      sut.toggleEditorLeafPinned(null, null);
+
+      expect(mockEditorSugg.isPinned).toBe(true);
+    });
+
+    it('should clear and re-render the selected suggestion via exModeHandler', () => {
+      sut.toggleEditorLeafPinned(null, null);
+
+      expect(mockSuggParentEl.empty).toHaveBeenCalled();
+      expect(mockExMode.renderSuggestion).toHaveBeenCalledWith(
+        mockEditorSugg,
+        mockSuggParentEl,
+      );
+    });
+
+    it('should do nothing when there is no selected suggestion', () => {
+      mockChooserLocal.values = [];
+
+      sut.toggleEditorLeafPinned(null, null);
+
+      expect(mockExMode.renderSuggestion).not.toHaveBeenCalled();
+    });
+
+    it('should register a "toggle pinned" keymap for Editor mode using togglePinnedCommandKeys', () => {
+      const localSut = new SwitcherPlusKeymap(
+        mockApp,
+        mockScope,
+        mockChooser,
+        mockModal,
+        config,
+      );
+
+      const editorTogglePinned = localSut.customKeysInfo.filter(
+        (v) => v.purpose === 'toggle pinned' && v.modes?.includes(Mode.EditorList),
+      );
+
+      expect(editorTogglePinned).toHaveLength(1);
+      expect(editorTogglePinned[0].key).toBe(config.togglePinnedCommandKeys.key);
+      expect(editorTogglePinned[0].modifiers).toEqual(
+        config.togglePinnedCommandKeys.modifiers,
+      );
     });
   });
 

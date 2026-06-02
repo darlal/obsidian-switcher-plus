@@ -291,6 +291,7 @@ export interface SymbolSuggestion extends Suggestion<SymbolInfo> {
 
 export interface EditorSuggestion extends Suggestion<WorkspaceLeaf> {
   type: SuggestionType.EditorList;
+  isPinned?: boolean;
 }
 
 export interface WorkspaceSuggestion extends Omit<Suggestion<WorkspaceInfo>, 'file'> {
