@@ -20,17 +20,20 @@ export abstract class ComponentManager {
   static getRootComponent(): Component {
     if (!this.rootComponent) {
       this.rootComponent = new Component();
+      this.rootComponent.load();
     }
 
     return this.rootComponent;
   }
 
   /**
-   * Unload the tracking component and its children.
+   * Unload the tracking component and its children, then discard it so that
+   * the next call to getRootComponent() starts a fresh lifecycle.
    *
    * @static
    */
   static unload(): void {
     this.rootComponent?.unload();
+    this.rootComponent = null;
   }
 }
