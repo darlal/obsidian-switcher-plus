@@ -14,7 +14,7 @@
       "./src/types",
       "./node_modules/@types"
     ],
-    "outDir": "./dist/darlal-switcher-plus/tsc-output",
+    "outDir": "./dist/tsc-output",
     "noEmit": true,
     "inlineSourceMap": true,
     "inlineSources": true,

@@ -10,7 +10,7 @@ export default {
   input: 'src/main.ts',
   treeshake: false,
   output: {
-    dir: 'dist/darlal-switcher-plus',
+    dir: 'dist',
     sourcemap: isProd ? false : 'inline',
     sourcemapExcludeSources: isProd,
     format: 'cjs',

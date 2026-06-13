@@ -6,13 +6,13 @@
     "type": "git",
     "url": "https://github.com/darlal/obsidian-switcher-plus"
   },
-  "main": "./dist/darlal-switcher-plus/main.js",
+  "main": "./dist/main.js",
   "engines": {
     "node": "22.21.1"
   },
   "scripts": {
     "bundle": "rollup --bundleConfigAsCjs -c rollup.config.js",
-    "package-plugin": "copyfiles ./styles.css ./manifest.json ./dist/darlal-switcher-plus",
+    "package-plugin": "copyfiles ./styles.css ./manifest.json ./dist",
     "build": "npm run lint && npm run build:fast",
     "build:fast": "npm run bundle && npm run package-plugin",
     "build:watch": "onchange 'src/**/*.ts' -- npm run build:fast",
