@@ -12,7 +12,7 @@
   },
   "scripts": {
     "bundle": "rollup --bundleConfigAsCjs -c rollup.config.js",
-    "package-plugin": "copyfiles ./styles.css ./manifest.json ./versions.json ./dist/darlal-switcher-plus",
+    "package-plugin": "copyfiles ./styles.css ./manifest.json ./dist/darlal-switcher-plus",
     "build": "npm run lint && npm run build:fast",
     "build:fast": "npm run bundle && npm run package-plugin",
     "build:watch": "onchange 'src/**/*.ts' -- npm run build:fast",

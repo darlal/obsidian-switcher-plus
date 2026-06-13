@@ -30,21 +30,13 @@ jobs:
       - name: Build
         run: npm run ci
 
-      - name: Create zip distro
-        run: |
-          pushd ./dist > /dev/null
-          zip -r dist.zip ${{ env.PLUGIN_NAME }}
-          popd > /dev/null
-
       - name: Attest build artifacts
         uses: actions/attest@v4
         with:
           subject-path: |
-            dist/dist.zip
             dist/${{ env.PLUGIN_NAME }}/main.js
             dist/${{ env.PLUGIN_NAME }}/manifest.json
             dist/${{ env.PLUGIN_NAME }}/styles.css
-            dist/${{ env.PLUGIN_NAME }}/versions.json
 
       - name: Create release
         # https://github.com/ncipollo/release-action
@@ -52,4 +44,5 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifactErrorsFailBuild: true
-          artifacts: "dist/dist.zip,dist/${{ env.PLUGIN_NAME }}/*.*"
+          draft: true
+          artifacts: "dist/${{ env.PLUGIN_NAME }}/*.*"
