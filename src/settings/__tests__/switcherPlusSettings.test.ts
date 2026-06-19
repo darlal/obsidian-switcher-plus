@@ -55,7 +55,7 @@ function getDefaultSettingsData(): SettingsData {
     relatedItemsListActiveEditorCommand: '^ ',
     shouldSearchHeadings: true,
     strictHeadingsOnly: false,
-    searchAllHeadings: true,
+    searchAllHeadings: [1, 2, 3, 4, 5, 6],
     headingsSearchDebounceMilli: 250,
     limit: 50,
     selectNearestHeading: true,
@@ -246,7 +246,7 @@ function getTransientSettingsData(): SettingsData {
     vaultListCommand: chance.word(),
     shouldSearchHeadings: chance.bool(),
     strictHeadingsOnly: chance.bool(),
-    searchAllHeadings: chance.bool(),
+    searchAllHeadings: [1, 2, 3],
     headingsSearchDebounceMilli: chance.millisecond(),
     limit: chance.integer(),
     selectNearestHeading: chance.bool(),
@@ -1149,6 +1149,32 @@ describe('SwitcherPlusSettings', () => {
           expect(result).toBe(false);
         });
       });
+    });
+  });
+
+  describe('searchAllHeadings', () => {
+    it('should round-trip an array of heading levels', () => {
+      const sut = new SwitcherPlusSettings(null);
+
+      sut.searchAllHeadings = [1, 2];
+
+      expect(sut.searchAllHeadings).toEqual([1, 2]);
+    });
+
+    it('should normalize a stored boolean true to all heading levels', () => {
+      const sut = new SwitcherPlusSettings(null);
+
+      sut.searchAllHeadings = true;
+
+      expect(sut.searchAllHeadings).toEqual([1, 2, 3, 4, 5, 6]);
+    });
+
+    it('should normalize a stored boolean false to an empty array (first H1 only)', () => {
+      const sut = new SwitcherPlusSettings(null);
+
+      sut.searchAllHeadings = false;
+
+      expect(sut.searchAllHeadings).toEqual([]);
     });
   });
 });

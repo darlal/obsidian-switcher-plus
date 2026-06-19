@@ -85,15 +85,47 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
         'strictHeadingsOnly',
       );
 
-      this.addToggleSetting(
-        group,
-        'Search all headings',
-        'Enabled, search through all headings contained in each file. Disabled, only search through the first H1 in each file.',
-        config.searchAllHeadings,
-        'searchAllHeadings',
-      );
+      this.showSearchHeadingLevels(group, config);
 
       this.showBreadcrumbSettings(group, config);
+    }
+  }
+
+  showSearchHeadingLevels(
+    containerEl: HTMLElement | SettingGroup,
+    config: SwitcherPlusSettings,
+  ): void {
+    const setting = this.createSetting(
+      containerEl,
+      'Include heading levels',
+      'Select which heading levels to include in search. To search just the very first H1 heading only deselect all levels.',
+    );
+
+    // searchAllHeadings is normalized to a number[] by its getter, so legacy
+    // booleans already map to the right levels (true → all, false → empty).
+    const enabledLevels = new Set(config.searchAllHeadings);
+
+    for (let level = 1; level <= 6; level++) {
+      setting.addButton((btn) => {
+        btn.setButtonText(`H${level}`);
+
+        if (enabledLevels.has(level)) {
+          btn.setCta();
+        }
+
+        btn.onClick(() => {
+          if (enabledLevels.has(level)) {
+            enabledLevels.delete(level);
+            btn.removeCta();
+          } else {
+            enabledLevels.add(level);
+            btn.setCta();
+          }
+
+          config.searchAllHeadings = Array.from(enabledLevels).sort((a, b) => a - b);
+          config.save();
+        });
+      });
     }
   }
 

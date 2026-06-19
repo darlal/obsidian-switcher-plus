@@ -8,6 +8,17 @@ import { mock, MockProxy } from 'jest-mock-extended';
 import { App, Setting, SettingGroup, TextAreaComponent, ViewRegistry } from 'obsidian';
 import * as Utils from 'src/utils/utils';
 
+/**
+ * Structural view of the MockButtonComponent instances that the mocked Setting
+ * pushes onto its `components` array, exposing only the members exercised by
+ * the showSearchHeadingLevels tests.
+ */
+type TestButton = {
+  text: string;
+  isCta: boolean;
+  onClickCB: (evt: MouseEvent) => unknown;
+};
+
 describe('headingsSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
   let mockPluginSettingTab: MockProxy<SwitcherPlusSettingTab>;
@@ -248,20 +259,12 @@ describe('headingsSettingsTabSection', () => {
 
       sut.showHeadingSettings(mockContainerEl, config);
 
-      // Verify that addToggleSetting was called with SettingGroup instances for conditional child toggles
+      // Verify that addToggleSetting was called with a SettingGroup instance for the conditional child toggle
       const strictHeadingsOnlyCall = addToggleSettingSpy.mock.calls.find(
         (call: addToggleSettingArgs) => call[1] === 'Turn off filename fallback',
       ) as addToggleSettingArgs;
 
-      const searchAllHeadingsCall = addToggleSettingSpy.mock.calls.find(
-        (call: addToggleSettingArgs) => call[1] === 'Search all headings',
-      ) as addToggleSettingArgs;
-
       expect(strictHeadingsOnlyCall[0]).toBeInstanceOf(SettingGroup);
-      expect(searchAllHeadingsCall[0]).toBeInstanceOf(SettingGroup);
-
-      // Verify both child toggles are added to the same group
-      expect(strictHeadingsOnlyCall[0]).toBe(searchAllHeadingsCall[0]);
 
       config.shouldSearchHeadings = false;
       addToggleSettingSpy.mockReset();
@@ -284,23 +287,104 @@ describe('headingsSettingsTabSection', () => {
       config.shouldSearchHeadings = false;
       addToggleSettingSpy.mockReset();
     });
+  });
 
-    it('should show the searchAllHeadings setting', () => {
-      config.shouldSearchHeadings = true;
-      addToggleSettingSpy.mockReturnValue(mock<Setting>());
+  describe('showSearchHeadingLevels', () => {
+    let createSettingSpy: jest.SpyInstance;
+    let saveSpy: jest.SpyInstance;
+    let mockSetting: Setting;
 
-      sut.showHeadingSettings(mockContainerEl, config);
+    beforeEach(() => {
+      // Runtime resolves to MockSetting via the obsidian manual mock.
+      mockSetting = new Setting(mockContainerEl);
+      createSettingSpy = jest
+        .spyOn(SettingsTabSection.prototype, 'createSetting')
+        .mockReturnValue(mockSetting);
+      saveSpy = jest.spyOn(config, 'save').mockReturnValue(undefined);
+    });
 
-      expect(addToggleSettingSpy).toHaveBeenCalledWith(
-        expect.any(SettingGroup),
-        'Search all headings',
-        expect.any(String),
-        config.searchAllHeadings,
-        'searchAllHeadings',
-      );
+    afterEach(() => {
+      createSettingSpy.mockRestore();
+      saveSpy.mockRestore();
+      config.searchAllHeadings = true; // reset shared config to default
+    });
 
-      config.shouldSearchHeadings = false;
-      addToggleSettingSpy.mockReset();
+    it('should render six buttons labeled H1 through H6', () => {
+      config.searchAllHeadings = true;
+
+      sut.showSearchHeadingLevels(mockContainerEl, config);
+
+      const buttons = mockSetting.components as unknown as TestButton[];
+      expect(buttons.map((c) => c.text)).toEqual(['H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
+    });
+
+    it('should mark every level active when the value is boolean true', () => {
+      config.searchAllHeadings = true;
+
+      sut.showSearchHeadingLevels(mockContainerEl, config);
+
+      const buttons = mockSetting.components as unknown as TestButton[];
+      expect(buttons.map((c) => c.isCta)).toEqual([true, true, true, true, true, true]);
+    });
+
+    it('should mark no levels active when the value is boolean false (first H1 only)', () => {
+      config.searchAllHeadings = false;
+
+      sut.showSearchHeadingLevels(mockContainerEl, config);
+
+      const buttons = mockSetting.components as unknown as TestButton[];
+      expect(buttons.map((c) => c.isCta)).toEqual([
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ]);
+    });
+
+    it('should mark the configured levels active when the value is an array', () => {
+      config.searchAllHeadings = [2, 4];
+
+      sut.showSearchHeadingLevels(mockContainerEl, config);
+
+      const buttons = mockSetting.components as unknown as TestButton[];
+      expect(buttons.map((c) => c.isCta)).toEqual([
+        false,
+        true,
+        false,
+        true,
+        false,
+        false,
+      ]);
+    });
+
+    it('should add a level and save when an inactive button is clicked', () => {
+      config.searchAllHeadings = [2];
+
+      sut.showSearchHeadingLevels(mockContainerEl, config);
+
+      const buttons = mockSetting.components as unknown as TestButton[];
+      // click H4 (index 3)
+      buttons[3].onClickCB(null);
+
+      expect(buttons[3].isCta).toBe(true);
+      expect(config.searchAllHeadings).toEqual([2, 4]);
+      expect(saveSpy).toHaveBeenCalled();
+    });
+
+    it('should remove a level and save when an active button is clicked', () => {
+      config.searchAllHeadings = [1, 2];
+
+      sut.showSearchHeadingLevels(mockContainerEl, config);
+
+      const buttons = mockSetting.components as unknown as TestButton[];
+      // click H1 (index 0)
+      buttons[0].onClickCB(null);
+
+      expect(buttons[0].isCta).toBe(false);
+      expect(config.searchAllHeadings).toEqual([2]);
+      expect(saveSpy).toHaveBeenCalled();
     });
   });
 

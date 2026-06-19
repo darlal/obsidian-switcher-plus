@@ -3,6 +3,7 @@
 import { mock } from 'jest-mock-extended';
 import {
   App,
+  ButtonComponent,
   DropdownComponent,
   ExtraButtonComponent,
   PluginSettingTab,
@@ -112,6 +113,13 @@ export class MockSetting {
     const comp = new MockExtraButtonComponent(this.containerEl);
     this.components.push(comp);
     cb(comp);
+    return this;
+  }
+
+  addButton(cb: (component: ButtonComponent) => any): this {
+    const comp = new MockButtonComponent(this.containerEl);
+    this.components.push(comp);
+    cb(comp as unknown as ButtonComponent);
     return this;
   }
 
@@ -343,6 +351,37 @@ export class MockExtraButtonComponent implements ExtraButtonComponent {
   disabled: boolean;
   then(cb: (component: this) => any): this {
     throw new Error('Method not implemented.');
+  }
+}
+
+export class MockButtonComponent {
+  buttonEl: HTMLButtonElement;
+  text: string;
+  isCta = false;
+  onClickCB: (evt: MouseEvent) => unknown;
+
+  constructor(public containerEl: HTMLElement) {
+    this.buttonEl = mock<HTMLButtonElement>();
+  }
+
+  setButtonText(name: string): this {
+    this.text = name;
+    return this;
+  }
+
+  setCta(): this {
+    this.isCta = true;
+    return this;
+  }
+
+  removeCta(): this {
+    this.isCta = false;
+    return this;
+  }
+
+  onClick(cb: (evt: MouseEvent) => unknown): this {
+    this.onClickCB = cb;
+    return this;
   }
 }
 

@@ -276,14 +276,14 @@ describe('headingsHandler', () => {
       mockMetadataCache.getFileCache.mockReset();
     });
 
-    test('with filter search term, and searchAllHeadings set to false, it should return only matching suggestions using first H1 in file', () => {
+    test('with filter search term, and no heading levels selected (empty array), it should return only matching suggestions using first H1 in file', () => {
       const expected = new TFile();
       const expectedHeading = makeHeading(`${filterText} heading H1`, 1, makeLoc(1));
       const heading2 = makeHeading(`${filterText} heading H1`, 1, makeLoc(2));
 
       const searchAllHeadingsSpy = jest
         .spyOn(settings, 'searchAllHeadings', 'get')
-        .mockReturnValue(false);
+        .mockReturnValue([]);
 
       mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
 
@@ -548,6 +548,154 @@ describe('headingsHandler', () => {
 
       mockMetadataCache.getFileCache.mockReset();
       excludeFoldersSpy.mockRestore();
+    });
+
+    describe('searching explicit heading levels', () => {
+      it('should only return headings whose level is in the configured array', () => {
+        const expected = new TFile();
+        const h1 = makeHeading(`${filterText} heading H1`, 1, makeLoc(1));
+        const h2 = makeHeading(`${filterText} heading H2`, 2, makeLoc(2));
+        const h3 = makeHeading(`${filterText} heading H3`, 3, makeLoc(3));
+
+        const levelsSpy = jest
+          .spyOn(settings, 'searchAllHeadings', 'get')
+          .mockReturnValue([2]);
+
+        mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
+        mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
+          return f === expected ? { headings: [h1, h2, h3] } : getCachedMetadata();
+        });
+
+        const results = sut.getSuggestions(inputInfo);
+
+        expect(results).toHaveLength(1);
+        expect((results[0] as HeadingSuggestion).item).toBe(h2);
+
+        mockMetadataCache.getFileCache.mockReset();
+        levelsSpy.mockRestore();
+      });
+
+      it('should return headings for every configured level', () => {
+        const expected = new TFile();
+        const h1 = makeHeading(`${filterText} heading H1`, 1, makeLoc(1));
+        const h2 = makeHeading(`${filterText} heading H2`, 2, makeLoc(2));
+        const h3 = makeHeading(`${filterText} heading H3`, 3, makeLoc(3));
+
+        const levelsSpy = jest
+          .spyOn(settings, 'searchAllHeadings', 'get')
+          .mockReturnValue([1, 3]);
+
+        mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
+        mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
+          return f === expected ? { headings: [h1, h2, h3] } : getCachedMetadata();
+        });
+
+        const results = sut.getSuggestions(inputInfo);
+        const items = results.map((r) => (r as HeadingSuggestion).item);
+
+        expect(results).toHaveLength(2);
+        expect(items).toContain(h1);
+        expect(items).toContain(h3);
+        expect(items).not.toContain(h2);
+
+        mockMetadataCache.getFileCache.mockReset();
+        levelsSpy.mockRestore();
+      });
+
+      it('should fall back to the filename when no searched heading matched', () => {
+        const expected = new TFile();
+        expected.basename = `${filterText} filename`; // filename must match the query
+        // H2 is searched but does not match the filter; filename fallback is on
+        // (strictHeadingsOnly defaults to false).
+        const h2 = makeHeading("words that don't match", 2, makeLoc(2));
+
+        const levelsSpy = jest
+          .spyOn(settings, 'searchAllHeadings', 'get')
+          .mockReturnValue([2]);
+
+        mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
+        mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
+          return f === expected ? { headings: [h2] } : getCachedMetadata();
+        });
+
+        const results = sut.getSuggestions(inputInfo);
+
+        expect(results).toHaveLength(1);
+        expect(isFileSuggestion(results[0])).toBe(true);
+
+        mockMetadataCache.getFileCache.mockReset();
+        levelsSpy.mockRestore();
+      });
+
+      it('should not fall back to the filename when a searched heading matched', () => {
+        const expected = new TFile();
+        const h2 = makeHeading(`${filterText} heading H2`, 2, makeLoc(2));
+
+        const levelsSpy = jest
+          .spyOn(settings, 'searchAllHeadings', 'get')
+          .mockReturnValue([2]);
+
+        mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
+        mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
+          return f === expected ? { headings: [h2] } : getCachedMetadata();
+        });
+
+        const results = sut.getSuggestions(inputInfo);
+
+        expect(results).toHaveLength(1);
+        expect(isHeadingSuggestion(results[0])).toBe(true);
+        expect((results[0] as HeadingSuggestion).item).toBe(h2);
+
+        mockMetadataCache.getFileCache.mockReset();
+        levelsSpy.mockRestore();
+      });
+
+      it('should search only the first H1 when the array is empty', () => {
+        const expected = new TFile();
+        const h1 = makeHeading(`${filterText} heading H1`, 1, makeLoc(1));
+        const h2 = makeHeading(`${filterText} heading H2`, 2, makeLoc(2));
+
+        const levelsSpy = jest
+          .spyOn(settings, 'searchAllHeadings', 'get')
+          .mockReturnValue([]);
+
+        mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
+        mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
+          return f === expected ? { headings: [h1, h2] } : getCachedMetadata();
+        });
+
+        const results = sut.getSuggestions(inputInfo);
+
+        expect(results).toHaveLength(1);
+        expect(isHeadingSuggestion(results[0])).toBe(true);
+        expect((results[0] as HeadingSuggestion).item).toBe(h1);
+
+        mockMetadataCache.getFileCache.mockReset();
+        levelsSpy.mockRestore();
+      });
+
+      it('should fall back to the filename when the array is empty and the first H1 does not match', () => {
+        const expected = new TFile();
+        expected.basename = `${filterText} filename`; // filename must match the query
+        const h1 = makeHeading("words that don't match", 1, makeLoc(1));
+
+        const levelsSpy = jest
+          .spyOn(settings, 'searchAllHeadings', 'get')
+          .mockReturnValue([]);
+
+        mockVault.getRoot.mockReturnValueOnce(makeFileTree(expected));
+        mockMetadataCache.getFileCache.mockImplementation((f: TFile) => {
+          return f === expected ? { headings: [h1] } : getCachedMetadata();
+        });
+
+        const results = sut.getSuggestions(inputInfo);
+
+        expect(results).toHaveLength(1);
+        expect(isFileSuggestion(results[0])).toBe(true);
+
+        mockMetadataCache.getFileCache.mockReset();
+        levelsSpy.mockRestore();
+      });
     });
   });
 
@@ -988,7 +1136,7 @@ describe('headingsHandler', () => {
       const results: BookmarksSuggestion[] = [];
       sut.getItems(fileData, inputInfo, results, facetIds, {
         headings: true,
-        allHeadings: true,
+        allHeadings: new Set([1, 2, 3, 4, 5, 6]),
         aliases: true,
         bookmarks: false, // Expect to be overriden by facet
         filename: true,
@@ -1012,7 +1160,7 @@ describe('headingsHandler', () => {
       const results: FileSuggestion[] = [];
       sut.getItems([expectedFile, ...fileData], inputInfo, results, facetIds, {
         headings: true,
-        allHeadings: true,
+        allHeadings: new Set([1, 2, 3, 4, 5, 6]),
         aliases: true,
         bookmarks: true,
         filename: false, // Expect to be overriden by facet
@@ -1033,7 +1181,7 @@ describe('headingsHandler', () => {
       const results: FileSuggestion[] = [];
       sut.getItems([expectedFile], inputInfo, results, facetIds, {
         headings: true,
-        allHeadings: true,
+        allHeadings: new Set([1, 2, 3, 4, 5, 6]),
         aliases: true,
         bookmarks: true,
         filename: false, // Expect to be overriden by facet
@@ -1065,7 +1213,7 @@ describe('headingsHandler', () => {
       const results: HeadingSuggestion[] = [];
       sut.getItems([expectedFile, ...fileData], inputInfo, results, facetIds, {
         headings: false, // Expect to be overriden by facet
-        allHeadings: true,
+        allHeadings: new Set([1, 2, 3, 4, 5, 6]),
         aliases: true,
         bookmarks: true,
         filename: true,
@@ -1077,6 +1225,36 @@ describe('headingsHandler', () => {
       expect(results[0].file).toBe(expectedFile);
       expect(results[0].type).toBe(SuggestionType.HeadingsList);
       expect(results[0].item).toBe(mockMetadata.headings[0]);
+
+      mockMetadataCache.getFileCache.mockReset();
+    });
+
+    test('when faceted with .Headings and allHeadings is omitted, .getItems should default to searching only the first H1', () => {
+      mockMetadataCache.getFileCache.mockClear();
+
+      const facetIds = new Set([HeadingsListFacetIds.Headings]);
+      const expectedFile = new TFile();
+      const h1 = makeHeading('H1', 1, makeLoc(1));
+      const h2 = makeHeading('H2', 2, makeLoc(2));
+
+      mockMetadataCache.getFileCache
+        .calledWith(expectedFile)
+        .mockReturnValueOnce({ headings: [h1, h2] });
+
+      const results: HeadingSuggestion[] = [];
+      // allHeadings omitted: the faceted path coerces it to an empty Set via
+      // `?? new Set()`, which searches only the first H1
+      sut.getItems([expectedFile, ...fileData], inputInfo, results, facetIds, {
+        headings: false, // Expect to be overriden by facet
+        aliases: true,
+        bookmarks: true,
+        filename: true,
+        filenameAsFallback: false,
+        unresolved: true,
+      });
+
+      expect(results).toHaveLength(1);
+      expect(results[0].item).toBe(h1);
 
       mockMetadataCache.getFileCache.mockReset();
     });

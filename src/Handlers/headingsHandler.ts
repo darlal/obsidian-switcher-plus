@@ -230,7 +230,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
         // initialize options
         const options = {
           headings: settings.shouldSearchHeadings,
-          allHeadings: settings.searchAllHeadings,
+          allHeadings: new Set(settings.searchAllHeadings),
           aliases: settings.shouldShowAlias,
           bookmarks: settings.shouldSearchBookmarks,
           filename: settings.shouldSearchFilenames,
@@ -264,7 +264,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     activeFacetIds: Set<string>,
     options: {
       headings?: boolean;
-      allHeadings?: boolean;
+      allHeadings?: Set<number>;
       aliases?: boolean;
       bookmarks?: boolean;
       filename?: boolean;
@@ -374,7 +374,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     activeFacetIds: Set<string>,
     options: {
       headings?: boolean;
-      allHeadings?: boolean;
+      allHeadings?: Set<number>;
       aliases?: boolean;
       filename?: boolean;
       filenameAsFallback?: boolean;
@@ -399,11 +399,11 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
         isExternalFilesEnabled ||
         this.isFacetedWith(activeFacetIds, HeadingsListFacetIds.Filenames);
 
-      let allHeadings = false;
+      let allHeadings = new Set<number>();
       let filenameAsFallback = false;
 
       if (isHeadingsEnabled) {
-        allHeadings = options.allHeadings === true;
+        allHeadings = options.allHeadings ?? new Set<number>();
         filenameAsFallback = options.filenameAsFallback === true;
       }
 
@@ -418,7 +418,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       options = Object.assign(
         {
           headings: true,
-          allHeadings: true,
+          allHeadings: new Set([1, 2, 3, 4, 5, 6]),
           aliases: true,
           filename: true,
           filenameAsFallback: true,
@@ -458,16 +458,16 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     file: TFile,
     options: {
       headings?: boolean;
-      allHeadings?: boolean;
+      allHeadings?: Set<number>;
       aliases?: boolean;
       filename?: boolean;
       filenameAsFallback?: boolean;
     },
   ): void {
-    let isH1Matched = false;
+    let isHeadingMatched = false;
 
     if (options.headings) {
-      isH1Matched = this.addHeadingSuggestions(
+      isHeadingMatched = this.addHeadingSuggestions(
         inputInfo,
         searcher,
         suggestions as HeadingSuggestion[],
@@ -476,7 +476,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       );
     }
 
-    if (options.filename || (!isH1Matched && options.filenameAsFallback)) {
+    if (options.filename || (!isHeadingMatched && options.filenameAsFallback)) {
       this.addFileSuggestions(inputInfo, searcher, suggestions as FileSuggestion[], file);
     }
 
@@ -617,43 +617,65 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     searcher: StringSearcher,
     suggestions: HeadingSuggestion[],
     file: TFile,
-    allHeadings: boolean,
+    levels: Set<number>,
   ): boolean {
     const { metadataCache } = this.app;
     const headingList = metadataCache.getFileCache(file)?.headings ?? [];
-    let h1: HeadingCache = null;
-    let isH1Matched = false;
+
+    // No levels selected: search only the first (topmost) H1
+    if (levels.size === 0) {
+      return this.matchFirstH1(inputInfo, searcher, suggestions, file, headingList);
+    }
+
+    // Search every heading whose level is selected. The caller falls back to the
+    // filename only when none of the searched headings matched.
+    let anyMatched = false;
     let i = headingList.length;
 
     while (i--) {
       const heading = headingList[i];
-      let isMatched = false;
 
-      if (allHeadings) {
-        isMatched = this.matchAndPushHeading(
+      if (levels.has(heading.level)) {
+        const isMatched = this.matchAndPushHeading(
           inputInfo,
           searcher,
           suggestions,
           file,
           heading,
         );
+
+        anyMatched = anyMatched || isMatched;
       }
+    }
+
+    return anyMatched;
+  }
+
+  matchFirstH1(
+    inputInfo: InputInfo,
+    searcher: StringSearcher,
+    suggestions: HeadingSuggestion[],
+    file: TFile,
+    headingList: HeadingCache[],
+  ): boolean {
+    let h1: HeadingCache = null;
+    let i = headingList.length;
+
+    while (i--) {
+      const heading = headingList[i];
 
       if (heading.level === 1) {
         const { line } = heading.position.start;
 
         if (h1 === null || line < h1.position.start.line) {
           h1 = heading;
-          isH1Matched = isMatched;
         }
       }
     }
 
-    if (!allHeadings && h1) {
-      isH1Matched = this.matchAndPushHeading(inputInfo, searcher, suggestions, file, h1);
-    }
-
-    return isH1Matched;
+    return h1
+      ? this.matchAndPushHeading(inputInfo, searcher, suggestions, file, h1)
+      : false;
   }
 
   matchAndPushHeading(

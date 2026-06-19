@@ -55,7 +55,7 @@ export class SwitcherPlusSettings {
       relatedItemsListActiveEditorCommand: '^ ',
       shouldSearchHeadings: true,
       strictHeadingsOnly: false,
-      searchAllHeadings: true,
+      searchAllHeadings: [1, 2, 3, 4, 5, 6],
       headingsSearchDebounceMilli: 250,
       excludeViewTypes: ['empty'],
       referenceViews: ['backlink', 'localgraph', 'outgoing-link', 'outline'],
@@ -421,11 +421,23 @@ export class SwitcherPlusSettings {
     this.data.strictHeadingsOnly = value;
   }
 
-  get searchAllHeadings(): boolean {
-    return this.data.searchAllHeadings;
+  /**
+   * The heading levels (H1–H6) to search in Headings list mode, as an array of
+   * level numbers. An empty array means "search only the first H1". Legacy boolean values
+   * are normalized on read so every consumer can work with a single `number[]`
+   * shape: `true` → all levels, `false` → first H1 only (empty array).
+   */
+  get searchAllHeadings(): number[] {
+    const value = this.data.searchAllHeadings;
+
+    if (Array.isArray(value)) {
+      return value;
+    }
+
+    return value ? [1, 2, 3, 4, 5, 6] : [];
   }
 
-  set searchAllHeadings(value: boolean) {
+  set searchAllHeadings(value: boolean | number[]) {
     this.data.searchAllHeadings = value;
   }
 

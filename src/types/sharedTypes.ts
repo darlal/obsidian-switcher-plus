@@ -598,7 +598,7 @@ export interface SettingsData {
   relatedItemsListActiveEditorCommand: string;
   shouldSearchHeadings: boolean;
   strictHeadingsOnly: boolean;
-  searchAllHeadings: boolean;
+  searchAllHeadings: boolean | number[];
   headingsSearchDebounceMilli: number;
   excludeViewTypes: Array<string>;
   referenceViews: Array<string>;
