@@ -846,6 +846,31 @@ describe('modeHandler', () => {
       renderNoteCreationSuggestionSpy.mockRestore();
     });
 
+    test('with a null sugg param in Workspace mode, .renderSuggestion should render the create-file suggestion', () => {
+      const searchText = 'new workspace';
+      const mockParentEl = mock<HTMLElement>();
+      // Workspace mode resolves suggestions synchronously and routes an empty
+      // result through modal.onNoSuggestion(), so a real modal mock is required.
+      const mockModal = mock<SwitcherPlus>();
+      const getSuggestionSpy = jest
+        .spyOn(WorkspaceHandler.prototype, 'getSuggestions')
+        .mockReturnValue([]);
+
+      const renderCreationSpy = jest
+        .spyOn(Handler.prototype, 'renderFileCreationSuggestion')
+        .mockReturnValueOnce(null);
+
+      sut.updateSuggestions(`${workspaceTrigger}${searchText}`, mockChooser, mockModal);
+
+      const handled = sut.renderSuggestion(null, mockParentEl);
+
+      expect(handled).toBe(true);
+      expect(renderCreationSpy).toHaveBeenCalledWith(mockParentEl, searchText);
+
+      getSuggestionSpy.mockRestore();
+      renderCreationSpy.mockRestore();
+    });
+
     test('when there are no results for a search term, it should call .onNoSuggestion() on the modal', () => {
       const mockModal = mock<SwitcherPlus>();
       const getSuggestionSpy = jest
@@ -1357,49 +1382,101 @@ describe('modeHandler', () => {
     });
   });
 
-  describe('Create file button on mobile platforms', () => {
+  describe('toggleMobileCreateFileButton', () => {
     let mockModal: MockProxy<SwitcherPlus>;
-    let mockChooser: MockProxy<Chooser<AnySuggestion>>;
     let sut: ModeHandler;
 
     beforeAll(() => {
       mockPlatform.isMobile = true;
-
       sut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
-      mockModal = mock<SwitcherPlus>({ createButtonEl: mock<HTMLElement>() });
-      mockChooser = mock<Chooser<AnySuggestion>>();
     });
 
-    afterEach(() => {
-      mockClear(mockModal);
-      mockModal.allowCreateNewFile = null;
+    beforeEach(() => {
+      mockModal = mock<SwitcherPlus>({
+        // A detached button has a null parentElement; tests that simulate an
+        // already-attached button override createButtonEl with a truthy one.
+        createButtonEl: mock<HTMLElement>({ parentElement: null }),
+        ctaEl: mock<HTMLElement>(),
+      });
     });
 
     afterAll(() => {
       mockPlatform.isMobile = false;
     });
 
-    it('should enable the create file button on mobile platforms in supported modes', () => {
-      const supportedMode = Mode.HeadingsList;
-      const supportedModeName = Mode[supportedMode] as keyof typeof Mode;
+    it('should enable and attach the button in a supported prefixed mode with a filename', () => {
+      const inputInfo = new InputInfo('', Mode.HeadingsList);
+      inputInfo.parsedCommand(Mode.HeadingsList).parsedInput = 'my note';
 
-      mockSettings.allowCreateNewFileInModeNames = [supportedModeName];
+      sut.toggleMobileCreateFileButton(mockModal, inputInfo);
 
-      const result = sut.updateSuggestions(`${headingsTrigger}`, mockChooser, mockModal);
-
-      expect(mockModal).toHaveProperty('allowCreateNewFile', true);
-      expect(result).toBe(true);
+      expect(mockModal.allowCreateNewFile).toBe(true);
+      expect(mockModal.ctaEl.appendChild).toHaveBeenCalledWith(mockModal.createButtonEl);
     });
 
-    it('should disable the create file button on mobile platforms in modes that are not supported', () => {
-      // Disable in all modes
-      mockSettings.allowCreateNewFileInModeNames = [];
+    it('should enable and attach the button in Standard mode using the raw input as the name', () => {
+      const inputInfo = new InputInfo('my note', Mode.Standard);
 
-      const result = sut.updateSuggestions(`${headingsTrigger}`, mockChooser, mockModal);
+      sut.toggleMobileCreateFileButton(mockModal, inputInfo);
 
-      expect(mockModal).toHaveProperty('allowCreateNewFile', false);
+      expect(mockModal.allowCreateNewFile).toBe(true);
+      expect(mockModal.ctaEl.appendChild).toHaveBeenCalledWith(mockModal.createButtonEl);
+    });
+
+    it('should enable the button in WorkspaceList mode', () => {
+      const inputInfo = new InputInfo('', Mode.WorkspaceList);
+      inputInfo.parsedCommand(Mode.WorkspaceList).parsedInput = 'my note';
+
+      sut.toggleMobileCreateFileButton(mockModal, inputInfo);
+
+      expect(mockModal.allowCreateNewFile).toBe(true);
+    });
+
+    it('should not re-attach the button when it is already attached', () => {
+      mockModal.createButtonEl = mock<HTMLElement>({
+        parentElement: mock<HTMLElement>(),
+      });
+      const inputInfo = new InputInfo('', Mode.HeadingsList);
+      inputInfo.parsedCommand(Mode.HeadingsList).parsedInput = 'my note';
+
+      sut.toggleMobileCreateFileButton(mockModal, inputInfo);
+
+      expect(mockModal.allowCreateNewFile).toBe(true);
+      expect(mockModal.ctaEl.appendChild).not.toHaveBeenCalled();
+    });
+
+    it('should hide the button when a prefixed mode has only its prefix (no filename)', () => {
+      const inputInfo = new InputInfo('', Mode.HeadingsList);
+      inputInfo.parsedCommand(Mode.HeadingsList).parsedInput = '';
+
+      sut.toggleMobileCreateFileButton(mockModal, inputInfo);
+
+      expect(mockModal.allowCreateNewFile).toBe(false);
       expect(mockModal.createButtonEl.detach).toHaveBeenCalled();
-      expect(result).toBe(true);
+      expect(mockModal.ctaEl.appendChild).not.toHaveBeenCalled();
+    });
+
+    it('should hide the button in unsupported modes', () => {
+      const inputInfo = new InputInfo('', Mode.EditorList);
+      inputInfo.parsedCommand(Mode.EditorList).parsedInput = 'my note';
+
+      sut.toggleMobileCreateFileButton(mockModal, inputInfo);
+
+      expect(mockModal.allowCreateNewFile).toBe(false);
+      expect(mockModal.createButtonEl.detach).toHaveBeenCalled();
+    });
+
+    it('should do nothing on non-mobile platforms', () => {
+      mockPlatform.isMobile = false;
+      const inputInfo = new InputInfo('', Mode.HeadingsList);
+      inputInfo.parsedCommand(Mode.HeadingsList).parsedInput = 'my note';
+
+      sut.toggleMobileCreateFileButton(mockModal, inputInfo);
+
+      expect(mockModal.ctaEl.appendChild).not.toHaveBeenCalled();
+      expect(mockModal.createButtonEl.detach).not.toHaveBeenCalled();
+
+      mockPlatform.isMobile = true; // restore for remaining tests in this block
     });
   });
 

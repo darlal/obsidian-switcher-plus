@@ -117,6 +117,11 @@ export declare class SystemSwitcher extends SuggestModal<AnySuggestion> {
    * creating new files
    */
   createButtonEl: HTMLElement;
+  /**
+   * Container (`prompt-input-cta`) next to the input that hosts the mobile
+   * create-new-file button.
+   */
+  ctaEl: HTMLElement;
   protected isOpen: boolean;
   protected chooser: Chooser<AnySuggestion>;
   constructor(app: App);
@@ -657,11 +662,6 @@ export interface SettingsData {
    * switcher++ instead of the default system switcher
    */
   mobileLauncher: MobileLauncherConfig;
-  /**
-   * Array of mode names that will allow a button to be displayed for creating new
-   * files directly from the switcher when on mobile platforms.
-   */
-  allowCreateNewFileInModeNames: Array<keyof typeof Mode>;
   /**
    * When true enables the mode triggers keys to be displayed as Instructions in the modal.
    */

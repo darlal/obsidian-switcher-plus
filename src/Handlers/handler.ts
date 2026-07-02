@@ -1422,11 +1422,8 @@ export abstract class Handler<T extends AnySuggestion> {
     this.addClassesToSuggestionContainer(parentEl);
     const contentEl = this.renderContent(parentEl, filename, null);
 
-    const flairEl = this.createFlairContainer(parentEl);
-    flairEl?.createSpan({
-      cls: 'suggestion-hotkey',
-      text: 'Enter to create',
-    });
+    const auxEl = parentEl.createDiv({ cls: 'suggestion-aux' });
+    auxEl.createSpan({ cls: 'suggestion-action', text: 'Enter to create' });
 
     return contentEl;
   }

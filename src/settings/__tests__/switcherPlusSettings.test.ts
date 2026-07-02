@@ -148,10 +148,6 @@ function getDefaultSettingsData(): SettingsData {
       coreLauncherButtonSelector:
         '.mobile-navbar-action.mobile-navbar-action-quick-switcher',
     },
-    allowCreateNewFileInModeNames: [
-      Mode[Mode.Standard] as keyof typeof Mode,
-      Mode[Mode.HeadingsList] as keyof typeof Mode,
-    ],
     showModeTriggerInstructions: true,
     renderMarkdownContentInSuggestions: {
       isEnabled: false,
@@ -351,7 +347,6 @@ function getTransientSettingsData(): SettingsData {
       coreLauncherButtonIconSelector: '',
       coreLauncherButtonSelector: '',
     },
-    allowCreateNewFileInModeNames: [Mode[Mode.CommandList] as keyof typeof Mode],
     showModeTriggerInstructions: chance.bool(),
     renderMarkdownContentInSuggestions: {
       isEnabled: false,

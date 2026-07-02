@@ -196,7 +196,7 @@ export class ModeHandler implements ModeDispatcher {
     this.previousInputHistory[mode] = inputInfo;
 
     this.updatedKeymapForMode(inputInfo, chooser, modal, exKeymap, settings, activeLeaf);
-    this.toggleMobileCreateFileButton(modal, mode, settings);
+    this.toggleMobileCreateFileButton(modal, inputInfo);
 
     if (mode !== Mode.Standard) {
       if (mode === Mode.HeadingsList && inputInfo.parsedCommand().parsedInput?.length) {
@@ -213,28 +213,43 @@ export class ModeHandler implements ModeDispatcher {
   }
 
   /**
-   * Sets the allowCreateNewFile property of the modal based on config settings and mode
+   * Shows or hides the mobile create-new-file button based on the active mode and
+   * the creatable name parsed from the current input.
    * @param  {SwitcherPlus} modal
-   * @param  {Mode} mode
-   * @param  {SwitcherPlusSettings} config
+   * @param  {InputInfo} inputInfo
    * @returns void
    */
-  toggleMobileCreateFileButton(
-    modal: SwitcherPlus,
-    mode: Mode,
-    config: SwitcherPlusSettings,
-  ): void {
+  toggleMobileCreateFileButton(modal: SwitcherPlus, inputInfo: InputInfo): void {
     if (!Platform.isMobile) {
       return;
     }
 
-    const modeName = Mode[mode] as keyof typeof Mode;
+    const { mode } = inputInfo;
+    // Standard mode's create affordance is owned by the core switcher; every other
+    // supported mode renders its own via noResultActionModes.
+    const isModeSupported =
+      mode === Mode.Standard || this.noResultActionModes.includes(mode);
 
-    modal.allowCreateNewFile = config.allowCreateNewFileInModeNames.includes(modeName);
-    if (!modal.allowCreateNewFile) {
-      // If file creation is disabled, remove the button from the DOM.
-      // Note that when enabled, the core switcher will add automatically add
-      // createButtonEl back to the DOM.
+    // The creatable name is the whole input in Standard mode (no prefix) and the
+    // prefix-stripped parsedInput in every other mode. A bare prefix yields no
+    // name and must not surface the button.
+    const creatableName =
+      mode === Mode.Standard
+        ? inputInfo.inputText
+        : inputInfo.parsedCommand(mode)?.parsedInput;
+    const shouldShow = isModeSupported && !!creatableName?.trim().length;
+
+    modal.allowCreateNewFile = shouldShow;
+
+    if (shouldShow) {
+      // Attach explicitly: this runs during open (where the core switcher's
+      // onInput-driven attach never fires) as well as while typing.
+      if (!modal.createButtonEl?.parentElement) {
+        modal.ctaEl?.appendChild(modal.createButtonEl);
+      }
+    } else {
+      // allowCreateNewFile=false also makes core's onInput skip its own
+      // re-attach, so a bare prefix keeps the button hidden.
       modal.createButtonEl?.detach();
     }
   }
@@ -295,12 +310,13 @@ export class ModeHandler implements ModeDispatcher {
     const systemBehaviorPreferred = new Set<SuggestionType>([SuggestionType.Unresolved]);
 
     if (sugg === null) {
-      if (isHeadingMode) {
-        // in Headings mode, a null suggestion should be rendered to allow for note creation
-        const headingHandler = handlerRegistry.getHandler(mode);
+      if (this.noResultActionModes.includes(mode)) {
+        // Every no-results-create mode renders its own prefix-stripped, core-styled
+        // create suggestion.
+        const handler = handlerRegistry.getHandler(mode);
         const searchText = inputInfo.parsedCommand(mode)?.parsedInput;
 
-        headingHandler.renderFileCreationSuggestion(parentEl, searchText);
+        handler.renderFileCreationSuggestion(parentEl, searchText);
         handled = true;
       }
     } else if (!systemBehaviorPreferred.has(sugg.type)) {

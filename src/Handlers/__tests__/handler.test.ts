@@ -3002,33 +3002,28 @@ describe('Handler', () => {
   });
 
   describe('renderFileCreationSuggestion', () => {
-    it('should render a hint suggestion for creating new file', () => {
+    it('should render the create-file suggestion using core suggestion-action styling', () => {
       const filename = chance.word();
       const mockParentEl = mock<HTMLElement>();
       const mockContentEl = mock<HTMLDivElement>();
-      const mockFlairEl = mock<HTMLDivElement>();
+      const mockAuxEl = mock<HTMLDivElement>();
 
       const renderContentSpy = jest
         .spyOn(sut, 'renderContent')
         .mockReturnValueOnce(mockContentEl);
+      mockParentEl.createDiv.mockReturnValueOnce(mockAuxEl);
 
-      const createFlairContainerSpy = jest
-        .spyOn(sut, 'createFlairContainer')
-        .mockReturnValueOnce(mockFlairEl);
-
-      sut.renderFileCreationSuggestion(mockParentEl, filename);
+      const result = sut.renderFileCreationSuggestion(mockParentEl, filename);
 
       expect(renderContentSpy).toHaveBeenCalledWith(mockParentEl, filename, null);
-
-      expect(mockFlairEl.createSpan).toHaveBeenCalledWith(
-        expect.objectContaining({
-          cls: 'suggestion-hotkey',
-          text: 'Enter to create',
-        }),
-      );
+      expect(mockParentEl.createDiv).toHaveBeenCalledWith({ cls: 'suggestion-aux' });
+      expect(mockAuxEl.createSpan).toHaveBeenCalledWith({
+        cls: 'suggestion-action',
+        text: 'Enter to create',
+      });
+      expect(result).toBe(mockContentEl);
 
       renderContentSpy.mockRestore();
-      createFlairContainerSpy.mockRestore();
     });
   });
 
