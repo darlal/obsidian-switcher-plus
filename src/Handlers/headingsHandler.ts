@@ -41,11 +41,10 @@ import {
   SymbolType,
 } from 'src/types';
 import {
-  isTFile,
-  isTFolder,
   FrontMatterParser,
   matcherFnForRegExList,
   getTFileFromLeaf,
+  walkVaultTree,
 } from 'src/utils';
 
 type SupportedSuggestionTypes =
@@ -434,20 +433,15 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
     if (shouldProcessFiles) {
       const { excludeFolders } = this.settings;
-      const isExcludedFolder = matcherFnForRegExList(excludeFolders);
-      let nodes = Array.prototype.concat(files) as TAbstractFile[];
 
-      while (nodes.length > 0) {
-        const node = nodes.pop();
-
-        if (isTFile(node)) {
-          if (this.shouldIncludeFile(node, activeFacetIds)) {
-            this.addSuggestionsForFile(inputInfo, searcher, collection, node, options);
+      walkVaultTree(files, {
+        shouldExcludeFolder: matcherFnForRegExList(excludeFolders),
+        onFile: (file) => {
+          if (this.shouldIncludeFile(file, activeFacetIds)) {
+            this.addSuggestionsForFile(inputInfo, searcher, collection, file, options);
           }
-        } else if (isTFolder(node) && !isExcludedFolder(node.path)) {
-          nodes = nodes.concat(node.children);
-        }
-      }
+        },
+      });
     }
   }
 

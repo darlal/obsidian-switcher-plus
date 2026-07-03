@@ -1,5 +1,5 @@
 import { StandardExHandler } from './standardExHandler';
-import { sortSearchResults, WorkspaceLeaf, TFile, TAbstractFile } from 'obsidian';
+import { sortSearchResults, WorkspaceLeaf, TFile } from 'obsidian';
 import {
   AnySuggestion,
   MatchType,
@@ -21,12 +21,7 @@ import {
   WorkspaceEnvList,
 } from 'src/switcherPlus';
 import { Handler } from './handler';
-import {
-  isTFile,
-  isTFolder,
-  isUnresolvedSuggestion,
-  matcherFnForRegExList,
-} from 'src/utils';
+import { isUnresolvedSuggestion, matcherFnForRegExList, walkVaultTree } from 'src/utils';
 import { Searcher, StringSearcher } from 'src/search';
 
 export class RelatedItemsHandler extends Handler<
@@ -257,25 +252,19 @@ export class RelatedItemsHandler extends Handler<
     const { excludeRelatedFolders, excludeOpenRelatedFiles } = this.settings;
 
     if (sourceFile) {
-      const isExcludedFolder = matcherFnForRegExList(excludeRelatedFolders);
-      let nodes: TAbstractFile[] = [...sourceFile.parent.children];
-
-      while (nodes.length > 0) {
-        const node = nodes.pop();
-
-        if (isTFile(node)) {
-          const isSourceFile = node === sourceFile;
+      walkVaultTree(sourceFile.parent.children, {
+        shouldExcludeFolder: matcherFnForRegExList(excludeRelatedFolders),
+        onFile: (file) => {
+          const isSourceFile = file === sourceFile;
           const isExcluded =
             isSourceFile ||
-            (excludeOpenRelatedFiles && !!this.findMatchingLeaf(node).leaf);
+            (excludeOpenRelatedFiles && !!this.findMatchingLeaf(file).leaf);
 
           if (!isExcluded) {
-            collection.push({ file: node, relationType: RelationType.DiskLocation });
+            collection.push({ file, relationType: RelationType.DiskLocation });
           }
-        } else if (isTFolder(node) && !isExcludedFolder(node.path)) {
-          nodes = nodes.concat(node.children);
-        }
-      }
+        },
+      });
     }
   }
 

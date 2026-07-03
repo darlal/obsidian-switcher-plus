@@ -15,7 +15,9 @@ import {
   MarkdownView,
   SearchMatches,
   SearchResult,
+  TAbstractFile,
   TFile,
+  TFolder,
   Vault,
   View,
   ViewState,
@@ -196,4 +198,34 @@ export function makeInputInfo(options?: {
   }
 
   return inputInfo;
+}
+
+const MockFolder = jest.fn<
+  TFolder,
+  [name: string, path: string, children: Array<TAbstractFile>]
+>((name, path, children) => ({
+  vault: null,
+  parent: null,
+  isRoot: undefined,
+  name,
+  path,
+  children,
+}));
+
+/**
+ * Returns a TFolder instance with the given name, path, and children.
+ * Used to build test file trees for vault traversal tests.
+ *
+ * @export
+ * @param {string} name
+ * @param {string} path
+ * @param {Array<TAbstractFile>} [children=[]]
+ * @returns {TFolder}
+ */
+export function makeMockFolder(
+  name: string,
+  path: string,
+  children: Array<TAbstractFile> = [],
+): TFolder {
+  return new MockFolder(name, path, children);
 }
