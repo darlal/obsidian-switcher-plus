@@ -320,6 +320,18 @@ export abstract class Handler<T extends AnySuggestion> {
   }
 
   /**
+   * Caps a result list to a maximum length. A limit of zero or less means
+   * "no limit". Returns the input array untouched when no cap applies.
+   *
+   * @param results the results to cap
+   * @param limit the maximum number of results to keep
+   * @returns the capped list, or the original array when within the limit
+   */
+  static applyResultLimit<T>(results: T[], limit: number): T[] {
+    return limit > 0 && results.length > limit ? results.slice(0, limit) : results;
+  }
+
+  /**
    * Finds the first open WorkspaceLeaf that is showing source file.
    * @param  {TFile} file The source file that is being shown to find
    * @param  {WorkspaceLeaf} leaf An already open editor, or, a 'reference' WorkspaceLeaf (example: backlinks, outline, etc.. views) that is used to find the associated editor if one exists.

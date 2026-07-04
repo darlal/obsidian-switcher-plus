@@ -244,9 +244,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
         this.getItems([vault.getRoot()], inputInfo, suggestions, activeFacetIds, options);
         sortSearchResults(suggestions);
 
-        if (limit > 0 && suggestions.length > limit) {
-          suggestions = suggestions.slice(0, limit);
-        }
+        suggestions = Handler.applyResultLimit(suggestions, limit);
       } else {
         this.getSuggestionsForEditorsAndRecentFiles(
           inputInfo,

@@ -622,6 +622,32 @@ describe('Handler', () => {
     });
   });
 
+  describe('applyResultLimit', () => {
+    it('should return the input array unchanged when limit is zero', () => {
+      const results = ['a', 'b', 'c'];
+
+      const capped = Handler.applyResultLimit(results, 0);
+
+      expect(capped).toBe(results);
+    });
+
+    it('should return the input array unchanged when its length is within the limit', () => {
+      const results = ['a', 'b', 'c'];
+
+      const capped = Handler.applyResultLimit(results, 3);
+
+      expect(capped).toBe(results);
+    });
+
+    it('should cap the results to the limit when the length exceeds it', () => {
+      const results = ['a', 'b', 'c', 'd'];
+
+      const capped = Handler.applyResultLimit(results, 2);
+
+      expect(capped).toEqual(['a', 'b']);
+    });
+  });
+
   describe('applyTabCreationPreferences', () => {
     let mockPlatform: MockProxy<typeof Platform>;
 
