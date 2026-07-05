@@ -451,6 +451,16 @@ export type NavigationKeysConfig = {
 export type TitleSource = 'Default' | 'H1' | 'FrontMatter';
 export type MatchPriorityData = { value: number; label: string; desc?: string };
 
+/**
+ * Resolves the match-priority adjustment factor registered for a key. When
+ * collection is omitted, the resolver's default adjustments collection is
+ * used.
+ */
+export type MatchPriorityFactorResolver = (
+  key: string,
+  collection?: Record<string, MatchPriorityData>,
+) => number;
+
 export type MobileLauncherConfig = {
   /**
    * Whether or not the feature is turned on.

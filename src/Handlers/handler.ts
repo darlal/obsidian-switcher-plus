@@ -29,6 +29,7 @@ import {
   AnySuggestion,
   Facet,
   MatchPriorityData,
+  MatchPriorityFactorResolver,
   MatchType,
   Mode,
   PathDisplayFormat,
@@ -1362,6 +1363,60 @@ export abstract class Handler<T extends AnySuggestion> {
   }
 
   /**
+   * Creates a resolver over match-priority adjustment collections. Missing
+   * keys and non-numeric values resolve to 0 so malformed settings never
+   * poison a score.
+   */
+  static createMatchPriorityFactorResolver(
+    adjustments: Record<string, MatchPriorityData>,
+  ): MatchPriorityFactorResolver {
+    return (key, collection = adjustments) => {
+      let val = 0;
+
+      if (Object.prototype.hasOwnProperty.call(collection, key)) {
+        val = Number(collection[key]?.value);
+      }
+
+      return isNaN(val) ? 0 : val;
+    };
+  }
+
+  /**
+   * Returns the factor contributed by the suggestion itself: the
+   * heading-level factor (h1..h6) for heading suggestions, plus any factor
+   * registered for the suggestion's type. Types handled by dedicated flags
+   * elsewhere (e.g. isBookmarked) should not also be registered by type,
+   * otherwise they would be counted twice.
+   */
+  static getPerSuggestionFactor(
+    sugg: { type: SuggestionType },
+    getFactor: MatchPriorityFactorResolver,
+  ): number {
+    let factor = 0;
+
+    if (isHeadingSuggestion(sugg)) {
+      factor += getFactor(`h${sugg.item?.level}`);
+    }
+
+    factor += getFactor(sugg.type.toString());
+
+    return factor;
+  }
+
+  /**
+   * Applies a match-priority factor to a score. The expression is kept in the
+   * "percentage of score" form deliberately: exact-equality tests pin its
+   * floating point behavior, and the algebraically equivalent
+   * score + |score| * factor can differ in the last ulp.
+   */
+  static calculateAdjustedScore(score: number, factor: number): number {
+    // find one percent of score by dividing the absolute value of score by 100,
+    // multiply factor by 100 to convert into percentage
+    // multiply the two to get the change amount, and add it to score
+    return score + (Math.abs(score) / 100) * (factor * 100);
+  }
+
+  /**
    * Downranks suggestions for files that live in Obsidian ignored paths, or,
    * increases the suggestion score by a factor specified in settings.
    * @param  {V} sugg the suggestion objects
@@ -1386,19 +1441,7 @@ export abstract class Handler<T extends AnySuggestion> {
         const fileExtAdjustments = matchPriorityAdjustments.fileExtAdjustments ?? {};
         let factor = 0;
 
-        const getFactor = (
-          key: string,
-          collection?: Record<string, MatchPriorityData>,
-        ) => {
-          collection = collection ?? adjustments;
-          let val = 0;
-
-          if (Object.prototype.hasOwnProperty.call(collection, key)) {
-            val = Number(collection[key]?.value);
-          }
-
-          return isNaN(val) ? 0 : val;
-        };
+        const getFactor = Handler.createMatchPriorityFactorResolver(adjustments);
 
         const getFactorConstrained = (searchType: SuggestionType, searchKey: keyof V) => {
           let val = 0;
@@ -1415,22 +1458,9 @@ export abstract class Handler<T extends AnySuggestion> {
         factor += getFactorConstrained(null, 'isRecent');
         factor += getFactorConstrained(null, 'isAttachment');
         factor += getFactor(file?.extension, fileExtAdjustments);
+        factor += Handler.getPerSuggestionFactor(sugg, getFactor);
 
-        if (isHeadingSuggestion(sugg)) {
-          factor += getFactor(`h${sugg.item?.level}`);
-        }
-
-        // check for adjustments defined for other suggestion types, the types that are
-        // explicitly checked above should not be in the adjustment list so
-        // they don't get counted twice (above and then again here)
-        const typeStr = type.toString();
-        factor += getFactor(typeStr);
-
-        // update score by the percentage define by factor
-        // find one percent of score by dividing the absolute value of score by 100,
-        // multiply factor by 100 to convert into percentage
-        // multiply the two to get the change amount, and add it to score
-        match.score += (Math.abs(match.score) / 100) * (factor * 100);
+        match.score = Handler.calculateAdjustedScore(match.score, factor);
       }
     }
 

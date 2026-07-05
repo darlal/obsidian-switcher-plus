@@ -46,6 +46,7 @@ import {
   FacetSettingsData,
   SessionOpts,
   BookmarksItemInfo,
+  MatchPriorityData,
   SettingsData,
   TagSource,
 } from 'src/types';
@@ -3026,6 +3027,83 @@ describe('Handler', () => {
 
       mockReset(mockSettings);
     });
+  });
+
+  describe('createMatchPriorityFactorResolver', () => {
+    const adjustments: Record<string, MatchPriorityData> = {
+      isBookmarked: { value: 0.5, label: '' },
+    };
+
+    it('should resolve factors from the default adjustments collection', () => {
+      const getFactor = Handler.createMatchPriorityFactorResolver(adjustments);
+
+      expect(getFactor('isBookmarked')).toBe(0.5);
+    });
+
+    it('should resolve factors from an explicitly supplied collection', () => {
+      const fileExtAdjustments: Record<string, MatchPriorityData> = {
+        canvas: { value: 0.25, label: '' },
+      };
+      const getFactor = Handler.createMatchPriorityFactorResolver(adjustments);
+
+      expect(getFactor('canvas', fileExtAdjustments)).toBe(0.25);
+    });
+
+    it('should return 0 when the key is missing from the collection', () => {
+      const getFactor = Handler.createMatchPriorityFactorResolver(adjustments);
+
+      expect(getFactor('doesNotExist')).toBe(0);
+    });
+
+    it('should return 0 when the value is not a valid number', () => {
+      const getFactor = Handler.createMatchPriorityFactorResolver({
+        // @ts-expect-error -- intentionally an invalid (non-number) value to
+        // exercise the fallback path
+        isRecent: { value: '0NAN', label: '' },
+      });
+
+      expect(getFactor('isRecent')).toBe(0);
+    });
+  });
+
+  describe('getPerSuggestionFactor', () => {
+    it('should include the heading-level factor and type factor for heading suggestions', () => {
+      const sugg = makeHeadingSuggestion(mock<HeadingCache>({ level: 2 }), new TFile());
+      const getFactor = Handler.createMatchPriorityFactorResolver({
+        h2: { value: 0.3, label: '' },
+        [sugg.type.toString()]: { value: 0.1, label: '' },
+      });
+
+      const factor = Handler.getPerSuggestionFactor(sugg, getFactor);
+
+      expect(factor).toBeCloseTo(0.4);
+    });
+
+    it('should include only the type factor for non-heading suggestions', () => {
+      const sugg = makeFileSuggestion();
+      const getFactor = Handler.createMatchPriorityFactorResolver({
+        h2: { value: 0.3, label: '' },
+        [sugg.type.toString()]: { value: 0.2, label: '' },
+      });
+
+      const factor = Handler.getPerSuggestionFactor(sugg, getFactor);
+
+      expect(factor).toBeCloseTo(0.2);
+    });
+  });
+
+  describe('calculateAdjustedScore', () => {
+    test.each([
+      { score: 1000, factor: 0.5, expected: 1500 },
+      { score: -1000, factor: 0.5, expected: -500 },
+      { score: 1000, factor: -0.5, expected: 500 },
+      { score: -1000, factor: -0.5, expected: -1500 },
+    ])(
+      'score $score with factor $factor should produce $expected',
+      ({ score, factor, expected }) => {
+        expect(Handler.calculateAdjustedScore(score, factor)).toBe(expected);
+      },
+    );
   });
 
   describe('updateWorkspaceEnvListStatus', () => {
