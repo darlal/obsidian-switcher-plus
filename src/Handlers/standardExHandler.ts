@@ -2,6 +2,7 @@ import { Handler } from './handler';
 import { MetadataCache, WorkspaceLeaf } from 'obsidian';
 import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 import { isAliasSuggestion, isFileSuggestion } from 'src/utils';
+import { StringSearcher } from 'src/search';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
   FileSuggestion,
@@ -159,5 +160,52 @@ export class StandardExHandler extends Handler<SupportedSystemSuggestions> {
     };
 
     return Handler.applyMatchPriorityPreferences(sugg, settings, metadataCache);
+  }
+
+  /**
+   * Collects the distinct set of unresolved link texts from
+   * metadataCache.unresolvedLinks and returns a suggestion for each one that
+   * matches the search term.
+   *
+   * @param {MetadataCache} metadataCache
+   * @param {StringSearcher} searcher
+   * @param {SwitcherPlusSettings} settings
+   * @returns {UnresolvedSuggestion[]}
+   */
+  static collectUnresolvedSuggestions(
+    metadataCache: MetadataCache,
+    searcher: StringSearcher,
+    settings: SwitcherPlusSettings,
+  ): UnresolvedSuggestion[] {
+    const { unresolvedLinks } = metadataCache;
+
+    // The same unresolved linktext can be referenced from multiple source
+    // files; a Set produces the distinct list.
+    const unresolvedSet = new Set<string>();
+
+    for (const sourcePath of Object.keys(unresolvedLinks)) {
+      for (const linktext of Object.keys(unresolvedLinks[sourcePath])) {
+        unresolvedSet.add(linktext);
+      }
+    }
+
+    const suggestions: UnresolvedSuggestion[] = [];
+
+    for (const unresolved of unresolvedSet) {
+      const result = searcher.searchWithFallback(unresolved);
+
+      if (result.matchType !== MatchType.None) {
+        suggestions.push(
+          StandardExHandler.createUnresolvedSuggestion(
+            unresolved,
+            result,
+            settings,
+            metadataCache,
+          ),
+        );
+      }
+    }
+
+    return suggestions;
   }
 }

@@ -1,10 +1,11 @@
-import { BookmarksItemInfo, MatchType } from 'src/types';
+import { BookmarksItemInfo, MatchType, SuggestionType } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
 import { SwitcherPlusSettings } from 'src/settings';
+import { StringSearcher } from 'src/search';
 import { Handler, StandardExHandler } from 'src/Handlers';
-import { mock, MockProxy } from 'jest-mock-extended';
-import { App, TFile } from 'obsidian';
-import { makeAliasSuggestion, makeFileSuggestion } from '@fixtures';
+import { mock, MockProxy, mockReset } from 'jest-mock-extended';
+import { App, MetadataCache, TFile } from 'obsidian';
+import { makeAliasSuggestion, makeFileSuggestion, makeFuzzyMatch } from '@fixtures';
 import { Chance } from 'chance';
 
 const chance = new Chance();
@@ -153,6 +154,72 @@ describe('standardExHandler', () => {
         isRecent: true,
         isBookmarked: true,
       });
+    });
+  });
+
+  describe('collectUnresolvedSuggestions', () => {
+    const mockMetadataCache = mock<MetadataCache>();
+    const mockSearcher = mock<StringSearcher>();
+
+    beforeEach(() => {
+      mockReset(mockMetadataCache);
+      mockReset(mockSearcher);
+    });
+
+    it('should return a suggestion for each distinct matching unresolved link', () => {
+      // the same linktext under multiple sources should produce one suggestion
+      mockMetadataCache.unresolvedLinks = {
+        'sourceA.md': { 'target one': 1, 'target two': 1 },
+        'sourceB.md': { 'target one': 2 },
+      };
+      mockSearcher.searchWithFallback.mockImplementation((text: string) => ({
+        matchType: MatchType.Primary,
+        matchText: text,
+        match: makeFuzzyMatch(),
+      }));
+
+      const results = StandardExHandler.collectUnresolvedSuggestions(
+        mockMetadataCache,
+        mockSearcher,
+        settings,
+      );
+
+      expect(results).toHaveLength(2);
+      expect(results.map((v) => v.linktext).sort()).toEqual(['target one', 'target two']);
+      expect(results.every((v) => v.type === SuggestionType.Unresolved)).toBe(true);
+    });
+
+    it('should not return suggestions for unresolved links that do not match the search term', () => {
+      mockMetadataCache.unresolvedLinks = {
+        'sourceA.md': { 'target one': 1, unrelated: 1 },
+      };
+      mockSearcher.searchWithFallback.mockImplementation((text: string) => ({
+        matchType: text === 'target one' ? MatchType.Primary : MatchType.None,
+        matchText: text,
+        match: text === 'target one' ? makeFuzzyMatch() : null,
+      }));
+
+      const results = StandardExHandler.collectUnresolvedSuggestions(
+        mockMetadataCache,
+        mockSearcher,
+        settings,
+      );
+
+      expect(results).toHaveLength(1);
+      expect(results[0].linktext).toBe('target one');
+    });
+
+    it('should return an empty array when there are no unresolved links', () => {
+      mockMetadataCache.unresolvedLinks = {};
+
+      const results = StandardExHandler.collectUnresolvedSuggestions(
+        mockMetadataCache,
+        mockSearcher,
+        settings,
+      );
+
+      expect(results).toHaveLength(0);
+      expect(mockSearcher.searchWithFallback).not.toHaveBeenCalled();
     });
   });
 });

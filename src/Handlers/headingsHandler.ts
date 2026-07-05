@@ -660,46 +660,13 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     suggestions: UnresolvedSuggestion[],
     searcher: StringSearcher,
   ): void {
-    const { metadataCache } = this.app;
-    const { unresolvedLinks } = metadataCache;
-
-    const unresolvedSet = new Set<string>();
-    const sources = Object.keys(unresolvedLinks);
-    let i = sources.length;
-
-    // create a distinct list of unresolved links
-    while (i--) {
-      // each source has an object with keys that represent the list of unresolved links
-      // for that source file
-      const sourcePath = sources[i];
-      const links = Object.keys(unresolvedLinks[sourcePath]);
-      let j = links.length;
-
-      while (j--) {
-        // unresolved links can be duplicates, use a Set to get a distinct list
-        unresolvedSet.add(links[j]);
-      }
-    }
-
-    const unresolvedList = Array.from(unresolvedSet);
-    i = unresolvedList.length;
-
-    // create suggestions where there is a match with an unresolved link
-    while (i--) {
-      const unresolved = unresolvedList[i];
-      const result = searcher.searchWithFallback(unresolved);
-
-      if (result.matchType !== MatchType.None) {
-        suggestions.push(
-          StandardExHandler.createUnresolvedSuggestion(
-            unresolved,
-            result,
-            this.settings,
-            metadataCache,
-          ),
-        );
-      }
-    }
+    suggestions.push(
+      ...StandardExHandler.collectUnresolvedSuggestions(
+        this.app.metadataCache,
+        searcher,
+        this.settings,
+      ),
+    );
   }
 
   createAliasSuggestion(
