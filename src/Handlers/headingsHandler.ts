@@ -536,8 +536,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       : showAllFileTypes;
 
     if (!isAllowed) {
-      const allowList = new Set(fileExtAllowList);
-      isAllowed = allowList.has(extension);
+      isAllowed = fileExtAllowList.includes(extension);
     }
 
     return isAllowed;
