@@ -24,6 +24,7 @@ import {
   SearchMatchPart,
   MarkdownRenderer,
   FrontMatterCache,
+  ViewRegistry,
 } from 'obsidian';
 import {
   defaultOpenViewState,
@@ -3205,6 +3206,78 @@ describe('Handler', () => {
 
       expect(mockFacet.isActive).toBe(true);
       expect(mockSettings.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('isExternalFileTypeAllowed', () => {
+    let mockViewRegistry: MockProxy<ViewRegistry>;
+    const ext = 'canvas';
+    const file = new TFile();
+
+    // builtInSystemOptions is a getter with no setter, so each case builds its own
+    // settings mock instead of mutating the shared one.
+    const makeSut = (
+      showAttachments: boolean,
+      showAllFileTypes: boolean,
+      fileExtAllowList: string[] = [],
+    ): SUT => {
+      const settings = mock<SwitcherPlusSettings>({
+        fileExtAllowList,
+        builtInSystemOptions: {
+          showAttachments,
+          showAllFileTypes,
+          showExistingOnly: false,
+        },
+      });
+
+      return new SUT(mockApp, settings);
+    };
+
+    beforeAll(() => {
+      file.extension = ext;
+      mockViewRegistry = mock<ViewRegistry>();
+      mockApp.viewRegistry = mockViewRegistry;
+    });
+
+    beforeEach(() => {
+      mockReset(mockViewRegistry);
+    });
+
+    it('should gate a registered extension on showAttachments', () => {
+      mockViewRegistry.isExtensionRegistered.mockReturnValue(true);
+      const handler = makeSut(true, false);
+
+      const result = handler['isExternalFileTypeAllowed'](file);
+
+      expect(result).toBe(true);
+      expect(mockViewRegistry.isExtensionRegistered).toHaveBeenCalledWith(ext);
+    });
+
+    it('should gate an unregistered extension on showAllFileTypes', () => {
+      mockViewRegistry.isExtensionRegistered.mockReturnValue(false);
+      const handler = makeSut(true, false);
+
+      const result = handler['isExternalFileTypeAllowed'](file);
+
+      expect(result).toBe(false);
+    });
+
+    it('should allow an otherwise gated extension listed in fileExtAllowList', () => {
+      mockViewRegistry.isExtensionRegistered.mockReturnValue(false);
+      const handler = makeSut(false, false, [ext]);
+
+      const result = handler['isExternalFileTypeAllowed'](file);
+
+      expect(result).toBe(true);
+    });
+
+    it('should reject an otherwise gated extension missing from fileExtAllowList', () => {
+      mockViewRegistry.isExtensionRegistered.mockReturnValue(false);
+      const handler = makeSut(false, false, ['pdf']);
+
+      const result = handler['isExternalFileTypeAllowed'](file);
+
+      expect(result).toBe(false);
     });
   });
 });

@@ -16,7 +16,6 @@ import {
   TAbstractFile,
   sortSearchResults,
   WorkspaceLeaf,
-  ViewRegistry,
   App,
   Pos,
 } from 'obsidian';
@@ -490,10 +489,9 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       const { extension } = file;
 
       const {
-        app: { viewRegistry, metadataCache },
+        app: { metadataCache },
         settings: {
           excludeObsidianIgnoredFiles,
-          fileExtAllowList,
           builtInSystemOptions: { showAttachments, showAllFileTypes },
         },
       } = this;
@@ -506,40 +504,13 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
           const externalFilesEnabled = showAttachments || showAllFileTypes;
           isIncluded = !CORE_FILE_EXTENSIONS.has(extension) && externalFilesEnabled;
         } else {
-          const isExtAllowed = this.isExternalFileTypeAllowed(
-            file,
-            viewRegistry,
-            showAttachments,
-            showAllFileTypes,
-            fileExtAllowList,
-          );
-
-          isIncluded = isExtAllowed || CORE_FILE_EXTENSIONS.has(extension);
+          isIncluded =
+            CORE_FILE_EXTENSIONS.has(extension) || this.isExternalFileTypeAllowed(file);
         }
       }
     }
 
     return isIncluded;
-  }
-
-  isExternalFileTypeAllowed(
-    file: TFile,
-    viewRegistry: ViewRegistry,
-    showAttachments: boolean,
-    showAllFileTypes: boolean,
-    fileExtAllowList: string[],
-  ): boolean {
-    const { extension } = file;
-
-    let isAllowed = viewRegistry.isExtensionRegistered(extension)
-      ? showAttachments
-      : showAllFileTypes;
-
-    if (!isAllowed) {
-      isAllowed = fileExtAllowList.includes(extension);
-    }
-
-    return isAllowed;
   }
 
   addAliasSuggestions(

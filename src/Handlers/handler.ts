@@ -277,6 +277,33 @@ export abstract class Handler<T extends AnySuggestion> {
   }
 
   /**
+   * Determines whether a non-core file type is searchable. Extensions
+   * registered in the viewRegistry are gated by the showAttachments system
+   * setting, unregistered ones by showAllFileTypes, with the fileExtAllowList
+   * setting as a final override.
+   */
+  protected isExternalFileTypeAllowed(file: TFile): boolean {
+    const {
+      app: { viewRegistry },
+      settings: {
+        fileExtAllowList,
+        builtInSystemOptions: { showAttachments, showAllFileTypes },
+      },
+    } = this;
+    const { extension } = file;
+
+    let isAllowed = viewRegistry.isExtensionRegistered(extension)
+      ? showAttachments
+      : showAllFileTypes;
+
+    if (!isAllowed) {
+      isAllowed = fileExtAllowList.includes(extension);
+    }
+
+    return isAllowed;
+  }
+
+  /**
    * Extracts a string value from frontmatter using a property path.
    * Supports nested properties using dot notation (e.g., "meta.display_name").
    *
