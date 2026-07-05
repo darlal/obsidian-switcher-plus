@@ -41,6 +41,7 @@ import {
   SymbolType,
 } from 'src/types';
 import {
+  CORE_FILE_EXTENSIONS,
   FrontMatterParser,
   matcherFnForRegExList,
   getTFileFromLeaf,
@@ -486,7 +487,6 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
     let isIncluded = false;
 
     if (file) {
-      const coreFileExtensions = new Set(['md', 'canvas']);
       const { extension } = file;
 
       const {
@@ -504,7 +504,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
       if (!isUserIgnored) {
         if (activeFacetIds.has(HeadingsListFacetIds.ExternalFiles)) {
           const externalFilesEnabled = showAttachments || showAllFileTypes;
-          isIncluded = !coreFileExtensions.has(extension) && externalFilesEnabled;
+          isIncluded = !CORE_FILE_EXTENSIONS.has(extension) && externalFilesEnabled;
         } else {
           const isExtAllowed = this.isExternalFileTypeAllowed(
             file,
@@ -514,7 +514,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
             fileExtAllowList,
           );
 
-          isIncluded = isExtAllowed || coreFileExtensions.has(extension);
+          isIncluded = isExtAllowed || CORE_FILE_EXTENSIONS.has(extension);
         }
       }
     }

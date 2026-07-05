@@ -38,6 +38,14 @@ import {
 } from 'src/types';
 import { FrontMatterParser } from 'src/utils/frontMatterParser';
 
+/**
+ * File extensions treated as first-class ("core") Obsidian content types.
+ * Files with these extensions are always searchable, regardless of the
+ * showAttachments / showAllFileTypes system settings that gate other
+ * (external) file types.
+ */
+export const CORE_FILE_EXTENSIONS = new Set(['md', 'canvas', 'base']);
+
 export function isOfType<T>(
   obj: unknown,
   discriminator: keyof T,

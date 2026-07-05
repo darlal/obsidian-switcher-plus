@@ -1072,6 +1072,46 @@ describe('headingsHandler', () => {
 
       expect(result).toBe(false);
     });
+
+    test('should return true for Bases (.base) files even when showAttachments and showAllFileTypes are false', () => {
+      const mockFile = new TFile();
+      mockFile.extension = 'base';
+
+      mockViewRegistry.isExtensionRegistered.mockReturnValueOnce(true);
+      mockMetadataCache.isUserIgnored
+        .calledWith(mockFile.path)
+        .mockReturnValueOnce(false);
+
+      builtInSystemOptionsSpy.mockReturnValueOnce({
+        showAllFileTypes: false,
+        showAttachments: false,
+        showExistingOnly: false,
+      });
+
+      const result = sut.shouldIncludeFile(mockFile);
+
+      expect(result).toBe(true);
+
+      mockViewRegistry.isExtensionRegistered.mockReset();
+      mockMetadataCache.isUserIgnored.mockReset();
+    });
+
+    test('when faceted with ExternalFiles, it should return false for Bases (.base) files', () => {
+      const activeFacets = new Set([HeadingsListFacetIds.ExternalFiles]);
+      const file = new TFile();
+      file.extension = 'base';
+
+      excludeObsidianIgnoredFilesSpy.mockReturnValueOnce(false);
+      builtInSystemOptionsSpy.mockReturnValueOnce({
+        showAllFileTypes: true,
+        showAttachments: true,
+        showExistingOnly: false,
+      });
+
+      const result = sut.shouldIncludeFile(file, activeFacets);
+
+      expect(result).toBe(false);
+    });
   });
 
   describe('Facet Handling', () => {
