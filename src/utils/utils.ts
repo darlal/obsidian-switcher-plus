@@ -119,6 +119,16 @@ export function isTFolder(obj: unknown): obj is TFolder {
   return isOfType<TFolder>(obj, 'children');
 }
 
+/**
+ * Returns the CSS class encoding a heading's level (e.g. "qsp-headings-l2").
+ * Shared by the Headings-mode suggestion renderer and the Plus-mode
+ * match-item renderer so the class template cannot drift between the two
+ * (the level classes are styling hooks defined in styles.css).
+ */
+export function headingLevelClass(level: number): string {
+  return `qsp-headings-l${level}`;
+}
+
 export function getInternalPluginById(app: App, id: string): InstalledPlugin {
   return app?.internalPlugins?.getPluginById(id);
 }

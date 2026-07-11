@@ -42,6 +42,7 @@ import {
 import {
   CORE_FILE_EXTENSIONS,
   FrontMatterParser,
+  headingLevelClass,
   matcherFnForRegExList,
   getTFileFromLeaf,
   walkVaultTree,
@@ -106,7 +107,7 @@ export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
 
       this.addClassesToSuggestionContainer(parentEl, [
         'qsp-suggestion-headings',
-        `qsp-headings-l${item.level}`,
+        headingLevelClass(item.level),
       ]);
 
       const { contentEl, titleEl } = Handler.createContentStructureElements(parentEl);

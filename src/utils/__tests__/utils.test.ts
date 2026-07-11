@@ -33,6 +33,7 @@ import {
   notifyError,
   logError,
   logWarn,
+  headingLevelClass,
 } from 'src/utils';
 import {
   getTags,
@@ -1411,6 +1412,12 @@ describe('utils', () => {
       logWarn(message);
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(`Switcher++: ${message}`);
+    });
+  });
+
+  describe('headingLevelClass', () => {
+    it('should encode the heading level in the class name', () => {
+      expect(headingLevelClass(2)).toBe('qsp-headings-l2');
     });
   });
 });
