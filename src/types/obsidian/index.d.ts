@@ -1,7 +1,6 @@
 import { CanvasNodeData } from 'obsidian/canvas';
 
 export * from 'obsidian';
-export * from './canvas';
 
 declare module 'obsidian' {
   export interface PluginInstance {

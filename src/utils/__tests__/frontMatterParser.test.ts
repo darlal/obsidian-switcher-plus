@@ -96,7 +96,6 @@ describe('FrontMatterParser', () => {
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(2);
       expect(results).toEqual(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (fm.aliases as any[]).filter((val) => typeof val === 'string'),
       );
     });
@@ -248,7 +247,6 @@ describe('FrontMatterParser', () => {
       expect(results).toBeInstanceOf(Array);
       expect(results).toHaveLength(2);
       expect(results).toEqual(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (fm.tags as any[]).filter((val) => typeof val === 'string'),
       );
     });

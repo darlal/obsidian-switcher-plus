@@ -101,7 +101,6 @@ describe('EmptyTabMonitor', () => {
       let layoutChangeCallback: () => void;
 
       mockWorkspace.on.mockImplementationOnce((event, callback) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (event === ('layout-change' as any)) {
           layoutChangeCallback = callback as () => void;
         }

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { mock } from 'jest-mock-extended';
 import {
   App,
@@ -8,7 +6,6 @@ import {
   ExtraButtonComponent,
   PluginSettingTab,
   Setting,
-  SettingGroup,
   SliderComponent,
   TextAreaComponent,
   TextComponent,

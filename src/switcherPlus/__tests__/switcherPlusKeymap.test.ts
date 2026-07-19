@@ -286,7 +286,6 @@ describe('SwitcherPlusKeymap', () => {
 
       // convert to [][] so each call can be checked separately
       const expected = keys.map(([modifiers, key]) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return [modifiers, key, expect.any(Function)];
       });
 
@@ -693,7 +692,6 @@ describe('SwitcherPlusKeymap', () => {
 
       // convert to [][] so each call can be checked separately
       const expected = sut.standardKeysInfo.map((v) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return [v.modifiers, v.key, expect.any(Function)];
       });
 

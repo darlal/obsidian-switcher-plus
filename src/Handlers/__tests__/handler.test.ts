@@ -820,8 +820,11 @@ describe('Handler', () => {
       await sut.activateLeaf(mockLeaf);
 
       expect(mockWorkspace.revealLeaf).toHaveBeenCalledWith(mockLeaf);
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- mock-typing artifact: setActiveLeaf has a deprecated overload that TS picks at property references; the prod call (handler.ts:445) uses the non-deprecated form
-      expect(mockWorkspace.setActiveLeaf).toHaveBeenCalledWith(mockLeaf, { focus: true });
+      // Reference through a non-deprecated typed view, the default jest-mock-extended
+      // surfaces setActiveLeaf's deprecated overload at property access
+      const setActiveLeafMock = (mockWorkspace as unknown as { setActiveLeaf: jest.Mock })
+        .setActiveLeaf;
+      expect(setActiveLeafMock).toHaveBeenCalledWith(mockLeaf, { focus: true });
       expect(mockView.setEphemeralState).toHaveBeenCalled();
     });
 
@@ -867,7 +870,6 @@ describe('Handler', () => {
 
       mockWorkspace.iterateAllLeaves.mockImplementationOnce((callback) => {
         const leaves = [mockLeaf1, mockLeaf2, mockLeaf3];
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         leaves.forEach((l) => callback(l));
       });
 
@@ -891,7 +893,6 @@ describe('Handler', () => {
 
       mockWorkspace.iterateAllLeaves.mockImplementationOnce((callback) => {
         const leaves = [mockLeaf2, mockLeaf3, mockLeaf1];
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         leaves.forEach((leaf) => callback(leaf));
       });
 
@@ -914,7 +915,6 @@ describe('Handler', () => {
 
       mockWorkspace.iterateAllLeaves.mockImplementationOnce((callback) => {
         const leaves = [mockLeaf1, mockLeaf3, mockLeaf2];
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         leaves.forEach((leaf) => callback(leaf));
       });
 
@@ -2814,8 +2814,8 @@ describe('Handler', () => {
 
       mockMatchPriorityAdjustments.adjustments = {
         isBookmarked: {
-          // eslint-disable-next-line
-          // @ts-ignore
+          // @ts-expect-error -- intentionally an invalid (non-number) value to
+          // exercise the "setting is not a valid number" branch below.
           value: '0NAN',
           label: '',
         },

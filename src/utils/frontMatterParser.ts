@@ -37,8 +37,7 @@ export class FrontMatterParser {
     const key = fmKeys.find((val) => keyPattern.test(val));
 
     if (key) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      let value = frontMatter[key];
+      let value: unknown = frontMatter[key];
 
       if (typeof value === 'string') {
         value = value.split(',');

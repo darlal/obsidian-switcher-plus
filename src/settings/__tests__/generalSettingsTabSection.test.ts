@@ -1118,7 +1118,6 @@ describe('generalSettingsTabSection', () => {
       const initialValue = false;
       const finalValue = true;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const insertConfig = config.insertLinkInEditor as Record<string, any>;
       insertConfig[settingKey] = initialValue;
 

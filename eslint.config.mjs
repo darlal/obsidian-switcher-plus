@@ -53,6 +53,8 @@ export default [
         'error',
         {
           argsIgnorePattern: '^_',
+          // Allow the `const { omitted, ...rest } = obj` property-omit idiom.
+          ignoreRestSiblings: true,
         },
       ],
     },
@@ -62,14 +64,48 @@ export default [
     files: ['src/**/*.test.ts'],
     ...jestPlugin.configs['flat/recommended'],
   },
-  // Test files override (note: must come AFTER the jest spread so
-  // the unbound-method swap wins on rule merge)
+  // Test files override. Must stay a SEPARATE entry that comes AFTER the jest
+  // block: ESLint merges `rules` across config-array entries (later wins
+  // per-rule). Folding this into the jest block does not work — a `rules` key in
+  // the same object literal replaces the spread's rules wholesale, silently dropping jest's
+  // entire recommended ruleset.
   {
     files: ['src/**/*.test.ts'],
     rules: {
       // you should turn the original rule off *only* for test files
       '@typescript-eslint/unbound-method': 'off',
       'jest/unbound-method': 'error',
+    },
+  },
+  // 7/21/2026: Deliberate test/mock rule profile. These type-checked rules are
+  // inappropriate for test doubles: mocks and internals-poking test setup
+  // legitimately use `any` and pass values the compiler sees as unsafe. Turning
+  // them off here (parallel to the unbound-method override above) is what lets
+  // the full bundle run on tests without contorting test doubles.
+  {
+    files: ['src/**/*.test.ts', 'src/**/__tests__/**', 'src/__mocks__/**'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+    },
+  },
+  // 7/21/2026: Mock files implement Obsidian component interfaces with stub
+  // methods whose params exist only for signature conformance and are unused by
+  // nature. `args: 'none'` allows those unused args while keeping unused
+  // variables, imports, and locals flagged (real cruft is still caught).
+  {
+    files: ['src/__mocks__/**'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          args: 'none',
+          ignoreRestSiblings: true,
+        },
+      ],
     },
   },
   // Prettier (must be last so it disables conflicting stylistic rules)

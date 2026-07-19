@@ -548,7 +548,6 @@ describe('SwitcherPlusSettings', () => {
     settings['matchPriorityAdjustments'] = defaults['matchPriorityAdjustments'];
     settings['quickFilters'] = defaults['quickFilters'];
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { enabledSymbolTypes, ...prunedSettings } = settings;
 
     mockPlugin.loadData.mockResolvedValueOnce(prunedSettings);
@@ -743,7 +742,6 @@ describe('SwitcherPlusSettings', () => {
 
       let savedData: SettingsData;
       mockPlugin.saveData.mockImplementationOnce((input) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         savedData = input;
         return Promise.resolve();
       });
@@ -764,7 +762,6 @@ describe('SwitcherPlusSettings', () => {
 
       let savedData: SettingsData;
       mockPlugin.saveData.mockImplementationOnce((input) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         savedData = input;
         return Promise.resolve();
       });
@@ -786,7 +783,6 @@ describe('SwitcherPlusSettings', () => {
 
       let savedData: SettingsData;
       mockPlugin.saveData.mockImplementationOnce((input) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         savedData = input;
         return Promise.resolve();
       });
@@ -810,7 +806,6 @@ describe('SwitcherPlusSettings', () => {
 
       let savedData: SettingsData;
       mockPlugin.saveData.mockImplementationOnce((input) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         savedData = input;
         return Promise.resolve();
       });
@@ -874,7 +869,6 @@ describe('SwitcherPlusSettings', () => {
 
       let savedData: SettingsData;
       mockPlugin.saveData.mockImplementationOnce((input) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         savedData = input;
         return Promise.resolve();
       });
@@ -937,7 +931,6 @@ describe('SwitcherPlusSettings', () => {
 
       let savedData: SettingsData;
       mockPlugin.saveData.mockImplementationOnce((input) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         savedData = input;
         return Promise.resolve();
       });
