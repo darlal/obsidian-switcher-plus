@@ -171,9 +171,4 @@ declare module 'obsidian' {
       zoomToSelection(): void;
     };
   }
-
-  export interface BaseViewData {
-    type: string;
-    name: string;
-  }
 }

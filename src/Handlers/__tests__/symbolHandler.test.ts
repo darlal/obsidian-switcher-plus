@@ -13,6 +13,7 @@ import {
   CalloutCache,
   SymbolIndicators,
   SymbolInfo,
+  BaseViewData,
   SearchQuery,
   SourceInfo,
 } from 'src/types';
@@ -38,7 +39,6 @@ import {
   renderResults,
   View,
   BasesConfigFile,
-  BaseViewData,
   parseYaml,
   Pos,
 } from 'obsidian';

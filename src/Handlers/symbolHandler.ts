@@ -10,7 +10,6 @@ import {
 import {
   App,
   BasesConfigFile,
-  BaseViewData,
   CanvasFileView,
   CachedMetadata,
   LinkCache,
@@ -34,6 +33,7 @@ import {
   SourceInfo,
   SymbolInfo,
   AnySymbolInfoPayload,
+  BaseViewData,
   SymbolType,
   HeadingIndicators,
   SymbolIndicators,

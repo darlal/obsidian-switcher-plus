@@ -15,7 +15,6 @@ import {
   Modifier,
   BookmarksPluginItem,
   Hotkey,
-  BaseViewData,
 } from 'obsidian';
 import type { PaneType, SplitDirection, SuggestModal } from 'obsidian';
 import { PickKeys, WritableKeys } from 'ts-essentials';
@@ -231,6 +230,15 @@ export type CalloutCache = SectionCache & {
   calloutType: string;
   calloutTitle: string;
 };
+
+// TODO: Remove and import from 'obsidian' once Obsidian ships `BaseViewData` in
+// its public types. Kept as a first-class local type — rather than a `declare module 'obsidian'`
+// augmentation — so it resolves to a real type in the type-check environment used by the
+// community build process, which does not seem to load the local ambient augmentation.
+export interface BaseViewData {
+  type: string;
+  name: string;
+}
 
 export type AnySymbolInfoPayload =
   | LinkCache
