@@ -148,7 +148,7 @@ View, search, and run Obsidian commands quickly using the default `>` command. W
 | Setting                  | Description | Default |
 |--------------------------|-------------|---------|
 | Command list mode trigger | Character that will trigger command list mode in the switcher. | `>` |
-| Max recent commands | The maximum number of commands to save in the recent list. | 25 |
+| Max recent commands | The maximum number of recently used commands to display in the list. | 25 |
 | Recent commands display order | Select the sort order for recently used commands. | `desc` |
 
 ## Related Items

@@ -2,7 +2,13 @@ import { Chance } from 'chance';
 import { Searcher } from 'src/search';
 import { Mode, CommandSuggestion, SuggestionType, SearchQuery } from 'src/types';
 import { InputInfo } from 'src/switcherPlus';
-import { CommandHandler, COMMAND_PALETTE_PLUGIN_ID, Handler } from 'src/Handlers';
+import {
+  CommandHandler,
+  COMMAND_PALETTE_PLUGIN_ID,
+  Handler,
+  MAX_STORED_RECENT_COMMANDS,
+  RECENT_COMMANDS_STORAGE_KEY,
+} from 'src/Handlers';
 import { SwitcherPlusSettings } from 'src/settings/switcherPlusSettings';
 import { CommandListFacetIds } from 'src/settings';
 import * as Utils from 'src/utils/utils';
@@ -31,6 +37,7 @@ function makeCommandPalettePluginInstall(): MockProxy<InstalledPlugin> {
     options: {
       pinned: null,
     },
+    recentCommands: [],
   });
 
   return mock<InstalledPlugin>({
@@ -473,55 +480,158 @@ describe('commandHandler', () => {
     });
   });
 
-  describe('saveUsageToList', () => {
-    it('should add a new item to index 0', () => {
-      const id = 'expected';
-      const recentCommandIds = ['id A', 'id B'];
+  describe('getRecentCommandIds', () => {
+    let maxRecentSpy: jest.SpyInstance;
 
-      sut.saveUsageToList(id, recentCommandIds);
-
-      expect(recentCommandIds).toHaveLength(3);
-      expect(recentCommandIds[0]).toBe(id);
+    beforeEach(() => {
+      mockCommandPalettePluginInstance.recentCommands.length = 0;
     });
 
-    it('should not add more items than are allowed by settings', () => {
-      const recentCommandIds: string[] = [];
-      const max = 5;
-      const maxRecentSpy = jest
+    afterEach(() => {
+      mockCommandPalettePluginInstance.recentCommands.length = 0;
+      maxRecentSpy?.mockRestore();
+      maxRecentSpy = null;
+    });
+
+    it('should return the ids from the command palette plugin in recency order', () => {
+      // Arrange
+      mockCommandPalettePluginInstance.recentCommands.push('cmd1', 'cmd2', 'cmd3');
+
+      // Act
+      const results = sut.getRecentCommandIds();
+
+      // Assert
+      expect(Array.from(results)).toEqual(['cmd1', 'cmd2', 'cmd3']);
+    });
+
+    it('should truncate the list to the maxRecentCommands display limit', () => {
+      // Arrange
+      const max = 2;
+      maxRecentSpy = jest
         .spyOn(settings, 'maxRecentCommands', 'get')
         .mockReturnValue(max);
 
-      for (let i = 0; i < max + 5; i++) {
-        sut.saveUsageToList(String(i), recentCommandIds);
-      }
+      mockCommandPalettePluginInstance.recentCommands.push('cmd1', 'cmd2', 'cmd3');
 
-      expect(recentCommandIds).toHaveLength(max);
+      // Act
+      const results = sut.getRecentCommandIds();
 
-      maxRecentSpy.mockRestore();
+      // Assert
+      expect(Array.from(results)).toEqual(['cmd1', 'cmd2']);
+    });
+
+    it('should return an empty set when maxRecentCommands is 0', () => {
+      // Arrange
+      maxRecentSpy = jest.spyOn(settings, 'maxRecentCommands', 'get').mockReturnValue(0);
+
+      mockCommandPalettePluginInstance.recentCommands.push('cmd1', 'cmd2');
+
+      // Act
+      const results = sut.getRecentCommandIds();
+
+      // Assert
+      expect(results.size).toBe(0);
+    });
+
+    it('should return an empty set when the command palette plugin is not available', () => {
+      // Arrange
+      const getInstanceSpy = jest
+        .spyOn(sut, 'getEnabledCommandPalettePluginInstance')
+        .mockReturnValue(null);
+
+      // Act
+      const results = sut.getRecentCommandIds();
+
+      // Assert
+      expect(results.size).toBe(0);
+
+      getInstanceSpy.mockRestore();
+    });
+  });
+
+  describe('saveUsageToList', () => {
+    let recentCommandIds: string[];
+
+    beforeEach(() => {
+      recentCommandIds = mockCommandPalettePluginInstance.recentCommands;
+      recentCommandIds.length = 0;
+      mockApp.saveLocalStorage.mockClear();
+    });
+
+    afterAll(() => {
+      mockCommandPalettePluginInstance.recentCommands.length = 0;
+    });
+
+    it('should add a new item to index 0', () => {
+      const id = 'expected';
+      recentCommandIds.push('id A', 'id B');
+
+      sut.saveUsageToList(id);
+
+      expect(recentCommandIds).toHaveLength(3);
+      expect(recentCommandIds[0]).toBe(id);
     });
 
     it('should move an existing item from an old index to index 0', () => {
       const id = 'expected';
-      const recentCommandIds = ['id A', id, 'id B'];
+      recentCommandIds.push('id A', id, 'id B');
 
-      sut.saveUsageToList(id, recentCommandIds);
+      sut.saveUsageToList(id);
 
       expect(recentCommandIds).toHaveLength(3);
       expect(recentCommandIds[0]).toBe(id);
+    });
+
+    it('should not store more items than the core command palette storage cap', () => {
+      const overflow = 5;
+
+      for (let i = 0; i < MAX_STORED_RECENT_COMMANDS + overflow; i++) {
+        sut.saveUsageToList(String(i));
+      }
+
+      expect(recentCommandIds).toHaveLength(MAX_STORED_RECENT_COMMANDS);
+    });
+
+    it('should persist the same array instance that the command palette plugin holds', () => {
+      const id = 'expected';
+
+      sut.saveUsageToList(id);
+
+      expect(mockApp.saveLocalStorage).toHaveBeenCalledWith(
+        RECENT_COMMANDS_STORAGE_KEY,
+        mockCommandPalettePluginInstance.recentCommands,
+      );
+
+      // The core palette instance holds a reference to this array, so it must be
+      // mutated in place rather than replaced
+      const [, savedList] = mockApp.saveLocalStorage.mock.calls[0];
+      expect(savedList).toBe(mockCommandPalettePluginInstance.recentCommands);
+    });
+
+    it('should not save anything when the command palette plugin is not available', () => {
+      const getInstanceSpy = jest
+        .spyOn(sut, 'getEnabledCommandPalettePluginInstance')
+        .mockReturnValue(null);
+
+      sut.saveUsageToList('expected');
+
+      expect(mockApp.saveLocalStorage).not.toHaveBeenCalled();
+
+      getInstanceSpy.mockRestore();
     });
   });
 
   describe('getPinnedAndRecentCommands ordering', () => {
     beforeEach(() => {
       // Clear the array before each test
-      CommandHandler.recentlyUsedCommandIds.length = 0;
+      mockCommandPalettePluginInstance.recentCommands.length = 0;
       mockReset(mockFindCommand);
     });
 
     it('should return recent commands in descending order (most recent first) when setting is "desc"', () => {
       // Arrange
       settings.recentCommandDisplayOrder = 'desc';
-      CommandHandler.recentlyUsedCommandIds.push('cmd2', 'cmd1'); // cmd2 is most recent
+      mockCommandPalettePluginInstance.recentCommands.push('cmd2', 'cmd1'); // cmd2 is most recent
 
       mockFindCommand.mockImplementation((id) => ({ id, name: `Command ${id}` }));
 
@@ -541,7 +651,7 @@ describe('commandHandler', () => {
     it('should return recent commands in ascending order (most recent last) when setting is "asc"', () => {
       // Arrange
       settings.recentCommandDisplayOrder = 'asc';
-      CommandHandler.recentlyUsedCommandIds.push('cmd2', 'cmd1'); // cmd2 is most recent
+      mockCommandPalettePluginInstance.recentCommands.push('cmd2', 'cmd1'); // cmd2 is most recent
 
       mockFindCommand.mockImplementation((id) => ({ id, name: `Command ${id}` }));
       const getPinnedSpy = jest

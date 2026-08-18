@@ -20,11 +20,16 @@ import {
 } from 'obsidian';
 
 export const COMMAND_PALETTE_PLUGIN_ID = 'command-palette';
+
+// localStorage key the core Command Palette plugin persists the recent list under.
+export const RECENT_COMMANDS_STORAGE_KEY = 'recent-commands';
+
+// Storage cap enforced by the core Command Palette plugin.
+export const MAX_STORED_RECENT_COMMANDS = 100;
+
 export type CommandInfo = { cmd: Command; isPinned: boolean; isRecent: boolean };
 
 export class CommandHandler extends Handler<CommandSuggestion> {
-  static recentlyUsedCommandIds: string[] = [];
-
   getCommandString(_sessionOpts?: SessionOpts): string {
     return this.settings?.commandListCommand;
   }
@@ -129,14 +134,25 @@ export class CommandHandler extends Handler<CommandSuggestion> {
     if (sugg) {
       const { item } = sugg;
       this.app.commands.executeCommandById(item.id);
-      this.saveUsageToList(item.id, CommandHandler.recentlyUsedCommandIds);
+      this.saveUsageToList(item.id);
       handled = true;
     }
 
     return handled;
   }
 
-  saveUsageToList(commandId: string, recentCommandIds: string[]): void {
+  /**
+   * Records commandId as the most recently used command in the list shared with the core
+   * Command Palette plugin, then persists it the same way the core plugin does.
+   *
+   * @param commandId the id of the command that was just executed.
+   */
+  saveUsageToList(commandId: string): void {
+    // The palette instance holds a reference to this array, so it's mutated in place to
+    // keep the live palette in sync
+    const recentCommandIds =
+      this.getEnabledCommandPalettePluginInstance()?.recentCommands;
+
     if (recentCommandIds) {
       const oldIndex = recentCommandIds.indexOf(commandId);
       if (oldIndex > -1) {
@@ -144,7 +160,9 @@ export class CommandHandler extends Handler<CommandSuggestion> {
       }
 
       recentCommandIds.unshift(commandId);
-      recentCommandIds.splice(this.settings.maxRecentCommands);
+      recentCommandIds.splice(MAX_STORED_RECENT_COMMANDS);
+
+      this.app.saveLocalStorage(RECENT_COMMANDS_STORAGE_KEY, recentCommandIds);
     }
   }
 
@@ -244,7 +262,10 @@ export class CommandHandler extends Handler<CommandSuggestion> {
   }
 
   getRecentCommandIds(): Set<string> {
-    return new Set(CommandHandler.recentlyUsedCommandIds);
+    const recentCommandIds =
+      this.getEnabledCommandPalettePluginInstance()?.recentCommands ?? [];
+
+    return new Set(recentCommandIds.slice(0, this.settings.maxRecentCommands));
   }
 
   createSuggestion(commandInfo: CommandInfo, match: SearchResult): CommandSuggestion {

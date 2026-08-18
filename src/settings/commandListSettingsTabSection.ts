@@ -20,9 +20,10 @@ export class CommandListSettingsTabSection extends SettingsTabSection {
     this.addSliderSetting(
       containerEl,
       'Max recent commands',
-      'The maximum number of commands to save in the recent list.',
+      'The maximum number of recently used commands to display in the list.',
       config.maxRecentCommands,
-      [0, 75, 1, 25],
+      // The upper limit matches MAX_STORED_RECENT_COMMANDS
+      [0, 100, 1, 25],
       'maxRecentCommands',
     );
 

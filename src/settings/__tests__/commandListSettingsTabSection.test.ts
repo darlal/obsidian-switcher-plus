@@ -4,6 +4,7 @@ import {
   SwitcherPlusSettings,
   SwitcherPlusSettingTab,
 } from 'src/settings';
+import { MAX_STORED_RECENT_COMMANDS } from 'src/Handlers';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { App, Setting } from 'obsidian';
 
@@ -71,6 +72,23 @@ describe('commandListSettingsTabSection', () => {
       expect.any(String),
       config.maxRecentCommands,
       expect.any(Array),
+      'maxRecentCommands',
+    );
+
+    addSliderSettingSpy.mockClear();
+  });
+
+  it('should allow the maxRecentCommands slider to reach the full stored history size', () => {
+    const expectedLimits = [0, MAX_STORED_RECENT_COMMANDS, 1, 25];
+
+    sut.display(mockContainerEl);
+
+    expect(addSliderSettingSpy).toHaveBeenCalledWith(
+      mockContainerEl,
+      'Max recent commands',
+      expect.any(String),
+      config.maxRecentCommands,
+      expectedLimits,
       'maxRecentCommands',
     );
 
