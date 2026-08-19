@@ -39,7 +39,7 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
     this.addToggleSetting(
       containerEl,
       'Auto-select nearest heading',
-      'Enabled, in an unfiltered symbol list, select the closest preceding Heading to the current cursor position. Disabled, the first symbol in the list is selected.',
+      'Enabled, in an unfiltered symbol list, select the closest preceding Heading to the current cursor position, or to the scroll position when the file is displayed in Reading mode. Disabled, the first symbol in the list is selected.',
       config.selectNearestHeading,
       'selectNearestHeading',
     );

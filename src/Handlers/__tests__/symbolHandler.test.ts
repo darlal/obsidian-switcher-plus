@@ -23,6 +23,7 @@ import {
   WorkspaceLeaf,
   App,
   SearchResult,
+  MarkdownPreviewView,
   MarkdownView,
   HeadingCache,
   TagCache,
@@ -804,6 +805,78 @@ describe('symbolHandler', () => {
       const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
       expect(selectedSuggestions).toHaveLength(1);
       expect(selectedSuggestions[0].item.symbol).toBe(heading);
+
+      selectNearestHeadingSpy.mockReset();
+    });
+
+    test('with selectNearestHeading set to true, it should select a heading on the first line of the file when the position is on the first line', async () => {
+      // Arrange
+      const selectNearestHeadingSpy = jest
+        .spyOn(settings, 'selectNearestHeading', 'get')
+        .mockReturnValue(true);
+
+      const heading = makeHeading(
+        'First Line Heading',
+        1,
+        makeLoc(0, 0, 0),
+        makeLoc(0, 20, 20),
+      );
+
+      const metadata = getCachedMetadata();
+      metadata.headings = [heading];
+      mockMetadataCache.getFileCache.mockReturnValueOnce(metadata);
+
+      const mockEditor = (mockRootSplitLeaf.view as MarkdownView)
+        .editor as MockProxy<Editor>;
+      mockEditor.getCursor.mockReturnValueOnce({
+        line: 0,
+        ch: 0,
+      });
+
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      // Act
+      const results = await sut.getSuggestions(inputInfo);
+
+      // Assert
+      const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
+      expect(selectedSuggestions).toHaveLength(1);
+      expect(selectedSuggestions[0].item.symbol).toBe(heading);
+
+      selectNearestHeadingSpy.mockReset();
+    });
+
+    test('with selectNearestHeading set to true, it should set the isSelected property of the nearest preceding heading suggestion to true when the source file is displayed in Reading mode', async () => {
+      // Arrange
+      const selectNearestHeadingSpy = jest
+        .spyOn(settings, 'selectNearestHeading', 'get')
+        .mockReturnValue(true);
+
+      // there should be a heading in the fixture that starts on this line number
+      const expectedHeadingStartLineNumber = 9;
+      const expectedSelectedHeading = rootFixture.cachedMetadata.headings.find(
+        (val) => val.position.start.line === expectedHeadingStartLineNumber,
+      );
+      expect(expectedSelectedHeading).not.toBeNull();
+
+      const mockView = mockRootSplitLeaf.view as MockProxy<MarkdownView>;
+      const mockPreviewMode = mockView.previewMode as MockProxy<MarkdownPreviewView>;
+      mockView.getMode.mockReturnValueOnce('preview');
+      mockPreviewMode.getScroll.mockReturnValueOnce(expectedHeadingStartLineNumber + 1.4);
+
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      // Act
+      const results = await sut.getSuggestions(inputInfo);
+
+      // Assert
+      const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
+      expect(selectedSuggestions).toHaveLength(1);
+      expect(selectedSuggestions[0].item.symbol).toBe(expectedSelectedHeading);
 
       selectNearestHeadingSpy.mockReset();
     });

@@ -387,6 +387,11 @@ export interface SourceInfo {
   leaf: WorkspaceLeaf;
   suggestion: AnySuggestion;
   isValidSource: boolean;
+
+  /**
+   * This is the cursor position in editing modes. And in Reading mode, which has no
+   * cursor, the line the reader has scrolled to (column zero)
+   */
   cursor?: EditorPosition;
 }
 

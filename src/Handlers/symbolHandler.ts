@@ -363,8 +363,9 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
   ): void {
     const cursorLine = sourceInfo?.cursor?.line;
 
-    // find the nearest heading to the current cursor pos, if applicable
-    if (cursorLine) {
+    // find the nearest heading to the current position. Line zero is a
+    // valid position in some editor views
+    if (cursorLine != null) {
       let found: SymbolInfo = null;
       const headings = items.filter((v): v is SymbolInfoExcludingSpecialFiles =>
         isHeadingCache(v.symbol),

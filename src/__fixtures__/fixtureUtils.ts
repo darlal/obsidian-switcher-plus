@@ -11,6 +11,7 @@ import {
   BookmarksPluginSearchItem,
   Command,
   Editor,
+  MarkdownPreviewView,
   MarkdownView,
   SearchMatches,
   SearchResult,
@@ -39,7 +40,8 @@ export const defaultOpenViewState = {
 };
 
 /**
- * Returns a WorkspaceLeaf mock backed by a markdown MarkdownView.
+ * Returns a WorkspaceLeaf mock backed by a markdown MarkdownView. The view is supplied with
+ * both an editor and a previewMode supporting both editing and Reading mode.
  *
  * @export
  * @param {?TFile} [sourceFile] file to back the leaf's view; defaults to a new TFile.
@@ -55,6 +57,7 @@ export function makeLeaf(
   const mockView = mock<MarkdownView>({
     file: sourceFile ?? new TFile(),
     editor: mock<Editor>(),
+    previewMode: mock<MarkdownPreviewView>(),
     getViewType: mockFn().mockReturnValue('markdown'),
   });
 

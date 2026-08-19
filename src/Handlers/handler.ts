@@ -203,7 +203,11 @@ export abstract class Handler<T extends AnySuggestion> {
   }
 
   /**
-   * Retrieves the position of the cursor, given that view is in a mode that supports cursors.
+   * Retrieves the position that represents where the user currently is in the document.
+   * In editing modes that is the cursor position. Reading mode has no
+   * cursor, so the line the reader has scrolled to is used instead, with the column
+   * defaulted to 0.
+   *
    * @param  {WorkspaceLeaf} leaf
    * @returns EditorPosition
    */
@@ -213,7 +217,15 @@ export abstract class Handler<T extends AnySuggestion> {
     if (leafHasLoadedViewOfType(leaf, 'markdown')) {
       const md = leaf.view as MarkdownView;
 
-      if (md.getMode() !== 'preview') {
+      if (md.getMode() === 'preview') {
+        // In Reading mode the scroll position is the only signal for where the reader is.
+        // getScroll() reports a fractional line, the portion of the
+        // line already scrolled past the top edge so truncate to stay on that line. It
+        // reports null until the preview sections are rendered and measured, fall back
+        // to the top of the document in that case.
+        const scrollLine = md.previewMode.getScroll();
+        cursor = { line: Math.floor(scrollLine ?? 0), ch: 0 };
+      } else {
         cursor = md.editor.getCursor('head');
       }
     }
