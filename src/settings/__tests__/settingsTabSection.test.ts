@@ -1374,4 +1374,9 @@ describe('settingsTabSection', () => {
       expect(mockPopup.open).toHaveBeenCalled();
     });
   });
+  describe('getSettingDefinitions', () => {
+    it('should contribute no definitions for a section that has not been migrated', () => {
+      expect(sut.getSettingDefinitions()).toEqual([]);
+    });
+  });
 });

@@ -6,7 +6,16 @@ import {
   SwitcherPlusSettingTab,
 } from 'src/settings';
 import { mock, mockClear, MockProxy } from 'jest-mock-extended';
-import { App, Setting, SettingGroup, ViewRegistry } from 'obsidian';
+import {
+  App,
+  Setting,
+  SettingDefinitionPage,
+  SettingDefinitionRender,
+  SettingGroup,
+  ToggleComponent,
+  ViewRegistry,
+} from 'obsidian';
+import { findSettingByKey, findSettingByName, isSettingVisible } from '@fixtures';
 import * as Utils from 'src/utils/utils';
 
 describe('symbolSettingsTabSection', () => {
@@ -175,7 +184,7 @@ describe('symbolSettingsTabSection', () => {
     });
 
     it('should show the symbol type setting for Links to headings', () => {
-      config.setSymbolTypeEnabled(SymbolType.Link, true);
+      config.enabledSymbolTypes[SymbolType.Link] = true;
       sut.display(mockContainerEl);
 
       // Verify that addToggleSetting was called with a SettingGroup
@@ -188,7 +197,7 @@ describe('symbolSettingsTabSection', () => {
     });
 
     it('should show the symbol type setting for Links to blocks', () => {
-      config.setSymbolTypeEnabled(SymbolType.Link, true);
+      config.enabledSymbolTypes[SymbolType.Link] = true;
       sut.display(mockContainerEl);
 
       // Verify that addToggleSetting was called with a SettingGroup
@@ -257,7 +266,9 @@ describe('symbolSettingsTabSection', () => {
   });
 
   describe('showEnableSymbolTypesToggle', () => {
-    const mockConfig = mock<SwitcherPlusSettings>();
+    const mockConfig = mock<SwitcherPlusSettings>({
+      enabledSymbolTypes: {},
+    });
 
     beforeAll(() => {
       sut = new SymbolSettingsTabSection(mockApp, mockPluginSettingTab, mockConfig);
@@ -268,7 +279,7 @@ describe('symbolSettingsTabSection', () => {
       const initialEnabledValue = false;
       const finalEnabledValue = true;
 
-      mockConfig.isSymbolTypeEnabled.mockReturnValue(initialEnabledValue);
+      mockConfig.enabledSymbolTypes[SymbolType.Callout] = initialEnabledValue;
       addToggleSettingSpy.mockImplementation((...args: unknown[]) => {
         if (args[1] === 'Show Callouts') {
           const onChangeFn = args[5] as (v: boolean) => void;
@@ -283,10 +294,7 @@ describe('symbolSettingsTabSection', () => {
         toggleSettingOnChangeFn(finalEnabledValue);
       }
 
-      expect(mockConfig.setSymbolTypeEnabled).toHaveBeenLastCalledWith(
-        SymbolType.Callout,
-        finalEnabledValue,
-      );
+      expect(mockConfig.enabledSymbolTypes[SymbolType.Callout]).toBe(finalEnabledValue);
 
       expect(mockConfig.save).toHaveBeenCalled();
 
@@ -295,7 +303,9 @@ describe('symbolSettingsTabSection', () => {
   });
 
   describe('showEnableLinksToggle', () => {
-    const mockConfig = mock<SwitcherPlusSettings>();
+    const mockConfig = mock<SwitcherPlusSettings>({
+      enabledSymbolTypes: {},
+    });
     type addToggleSettingArgs = Parameters<SettingsTabSection['addToggleSetting']>;
     let toggleSettingOnChangeFn: addToggleSettingArgs[5];
 
@@ -322,7 +332,7 @@ describe('symbolSettingsTabSection', () => {
       });
 
       mockConfig.saveSettings.mockReturnValueOnce(savePromise);
-      mockConfig.isSymbolTypeEnabled.mockReturnValue(initialEnabledValue);
+      mockConfig.enabledSymbolTypes[SymbolType.Link] = initialEnabledValue;
 
       sut.showEnableLinksToggle(mockContainerEl, mockConfig);
 
@@ -333,10 +343,7 @@ describe('symbolSettingsTabSection', () => {
 
       expect(mockConfig.saveSettings).toHaveBeenCalled();
       expect(mockPluginSettingTab.display).toHaveBeenCalled();
-      expect(mockConfig.setSymbolTypeEnabled).toHaveBeenLastCalledWith(
-        SymbolType.Link,
-        finalEnabledValue,
-      );
+      expect(mockConfig.enabledSymbolTypes[SymbolType.Link]).toBe(finalEnabledValue);
 
       addToggleSettingSpy.mockReset();
       mockPluginSettingTab.display.mockClear();
@@ -358,7 +365,7 @@ describe('symbolSettingsTabSection', () => {
       });
 
       mockConfig.saveSettings.mockReturnValueOnce(rejectedPromise);
-      mockConfig.isSymbolTypeEnabled.mockReturnValue(initialEnabledValue);
+      mockConfig.enabledSymbolTypes[SymbolType.Link] = initialEnabledValue;
 
       sut.showEnableLinksToggle(mockContainerEl, mockConfig);
 
@@ -391,7 +398,7 @@ describe('symbolSettingsTabSection', () => {
         return mock<Setting>();
       });
 
-      mockConfig.isSymbolTypeEnabled.mockReturnValue(initialEnabledValue);
+      mockConfig.enabledSymbolTypes[SymbolType.Link] = initialEnabledValue;
 
       sut.showEnableLinksToggle(mockContainerEl, mockConfig);
 
@@ -435,6 +442,177 @@ describe('symbolSettingsTabSection', () => {
       expect(excludeLinkSubTypes & LinkType.Heading).toBe(LinkType.Heading);
       expect(excludeLinkSubTypes & LinkType.Block).toBe(LinkType.Block);
       expect(mockConfig.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('getSettingDefinitions', () => {
+    beforeAll(() => {
+      sut = new SymbolSettingsTabSection(mockApp, mockPluginSettingTab, config);
+    });
+
+    it('should return a single page for the section', () => {
+      const [page] = sut.getSettingDefinitions();
+
+      expect(page).toEqual(
+        expect.objectContaining({ type: 'page', name: 'Symbol Mode' }),
+      );
+    });
+
+    it('should show the mode trigger as the page display value', () => {
+      const [page] = sut.getSettingDefinitions() as SettingDefinitionPage[];
+
+      expect((page.displayValue as () => string)()).toBe(config.symbolListCommand);
+    });
+
+    it('should define both mode trigger settings', () => {
+      const definitions = sut.getSettingDefinitions();
+
+      expect(findSettingByKey(definitions, 'symbolListCommand')).toEqual(
+        expect.objectContaining({
+          name: 'Symbol list mode trigger',
+          control: {
+            type: 'text',
+            key: 'symbolListCommand',
+            placeholder: config.symbolListPlaceholderText,
+          },
+        }),
+      );
+      expect(findSettingByKey(definitions, 'symbolListActiveEditorCommand')).toEqual(
+        expect.objectContaining({
+          name: 'Symbol list mode trigger - Active editor only',
+          control: {
+            type: 'text',
+            key: 'symbolListActiveEditorCommand',
+            placeholder: config.symbolListActiveEditorCommand,
+          },
+        }),
+      );
+    });
+
+    it('should define the standalone toggle settings', () => {
+      const definitions = sut.getSettingDefinitions();
+
+      expect(findSettingByKey(definitions, 'symbolsInLineOrder').control).toEqual({
+        type: 'toggle',
+        key: 'symbolsInLineOrder',
+      });
+      expect(findSettingByKey(definitions, 'selectNearestHeading').control).toEqual({
+        type: 'toggle',
+        key: 'selectNearestHeading',
+      });
+      expect(
+        findSettingByKey(definitions, 'showHeadingBreadcrumbsInSymbolMode').control,
+      ).toEqual({ type: 'toggle', key: 'showHeadingBreadcrumbsInSymbolMode' });
+    });
+
+    it('should define the tab navigation settings', () => {
+      const definitions = sut.getSettingDefinitions();
+
+      expect(findSettingByKey(definitions, 'alwaysNewTabForSymbols').control).toEqual({
+        type: 'toggle',
+        key: 'alwaysNewTabForSymbols',
+      });
+      expect(
+        findSettingByKey(definitions, 'useActiveTabForSymbolsOnMobile').control,
+      ).toEqual({ type: 'toggle', key: 'useActiveTabForSymbolsOnMobile' });
+    });
+  });
+  describe('getSettingDefinitions symbol type toggles', () => {
+    beforeAll(() => {
+      sut = new SymbolSettingsTabSection(mockApp, mockPluginSettingTab, config);
+    });
+
+    it('should bind each symbol type toggle to its dot path key', () => {
+      const definitions = sut.getSettingDefinitions();
+      const expected = [
+        ['Show Headings', SymbolType.Heading],
+        ['Show Tags', SymbolType.Tag],
+        ['Show Embeds', SymbolType.Embed],
+        ['Show Callouts', SymbolType.Callout],
+      ] as const;
+
+      expected.forEach(([name, symbolType]) => {
+        const key = `enabledSymbolTypes.${symbolType}` as const;
+
+        expect(findSettingByKey(definitions, key)).toEqual(
+          expect.objectContaining({
+            name,
+            control: { type: 'toggle', key },
+          }),
+        );
+      });
+    });
+  });
+
+  describe('getSettingDefinitions links settings', () => {
+    const findLinkSetting = (name: string) =>
+      findSettingByName(sut.getSettingDefinitions(), name) as SettingDefinitionRender;
+
+    beforeAll(() => {
+      sut = new SymbolSettingsTabSection(mockApp, mockPluginSettingTab, config);
+    });
+
+    it('should bind the Show Links toggle to the Link symbol type key', () => {
+      const key = `enabledSymbolTypes.${SymbolType.Link}` as const;
+
+      expect(findSettingByKey(sut.getSettingDefinitions(), key)).toEqual(
+        expect.objectContaining({
+          name: 'Show Links',
+          control: { type: 'toggle', key },
+        }),
+      );
+    });
+
+    it('should hide the sub link toggles when links are disabled', () => {
+      config.enabledSymbolTypes[SymbolType.Link] = false;
+      const subToggle = findLinkSetting('Links to headings');
+
+      expect(isSettingVisible(subToggle)).toBe(false);
+
+      config.enabledSymbolTypes[SymbolType.Link] = true;
+    });
+
+    it('should show the sub link toggles when links are enabled', () => {
+      config.enabledSymbolTypes[SymbolType.Link] = true;
+      const subToggle = findLinkSetting('Links to headings');
+
+      expect(isSettingVisible(subToggle)).toBe(true);
+    });
+
+    it('should seed a sub link toggle from the exclusion bitmask', () => {
+      config.excludeLinkSubTypes = LinkType.Block;
+      const mockSetting = mock<Setting>();
+      const mockToggle = mock<ToggleComponent>();
+      mockSetting.addToggle.mockImplementation((cb) => {
+        cb(mockToggle);
+        return mockSetting;
+      });
+
+      findLinkSetting('Links to blocks').render(mockSetting, null);
+
+      expect(mockToggle.setValue).toHaveBeenCalledWith(false);
+    });
+
+    it('should persist a sub link change through saveEnableSubLinkChange', () => {
+      const saveSubLinkSpy = jest.spyOn(sut, 'saveEnableSubLinkChange').mockReturnValue();
+      const mockSetting = mock<Setting>();
+      const mockToggle = mock<ToggleComponent>();
+      let onChange: (value: boolean) => void;
+      mockToggle.onChange.mockImplementation((cb) => {
+        onChange = cb;
+        return mockToggle;
+      });
+      mockSetting.addToggle.mockImplementation((cb) => {
+        cb(mockToggle);
+        return mockSetting;
+      });
+
+      findLinkSetting('Links to headings').render(mockSetting, null);
+      onChange(false);
+
+      expect(saveSubLinkSpy).toHaveBeenCalledWith(LinkType.Heading, false);
+
+      saveSubLinkSpy.mockRestore();
     });
   });
 });

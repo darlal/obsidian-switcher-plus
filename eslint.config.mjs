@@ -18,6 +18,8 @@ export default [
       'node_modules/**',
       'support/demo_template/sample.js',
       'benchmark/**',
+      // Build tooling, not plugin source
+      'scripts/**',
     ],
   },
   // ESLint core recommended
@@ -34,6 +36,17 @@ export default [
   // off for TS files (obsidian re-enables it; left on it flags every
   // imported type as undefined).
   ...tseslint.configs.recommendedTypeChecked,
+  // Plain JS tooling is outside tsconfig's project, so the type-aware rules
+  // spread above crash ESLint rather than reporting. Turn them off for .js only.
+  {
+    ...tseslint.configs.disableTypeChecked,
+    files: ['**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
   // Main TypeScript configuration: scope parserOptions.project to .ts/.tsx
   {
     files: ['**/*.ts', '**/*.tsx'],

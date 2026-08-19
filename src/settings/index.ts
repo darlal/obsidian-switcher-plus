@@ -11,3 +11,4 @@ export * from './headingsSettingsTabSection';
 export * from './symbolSettingsTabSection';
 export * from './facetConstants';
 export * from './vaultListSettingsTabSection';
+export * from './listEntryModal';

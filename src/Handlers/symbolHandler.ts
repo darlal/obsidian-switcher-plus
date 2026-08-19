@@ -458,7 +458,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       shouldInclude = this.isIncludedByFacetFilter(activeFacetIds, symbolType);
     } else {
       shouldInclude =
-        this.settings.isSymbolTypeEnabled(symbolType) &&
+        this.settings.enabledSymbolTypes[symbolType] &&
         this.isIncludedByFacetFilter(activeFacetIds, SymbolType[symbolType]);
     }
 

@@ -8,7 +8,12 @@ import {
   TagSource,
 } from 'src/types';
 import SwitcherPlusPlugin from 'src/main';
-import { SwitcherPlusSettings, getFacetMap } from 'src/settings';
+import {
+  NESTED_CONTROL_KEYS,
+  SettingsControlKey,
+  SwitcherPlusSettings,
+  getFacetMap,
+} from 'src/settings';
 import { Chance } from 'chance';
 import {
   App,
@@ -419,9 +424,7 @@ describe('SwitcherPlusSettings', () => {
   });
 
   it('should return default settings', () => {
-    // extract enabledSymbolTypes to handle separately, because it's not exposed
-    // on SwitcherPlusSettings directly
-    const { enabledSymbolTypes, ...defaults } = getDefaultSettingsData();
+    const defaults = getDefaultSettingsData();
 
     expect(sut).toEqual(expect.objectContaining(defaults));
     expect(sut.editorListPlaceholderText).toBe(defaults.editorListCommand);
@@ -433,22 +436,6 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.relatedItemsListPlaceholderText).toBe(defaults.relatedItemsListCommand);
     expect(sut.includeSidePanelViewTypesPlaceholder).toBe(
       defaults.includeSidePanelViewTypes.join('\n'),
-    );
-
-    expect(sut.isSymbolTypeEnabled(SymbolType.Embed)).toBe(
-      enabledSymbolTypes[SymbolType.Embed],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Heading)).toBe(
-      enabledSymbolTypes[SymbolType.Heading],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Link)).toBe(
-      enabledSymbolTypes[SymbolType.Link],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Tag)).toBe(
-      enabledSymbolTypes[SymbolType.Tag],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Callout)).toBe(
-      enabledSymbolTypes[SymbolType.Callout],
     );
   });
 
@@ -468,27 +455,7 @@ describe('SwitcherPlusSettings', () => {
       }
     });
 
-    sut.setSymbolTypeEnabled(
-      SymbolType.Heading,
-      settings.enabledSymbolTypes[SymbolType.Heading],
-    );
-
-    sut.setSymbolTypeEnabled(
-      SymbolType.Link,
-      settings.enabledSymbolTypes[SymbolType.Link],
-    );
-
-    sut.setSymbolTypeEnabled(SymbolType.Tag, settings.enabledSymbolTypes[SymbolType.Tag]);
-
-    sut.setSymbolTypeEnabled(
-      SymbolType.Embed,
-      settings.enabledSymbolTypes[SymbolType.Embed],
-    );
-
-    sut.setSymbolTypeEnabled(
-      SymbolType.Callout,
-      settings.enabledSymbolTypes[SymbolType.Callout],
-    );
+    sut.enabledSymbolTypes = settings.enabledSymbolTypes;
 
     let savedSettings: SettingsData;
     mockPlugin.saveData.mockImplementationOnce((data: SettingsData) => {
@@ -512,28 +479,11 @@ describe('SwitcherPlusSettings', () => {
     settings['matchPriorityAdjustments'] = defaults['matchPriorityAdjustments'];
     settings['quickFilters'] = defaults['quickFilters'];
 
-    const { enabledSymbolTypes, ...prunedSettings } = settings;
-
     mockPlugin.loadData.mockResolvedValueOnce(settings);
 
     await sut.loadSettings();
 
-    expect(sut).toEqual(expect.objectContaining(prunedSettings));
-    expect(sut.isSymbolTypeEnabled(SymbolType.Heading)).toBe(
-      enabledSymbolTypes[SymbolType.Heading],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Link)).toBe(
-      enabledSymbolTypes[SymbolType.Link],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Tag)).toBe(
-      enabledSymbolTypes[SymbolType.Tag],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Embed)).toBe(
-      enabledSymbolTypes[SymbolType.Embed],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Callout)).toBe(
-      enabledSymbolTypes[SymbolType.Callout],
-    );
+    expect(sut).toEqual(expect.objectContaining(settings));
 
     expect(mockPlugin.loadData).toHaveBeenCalled();
 
@@ -555,21 +505,7 @@ describe('SwitcherPlusSettings', () => {
     await sut.loadSettings();
 
     expect(sut).toEqual(expect.objectContaining(prunedSettings));
-    expect(sut.isSymbolTypeEnabled(SymbolType.Heading)).toBe(
-      defaults.enabledSymbolTypes[SymbolType.Heading],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Link)).toBe(
-      defaults.enabledSymbolTypes[SymbolType.Link],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Tag)).toBe(
-      defaults.enabledSymbolTypes[SymbolType.Tag],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Embed)).toBe(
-      defaults.enabledSymbolTypes[SymbolType.Embed],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Callout)).toBe(
-      defaults.enabledSymbolTypes[SymbolType.Callout],
-    );
+    expect(sut.enabledSymbolTypes).toEqual(defaults.enabledSymbolTypes);
 
     expect(mockPlugin.loadData).toHaveBeenCalled();
 
@@ -577,7 +513,7 @@ describe('SwitcherPlusSettings', () => {
   });
 
   it('should use default data if settings cannot be loaded', async () => {
-    const { enabledSymbolTypes, ...defaults } = getDefaultSettingsData();
+    const defaults = getDefaultSettingsData();
     mockPlugin.loadData.mockResolvedValueOnce(null);
 
     await sut.loadSettings();
@@ -591,23 +527,100 @@ describe('SwitcherPlusSettings', () => {
       defaults.includeSidePanelViewTypes.join('\n'),
     );
 
-    expect(sut.isSymbolTypeEnabled(SymbolType.Embed)).toBe(
-      enabledSymbolTypes[SymbolType.Embed],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Heading)).toBe(
-      enabledSymbolTypes[SymbolType.Heading],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Link)).toBe(
-      enabledSymbolTypes[SymbolType.Link],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Tag)).toBe(
-      enabledSymbolTypes[SymbolType.Tag],
-    );
-    expect(sut.isSymbolTypeEnabled(SymbolType.Callout)).toBe(
-      enabledSymbolTypes[SymbolType.Callout],
-    );
-
     expect(mockPlugin.loadData).toHaveBeenCalled();
+  });
+
+  describe('pathDisplayFormatString', () => {
+    it('should expose the stored numeric enum in the string form the dropdown requires', () => {
+      expect(sut.pathDisplayFormatString).toBe(
+        SwitcherPlusSettings.defaults.pathDisplayFormat.toString(),
+      );
+    });
+
+    it('should convert a string back to the numeric enum when written', () => {
+      sut.pathDisplayFormatString = PathDisplayFormat.Full.toString();
+
+      expect(sut.pathDisplayFormat).toBe(PathDisplayFormat.Full);
+    });
+
+    it('should leave the stored value numeric so that no data migration is needed', () => {
+      sut.pathDisplayFormatString = PathDisplayFormat.None.toString();
+
+      expect(typeof sut.pathDisplayFormat).toBe('number');
+    });
+
+    it('should stay in sync when a write is made through the pathDisplayFormat accessor', () => {
+      sut.pathDisplayFormat = PathDisplayFormat.FolderPathFilenameOptional;
+
+      expect(sut.pathDisplayFormatString).toBe(
+        PathDisplayFormat.FolderPathFilenameOptional.toString(),
+      );
+    });
+  });
+
+  describe('enabledSymbolTypes', () => {
+    it('should expose the stored symbol type record', () => {
+      expect(sut.enabledSymbolTypes).toEqual(
+        SwitcherPlusSettings.defaults.enabledSymbolTypes,
+      );
+    });
+
+    it('should write through the accessor', () => {
+      const expected = { [SymbolType.Tag]: false } as Record<SymbolType, boolean>;
+
+      sut.enabledSymbolTypes = expected;
+
+      expect(sut.enabledSymbolTypes).toBe(expected);
+    });
+
+    it('should preserve a disabled symbol type from saved data on load', async () => {
+      const savedData = {
+        enabledSymbolTypes: { [SymbolType.Tag]: false },
+      } as unknown as SettingsData;
+      mockPlugin.loadData.mockResolvedValueOnce(savedData);
+
+      await sut.loadSettings();
+
+      expect(sut.enabledSymbolTypes[SymbolType.Tag]).toBe(false);
+
+      mockPlugin.loadData.mockReset();
+    });
+
+    it('should fill in a symbol type key that is absent from saved data on load', async () => {
+      // A data.json written before SymbolType.Callout existed has no key for it.
+      const savedData = {
+        enabledSymbolTypes: {
+          [SymbolType.Link]: true,
+          [SymbolType.Embed]: true,
+          [SymbolType.Tag]: true,
+          [SymbolType.Heading]: true,
+        },
+      } as unknown as SettingsData;
+      mockPlugin.loadData.mockResolvedValueOnce(savedData);
+
+      await sut.loadSettings();
+
+      expect(sut.enabledSymbolTypes[SymbolType.Callout]).toBe(
+        SwitcherPlusSettings.defaults.enabledSymbolTypes[SymbolType.Callout],
+      );
+
+      mockPlugin.loadData.mockReset();
+    });
+
+    it('should not mutate the static defaults when merging saved data on load', async () => {
+      const savedData = {
+        enabledSymbolTypes: { [SymbolType.Heading]: false },
+      } as unknown as SettingsData;
+      mockPlugin.loadData.mockResolvedValueOnce(savedData);
+
+      await sut.loadSettings();
+
+      expect(SwitcherPlusSettings.defaults.enabledSymbolTypes[SymbolType.Heading]).toBe(
+        true,
+      );
+
+      mockPlugin.loadData.mockReset();
+    });
   });
 
   it('should load built-in system switcher settings', () => {
@@ -1163,6 +1176,136 @@ describe('SwitcherPlusSettings', () => {
       sut.searchAllHeadings = false;
 
       expect(sut.searchAllHeadings).toEqual([]);
+    });
+  });
+  describe('readControlValue', () => {
+    let config: SwitcherPlusSettings;
+
+    beforeEach(() => {
+      config = new SwitcherPlusSettings(null);
+    });
+
+    it('should read a top level key through its accessor', () => {
+      config.symbolListCommand = '@@';
+
+      expect(config.readControlValue('symbolListCommand')).toBe('@@');
+    });
+
+    it('should read a nested key using a dot path', () => {
+      config.mobileLauncher.isEnabled = false;
+
+      expect(config.readControlValue('mobileLauncher.isEnabled')).toBe(false);
+    });
+
+    it('should read a deeply nested key using a dot path', () => {
+      const key = 'matchPriorityAdjustments.adjustments.isBookmarked.value';
+      config.matchPriorityAdjustments.adjustments.isBookmarked.value = 0.5;
+
+      expect(config.readControlValue(key)).toBe(0.5);
+    });
+
+    it('should return undefined when an intermediate segment is missing', () => {
+      expect(
+        config.readControlValue('mobileLauncher.doesNotExist.value'),
+      ).toBeUndefined();
+    });
+
+    it('should read a symbol type through its dot path', () => {
+      const key: SettingsControlKey = `enabledSymbolTypes.${SymbolType.Tag}`;
+      config.enabledSymbolTypes[SymbolType.Tag] = false;
+
+      expect(config.readControlValue(key)).toBe(false);
+    });
+  });
+
+  describe('writeControlValue', () => {
+    let config: SwitcherPlusSettings;
+
+    beforeEach(() => {
+      config = new SwitcherPlusSettings(null);
+    });
+
+    it('should write a top level key through its accessor', () => {
+      config.writeControlValue('symbolListCommand', '$$');
+
+      expect(config.symbolListCommand).toBe('$$');
+    });
+
+    it('should write a nested key using a dot path', () => {
+      config.writeControlValue('mobileLauncher.isEnabled', false);
+
+      expect(config.mobileLauncher.isEnabled).toBe(false);
+    });
+
+    it('should write a deeply nested key using a dot path', () => {
+      const key = 'matchPriorityAdjustments.adjustments.isBookmarked.value';
+
+      config.writeControlValue(key, 0.25);
+
+      expect(config.matchPriorityAdjustments.adjustments.isBookmarked.value).toBe(0.25);
+    });
+
+    it('should not throw when an intermediate segment is missing', () => {
+      expect(() => {
+        config.writeControlValue('mobileLauncher.doesNotExist.value', 1);
+      }).not.toThrow();
+    });
+
+    it('should not throw when the path breaks before the final segment', () => {
+      expect(() => {
+        config.writeControlValue('mobileLauncher.doesNotExist.deeper.value', 1);
+      }).not.toThrow();
+    });
+
+    it('should write a symbol type through its dot path', () => {
+      const key: SettingsControlKey = `enabledSymbolTypes.${SymbolType.Callout}`;
+
+      config.writeControlValue(key, false);
+
+      expect(config.enabledSymbolTypes[SymbolType.Callout]).toBe(false);
+    });
+  });
+  describe('nested control key dot paths', () => {
+    // NESTED_CONTROL_KEYS is the single declaration literal paths NestedControlKey is
+    // derived from. So this test walks exactly what the settings controls bind to.
+    // This catches the case where renaming a field in SettingsData leaves a stale path
+    // that still compiles and reads undefined forever.
+    const { enabledSymbolTypes, matchPriorityAdjustments } =
+      SwitcherPlusSettings.defaults;
+
+    const symbolTypeKeys = Object.keys(enabledSymbolTypes).map(
+      (symbolType) => `enabledSymbolTypes.${symbolType}` as SettingsControlKey,
+    );
+
+    const adjustmentKeys = (['adjustments', 'fileExtAdjustments'] as const).flatMap(
+      (group) =>
+        Object.keys(matchPriorityAdjustments[group]).map(
+          (name) => `matchPriorityAdjustments.${group}.${name}.value`,
+        ),
+    );
+
+    it.each([...NESTED_CONTROL_KEYS, ...symbolTypeKeys, ...adjustmentKeys])(
+      'should resolve %s to a stored value',
+      (key) => {
+        const config = new SwitcherPlusSettings(null);
+
+        const value = config.readControlValue(key);
+
+        expect(value).toBeDefined();
+      },
+    );
+
+    // The @ts-expect-error is the assertion: it stops compiling if either ever becomes
+    // a valid control key.
+    it('should not accept a container label symbol type as a control key', () => {
+      const config = new SwitcherPlusSettings(null);
+      // @ts-expect-error -- CanvasNode is a container label, it has no stored key
+      const canvasNodeKey: SettingsControlKey = `enabledSymbolTypes.${SymbolType.CanvasNode}`;
+      // @ts-expect-error -- BaseView is a container label, it has no stored key
+      const baseViewKey: SettingsControlKey = `enabledSymbolTypes.${SymbolType.BaseView}`;
+
+      expect(config.readControlValue(canvasNodeKey)).toBeUndefined();
+      expect(config.readControlValue(baseViewKey)).toBeUndefined();
     });
   });
 });

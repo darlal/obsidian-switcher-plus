@@ -970,9 +970,12 @@ describe('symbolHandler', () => {
     it('should not return suggestions for a symbol type that is disabled', async () => {
       const inputInfo = new InputInfo(symbolTrigger);
 
-      const isSymbolTypeEnabledSpy = jest
-        .spyOn(settings, 'isSymbolTypeEnabled')
-        .mockImplementation((type) => (type === SymbolType.Tag ? false : true));
+      const enabledSymbolTypesSpy = jest
+        .spyOn(settings, 'enabledSymbolTypes', 'get')
+        .mockReturnValue({
+          ...SwitcherPlusSettings.defaults.enabledSymbolTypes,
+          [SymbolType.Tag]: false,
+        });
 
       mockMetadataCache.getFileCache.mockReturnValueOnce({ tags: getTags() });
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
@@ -985,7 +988,7 @@ describe('symbolHandler', () => {
         mockRootSplitLeaf.view.file,
       );
 
-      isSymbolTypeEnabledSpy.mockRestore();
+      enabledSymbolTypesSpy.mockRestore();
     });
 
     it('should include frontmatter links in symbol list', async () => {
@@ -1097,9 +1100,12 @@ describe('symbolHandler', () => {
     it('should not return suggestions for links if the Link symbol type is disabled', async () => {
       const inputInfo = new InputInfo(symbolTrigger);
 
-      const isSymbolTypeEnabledSpy = jest
-        .spyOn(settings, 'isSymbolTypeEnabled')
-        .mockImplementation((type) => (type === SymbolType.Link ? false : true));
+      const enabledSymbolTypesSpy = jest
+        .spyOn(settings, 'enabledSymbolTypes', 'get')
+        .mockReturnValue({
+          ...SwitcherPlusSettings.defaults.enabledSymbolTypes,
+          [SymbolType.Link]: false,
+        });
 
       mockMetadataCache.getFileCache.mockReturnValueOnce({ links: getLinks() });
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
@@ -1112,7 +1118,7 @@ describe('symbolHandler', () => {
         mockRootSplitLeaf.view.file,
       );
 
-      isSymbolTypeEnabledSpy.mockRestore();
+      enabledSymbolTypesSpy.mockRestore();
     });
 
     it('should not return suggestions for a sub-link type that is disabled', async () => {
@@ -3695,9 +3701,12 @@ describe('symbolHandler', () => {
       metadata.tags = [];
       mockMetadataCache.getFileCache.mockReturnValue(metadata);
 
-      const isSymbolTypeEnabledSpy = jest
-        .spyOn(settings, 'isSymbolTypeEnabled')
-        .mockImplementation((type) => (type === SymbolType.Tag ? false : true));
+      const enabledSymbolTypesSpy = jest
+        .spyOn(settings, 'enabledSymbolTypes', 'get')
+        .mockReturnValue({
+          ...SwitcherPlusSettings.defaults.enabledSymbolTypes,
+          [SymbolType.Tag]: false,
+        });
 
       const sourceInfo: SourceInfo = {
         file: mockFile,
@@ -3717,7 +3726,7 @@ describe('symbolHandler', () => {
       const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
       expect(tagSymbols.length).toBe(0);
 
-      isSymbolTypeEnabledSpy.mockRestore();
+      enabledSymbolTypesSpy.mockRestore();
     });
 
     it('should include both inline and frontmatter tags when they are different', async () => {

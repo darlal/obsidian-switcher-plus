@@ -287,3 +287,10 @@
 
 /* Prompt instructions element for mode triggers */
 .qsp-prompt-instructions-modes {}
+
+/* Error message displayed in the list item entry modal */
+.qsp-list-entry-error {}
+
+/* Descriptive text displayed in the list item entry modal */
+.qsp-list-entry-description {}
+

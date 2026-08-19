@@ -1,6 +1,13 @@
-import { SwitcherPlusSettings } from './switcherPlusSettings';
+import { SettingsControlKey, SwitcherPlusSettings } from './switcherPlusSettings';
 import { SwitcherPlusSettingTab } from './switcherPlusSettingTab';
-import { App, Modal, Setting, SettingGroup, SliderComponent } from 'obsidian';
+import {
+  App,
+  Modal,
+  Setting,
+  SettingDefinitionItem,
+  SettingGroup,
+  SliderComponent,
+} from 'obsidian';
 import { WritableKeysWithValueOfType } from 'src/types';
 import { WritableKeys } from 'ts-essentials';
 
@@ -22,6 +29,14 @@ export abstract class SettingsTabSection {
   ) {}
 
   abstract display(containerEl: HTMLElement): void;
+
+  /**
+   * Sections override this to define declarative setting.
+   * @returns SettingDefinitionItem<SettingsControlKey>[]
+   */
+  getSettingDefinitions(): SettingDefinitionItem<SettingsControlKey>[] {
+    return [];
+  }
 
   /**
    * Creates a new Setting with the given name and description.

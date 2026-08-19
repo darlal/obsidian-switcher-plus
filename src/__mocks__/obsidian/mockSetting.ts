@@ -6,6 +6,7 @@ import {
   ExtraButtonComponent,
   PluginSettingTab,
   Setting,
+  SettingDefinitionItem,
   SliderComponent,
   TextAreaComponent,
   TextComponent,
@@ -16,6 +17,7 @@ export class MockPluginSettingTab implements PluginSettingTab {
   app: App;
   containerEl: HTMLElement;
   icon: string = '';
+  settingItems: SettingDefinitionItem[] = [];
 
   constructor(app: App) {
     this.containerEl = mock<HTMLElement>();
@@ -27,6 +29,21 @@ export class MockPluginSettingTab implements PluginSettingTab {
   }
   display() {
     throw new Error('Method not implemented.');
+  }
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return [];
+  }
+  update(): void {
+    this.settingItems = this.getSettingDefinitions();
+  }
+  refreshDomState(): void {
+    // no-op in tests; the real implementation only touches CSS state
+  }
+  getControlValue(_key: string): unknown {
+    return undefined;
+  }
+  setControlValue(_key: string, _value: unknown): void {
+    // no-op; SwitcherPlusSettingTab overrides this
   }
 }
 
@@ -423,6 +440,9 @@ export class MockSliderComponent implements SliderComponent {
   }
   setDynamicTooltip(): this {
     return this;
+  }
+  setDisplayFormat(format: (value: number) => string): this {
+    throw new Error('Method not implemented.');
   }
   showTooltip(): void {
     throw new Error('Method not implemented.');

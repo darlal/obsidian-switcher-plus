@@ -7,6 +7,7 @@ import {
 import { MAX_STORED_RECENT_COMMANDS } from 'src/Handlers';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { App, Setting } from 'obsidian';
+import { findSettingByKey } from '@fixtures';
 
 describe('commandListSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
@@ -93,5 +94,63 @@ describe('commandListSettingsTabSection', () => {
     );
 
     addSliderSettingSpy.mockClear();
+  });
+
+  describe('getSettingDefinitions', () => {
+    it('should return a single page for the section', () => {
+      const [page] = sut.getSettingDefinitions();
+
+      expect(page).toEqual(
+        expect.objectContaining({ type: 'page', name: 'Command Mode' }),
+      );
+    });
+
+    it('should define the mode trigger setting', () => {
+      const definitions = sut.getSettingDefinitions();
+
+      expect(findSettingByKey(definitions, 'commandListCommand')).toEqual({
+        name: 'Command list mode trigger',
+        desc: expect.any(String),
+        control: {
+          type: 'text',
+          key: 'commandListCommand',
+          placeholder: config.commandListPlaceholderText,
+        },
+      });
+    });
+
+    it('should define the max recent commands slider with the stored command limit', () => {
+      const definitions = sut.getSettingDefinitions();
+
+      expect(findSettingByKey(definitions, 'maxRecentCommands')).toEqual({
+        name: 'Max recent commands',
+        desc: expect.any(String),
+        control: {
+          type: 'slider',
+          key: 'maxRecentCommands',
+          min: 0,
+          max: MAX_STORED_RECENT_COMMANDS,
+          step: 1,
+          defaultValue: 25,
+        },
+      });
+    });
+
+    it('should define the recent command display order dropdown', () => {
+      const definitions = sut.getSettingDefinitions();
+
+      expect(findSettingByKey(definitions, 'recentCommandDisplayOrder')).toEqual({
+        name: 'Recent commands display order',
+        desc: expect.any(String),
+        control: {
+          type: 'dropdown',
+          key: 'recentCommandDisplayOrder',
+          options: {
+            desc: 'Most recent first (descending)',
+            asc: 'Most recent last (ascending)',
+          },
+        },
+      });
+    });
   });
 });
