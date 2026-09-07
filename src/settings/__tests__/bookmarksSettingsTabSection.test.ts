@@ -1,5 +1,4 @@
 import {
-  SettingsTabSection,
   BookmarksSettingsTabSection,
   SwitcherPlusSettings,
   SwitcherPlusSettingTab,
@@ -22,39 +21,6 @@ describe('bookmarksSettingsTabSection', () => {
     config = new SwitcherPlusSettings(null);
 
     sut = new BookmarksSettingsTabSection(mockApp, mockPluginSettingTab, config);
-  });
-
-  it('should display a header for the section', () => {
-    const addSectionTitleSpy = jest.spyOn(
-      SettingsTabSection.prototype,
-      'addSectionTitle',
-    );
-
-    sut.display(mockContainerEl);
-
-    expect(addSectionTitleSpy).toHaveBeenCalledWith(
-      mockContainerEl,
-      'Bookmarks List Mode',
-    );
-
-    addSectionTitleSpy.mockRestore();
-  });
-
-  it('should show the mode trigger setting', () => {
-    const addTextSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'addTextSetting');
-
-    sut.display(mockContainerEl);
-
-    expect(addTextSettingSpy).toHaveBeenCalledWith(
-      mockContainerEl,
-      'Bookmarks list mode trigger',
-      expect.any(String),
-      config.bookmarksListCommand,
-      'bookmarksListCommand',
-      config.bookmarksListPlaceholderText,
-    );
-
-    addTextSettingSpy.mockRestore();
   });
 
   describe('getSettingDefinitions', () => {

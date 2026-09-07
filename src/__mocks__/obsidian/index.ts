@@ -23,17 +23,7 @@ import {
   resolveSubpath,
   stripHeadingForLink,
 } from 'obsidian';
-import {
-  MockSetting,
-  MockSettingGroup,
-  MockTextComponent,
-  MockToggleComponent,
-  MockTextAreaComponent,
-  MockDropdownComponent,
-  MockPluginSettingTab,
-  MockExtraButtonComponent,
-  MockSliderComponent,
-} from './mockSetting';
+import { MockSetting, MockPluginSettingTab } from './mockSetting';
 
 const chance = new Chance();
 
@@ -150,11 +140,4 @@ export {
   mockMarkdownRenderer as MarkdownRenderer,
   mockComponent as Component,
   MockSetting as Setting,
-  MockSettingGroup as SettingGroup,
-  MockTextComponent as TextComponent,
-  MockToggleComponent as ToggleComponent,
-  MockTextAreaComponent as TextAreaComponent,
-  MockDropdownComponent as DropdownComponent,
-  MockExtraButtonComponent as ExtraButtonComponent,
-  MockSliderComponent as SliderComponent,
 };

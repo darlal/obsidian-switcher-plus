@@ -1,4 +1,3 @@
-import { SwitcherPlusSettings } from 'src/settings';
 import { RelationType } from 'src/types';
 import { SettingsTabSection } from './settingsTabSection';
 import { SettingDefinitionList, SettingDefinitionPage } from 'obsidian';
@@ -6,75 +5,6 @@ import { SettingsControlKey } from './switcherPlusSettings';
 import { openListEntryModal } from './listEntryModal';
 
 export class RelatedItemsSettingsTabSection extends SettingsTabSection {
-  display(containerEl: HTMLElement): void {
-    const { config } = this;
-
-    this.addSectionTitle(containerEl, 'Related Items List Mode');
-
-    this.addTextSetting(
-      containerEl,
-      'Related Items list mode trigger',
-      'Character that will trigger related items list mode in the switcher. This triggers a display of Related Items for the source file of the currently selected (highlighted) suggestion in the switcher. If there is not a suggestion, display results for the active editor.',
-      config.relatedItemsListCommand,
-      'relatedItemsListCommand',
-      config.relatedItemsListPlaceholderText,
-    );
-
-    this.addTextSetting(
-      containerEl,
-      'Related Items list mode trigger - Active editor only',
-      'Character that will trigger related items list mode in the switcher. This always triggers a display of Related Items for the active editor only.',
-      config.relatedItemsListActiveEditorCommand,
-      'relatedItemsListActiveEditorCommand',
-      config.relatedItemsListActiveEditorCommand,
-    );
-
-    this.showEnabledRelatedItems(containerEl, config);
-
-    this.addToggleSetting(
-      containerEl,
-      'Exclude open files',
-      'Enable, related files which are already open will not be displayed in the list. Disabled, All related files will be displayed in the list.',
-      config.excludeOpenRelatedFiles,
-      'excludeOpenRelatedFiles',
-    );
-  }
-
-  showEnabledRelatedItems(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
-    const relationTypes = Object.values(RelationType).sort() as string[];
-    const relationTypesStr = relationTypes.join(', ');
-    const desc = `The types of related items to show in the list. Add one type per line. Available types: ${relationTypesStr}`;
-
-    this.createSetting(containerEl, 'Show related item types', desc).addTextArea(
-      (textArea) => {
-        textArea.setValue(config.enabledRelatedItems.join('\n'));
-
-        textArea.inputEl.addEventListener('focusout', () => {
-          const values = textArea
-            .getValue()
-            .split('\n')
-            .map((v) => v.trim())
-            .filter((v) => v.length > 0);
-
-          const invalidValues = [...new Set(values)].filter(
-            (v) => !relationTypes.includes(v),
-          );
-
-          if (invalidValues?.length) {
-            this.showErrorPopup(
-              'Invalid related item type',
-              `Changes not saved. Available relation types are: ${relationTypesStr}. The following types are invalid:`,
-              invalidValues.map((v) => [{ text: v }]),
-            );
-          } else {
-            config.enabledRelatedItems = values as RelationType[];
-            config.save();
-          }
-        });
-      },
-    );
-  }
-
   /**
    * Builds the enabled relation types list. Rows are read only: the value space
    * is a closed enum, so correcting an entry means picking a different one.

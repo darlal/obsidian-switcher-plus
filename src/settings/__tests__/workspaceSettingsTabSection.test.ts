@@ -1,5 +1,4 @@
 import {
-  SettingsTabSection,
   SwitcherPlusSettings,
   SwitcherPlusSettingTab,
   WorkspaceSettingsTabSection,
@@ -22,39 +21,6 @@ describe('WorkspaceSettingsTabSection', () => {
     config = new SwitcherPlusSettings(null);
 
     sut = new WorkspaceSettingsTabSection(mockApp, mockPluginSettingTab, config);
-  });
-
-  it('should display a header for the section', () => {
-    const addSectionTitleSpy = jest.spyOn(
-      SettingsTabSection.prototype,
-      'addSectionTitle',
-    );
-
-    sut.display(mockContainerEl);
-
-    expect(addSectionTitleSpy).toHaveBeenCalledWith(
-      mockContainerEl,
-      'Workspace List Mode',
-    );
-
-    addSectionTitleSpy.mockRestore();
-  });
-
-  it('should show the mode trigger setting', () => {
-    const addTextSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'addTextSetting');
-
-    sut.display(mockContainerEl);
-
-    expect(addTextSettingSpy).toHaveBeenCalledWith(
-      mockContainerEl,
-      'Workspace list mode trigger',
-      expect.any(String),
-      config.workspaceListCommand,
-      'workspaceListCommand',
-      config.workspaceListPlaceholderText,
-    );
-
-    addTextSettingSpy.mockRestore();
   });
 
   describe('getSettingDefinitions', () => {

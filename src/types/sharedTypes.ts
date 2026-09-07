@@ -17,19 +17,12 @@ import {
   Hotkey,
 } from 'obsidian';
 import type { PaneType, SplitDirection, SuggestModal } from 'obsidian';
-import { PickKeys, WritableKeys } from 'ts-essentials';
 import { AllCanvasNodeData } from 'obsidian/canvas';
 
 export type SessionOpts = {
   mode?: Mode;
   useActiveEditorAsSource?: boolean;
 };
-
-// Pick from T the keys that are writable and whose value is of type K
-export type WritableKeysWithValueOfType<T extends object, K> = PickKeys<
-  Pick<T, WritableKeys<T>>,
-  K
->;
 
 export enum PathDisplayFormat {
   None,

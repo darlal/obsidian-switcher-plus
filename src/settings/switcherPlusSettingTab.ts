@@ -77,31 +77,4 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
       logError('Switcher++: Error saving changes to settings. ', reason);
     });
   }
-
-  display(): void {
-    const { containerEl } = this;
-    const deprecatedTabSections = [
-      GeneralSettingsTabSection,
-      SymbolSettingsTabSection,
-      HeadingsSettingsTabSection,
-      EditorSettingsTabSection,
-      RelatedItemsSettingsTabSection,
-      BookmarksSettingsTabSection,
-      CommandListSettingsTabSection,
-      WorkspaceSettingsTabSection,
-      VaultListSettingsTabSection,
-    ];
-
-    containerEl.empty();
-
-    deprecatedTabSections.forEach((tabSectionClass) => {
-      this.displayTabSection(tabSectionClass);
-    });
-  }
-
-  displayTabSection(tabSectionClass: ConstructableSettingsTabSection): void {
-    const { app, config, containerEl } = this;
-    const tabSection = new tabSectionClass(app, this, config);
-    tabSection.display(containerEl);
-  }
 }

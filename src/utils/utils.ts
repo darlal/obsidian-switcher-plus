@@ -182,9 +182,8 @@ export function filenameFromPath(path: string): string {
  * Shows an Obsidian Notice toast prefixed with "Switcher++:" and logs the
  * details to console.error. Use for runtime failures that the user initiated
  * and should be told about (e.g. navigation or IO operations that failed
- * silently). For settings input-validation errors with structured per-item
- * details, use `SettingsTabSection.showErrorPopup` instead. For background or
- * per-item failures where a toast would spam, use {@link logError}.
+ * silently). For background or per-item failures where a toast would spam,
+ * use {@link logError}.
  *
  * @param userMessage - body of the toast; will be prefixed with "Switcher++: "
  * @param err - optional value to pass alongside the message to console.error

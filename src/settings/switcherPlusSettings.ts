@@ -551,10 +551,6 @@ export class SwitcherPlusSettings {
     this.data.includeSidePanelViewTypes = [...new Set(value)];
   }
 
-  get includeSidePanelViewTypesPlaceholder(): string {
-    return SwitcherPlusSettings.defaults.includeSidePanelViewTypes.join('\n');
-  }
-
   get selectNearestHeading(): boolean {
     return this.data.selectNearestHeading;
   }

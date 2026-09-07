@@ -434,9 +434,6 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.bookmarksListPlaceholderText).toBe(defaults.bookmarksListCommand);
     expect(sut.commandListPlaceholderText).toBe(defaults.commandListCommand);
     expect(sut.relatedItemsListPlaceholderText).toBe(defaults.relatedItemsListCommand);
-    expect(sut.includeSidePanelViewTypesPlaceholder).toBe(
-      defaults.includeSidePanelViewTypes.join('\n'),
-    );
   });
 
   it('should save modified settings', async () => {
@@ -523,9 +520,6 @@ describe('SwitcherPlusSettings', () => {
     expect(sut.symbolListPlaceholderText).toBe(defaults.symbolListCommand);
     expect(sut.workspaceListPlaceholderText).toBe(defaults.workspaceListCommand);
     expect(sut.headingsListPlaceholderText).toBe(defaults.headingsListCommand);
-    expect(sut.includeSidePanelViewTypesPlaceholder).toBe(
-      defaults.includeSidePanelViewTypes.join('\n'),
-    );
 
     expect(mockPlugin.loadData).toHaveBeenCalled();
   });

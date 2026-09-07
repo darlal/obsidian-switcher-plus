@@ -1,50 +1,9 @@
-import { SettingsControlKey, SwitcherPlusSettings } from './switcherPlusSettings';
+import { SettingsControlKey } from './switcherPlusSettings';
 import { SettingsTabSection } from './settingsTabSection';
 import { SettingDefinitionList, SettingDefinitionPage } from 'obsidian';
 import { openListEntryModal, validateNewEntry } from './listEntryModal';
 
 export class EditorSettingsTabSection extends SettingsTabSection {
-  display(containerEl: HTMLElement): void {
-    const { config } = this;
-
-    this.addSectionTitle(containerEl, 'Editor List Mode');
-
-    this.addTextSetting(
-      containerEl,
-      'Editor list mode trigger',
-      'Character that will trigger editor list mode in the switcher',
-      config.editorListCommand,
-      'editorListCommand',
-      config.editorListPlaceholderText,
-    );
-
-    this.showIncludeSidePanelViews(containerEl, config);
-
-    this.addToggleSetting(
-      containerEl,
-      'Order default editor list by most recently accessed',
-      'When there is no search term, order the list of editors by most recent access time.',
-      config.orderEditorListByAccessTime,
-      'orderEditorListByAccessTime',
-    );
-  }
-
-  showIncludeSidePanelViews(
-    containerEl: HTMLElement,
-    config: SwitcherPlusSettings,
-  ): void {
-    const desc = this.getSidePanelViewsDesc();
-
-    this.addTextAreaSetting(
-      containerEl,
-      'Include side panel views',
-      desc,
-      config.includeSidePanelViewTypes.join('\n'),
-      'includeSidePanelViewTypes',
-      config.includeSidePanelViewTypesPlaceholder,
-    );
-  }
-
   /**
    * Every view type currently registered with the app. Read from the in-memory
    * view registry on each call, which keeps getSettingDefinitions() cheap enough
@@ -53,18 +12,6 @@ export class EditorSettingsTabSection extends SettingsTabSection {
    */
   private getSidePanelViewTypes(): string[] {
     return Object.keys(this.app.viewRegistry.viewByType).sort();
-  }
-
-  /**
-   * Builds the side panel views description for the imperative display() path,
-   * which still renders this setting as a textarea and so keeps the per line
-   * instruction.
-   * @returns string
-   */
-  private getSidePanelViewsDesc(): string {
-    const viewsListing = this.getSidePanelViewTypes().join(' ');
-
-    return `When in Editor list mode, show the following view types from the side panels. Add one view type per line. Available view types: ${viewsListing}`;
   }
 
   /**
