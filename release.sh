@@ -45,6 +45,9 @@ then
   jq ". += {\"${NEW_VERSION}\": \"${MINIMUM_OBSIDIAN_VERSION}\"}" versions.json > "$TEMP_FILE" || exit 1
   mv "$TEMP_FILE" versions.json
 
+  echo "Updating package-lock.json"
+  npm install --package-lock-only || exit 1
+
   read -p "Create git commit, tag, and push? [y/N] " -n 1 -r
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]

@@ -5,9 +5,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-env:
-  BUILD: production
-
 jobs:
   build_test:
     name: Build and test
