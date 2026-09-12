@@ -7,10 +7,10 @@ export class EditorSettingsTabSection extends SettingsTabSection {
 
     this.addSectionTitle(containerEl, 'Editor List Mode');
 
-    this.addTextSetting(
+    this.addTriggerSetting(
       containerEl,
       'Editor list mode trigger',
-      'Character that will trigger editor list mode in the switcher',
+      'Trigger text that will activate editor list mode in the switcher',
       config.editorListCommand,
       'editorListCommand',
       config.editorListPlaceholderText,

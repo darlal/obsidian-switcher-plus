@@ -13,11 +13,11 @@ import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 import { MetadataCache, sortSearchResults, TFile, WorkspaceLeaf } from 'obsidian';
 import { Handler } from './handler';
 import { Searcher } from 'src/search';
-import { getTFileFromLeaf } from 'src/utils';
+import { getFirstCommandString, getTFileFromLeaf } from 'src/utils';
 
 export class EditorHandler extends Handler<EditorSuggestion> {
   getCommandString(_sessionOpts?: SessionOpts): string {
-    return this.settings?.editorListCommand;
+    return getFirstCommandString(this.settings?.editorListCommand);
   }
 
   validateCommand(

@@ -146,10 +146,15 @@ export class HandlerRegistry {
    * @param def - The command definition to process.
    */
   private mapCommandStrToMode(def: CommandDefinition): void {
-    const cmdStr = def.parserCommand?.getCommandStr();
-    if (cmdStr?.length) {
-      this.cmdStrToMode.set(cmdStr, def.mode);
-    }
+    const cmdStrs = def.parserCommand?.getCommandStrs?.() ?? [
+      def.parserCommand?.getCommandStr(),
+    ];
+
+    cmdStrs.forEach((cmdStr) => {
+      if (cmdStr?.length) {
+        this.cmdStrToMode.set(cmdStr, def.mode);
+      }
+    });
   }
 
   /**

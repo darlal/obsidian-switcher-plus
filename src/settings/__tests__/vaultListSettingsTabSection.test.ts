@@ -43,11 +43,14 @@ describe('vaultListSettingsTabSection', () => {
   });
 
   it('should show the mode trigger setting', () => {
-    const addTextSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'addTextSetting');
+    const addTriggerSettingSpy = jest.spyOn(
+      SettingsTabSection.prototype,
+      'addTriggerSetting',
+    );
 
     sut.display(mockContainerEl);
 
-    expect(addTextSettingSpy).toHaveBeenCalledWith(
+    expect(addTriggerSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Vault list mode trigger',
       expect.any(String),
@@ -56,6 +59,6 @@ describe('vaultListSettingsTabSection', () => {
       config.vaultListPlaceholderText,
     );
 
-    addTextSettingSpy.mockRestore();
+    addTriggerSettingSpy.mockRestore();
   });
 });

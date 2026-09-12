@@ -219,6 +219,28 @@ export abstract class SettingsTabSection {
   }
 
   /**
+   * Creates a multiline setting for mode triggers. Each line is one trigger;
+   * existing single-line trigger settings remain valid.
+   */
+  addTriggerSetting(
+    containerEl: HTMLElement | SettingGroup,
+    name: string,
+    desc: string,
+    initialValue: string,
+    configStorageKey: StringTypedConfigKey,
+    placeholderText?: string,
+  ): Setting {
+    return this.addTextAreaSetting(
+      containerEl,
+      name,
+      `${desc}. Enter one trigger per line.`,
+      initialValue,
+      configStorageKey,
+      placeholderText,
+    );
+  }
+
+  /**
    * Add a dropdown list setting
    * Supports both HTMLElement and SettingGroup containers.
    * @param  {HTMLElement | SettingGroup} containerEl

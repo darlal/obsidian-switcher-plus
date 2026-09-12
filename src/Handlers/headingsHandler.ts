@@ -44,6 +44,7 @@ import {
   isTFile,
   isTFolder,
   FrontMatterParser,
+  getFirstCommandString,
   matcherFnForRegExList,
   getTFileFromLeaf,
 } from 'src/utils';
@@ -58,7 +59,7 @@ type SupportedSuggestionTypes =
 
 export class HeadingsHandler extends Handler<SupportedSuggestionTypes> {
   getCommandString(_sessionOpts?: SessionOpts): string {
-    return this.settings?.headingsListCommand;
+    return getFirstCommandString(this.settings?.headingsListCommand);
   }
 
   validateCommand(

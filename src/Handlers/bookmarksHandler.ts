@@ -1,4 +1,4 @@
-import { getInternalEnabledPluginById, isOfType } from 'src/utils';
+import { getFirstCommandString, getInternalEnabledPluginById, isOfType } from 'src/utils';
 import { Searcher } from 'src/search';
 import { InputInfo, ParsedCommand, WorkspaceEnvList } from 'src/switcherPlus';
 import {
@@ -31,7 +31,7 @@ export const BOOKMARKS_PLUGIN_ID = 'bookmarks';
 
 export class BookmarksHandler extends Handler<BookmarksSuggestion> {
   getCommandString(_sessionOpts?: SessionOpts): string {
-    return this.settings?.bookmarksListCommand;
+    return getFirstCommandString(this.settings?.bookmarksListCommand);
   }
 
   validateCommand(

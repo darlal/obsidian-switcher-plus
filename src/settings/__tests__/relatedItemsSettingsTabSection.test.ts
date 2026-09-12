@@ -41,11 +41,14 @@ describe('relatedItemsSettingsTabSection', () => {
   });
 
   it('should show the mode trigger setting', () => {
-    const addTextSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'addTextSetting');
+    const addTriggerSettingSpy = jest.spyOn(
+      SettingsTabSection.prototype,
+      'addTriggerSetting',
+    );
 
     sut.display(mockContainerEl);
 
-    expect(addTextSettingSpy).toHaveBeenCalledWith(
+    expect(addTriggerSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Related Items list mode trigger',
       expect.any(String),
@@ -54,7 +57,7 @@ describe('relatedItemsSettingsTabSection', () => {
       config.relatedItemsListPlaceholderText,
     );
 
-    addTextSettingSpy.mockRestore();
+    addTriggerSettingSpy.mockRestore();
   });
 
   it('should show the excludeOpenRelatedFiles setting', () => {

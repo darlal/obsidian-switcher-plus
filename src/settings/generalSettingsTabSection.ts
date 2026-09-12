@@ -30,7 +30,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
     this.addToggleSetting(
       containerEl,
       'Display mode trigger instructions',
-      'When enabled, the trigger key for each mode will be displayed in the instructions section of the Switcher.',
+      'When enabled, the trigger keys for each mode will be displayed in the instructions section of the Switcher.',
       config.showModeTriggerInstructions,
       'showModeTriggerInstructions',
     );

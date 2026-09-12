@@ -67,11 +67,14 @@ describe('headingsSettingsTabSection', () => {
   });
 
   it('should show the mode trigger setting', () => {
-    const addTextSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'addTextSetting');
+    const addTriggerSettingSpy = jest.spyOn(
+      SettingsTabSection.prototype,
+      'addTriggerSetting',
+    );
 
     sut.display(mockContainerEl);
 
-    expect(addTextSettingSpy).toHaveBeenCalledWith(
+    expect(addTriggerSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Headings list mode trigger',
       expect.any(String),
@@ -80,7 +83,7 @@ describe('headingsSettingsTabSection', () => {
       config.headingsListPlaceholderText,
     );
 
-    addTextSettingSpy.mockRestore();
+    addTriggerSettingSpy.mockRestore();
   });
 
   it('should show the shouldSearchFilenames setting', () => {

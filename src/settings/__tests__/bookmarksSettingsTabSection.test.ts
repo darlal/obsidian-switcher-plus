@@ -40,11 +40,14 @@ describe('bookmarksSettingsTabSection', () => {
   });
 
   it('should show the mode trigger setting', () => {
-    const addTextSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'addTextSetting');
+    const addTriggerSettingSpy = jest.spyOn(
+      SettingsTabSection.prototype,
+      'addTriggerSetting',
+    );
 
     sut.display(mockContainerEl);
 
-    expect(addTextSettingSpy).toHaveBeenCalledWith(
+    expect(addTriggerSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Bookmarks list mode trigger',
       expect.any(String),
@@ -53,6 +56,6 @@ describe('bookmarksSettingsTabSection', () => {
       config.bookmarksListPlaceholderText,
     );
 
-    addTextSettingSpy.mockRestore();
+    addTriggerSettingSpy.mockRestore();
   });
 });

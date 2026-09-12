@@ -6,10 +6,10 @@ export class WorkspaceSettingsTabSection extends SettingsTabSection {
 
     this.addSectionTitle(containerEl, 'Workspace List Mode');
 
-    this.addTextSetting(
+    this.addTriggerSetting(
       containerEl,
       'Workspace list mode trigger',
-      'Character that will trigger workspace list mode in the switcher',
+      'Trigger text that will activate workspace list mode in the switcher',
       config.workspaceListCommand,
       'workspaceListCommand',
       config.workspaceListPlaceholderText,

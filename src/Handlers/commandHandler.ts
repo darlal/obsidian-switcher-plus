@@ -1,4 +1,4 @@
-import { getInternalEnabledPluginById, logError } from 'src/utils';
+import { getFirstCommandString, getInternalEnabledPluginById, logError } from 'src/utils';
 import { Searcher } from 'src/search';
 import { InputInfo, ParsedCommand } from 'src/switcherPlus';
 import { CommandListFacetIds } from 'src/settings';
@@ -26,7 +26,7 @@ export class CommandHandler extends Handler<CommandSuggestion> {
   static recentlyUsedCommandIds: string[] = [];
 
   getCommandString(_sessionOpts?: SessionOpts): string {
-    return this.settings?.commandListCommand;
+    return getFirstCommandString(this.settings?.commandListCommand);
   }
 
   validateCommand(

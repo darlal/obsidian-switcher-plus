@@ -46,6 +46,7 @@ import {
   FrontMatterParser,
   getLinkType,
   isCalloutCache,
+  getFirstCommandString,
   isHeadingCache,
   isTagCache,
   logError,
@@ -84,8 +85,8 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
   getCommandString(sessionOpts?: SessionOpts): string {
     const { settings } = this;
     return sessionOpts?.useActiveEditorAsSource
-      ? settings.symbolListActiveEditorCommand
-      : settings.symbolListCommand;
+      ? getFirstCommandString(settings.symbolListActiveEditorCommand)
+      : getFirstCommandString(settings.symbolListCommand);
   }
 
   validateCommand(

@@ -10,10 +10,10 @@ export class VaultListSettingsTabSection extends SettingsTabSection {
       text: 'Experimental',
     });
 
-    this.addTextSetting(
+    this.addTriggerSetting(
       containerEl,
       'Vault list mode trigger',
-      'Character that will trigger vault list mode in the switcher',
+      'Trigger text that will activate vault list mode in the switcher',
       config.vaultListCommand,
       'vaultListCommand',
       config.vaultListPlaceholderText,

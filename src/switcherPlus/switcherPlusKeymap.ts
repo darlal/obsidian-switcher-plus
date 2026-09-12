@@ -5,6 +5,7 @@ import {
   isHeadingSuggestion,
   isSymbolSuggestion,
   getSystemGlobalSearchInstance,
+  getCommandStrings,
   logWarn,
   notifyError,
 } from 'src/utils';
@@ -785,19 +786,26 @@ export class SwitcherPlusKeymap {
     parentEl: HTMLElement,
     config: SwitcherPlusSettings,
   ): void {
-    // Map mode triggers to labels (purpose)
-    const instructionsByModeTrigger = new Map<string, string>([
-      [config.headingsListCommand, 'heading list'],
-      [config.editorListCommand, 'editor list'],
-      [config.bookmarksListCommand, 'bookmark list'],
-      [config.commandListCommand, 'command list'],
-      [config.workspaceListCommand, 'workspace list'],
-      [config.vaultListCommand, 'vault list'],
-      [config.symbolListActiveEditorCommand, 'symbol list (active editor)'],
-      [config.symbolListCommand, 'symbol list (embedded)'],
-      [config.relatedItemsListActiveEditorCommand, 'related items (active editor)'],
-      [config.relatedItemsListCommand, 'related items (embedded)'],
-    ]);
+    // Map mode triggers to labels (purpose). Each setting may contain one
+    // trigger per line, so render every configured trigger separately.
+    const instructionsByModeTrigger: Array<[string[], string]> = [
+      [getCommandStrings(config.headingsListCommand), 'heading list'],
+      [getCommandStrings(config.editorListCommand), 'editor list'],
+      [getCommandStrings(config.bookmarksListCommand), 'bookmark list'],
+      [getCommandStrings(config.commandListCommand), 'command list'],
+      [getCommandStrings(config.workspaceListCommand), 'workspace list'],
+      [getCommandStrings(config.vaultListCommand), 'vault list'],
+      [
+        getCommandStrings(config.symbolListActiveEditorCommand),
+        'symbol list (active editor)',
+      ],
+      [getCommandStrings(config.symbolListCommand), 'symbol list (embedded)'],
+      [
+        getCommandStrings(config.relatedItemsListActiveEditorCommand),
+        'related items (active editor)',
+      ],
+      [getCommandStrings(config.relatedItemsListCommand), 'related items (embedded)'],
+    ];
 
     const modeInstructionsEl = this.getCustomInstructionsEl('modes', parentEl);
     modeInstructionsEl.detach();
@@ -807,8 +815,10 @@ export class SwitcherPlusKeymap {
     this.createPromptInstructionCommandEl(modeInstructionsEl, 'mode triggers |');
 
     // Render each item
-    instructionsByModeTrigger.forEach((purpose, modeTrigger) => {
-      this.createPromptInstructionCommandEl(modeInstructionsEl, modeTrigger, purpose);
+    instructionsByModeTrigger.forEach(([modeTriggers, purpose]) => {
+      modeTriggers.forEach((modeTrigger) => {
+        this.createPromptInstructionCommandEl(modeInstructionsEl, modeTrigger, purpose);
+      });
     });
   }
 

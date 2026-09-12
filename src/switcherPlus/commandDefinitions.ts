@@ -13,6 +13,7 @@ import {
   WorkspaceHandler,
 } from 'src/Handlers';
 import { AnySuggestion, Mode, SuggestionType } from 'src/types';
+import { getCommandStrings, getFirstCommandString } from 'src/utils';
 
 /**
  * A type alias for the constructor of a class that implements the {@link Handler} interface.
@@ -42,6 +43,12 @@ export interface ParserCommand {
    * This is a function to allow the command string to be dynamically configured from settings.
    */
   getCommandStr: () => string;
+
+  /**
+   * Returns all command strings that trigger this command. When omitted, the
+   * parser falls back to the single string returned by getCommandStr.
+   */
+  getCommandStrs?: () => string[];
 
   /**
    * If true, the command will use the active editor as its source, instead of requiring
@@ -124,7 +131,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.EditorList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.editorListCommand,
+        getCommandStr: () => getFirstCommandString(config.editorListCommand),
+        getCommandStrs: () => getCommandStrings(config.editorListCommand),
       },
     },
     {
@@ -136,7 +144,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.SymbolList],
       parserCommand: {
         type: 'sourced',
-        getCommandStr: () => config.symbolListCommand,
+        getCommandStr: () => getFirstCommandString(config.symbolListCommand),
+        getCommandStrs: () => getCommandStrings(config.symbolListCommand),
       },
     },
     {
@@ -147,7 +156,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       handlerClass: SymbolHandler,
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.symbolListActiveEditorCommand,
+        getCommandStr: () => getFirstCommandString(config.symbolListActiveEditorCommand),
+        getCommandStrs: () => getCommandStrings(config.symbolListActiveEditorCommand),
         useActiveEditorAsSource: true,
       },
     },
@@ -160,7 +170,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.WorkspaceList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.workspaceListCommand,
+        getCommandStr: () => getFirstCommandString(config.workspaceListCommand),
+        getCommandStrs: () => getCommandStrings(config.workspaceListCommand),
       },
     },
     {
@@ -172,7 +183,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.HeadingsList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.headingsListCommand,
+        getCommandStr: () => getFirstCommandString(config.headingsListCommand),
+        getCommandStrs: () => getCommandStrings(config.headingsListCommand),
       },
     },
     {
@@ -186,7 +198,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.Bookmark],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.bookmarksListCommand,
+        getCommandStr: () => getFirstCommandString(config.bookmarksListCommand),
+        getCommandStrs: () => getCommandStrings(config.bookmarksListCommand),
       },
     },
     {
@@ -198,7 +211,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.CommandList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.commandListCommand,
+        getCommandStr: () => getFirstCommandString(config.commandListCommand),
+        getCommandStrs: () => getCommandStrings(config.commandListCommand),
       },
     },
     {
@@ -210,7 +224,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.RelatedItemsList],
       parserCommand: {
         type: 'sourced',
-        getCommandStr: () => config.relatedItemsListCommand,
+        getCommandStr: () => getFirstCommandString(config.relatedItemsListCommand),
+        getCommandStrs: () => getCommandStrings(config.relatedItemsListCommand),
       },
     },
     {
@@ -221,7 +236,10 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       handlerClass: RelatedItemsHandler,
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.relatedItemsListActiveEditorCommand,
+        getCommandStr: () =>
+          getFirstCommandString(config.relatedItemsListActiveEditorCommand),
+        getCommandStrs: () =>
+          getCommandStrings(config.relatedItemsListActiveEditorCommand),
         useActiveEditorAsSource: true,
       },
     },
@@ -234,7 +252,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.VaultList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.vaultListCommand,
+        getCommandStr: () => getFirstCommandString(config.vaultListCommand),
+        getCommandStrs: () => getCommandStrings(config.vaultListCommand),
       },
     },
   ];

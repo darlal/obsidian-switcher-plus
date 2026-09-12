@@ -9,10 +9,10 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
 
     this.addSectionTitle(containerEl, 'Headings List Mode');
 
-    this.addTextSetting(
+    this.addTriggerSetting(
       containerEl,
       'Headings list mode trigger',
-      'Character that will trigger headings list mode in the switcher',
+      'Trigger text that will activate headings list mode in the switcher',
       config.headingsListCommand,
       'headingsListCommand',
       config.headingsListPlaceholderText,

@@ -55,14 +55,14 @@ describe('symbolSettingsTabSection', () => {
     });
 
     it('should show the mode trigger setting', () => {
-      const addTextSettingSpy = jest.spyOn(
+      const addTriggerSettingSpy = jest.spyOn(
         SettingsTabSection.prototype,
-        'addTextSetting',
+        'addTriggerSetting',
       );
 
       sut.display(mockContainerEl);
 
-      expect(addTextSettingSpy).toHaveBeenCalledWith(
+      expect(addTriggerSettingSpy).toHaveBeenCalledWith(
         mockContainerEl,
         'Symbol list mode trigger',
         expect.any(String),
@@ -71,7 +71,7 @@ describe('symbolSettingsTabSection', () => {
         config.symbolListPlaceholderText,
       );
 
-      addTextSettingSpy.mockRestore();
+      addTriggerSettingSpy.mockRestore();
     });
 
     it('should show the symbolsInLineOrder setting', () => {

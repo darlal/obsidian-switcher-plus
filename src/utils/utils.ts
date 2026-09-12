@@ -137,6 +137,29 @@ export function getModeNames(): Array<keyof typeof Mode> {
 }
 
 /**
+ * Splits a mode trigger setting into its configured trigger strings.
+ *
+ * A trigger setting may contain one trigger (the legacy format) or one trigger
+ * per line. Whitespace within a trigger is significant because some built-in
+ * defaults intentionally end with a space.
+ */
+export function getCommandStrings(command: unknown): string[] {
+  if (typeof command !== 'string') {
+    return [];
+  }
+
+  return Array.from(new Set(command.split(/\r?\n/).filter(Boolean)));
+}
+
+/**
+ * Returns the first configured trigger for code paths that need one canonical
+ * trigger to launch a mode programmatically.
+ */
+export function getFirstCommandString(command: unknown): string {
+  return getCommandStrings(command)[0] ?? '';
+}
+
+/**
  * Returns an array of Modes that operate on specific, named source files, such
  * as Symbol/RelatedItems modes
  *

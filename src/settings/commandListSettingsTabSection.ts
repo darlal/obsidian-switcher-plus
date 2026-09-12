@@ -8,10 +8,10 @@ export class CommandListSettingsTabSection extends SettingsTabSection {
 
     this.addSectionTitle(containerEl, 'Command List Mode');
 
-    this.addTextSetting(
+    this.addTriggerSetting(
       containerEl,
       'Command list mode trigger',
-      'Character that will trigger command list mode in the switcher',
+      'Trigger text that will activate command list mode in the switcher',
       config.commandListCommand,
       'commandListCommand',
       config.commandListPlaceholderText,

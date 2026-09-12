@@ -6,10 +6,10 @@ export class BookmarksSettingsTabSection extends SettingsTabSection {
 
     this.addSectionTitle(containerEl, 'Bookmarks List Mode');
 
-    this.addTextSetting(
+    this.addTriggerSetting(
       containerEl,
       'Bookmarks list mode trigger',
-      'Character that will trigger bookmarks list mode in the switcher',
+      'Trigger text that will activate bookmarks list mode in the switcher',
       config.bookmarksListCommand,
       'bookmarksListCommand',
       config.bookmarksListPlaceholderText,

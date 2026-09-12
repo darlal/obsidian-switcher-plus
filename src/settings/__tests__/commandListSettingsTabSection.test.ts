@@ -46,11 +46,14 @@ describe('commandListSettingsTabSection', () => {
   });
 
   it('should show the mode trigger setting', () => {
-    const addTextSettingSpy = jest.spyOn(SettingsTabSection.prototype, 'addTextSetting');
+    const addTriggerSettingSpy = jest.spyOn(
+      SettingsTabSection.prototype,
+      'addTriggerSetting',
+    );
 
     sut.display(mockContainerEl);
 
-    expect(addTextSettingSpy).toHaveBeenCalledWith(
+    expect(addTriggerSettingSpy).toHaveBeenCalledWith(
       mockContainerEl,
       'Command list mode trigger',
       expect.any(String),
@@ -59,7 +62,7 @@ describe('commandListSettingsTabSection', () => {
       config.commandListPlaceholderText,
     );
 
-    addTextSettingSpy.mockRestore();
+    addTriggerSettingSpy.mockRestore();
   });
 
   it('should show the maxRecentCommands setting', () => {
