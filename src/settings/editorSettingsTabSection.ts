@@ -72,17 +72,14 @@ export class EditorSettingsTabSection extends SettingsTabSection {
       {
         type: 'page',
         name: 'Editor Mode',
-        displayValue: () => config.editorListCommand,
+        displayValue: () => this.getModeDisplayValue('editorListCommand'),
         items: [
-          {
-            name: 'Editor list mode trigger',
-            desc: 'Character that will trigger editor list mode in the switcher',
-            control: {
-              type: 'text',
-              key: 'editorListCommand',
-              placeholder: config.editorListPlaceholderText,
-            },
-          },
+          ...this.createTriggerSettings(
+            'editorListCommand',
+            'Editor list mode trigger',
+            'Primary trigger that will activate editor list mode in the switcher',
+            config.editorListPlaceholderText,
+          ),
           {
             name: 'Order default editor list by most recently accessed',
             desc: 'When there is no search term, order the list of editors by most recent access time.',

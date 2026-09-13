@@ -265,8 +265,17 @@
 .qsp-prompt-instructions-modes {}
 
 /* Error message displayed in the list item entry modal */
-.qsp-list-entry-error {}
+.qsp-list-entry-error {
+  color: var(--text-error);
+  font-size: var(--font-ui-small);
+}
+
+.qsp-list-entry-error:not(:empty) {
+  margin-block: var(--size-4-2);
+}
 
 /* Descriptive text displayed in the list item entry modal */
-.qsp-list-entry-description {}
-
+.qsp-list-entry-description {
+  font-size: var(--font-ui-small);
+  margin-bottom: var(--size-4-2);
+}

@@ -48,6 +48,7 @@ describe('bookmarksSettingsTabSection', () => {
           type: 'text',
           key: 'bookmarksListCommand',
           placeholder: config.bookmarksListPlaceholderText,
+          validate: expect.any(Function),
         },
       });
     });

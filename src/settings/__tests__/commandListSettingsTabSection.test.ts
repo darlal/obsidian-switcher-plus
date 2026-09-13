@@ -43,6 +43,7 @@ describe('commandListSettingsTabSection', () => {
           type: 'text',
           key: 'commandListCommand',
           placeholder: config.commandListPlaceholderText,
+          validate: expect.any(Function),
         },
       });
     });

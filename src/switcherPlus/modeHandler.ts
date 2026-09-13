@@ -94,6 +94,7 @@ export class ModeHandler implements ModeDispatcher {
     }
 
     this._handlerRegistry = HandlerRegistry.getInstance();
+    this._handlerRegistry.refreshCommandStrings(commandDefinitions);
     this._inputParser = new InputParser(
       this._handlerRegistry,
       settings,

@@ -280,17 +280,14 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
       {
         type: 'page',
         name: 'Headings Mode',
-        displayValue: () => config.headingsListCommand,
+        displayValue: () => this.getModeDisplayValue('headingsListCommand'),
         items: [
-          {
-            name: 'Headings list mode trigger',
-            desc: 'Character that will trigger headings list mode in the switcher',
-            control: {
-              type: 'text',
-              key: 'headingsListCommand',
-              placeholder: config.headingsListPlaceholderText,
-            },
-          },
+          ...this.createTriggerSettings(
+            'headingsListCommand',
+            'Headings list mode trigger',
+            'Primary trigger that will activate headings list mode in the switcher',
+            config.headingsListPlaceholderText,
+          ),
           {
             name: 'Max recent files to show',
             desc: 'The maximum number of recent files to show when there is no search term',

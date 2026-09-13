@@ -75,6 +75,12 @@ export class HandlerRegistry {
     this.instance = null;
   }
 
+  /** Refresh trigger lookups when opening a new switcher after settings edits. */
+  refreshCommandStrings(definitions: CommandDefinition[]): void {
+    this.cmdStrToMode.clear();
+    definitions.forEach((def) => this.mapCommandStrToMode(def));
+  }
+
   /**
    * Returns the singleton instance of the HandlerRegistry.
    * @returns The singleton instance if initialized. Otherwise null.
@@ -146,9 +152,11 @@ export class HandlerRegistry {
    * @param def - The command definition to process.
    */
   private mapCommandStrToMode(def: CommandDefinition): void {
-    const cmdStr = def.parserCommand?.getCommandStr();
-    if (cmdStr?.length) {
-      this.cmdStrToMode.set(cmdStr, def.mode);
+    const cmdStrs = def.parserCommand?.getCommandStrs?.() ?? [
+      def.parserCommand?.getCommandStr(),
+    ];
+    for (const cmdStr of cmdStrs) {
+      if (cmdStr?.length) this.cmdStrToMode.set(cmdStr, def.mode);
     }
   }
 

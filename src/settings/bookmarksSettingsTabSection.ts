@@ -10,17 +10,14 @@ export class BookmarksSettingsTabSection extends SettingsTabSection {
       {
         type: 'page',
         name: 'Bookmarks Mode',
-        displayValue: () => config.bookmarksListCommand,
+        displayValue: () => this.getModeDisplayValue('bookmarksListCommand'),
         items: [
-          {
-            name: 'Bookmarks list mode trigger',
-            desc: 'Character that will trigger bookmarks list mode in the switcher',
-            control: {
-              type: 'text',
-              key: 'bookmarksListCommand',
-              placeholder: config.bookmarksListPlaceholderText,
-            },
-          },
+          ...this.createTriggerSettings(
+            'bookmarksListCommand',
+            'Bookmarks list mode trigger',
+            'Primary trigger that will activate bookmarks list mode in the switcher',
+            config.bookmarksListPlaceholderText,
+          ),
         ],
       },
     ];

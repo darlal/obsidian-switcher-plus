@@ -15,17 +15,14 @@ export class CommandListSettingsTabSection extends SettingsTabSection {
       {
         type: 'page',
         name: 'Command Mode',
-        displayValue: () => config.commandListCommand,
+        displayValue: () => this.getModeDisplayValue('commandListCommand'),
         items: [
-          {
-            name: 'Command list mode trigger',
-            desc: 'Character that will trigger command list mode in the switcher',
-            control: {
-              type: 'text',
-              key: 'commandListCommand',
-              placeholder: config.commandListPlaceholderText,
-            },
-          },
+          ...this.createTriggerSettings(
+            'commandListCommand',
+            'Command list mode trigger',
+            'Primary trigger that will activate command list mode in the switcher',
+            config.commandListPlaceholderText,
+          ),
           {
             name: 'Max recent commands',
             desc: 'The maximum number of recently used commands to display in the list.',

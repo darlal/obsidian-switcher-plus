@@ -23,6 +23,8 @@ export interface ListEntryModalOptions {
   initialValue?: string;
   /** Return a message to reject, or undefined to accept. Runs on submit. */
   validate?: (value: string) => string | undefined;
+  /** Optional live preview and validation, used when whitespace is meaningful. */
+  preview?: (value: string) => string;
   /** Last transform before the value is handed back. */
   normalize?: (value: string) => string;
   onSubmit: (value: string) => void;
@@ -73,6 +75,10 @@ export function openListEntryModal(app: App, opts: ListEntryModalOptions): Setti
   }
 
   const errorEl = modal.contentEl.createDiv({ cls: 'qsp-list-entry-error' });
+  errorEl.setAttribute('role', 'status');
+  const previewEl = opts.preview
+    ? modal.contentEl.createDiv({ cls: 'qsp-list-entry-description' })
+    : undefined;
   const setting = new Setting(modal.contentEl);
 
   let rawValue = initialValue ?? (options?.length ? options[0] : '');
@@ -91,7 +97,22 @@ export function openListEntryModal(app: App, opts: ListEntryModalOptions): Setti
       comp.setValue(rawValue);
       comp.onChange((value) => {
         rawValue = value;
+        if (opts.preview) {
+          previewEl.setText(opts.preview(value));
+          errorEl.setText(validate?.(value) ?? '');
+        }
       });
+
+      if (opts.preview) {
+        previewEl.setText(opts.preview(rawValue));
+        comp.inputEl.setAttribute('aria-label', title);
+        comp.inputEl.addEventListener('paste', (event) => {
+          if (/[\r\n\t]/.test(event.clipboardData?.getData('text') ?? '')) {
+            event.preventDefault();
+            errorEl.setText('Paste one trigger at a time, without line breaks or tabs.');
+          }
+        });
+      }
 
       if (suggestions?.length) {
         const datalistEl = modal.contentEl.createEl('datalist', {

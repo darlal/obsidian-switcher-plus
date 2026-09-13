@@ -2,6 +2,7 @@ import { getSystemSwitcherInstance, logError } from 'src/utils';
 import type SwitcherPlusPlugin from 'src/main';
 import { Hotkey, QuickSwitcherOptions } from 'obsidian';
 import { getFacetMap } from './facetConstants';
+import { migrateModeTriggers } from './modeTriggers';
 import { merge } from 'ts-deepmerge';
 import { WritableKeys } from 'ts-essentials';
 import {
@@ -114,6 +115,7 @@ export class SwitcherPlusSettings {
       alwaysNewTabForSymbols: false,
       useActiveTabForSymbolsOnMobile: false,
       symbolsInLineOrder: true,
+      triggerAliases: {},
       editorListCommand: 'edt ',
       symbolListCommand: '@',
       symbolListActiveEditorCommand: '$ ',
@@ -348,6 +350,14 @@ export class SwitcherPlusSettings {
 
   get editorListPlaceholderText(): string {
     return SwitcherPlusSettings.defaults.editorListCommand;
+  }
+
+  get triggerAliases(): SettingsData['triggerAliases'] {
+    return this.data.triggerAliases;
+  }
+
+  set triggerAliases(value: SettingsData['triggerAliases']) {
+    this.data.triggerAliases = value;
   }
 
   get editorListCommand(): string {
@@ -1042,6 +1052,7 @@ export class SwitcherPlusSettings {
           keyof SettingsData
         >;
         copy(savedData, this.data, keys);
+        migrateModeTriggers(this.data);
       }
     } catch (err) {
       logError('Error loading settings, using defaults. ', err);

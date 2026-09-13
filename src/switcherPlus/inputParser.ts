@@ -164,9 +164,12 @@ export class InputParser {
 
     // First pass: group all valid commands by their starting character.
     for (const cmdDef of commandDefinitions) {
-      const cmdStr = cmdDef.parserCommand.getCommandStr() ?? '';
+      const cmdStrs = cmdDef.parserCommand.getCommandStrs?.() ?? [
+        cmdDef.parserCommand.getCommandStr(),
+      ];
 
-      if (cmdStr.length > 0) {
+      for (const cmdStr of cmdStrs) {
+        if (!cmdStr?.length) continue;
         const firstChar = cmdStr[0];
 
         if (!commandMap.has(firstChar)) {

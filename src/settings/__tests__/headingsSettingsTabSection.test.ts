@@ -77,6 +77,7 @@ describe('headingsSettingsTabSection', () => {
             type: 'text',
             key: 'headingsListCommand',
             placeholder: config.headingsListPlaceholderText,
+            validate: expect.any(Function),
           },
         }),
       );

@@ -13,6 +13,7 @@ import {
   WorkspaceHandler,
 } from 'src/Handlers';
 import { AnySuggestion, Mode, SuggestionType } from 'src/types';
+import { getModeTriggers } from 'src/settings/modeTriggers';
 
 /**
  * A type alias for the constructor of a class that implements the {@link Handler} interface.
@@ -42,6 +43,9 @@ export interface ParserCommand {
    * This is a function to allow the command string to be dynamically configured from settings.
    */
   getCommandStr: () => string;
+
+  /** All literal triggers, including optional aliases. */
+  getCommandStrs?: () => string[];
 
   /**
    * If true, the command will use the active editor as its source, instead of requiring
@@ -125,6 +129,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       parserCommand: {
         type: 'prefix',
         getCommandStr: () => config.editorListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'editorListCommand'),
       },
     },
     {
@@ -137,6 +142,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       parserCommand: {
         type: 'sourced',
         getCommandStr: () => config.symbolListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'symbolListCommand'),
       },
     },
     {
@@ -148,6 +154,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       parserCommand: {
         type: 'prefix',
         getCommandStr: () => config.symbolListActiveEditorCommand,
+        getCommandStrs: () => getModeTriggers(config, 'symbolListActiveEditorCommand'),
         useActiveEditorAsSource: true,
       },
     },
@@ -161,6 +168,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       parserCommand: {
         type: 'prefix',
         getCommandStr: () => config.workspaceListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'workspaceListCommand'),
       },
     },
     {
@@ -173,6 +181,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       parserCommand: {
         type: 'prefix',
         getCommandStr: () => config.headingsListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'headingsListCommand'),
       },
     },
     {
@@ -187,6 +196,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       parserCommand: {
         type: 'prefix',
         getCommandStr: () => config.bookmarksListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'bookmarksListCommand'),
       },
     },
     {
@@ -199,6 +209,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       parserCommand: {
         type: 'prefix',
         getCommandStr: () => config.commandListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'commandListCommand'),
       },
     },
     {
@@ -211,6 +222,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       parserCommand: {
         type: 'sourced',
         getCommandStr: () => config.relatedItemsListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'relatedItemsListCommand'),
       },
     },
     {
@@ -222,6 +234,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       parserCommand: {
         type: 'prefix',
         getCommandStr: () => config.relatedItemsListActiveEditorCommand,
+        getCommandStrs: () =>
+          getModeTriggers(config, 'relatedItemsListActiveEditorCommand'),
         useActiveEditorAsSource: true,
       },
     },
@@ -235,6 +249,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       parserCommand: {
         type: 'prefix',
         getCommandStr: () => config.vaultListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'vaultListCommand'),
       },
     },
   ];

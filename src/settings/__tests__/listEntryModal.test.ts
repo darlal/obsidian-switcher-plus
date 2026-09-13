@@ -214,6 +214,49 @@ describe('listEntryModal', () => {
       expect(onSubmit).not.toHaveBeenCalled();
       expect(mockModal.close).toHaveBeenCalled();
     });
+
+    it('should preview significant spaces and validate triggers while typing', () => {
+      const onSubmit = jest.fn();
+      openModal({
+        title: 'Add trigger',
+        preview: (value) => value.replace(/ /g, '␠'),
+        validate: (value) => (value === '>' ? 'Already used.' : undefined),
+        onSubmit,
+      });
+      const input = inputComponent<MockTextLike>();
+      input.setValue('>');
+      expect(mockErrorEl.setText).toHaveBeenCalledWith('Already used.');
+      input.setValue('cmd ');
+      expect(mockErrorEl.setText).toHaveBeenCalledWith('cmd␠');
+      buttonNamed('Add').onClickCB(null);
+      expect(onSubmit).toHaveBeenCalledWith('cmd ');
+      expect(input.inputEl.setAttribute).toHaveBeenCalledWith(
+        'aria-label',
+        'Add trigger',
+      );
+    });
+
+    it('should reject multiline paste before a text input silently joins its lines', () => {
+      openModal({ title: 'Add trigger', preview: (value) => value, onSubmit: jest.fn() });
+      const input = inputComponent<MockTextLike>();
+      const [, listener] = (input.inputEl.addEventListener as jest.Mock).mock
+        .calls[0] as [string, (event: ClipboardEvent) => void];
+      const preventDefault = jest.fn();
+      listener({
+        clipboardData: { getData: () => '>\n》' },
+        preventDefault,
+      } as unknown as ClipboardEvent);
+      expect(preventDefault).toHaveBeenCalled();
+      preventDefault.mockClear();
+      listener({
+        clipboardData: { getData: () => 'cmd ' },
+        preventDefault,
+      } as unknown as ClipboardEvent);
+      listener({ clipboardData: null, preventDefault } as unknown as ClipboardEvent);
+      expect(preventDefault).not.toHaveBeenCalled();
+      input.setValue('cmd ');
+      expect(mockErrorEl.setText).toHaveBeenCalledWith('');
+    });
   });
 
   describe('validateNewEntry', () => {

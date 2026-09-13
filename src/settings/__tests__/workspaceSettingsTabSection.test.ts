@@ -48,6 +48,7 @@ describe('WorkspaceSettingsTabSection', () => {
           type: 'text',
           key: 'workspaceListCommand',
           placeholder: config.workspaceListPlaceholderText,
+          validate: expect.any(Function),
         },
       });
     });

@@ -45,6 +45,7 @@ describe('relatedItemsSettingsTabSection', () => {
             type: 'text',
             key: 'relatedItemsListCommand',
             placeholder: config.relatedItemsListPlaceholderText,
+            validate: expect.any(Function),
           },
         }),
       );
@@ -57,6 +58,7 @@ describe('relatedItemsSettingsTabSection', () => {
             type: 'text',
             key: 'relatedItemsListActiveEditorCommand',
             placeholder: config.relatedItemsListActiveEditorCommand,
+            validate: expect.any(Function),
           },
         }),
       );

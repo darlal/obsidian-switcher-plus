@@ -46,6 +46,7 @@ describe('editorSettingsTabSection', () => {
           type: 'text',
           key: 'editorListCommand',
           placeholder: config.editorListPlaceholderText,
+          validate: expect.any(Function),
         },
       });
     });

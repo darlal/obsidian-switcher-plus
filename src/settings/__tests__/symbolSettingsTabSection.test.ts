@@ -88,6 +88,7 @@ describe('symbolSettingsTabSection', () => {
             type: 'text',
             key: 'symbolListCommand',
             placeholder: config.symbolListPlaceholderText,
+            validate: expect.any(Function),
           },
         }),
       );
@@ -98,6 +99,7 @@ describe('symbolSettingsTabSection', () => {
             type: 'text',
             key: 'symbolListActiveEditorCommand',
             placeholder: config.symbolListActiveEditorCommand,
+            validate: expect.any(Function),
           },
         }),
       );

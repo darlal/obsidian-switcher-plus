@@ -589,12 +589,25 @@ export type OpenInBackgroundConfig = {
   }>;
 };
 
+export type TriggerSettingKey =
+  | 'editorListCommand'
+  | 'symbolListCommand'
+  | 'symbolListActiveEditorCommand'
+  | 'workspaceListCommand'
+  | 'headingsListCommand'
+  | 'bookmarksListCommand'
+  | 'commandListCommand'
+  | 'vaultListCommand'
+  | 'relatedItemsListCommand'
+  | 'relatedItemsListActiveEditorCommand';
+
 export interface SettingsData {
   version: string;
   onOpenPreferNewTab: boolean;
   alwaysNewTabForSymbols: boolean;
   useActiveTabForSymbolsOnMobile: boolean;
   symbolsInLineOrder: boolean;
+  triggerAliases: Partial<Record<TriggerSettingKey, string[]>>;
   editorListCommand: string;
   symbolListCommand: string;
   symbolListActiveEditorCommand: string;

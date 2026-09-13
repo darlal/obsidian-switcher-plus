@@ -96,26 +96,20 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
       {
         type: 'page',
         name: 'Symbol Mode',
-        displayValue: () => config.symbolListCommand,
+        displayValue: () => this.getModeDisplayValue('symbolListCommand'),
         items: [
-          {
-            name: 'Symbol list mode trigger',
-            desc: 'Character that will trigger symbol list mode in the switcher. This triggers a display of Symbols for the source file of the currently selected (highlighted) suggestion in the switcher. If there is not a suggestion, display results for the active editor.',
-            control: {
-              type: 'text',
-              key: 'symbolListCommand',
-              placeholder: config.symbolListPlaceholderText,
-            },
-          },
-          {
-            name: 'Symbol list mode trigger - Active editor only',
-            desc: 'Character that will trigger symbol list mode in the switcher. This always triggers a display of Symbols for the active editor only.',
-            control: {
-              type: 'text',
-              key: 'symbolListActiveEditorCommand',
-              placeholder: config.symbolListActiveEditorCommand,
-            },
-          },
+          ...this.createTriggerSettings(
+            'symbolListCommand',
+            'Symbol list mode trigger',
+            'Primary trigger that will activate symbol list mode in the switcher. This triggers a display of Symbols for the source file of the currently selected (highlighted) suggestion in the switcher. If there is not a suggestion, display results for the active editor.',
+            config.symbolListPlaceholderText,
+          ),
+          ...this.createTriggerSettings(
+            'symbolListActiveEditorCommand',
+            'Symbol list mode trigger - Active editor only',
+            'Primary trigger that will activate symbol list mode in the switcher. This always triggers a display of Symbols for the active editor only.',
+            config.symbolListActiveEditorCommand,
+          ),
           {
             name: 'List symbols as indented outline',
             desc: 'Enabled, symbols will be displayed in the (line) order they appear in the source text, indented under any preceding heading. Disabled, symbols will be grouped by type: Headings, Tags, Links, Embeds.',

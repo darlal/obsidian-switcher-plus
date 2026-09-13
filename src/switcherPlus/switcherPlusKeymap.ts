@@ -1,3 +1,5 @@
+import { getModeTriggers } from 'src/settings/modeTriggers';
+import type { TriggerSettingKey } from 'src/types';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
   getDestinationFileForSuggestion,
@@ -786,17 +788,17 @@ export class SwitcherPlusKeymap {
     config: SwitcherPlusSettings,
   ): void {
     // Map mode triggers to labels (purpose)
-    const instructionsByModeTrigger = new Map<string, string>([
-      [config.headingsListCommand, 'heading list'],
-      [config.editorListCommand, 'editor list'],
-      [config.bookmarksListCommand, 'bookmark list'],
-      [config.commandListCommand, 'command list'],
-      [config.workspaceListCommand, 'workspace list'],
-      [config.vaultListCommand, 'vault list'],
-      [config.symbolListActiveEditorCommand, 'symbol list (active editor)'],
-      [config.symbolListCommand, 'symbol list (embedded)'],
-      [config.relatedItemsListActiveEditorCommand, 'related items (active editor)'],
-      [config.relatedItemsListCommand, 'related items (embedded)'],
+    const instructionsByModeTrigger = new Map<TriggerSettingKey, string>([
+      ['headingsListCommand', 'heading list'],
+      ['editorListCommand', 'editor list'],
+      ['bookmarksListCommand', 'bookmark list'],
+      ['commandListCommand', 'command list'],
+      ['workspaceListCommand', 'workspace list'],
+      ['vaultListCommand', 'vault list'],
+      ['symbolListActiveEditorCommand', 'symbol list (active editor)'],
+      ['symbolListCommand', 'symbol list (embedded)'],
+      ['relatedItemsListActiveEditorCommand', 'related items (active editor)'],
+      ['relatedItemsListCommand', 'related items (embedded)'],
     ]);
 
     const modeInstructionsEl = this.getCustomInstructionsEl('modes', parentEl);
@@ -808,7 +810,9 @@ export class SwitcherPlusKeymap {
 
     // Render each item
     instructionsByModeTrigger.forEach((purpose, modeTrigger) => {
-      this.createPromptInstructionCommandEl(modeInstructionsEl, modeTrigger, purpose);
+      for (const trigger of getModeTriggers(config, modeTrigger)) {
+        this.createPromptInstructionCommandEl(modeInstructionsEl, trigger, purpose);
+      }
     });
   }
 

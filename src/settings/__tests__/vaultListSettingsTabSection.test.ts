@@ -52,6 +52,7 @@ describe('vaultListSettingsTabSection', () => {
           type: 'text',
           key: 'vaultListCommand',
           placeholder: config.vaultListPlaceholderText,
+          validate: expect.any(Function),
         },
       });
     });
