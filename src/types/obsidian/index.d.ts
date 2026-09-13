@@ -43,6 +43,9 @@ declare module 'obsidian' {
     options: {
       pinned?: Array<string>;
     };
+
+    // Ids of recently used commands, most recent first. Capped at 100 by the core plugin.
+    recentCommands: Array<string>;
     saveSettings(plugin: Plugin): void;
   }
 

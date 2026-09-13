@@ -128,29 +128,6 @@ describe('InputParser', () => {
       expect(result.resolvedCommands[0].filterText).toBe(filterText);
     });
 
-    test('should parse any of the configured command triggers', () => {
-      const alternateTrigger = '<alternate-headings-trigger>';
-      mockCommandDefinitions.push(
-        mock<CommandDefinition>({
-          mode: Mode.HeadingsList,
-          handlerClass: MockHandler,
-          parserCommand: {
-            type: 'prefix',
-            getCommandStr: () => headingsTrigger,
-            getCommandStrs: () => [headingsTrigger, alternateTrigger],
-          },
-        }),
-      );
-      const parser = createParser();
-
-      const result = parser.parse(`${alternateTrigger}heading`);
-
-      expect(result.resolvedCommands).toHaveLength(1);
-      expect(result.resolvedCommands[0].cmdDef.mode).toBe(Mode.HeadingsList);
-      expect(result.resolvedCommands[0].cmdStr).toBe(alternateTrigger);
-      expect(result.resolvedCommands[0].filterText).toBe('heading');
-    });
-
     test('should parse a command with filter text', () => {
       const parser = createParser();
       const filterText = chance.sentence();
@@ -557,23 +534,6 @@ describe('InputParser integration tests', () => {
     sut = createParser(mockConfig);
   });
 
-  test('should expose the first trigger and all configured triggers', () => {
-    mockConfig.headingsListCommand = `${headingsTrigger}\n》`;
-    const definitions = getCommandDefinitions(mockConfig);
-    const headingDefinition = definitions.find((def) => def.mode === Mode.HeadingsList);
-
-    expect(headingDefinition.parserCommand.getCommandStr()).toBe(headingsTrigger);
-    expect(headingDefinition.parserCommand.getCommandStrs()).toEqual([
-      headingsTrigger,
-      '》',
-    ]);
-    expect(
-      definitions.slice(1).map((def) => def.parserCommand.getCommandStr()),
-    ).toHaveLength(10);
-
-    mockConfig.headingsListCommand = headingsTrigger;
-  });
-
   test.each(unicodeInputFixture)(
     'should identify unicode triggers for input: "$input" (array data index: $#)',
     ({
@@ -611,19 +571,6 @@ describe('InputParser integration tests', () => {
       mockConfig[cmdKey] = cmdInitialValue;
     },
   );
-
-  test('should parse multiple newline-separated triggers from a mode setting', () => {
-    const originalTrigger = mockConfig.headingsListCommand;
-    mockConfig.headingsListCommand = `${headingsTrigger}\n》`;
-    const parser = createParser(mockConfig);
-    const inputInfo = makeInputInfo({ inputText: '》daily' });
-
-    parser.parseInputForMode(inputInfo, null, null);
-
-    expect(inputInfo.mode).toBe(Mode.HeadingsList);
-    expect(inputInfo.parsedCommand().parsedInput).toBe('daily');
-    mockConfig.headingsListCommand = originalTrigger;
-  });
 
   test.each(makePrefixOnlyInputFixture(Mode.HeadingsList))(
     'should parse as Prefix Headings mode with both activeSugg and activeLeaf null for input: "$input" (array data index: $#)',

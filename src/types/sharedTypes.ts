@@ -17,19 +17,12 @@ import {
   Hotkey,
 } from 'obsidian';
 import type { PaneType, SplitDirection, SuggestModal } from 'obsidian';
-import { PickKeys, WritableKeys } from 'ts-essentials';
 import { AllCanvasNodeData } from 'obsidian/canvas';
 
 export type SessionOpts = {
   mode?: Mode;
   useActiveEditorAsSource?: boolean;
 };
-
-// Pick from T the keys that are writable and whose value is of type K
-export type WritableKeysWithValueOfType<T extends object, K> = PickKeys<
-  Pick<T, WritableKeys<T>>,
-  K
->;
 
 export enum PathDisplayFormat {
   None,
@@ -387,6 +380,11 @@ export interface SourceInfo {
   leaf: WorkspaceLeaf;
   suggestion: AnySuggestion;
   isValidSource: boolean;
+
+  /**
+   * This is the cursor position in editing modes. And in Reading mode, which has no
+   * cursor, the line the reader has scrolled to (column zero)
+   */
   cursor?: EditorPosition;
 }
 
@@ -591,12 +589,25 @@ export type OpenInBackgroundConfig = {
   }>;
 };
 
+export type TriggerSettingKey =
+  | 'editorListCommand'
+  | 'symbolListCommand'
+  | 'symbolListActiveEditorCommand'
+  | 'workspaceListCommand'
+  | 'headingsListCommand'
+  | 'bookmarksListCommand'
+  | 'commandListCommand'
+  | 'vaultListCommand'
+  | 'relatedItemsListCommand'
+  | 'relatedItemsListActiveEditorCommand';
+
 export interface SettingsData {
   version: string;
   onOpenPreferNewTab: boolean;
   alwaysNewTabForSymbols: boolean;
   useActiveTabForSymbolsOnMobile: boolean;
   symbolsInLineOrder: boolean;
+  triggerAliases: Partial<Record<TriggerSettingKey, string[]>>;
   editorListCommand: string;
   symbolListCommand: string;
   symbolListActiveEditorCommand: string;

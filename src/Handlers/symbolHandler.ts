@@ -46,7 +46,6 @@ import {
   FrontMatterParser,
   getLinkType,
   isCalloutCache,
-  getFirstCommandString,
   isHeadingCache,
   isTagCache,
   logError,
@@ -85,8 +84,8 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
   getCommandString(sessionOpts?: SessionOpts): string {
     const { settings } = this;
     return sessionOpts?.useActiveEditorAsSource
-      ? getFirstCommandString(settings.symbolListActiveEditorCommand)
-      : getFirstCommandString(settings.symbolListCommand);
+      ? settings.symbolListActiveEditorCommand
+      : settings.symbolListCommand;
   }
 
   validateCommand(
@@ -364,8 +363,9 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
   ): void {
     const cursorLine = sourceInfo?.cursor?.line;
 
-    // find the nearest heading to the current cursor pos, if applicable
-    if (cursorLine) {
+    // find the nearest heading to the current position. Line zero is a
+    // valid position in some editor views
+    if (cursorLine != null) {
       let found: SymbolInfo = null;
       const headings = items.filter((v): v is SymbolInfoExcludingSpecialFiles =>
         isHeadingCache(v.symbol),
@@ -458,7 +458,7 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
       shouldInclude = this.isIncludedByFacetFilter(activeFacetIds, symbolType);
     } else {
       shouldInclude =
-        this.settings.isSymbolTypeEnabled(symbolType) &&
+        this.settings.enabledSymbolTypes[symbolType] &&
         this.isIncludedByFacetFilter(activeFacetIds, SymbolType[symbolType]);
     }
 

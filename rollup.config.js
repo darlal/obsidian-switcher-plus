@@ -3,7 +3,9 @@ import commonjs from '@rollup/plugin-commonjs';
 import terser from '@rollup/plugin-terser';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 
-const isProd = process.env.BUILD === 'production';
+// Production is the default because the Obsidian community build verifier runs a bare
+// `npm run build` which needs to produce the same bytes we publish in the release artifact.
+const isProd = process.env.BUILD !== 'development';
 const tsconfig = isProd ? './tsconfig.prod.json' : './tsconfig.json'
 
 export default {

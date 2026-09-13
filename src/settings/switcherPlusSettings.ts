@@ -2,7 +2,9 @@ import { getSystemSwitcherInstance, logError } from 'src/utils';
 import type SwitcherPlusPlugin from 'src/main';
 import { Hotkey, QuickSwitcherOptions } from 'obsidian';
 import { getFacetMap } from './facetConstants';
+import { migrateModeTriggers } from './modeTriggers';
 import { merge } from 'ts-deepmerge';
+import { WritableKeys } from 'ts-essentials';
 import {
   FacetSettingsData,
   FulltextSearchConfig,
@@ -24,6 +26,78 @@ import {
   TitleSource,
 } from 'src/types';
 
+type Indexable = Record<string, unknown>;
+
+function isIndexable(value: unknown): value is Indexable {
+  return value !== null && typeof value === 'object';
+}
+
+/**
+ * Walks a dot separated path one segment at a time, starting at the settings facade
+ * itself. Segment one therefore resolves through a SwitcherPlusSettings accessor rather
+ * than the private data object, which matters because several accessors expose keys that
+ * loadSettings merges into the defaults; reading data directly would return undefined for
+ * users whose saved file predates a key. Nested getters return live references into the
+ * underlying data, so later segments are plain property lookups and a write through the
+ * resolved parent mutates the stored data.
+ * @param  {SwitcherPlusSettings} root
+ * @param  {string[]} parts
+ * @returns unknown the value at the path, or undefined if the path does not resolve
+ */
+function resolvePath(root: SwitcherPlusSettings, parts: string[]): unknown {
+  let cursor: unknown = root;
+
+  for (const part of parts) {
+    if (!isIndexable(cursor)) {
+      return undefined;
+    }
+
+    cursor = cursor[part];
+  }
+
+  return cursor;
+}
+
+/**
+ * The literal dot-notation paths a declarative settings control may bind to, for settings
+ * nested inside a config object rather than exposed as a top level accessor. Declared as
+ * a value rather than a type so that tests can walk the same list the type is built from.
+ */
+export const NESTED_CONTROL_KEYS = [
+  'matchPriorityAdjustments.isEnabled',
+  'quickFilters.shouldResetActiveFacets',
+  'quickOpen.isEnabled',
+  'insertLinkInEditor.useBasenameAsAlias',
+  'insertLinkInEditor.useHeadingAsAlias',
+  'renderMarkdownContentInSuggestions.isEnabled',
+  'renderMarkdownContentInSuggestions.renderHeadings',
+  'renderMarkdownContentInSuggestions.renderLinks',
+  'renderMarkdownContentInSuggestions.renderTags',
+  'renderMarkdownContentInSuggestions.renderCallouts',
+] as const;
+
+/**
+ * Every nested dot path, the literal ones above plus the two whose final segments are
+ * keyed dynamically and so cannot be enumerated as literals.
+ */
+type NestedControlKey =
+  | (typeof NESTED_CONTROL_KEYS)[number]
+  | `matchPriorityAdjustments.${'adjustments' | 'fileExtAdjustments'}.${string}.value`
+  // CanvasNode and BaseView name the file format a symbol came out of, not a kind of
+  // symbol within it, so they have no stored key and binding a control to one would read
+  // undefined.
+  | `enabledSymbolTypes.${Exclude<
+      SymbolType,
+      SymbolType.CanvasNode | SymbolType.BaseView
+    >}`;
+
+/**
+ * Every key a declarative `control` definition is allowed to bind to. Passed as
+ * the K type parameter to SettingDefinitionItem so that a typo in a control key
+ * fails to compile.
+ */
+export type SettingsControlKey = WritableKeys<SwitcherPlusSettings> | NestedControlKey;
+
 export class SwitcherPlusSettings {
   private readonly data: SettingsData;
 
@@ -41,6 +115,7 @@ export class SwitcherPlusSettings {
       alwaysNewTabForSymbols: false,
       useActiveTabForSymbolsOnMobile: false,
       symbolsInLineOrder: true,
+      triggerAliases: {},
       editorListCommand: 'edt ',
       symbolListCommand: '@',
       symbolListActiveEditorCommand: '$ ',
@@ -277,6 +352,14 @@ export class SwitcherPlusSettings {
     return SwitcherPlusSettings.defaults.editorListCommand;
   }
 
+  get triggerAliases(): SettingsData['triggerAliases'] {
+    return this.data.triggerAliases;
+  }
+
+  set triggerAliases(value: SettingsData['triggerAliases']) {
+    this.data.triggerAliases = value;
+  }
+
   get editorListCommand(): string {
     return this.data.editorListCommand;
   }
@@ -478,10 +561,6 @@ export class SwitcherPlusSettings {
     this.data.includeSidePanelViewTypes = [...new Set(value)];
   }
 
-  get includeSidePanelViewTypesPlaceholder(): string {
-    return SwitcherPlusSettings.defaults.includeSidePanelViewTypes.join('\n');
-  }
-
   get selectNearestHeading(): boolean {
     return this.data.selectNearestHeading;
   }
@@ -561,6 +640,14 @@ export class SwitcherPlusSettings {
 
   set pathDisplayFormat(value: PathDisplayFormat) {
     this.data.pathDisplayFormat = value;
+  }
+
+  get pathDisplayFormatString(): string {
+    return this.pathDisplayFormat.toString();
+  }
+
+  set pathDisplayFormatString(value: string) {
+    this.pathDisplayFormat = Number(value);
   }
 
   get hidePathIfRoot(): boolean {
@@ -772,6 +859,14 @@ export class SwitcherPlusSettings {
     this.data.mobileLauncher = value;
   }
 
+  get enabledSymbolTypes(): Record<SymbolType, boolean> {
+    return this.data.enabledSymbolTypes;
+  }
+
+  set enabledSymbolTypes(value: Record<SymbolType, boolean>) {
+    this.data.enabledSymbolTypes = value;
+  }
+
   get showModeTriggerInstructions(): boolean {
     return this.data.showModeTriggerInstructions;
   }
@@ -926,7 +1021,12 @@ export class SwitcherPlusSettings {
       defaultData: T,
       keys: Array<keyof T>,
     ): void => {
-      const keysToMerge = ['matchPriorityAdjustments', 'quickFilters', 'mobileLauncher'];
+      const keysToMerge = [
+        'matchPriorityAdjustments',
+        'quickFilters',
+        'mobileLauncher',
+        'enabledSymbolTypes',
+      ];
 
       const deepMerge = (key: keyof T) => {
         return merge.withOptions(
@@ -952,6 +1052,7 @@ export class SwitcherPlusSettings {
           keyof SettingsData
         >;
         copy(savedData, this.data, keys);
+        migrateModeTriggers(this.data);
       }
     } catch (err) {
       logError('Error loading settings, using defaults. ', err);
@@ -969,19 +1070,31 @@ export class SwitcherPlusSettings {
     });
   }
 
-  isSymbolTypeEnabled(symbol: SymbolType): boolean {
-    const { enabledSymbolTypes } = this.data;
-    let value = SwitcherPlusSettings.defaults.enabledSymbolTypes[symbol];
-
-    if (Object.prototype.hasOwnProperty.call(enabledSymbolTypes, symbol)) {
-      value = enabledSymbolTypes[symbol];
-    }
-
-    return value;
+  /**
+   * Reads the value a declarative control should display for a settings key.
+   * @param  {string} key top level property name, or a dot separated path
+   * @returns unknown the stored value, or undefined if the path does not resolve
+   */
+  readControlValue(key: string): unknown {
+    return resolvePath(this, key.split('.'));
   }
 
-  setSymbolTypeEnabled(symbol: SymbolType, isEnabled: boolean): void {
-    this.data.enabledSymbolTypes[symbol] = isEnabled;
+  /**
+   * Stores the value a declarative control produced for a settings key. Does not create
+   * missing intermediate objects, an unresolvable path is an error in a
+   * control definition.
+   * @param  {string} key top level property name, or a dot separated path
+   * @param  {unknown} value
+   * @returns void
+   */
+  writeControlValue(key: string, value: unknown): void {
+    const parts = key.split('.');
+    const leaf = parts.pop();
+    const cursor = resolvePath(this, parts);
+
+    if (isIndexable(cursor)) {
+      cursor[leaf] = value;
+    }
   }
 
   /**

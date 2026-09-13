@@ -5,9 +5,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-env:
-  BUILD: production
-
 jobs:
   build_test:
     name: Build and test
@@ -24,7 +21,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v6
         with:
-          node-version: 22.21.1
+          node-version: 24.18.1
           cache: 'npm'
 
       - name: Install dependencies

@@ -1,254 +1,320 @@
-import { SwitcherPlusSettings } from './switcherPlusSettings';
+import { SettingsControlKey } from './switcherPlusSettings';
 import { SettingsTabSection } from './settingsTabSection';
-import { SettingGroup } from 'obsidian';
-import { notifyError } from 'src/utils';
+import {
+  SettingDefinitionGroup,
+  SettingDefinitionItem,
+  SettingDefinitionList,
+  SettingDefinitionPage,
+  SettingGroupItem,
+} from 'obsidian';
+import { openListEntryModal, validateNewEntry } from './listEntryModal';
 
 export class HeadingsSettingsTabSection extends SettingsTabSection {
-  display(containerEl: HTMLElement): void {
+  /**
+   * Opens the entry modal for the file extension allow list. Passing an index
+   * edits that row in place; omitting it appends. The extension being edited is
+   * excluded from the duplicate check so re-saving it unchanged is not an error.
+   * @param  {number} index? the row being edited
+   * @returns void
+   */
+  private openFileExtEntryModal(index?: number): void {
+    const { config } = this;
+    const entries = config.fileExtAllowList;
+    const isEdit = index !== undefined;
+
+    openListEntryModal(this.app, {
+      title: isEdit ? 'Edit file extension' : 'Add file extension',
+      desc: 'Override the "Show attachments" and the "Show all file types" builtin, system Switcher settings and always search files with the listed extensions. For example to add ".canvas" file extension, just add "canvas".',
+      suggestions: Object.keys(this.app.viewRegistry.typeByExtension).sort(),
+      placeholder: 'canvas',
+      initialValue: isEdit ? entries[index] : undefined,
+      normalize: (value) => value.trim(),
+      validate: validateNewEntry(
+        entries.filter((_entry, entryIdx) => entryIdx !== index),
+      ),
+      onSubmit: (value) => {
+        const next = [...entries];
+
+        if (isEdit) {
+          next[index] = value;
+        } else {
+          next.push(value);
+        }
+
+        config.fileExtAllowList = next;
+        config.save();
+        this.mainSettingsTab.update();
+      },
+    });
+  }
+
+  /**
+   * Builds the file extension allow list. Entries are free text: the list exists
+   * precisely to admit extensions the view registry reports as unregistered, so
+   * the registered set is offered only as a suggestion.
+   * @returns SettingDefinitionList<SettingsControlKey> the file extension allow list
+   */
+  private createFileExtAllowListDefinitions(): SettingDefinitionList<SettingsControlKey> {
     const { config } = this;
 
-    this.addSectionTitle(containerEl, 'Headings List Mode');
-
-    this.addTriggerSetting(
-      containerEl,
-      'Headings list mode trigger',
-      'Trigger text that will activate headings list mode in the switcher',
-      config.headingsListCommand,
-      'headingsListCommand',
-      config.headingsListPlaceholderText,
-    );
-
-    this.addSliderSetting(
-      containerEl,
-      'Max recent files to show',
-      'The maximum number of recent files to show when there is no search term',
-      config.maxRecentFileSuggestionsOnInit,
-      [0, 75, 1, 25],
-      'maxRecentFileSuggestionsOnInit',
-    );
-
-    this.showFileExtAllowList(containerEl, config);
-
-    this.addToggleSetting(
-      containerEl,
-      'Search Filenames',
-      "Enabled, search and show suggestions for filenames. Disabled, Don't search through filenames (except for fallback searches)",
-      config.shouldSearchFilenames,
-      'shouldSearchFilenames',
-    );
-
-    this.addToggleSetting(
-      containerEl,
-      'Search Bookmarks',
-      "Enabled, search and show suggestions for Bookmarks. Disabled, Don't search through Bookmarks",
-      config.shouldSearchBookmarks,
-      'shouldSearchBookmarks',
-    );
-
-    this.showHeadingSettings(containerEl, config);
-    this.showExclusionsGroup(containerEl, config);
-  }
-
-  showHeadingSettings(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
-    const isEnabled = config.shouldSearchHeadings;
-
-    const group = new SettingGroup(containerEl);
-
-    this.addToggleSetting(
-      group,
-      'Search Headings',
-      "Enabled, search and show suggestions for Headings. Disabled, Don't search through Headings",
-      isEnabled,
-      null,
-      (isEnabled, config) => {
-        config.shouldSearchHeadings = isEnabled;
-
-        // have to wait for the save here because the call to display() will
-        // trigger a read of the updated data
-        config.saveSettings().then(
-          () => {
-            // reload the settings panel. This will cause the other option
-            // controls to be shown/hidden based on isEnabled status
-            this.mainSettingsTab.display();
-          },
-          (reason) => notifyError('Error saving "Search Headings" setting. ', reason),
-        );
+    const list: SettingDefinitionList<SettingsControlKey> = {
+      type: 'list',
+      heading: 'File extension override',
+      emptyState: 'No file extension overrides.',
+      addItem: {
+        name: 'Add file extension',
+        action: () => this.openFileExtEntryModal(),
       },
-    );
+      onDelete: (index) => {
+        const next = [...config.fileExtAllowList];
+        next.splice(index, 1);
 
-    if (isEnabled) {
-      this.addToggleSetting(
-        group,
-        'Turn off filename fallback',
-        'Enabled, strictly search through only the headings contained in the file. Do not fallback to searching the filename when an H1 match is not found. Disabled, fallback to searching against the filename when there is not a match in the first H1 contained in the file.',
-        config.strictHeadingsOnly,
-        'strictHeadingsOnly',
-      );
+        config.fileExtAllowList = next;
+        config.save();
+        this.mainSettingsTab.update();
+      },
+      items: config.fileExtAllowList.map((entry) => ({
+        name: entry,
+        searchable: false,
+        action: (_el: HTMLElement, index: number) => this.openFileExtEntryModal(index),
+      })),
+    };
 
-      this.showSearchHeadingLevels(group, config);
-
-      this.showBreadcrumbSettings(group, config);
-    }
+    return list;
   }
 
-  showSearchHeadingLevels(
-    containerEl: HTMLElement | SettingGroup,
-    config: SwitcherPlusSettings,
-  ): void {
-    const setting = this.createSetting(
-      containerEl,
-      'Include heading levels',
-      'Select which heading levels to include in search. To search just the very first H1 heading only deselect all levels.',
-    );
+  /**
+   * Opens the entry modal for an exclude-folder pattern. Entries are regexes, so
+   * the value is never trimmed: leading and trailing whitespace can be part of
+   * the pattern.
+   * @param  {number} index? the row being edited
+   * @returns void
+   */
+  private openExcludeFolderModal(index?: number): void {
+    const { config } = this;
+    const entries = config.excludeFolders;
+    const isEdit = index !== undefined;
 
-    // searchAllHeadings is normalized to a number[] by its getter, so legacy
-    // booleans already map to the right levels (true → all, false → empty).
-    const enabledLevels = new Set(config.searchAllHeadings);
-
-    for (let level = 1; level <= 6; level++) {
-      setting.addButton((btn) => {
-        btn.setButtonText(`H${level}`);
-
-        if (enabledLevels.has(level)) {
-          btn.setCta();
-        }
-
-        btn.onClick(() => {
-          if (enabledLevels.has(level)) {
-            enabledLevels.delete(level);
-            btn.removeCta();
-          } else {
-            enabledLevels.add(level);
-            btn.setCta();
+    openListEntryModal(this.app, {
+      title: isEdit ? 'Edit excluded folder' : 'Add excluded folder',
+      desc: 'When in Headings list mode, folder path that match any regex listed here will not be searched for suggestions. Path may start from the Vault Root.',
+      placeholder: '^Archive',
+      initialValue: isEdit ? entries[index] : undefined,
+      validate: validateNewEntry(
+        entries.filter((_entry, entryIdx) => entryIdx !== index),
+        (value) => {
+          try {
+            new RegExp(value);
+          } catch (err) {
+            return `${value} — ${(err as Error).toString()}`;
           }
 
-          config.searchAllHeadings = Array.from(enabledLevels).sort((a, b) => a - b);
-          config.save();
-        });
-      });
-    }
-  }
+          return undefined;
+        },
+      ),
+      onSubmit: (value) => {
+        const next = [...entries];
 
-  showFileExtAllowList(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
-    this.createSetting(
-      containerEl,
-      'File extension override',
-      'Override the "Show attachments" and the "Show all file types" builtin, system Switcher settings and always search files with the listed extensions. Add one path per line. For example to add ".canvas" file extension, just add "canvas".',
-    ).addTextArea((textArea) => {
-      textArea.setValue(config.fileExtAllowList.join('\n'));
-      textArea.inputEl.addEventListener('focusout', () => {
-        const allowList = textArea
-          .getValue()
-          .split('\n')
-          .map((v) => v.trim())
-          .filter((v) => v.length > 0);
-
-        config.fileExtAllowList = allowList;
-        config.save();
-      });
-    });
-  }
-
-  showExclusionsGroup(containerEl: HTMLElement, config: SwitcherPlusSettings): void {
-    const group = new SettingGroup(containerEl);
-
-    this.createSetting(
-      group,
-      'Exclusions',
-      'Configure which folders and files should be excluded from search results in Headings list mode.',
-    );
-
-    this.showExcludeFolders(group, config);
-
-    this.addToggleSetting(
-      group,
-      'Hide Obsidian "Excluded files"',
-      'Enabled, do not display suggestions for files that are in Obsidian\'s "Options > Files & Links > Excluded files" list. Disabled, suggestions for those files will be displayed but downranked.',
-      config.excludeObsidianIgnoredFiles,
-      'excludeObsidianIgnoredFiles',
-    );
-  }
-
-  showExcludeFolders(
-    containerEl: HTMLElement | SettingGroup,
-    config: SwitcherPlusSettings,
-  ): void {
-    const settingName = 'Exclude folders';
-
-    this.createSetting(
-      containerEl,
-      settingName,
-      'When in Headings list mode, folder path that match any regex listed here will not be searched for suggestions. Path should start from the Vault Root. Add one path per line.',
-    ).addTextArea((textArea) => {
-      textArea.setValue(config.excludeFolders.join('\n'));
-      textArea.inputEl.addEventListener('focusout', () => {
-        const excludes = textArea
-          .getValue()
-          .split('\n')
-          .filter((v) => v.length > 0);
-
-        if (this.validateExcludeFolderList(settingName, excludes)) {
-          config.excludeFolders = excludes;
-          config.save();
+        if (isEdit) {
+          next[index] = value;
+        } else {
+          next.push(value);
         }
-      });
+
+        config.excludeFolders = next;
+        config.save();
+        this.mainSettingsTab.update();
+      },
     });
   }
 
-  showBreadcrumbSettings(
-    containerEl: HTMLElement | SettingGroup,
-    config: SwitcherPlusSettings,
-  ): void {
-    this.addToggleSetting(
-      containerEl,
-      'Show heading breadcrumbs',
-      'Enabled, display the hierarchical path of parent headings leading to each heading suggestion.',
-      config.showHeadingBreadcrumbs,
-      'showHeadingBreadcrumbs',
-    );
+  /**
+   * Builds the exclusions block.
+   * @returns SettingDefinitionItem<SettingsControlKey>[] the page level siblings, in reading order
+   */
+  private createExclusionsDefinitions(): SettingDefinitionItem<SettingsControlKey>[] {
+    const { config } = this;
 
-    this.addTextSetting(
-      containerEl,
-      'Breadcrumb separator',
-      'The string used to separate heading levels in breadcrumbs',
-      config.headingBreadcrumbSeparator,
-      'headingBreadcrumbSeparator',
-    );
+    const list: SettingDefinitionList<SettingsControlKey> = {
+      type: 'list',
+      heading: 'Exclude folders',
+      emptyState: 'No folders excluded.',
+      addItem: {
+        name: 'Add excluded folder',
+        action: () => this.openExcludeFolderModal(),
+      },
+      onDelete: (index) => {
+        const next = [...config.excludeFolders];
+        next.splice(index, 1);
 
-    this.addSliderSetting(
-      containerEl,
-      'Max breadcrumb depth',
-      'Maximum number of heading levels to show in breadcrumbs. Set to 0 for unlimited depth.',
-      config.maxBreadcrumbDepth,
-      [0, 6, 1, 0],
-      'maxBreadcrumbDepth',
-    );
+        config.excludeFolders = next;
+        config.save();
+        this.mainSettingsTab.update();
+      },
+      items: config.excludeFolders.map((entry) => ({
+        name: entry,
+        searchable: false,
+        action: (_el: HTMLElement, index: number) => this.openExcludeFolderModal(index),
+      })),
+    };
+
+    return [
+      list,
+      {
+        name: 'Hide Obsidian "Excluded files"',
+        desc: 'Enabled, do not display suggestions for files that are in Obsidian\'s "Options > Files & Links > Excluded files" list. Disabled, suggestions for those files will be displayed but downranked.',
+        control: { type: 'toggle', key: 'excludeObsidianIgnoredFiles' },
+      },
+    ];
   }
 
-  validateExcludeFolderList(settingName: string, excludes: string[]) {
-    let isValid = true;
-    const failures: Array<{ regex: string; error: Error }> = [];
+  /**
+   * Builds the Search Headings group. The dependent settings use a visible
+   * predicate. The breadcrumb detail settings are additionally gated on the
+   * showHeadingBreadcrumbs toggle.
+   * @returns SettingDefinitionGroup<SettingsControlKey>
+   */
+  private createSearchHeadingsGroupDefinition(): SettingDefinitionGroup<SettingsControlKey> {
+    const { config } = this;
+    const isEnabled = () => config.shouldSearchHeadings;
+    const isBreadcrumbsEnabled = () => isEnabled() && config.showHeadingBreadcrumbs;
 
-    for (const str of excludes) {
-      try {
-        new RegExp(str);
-      } catch (err) {
-        failures.push({ regex: str, error: err as Error });
-        isValid = false;
-      }
-    }
+    return {
+      type: 'group',
+      heading: 'Search Headings',
+      items: [
+        {
+          name: 'Search Headings',
+          desc: "Enabled, search and show suggestions for Headings. Disabled, Don't search through Headings",
+          control: { type: 'toggle', key: 'shouldSearchHeadings' },
+        },
+        {
+          name: 'Turn off filename fallback',
+          desc: 'Enabled, strictly search through only the headings contained in the file. Do not fallback to searching the filename when an H1 match is not found. Disabled, fallback to searching against the filename when there is not a match in the first H1 contained in the file.',
+          visible: isEnabled,
+          control: { type: 'toggle', key: 'strictHeadingsOnly' },
+        },
+        this.createHeadingLevelsDefinition(isEnabled),
+        {
+          name: 'Show heading breadcrumbs',
+          desc: 'Enabled, display the hierarchical path of parent headings leading to each heading suggestion.',
+          visible: isEnabled,
+          control: { type: 'toggle', key: 'showHeadingBreadcrumbs' },
+        },
+        {
+          name: 'Breadcrumb separator',
+          desc: 'The string used to separate heading levels in breadcrumbs',
+          visible: isBreadcrumbsEnabled,
+          control: { type: 'text', key: 'headingBreadcrumbSeparator' },
+        },
+        {
+          name: 'Max breadcrumb depth',
+          desc: 'Maximum number of heading levels to show in breadcrumbs. Set to 0 for unlimited depth.',
+          visible: isBreadcrumbsEnabled,
+          control: {
+            type: 'slider',
+            key: 'maxBreadcrumbDepth',
+            min: 0,
+            max: 6,
+            step: 1,
+            defaultValue: 0,
+          },
+        },
+      ],
+    };
+  }
 
-    if (!isValid) {
-      this.showErrorPopup(
-        settingName,
-        'Changes not saved. The following regex contain errors:',
-        failures.map(({ regex, error }) => [
-          { text: regex, cls: 'qsp-warning' },
-          { text: error.toString() },
-        ]),
-      );
-    }
+  /**
+   * Builds the H1 through H6 selector. Uses render because a row of buttons has
+   * no first-class declarative control, and because the value is a set of levels
+   * rather than a single bindable key.
+   * @param  {()=>boolean} isEnabled visibility predicate shared with the rest of
+   *   the Search Headings group
+   * @returns SettingGroupItem<SettingsControlKey>
+   */
+  private createHeadingLevelsDefinition(
+    isEnabled: () => boolean,
+  ): SettingGroupItem<SettingsControlKey> {
+    const { config } = this;
 
-    return isValid;
+    return {
+      name: 'Include heading levels',
+      desc: 'Select which heading levels to include in search. To search just the very first H1 heading only deselect all levels.',
+      visible: isEnabled,
+      render: (setting) => {
+        // searchAllHeadings is normalized to a number[] by its getter, so legacy
+        // booleans already map to the right levels (true → all, false → empty).
+        const enabledLevels = new Set(config.searchAllHeadings);
+
+        for (let level = 1; level <= 6; level++) {
+          setting.addButton((btn) => {
+            btn.setButtonText(`H${level}`);
+
+            if (enabledLevels.has(level)) {
+              btn.setCta();
+            }
+
+            btn.onClick(() => {
+              if (enabledLevels.has(level)) {
+                enabledLevels.delete(level);
+                btn.removeCta();
+              } else {
+                enabledLevels.add(level);
+                btn.setCta();
+              }
+
+              config.searchAllHeadings = Array.from(enabledLevels).sort((a, b) => a - b);
+
+              config.save();
+            });
+          });
+        }
+      },
+    };
+  }
+
+  getSettingDefinitions(): SettingDefinitionPage<SettingsControlKey>[] {
+    const { config } = this;
+
+    return [
+      {
+        type: 'page',
+        name: 'Headings Mode',
+        displayValue: () => this.getModeDisplayValue('headingsListCommand'),
+        items: [
+          ...this.createTriggerSettings(
+            'headingsListCommand',
+            'Headings list mode trigger',
+            'Primary trigger that will activate headings list mode in the switcher',
+            config.headingsListPlaceholderText,
+          ),
+          {
+            name: 'Max recent files to show',
+            desc: 'The maximum number of recent files to show when there is no search term',
+            control: {
+              type: 'slider',
+              key: 'maxRecentFileSuggestionsOnInit',
+              min: 0,
+              max: 75,
+              step: 1,
+              defaultValue: 25,
+            },
+          },
+          {
+            name: 'Search Filenames',
+            desc: "Enabled, search and show suggestions for filenames. Disabled, Don't search through filenames (except for fallback searches)",
+            control: { type: 'toggle', key: 'shouldSearchFilenames' },
+          },
+          {
+            name: 'Search Bookmarks',
+            desc: "Enabled, search and show suggestions for Bookmarks. Disabled, Don't search through Bookmarks",
+            control: { type: 'toggle', key: 'shouldSearchBookmarks' },
+          },
+          this.createSearchHeadingsGroupDefinition(),
+          this.createFileExtAllowListDefinitions(),
+          ...this.createExclusionsDefinitions(),
+        ],
+      },
+    ];
   }
 }

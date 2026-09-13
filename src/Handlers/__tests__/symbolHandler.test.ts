@@ -23,6 +23,7 @@ import {
   WorkspaceLeaf,
   App,
   SearchResult,
+  MarkdownPreviewView,
   MarkdownView,
   HeadingCache,
   TagCache,
@@ -808,6 +809,78 @@ describe('symbolHandler', () => {
       selectNearestHeadingSpy.mockReset();
     });
 
+    test('with selectNearestHeading set to true, it should select a heading on the first line of the file when the position is on the first line', async () => {
+      // Arrange
+      const selectNearestHeadingSpy = jest
+        .spyOn(settings, 'selectNearestHeading', 'get')
+        .mockReturnValue(true);
+
+      const heading = makeHeading(
+        'First Line Heading',
+        1,
+        makeLoc(0, 0, 0),
+        makeLoc(0, 20, 20),
+      );
+
+      const metadata = getCachedMetadata();
+      metadata.headings = [heading];
+      mockMetadataCache.getFileCache.mockReturnValueOnce(metadata);
+
+      const mockEditor = (mockRootSplitLeaf.view as MarkdownView)
+        .editor as MockProxy<Editor>;
+      mockEditor.getCursor.mockReturnValueOnce({
+        line: 0,
+        ch: 0,
+      });
+
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      // Act
+      const results = await sut.getSuggestions(inputInfo);
+
+      // Assert
+      const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
+      expect(selectedSuggestions).toHaveLength(1);
+      expect(selectedSuggestions[0].item.symbol).toBe(heading);
+
+      selectNearestHeadingSpy.mockReset();
+    });
+
+    test('with selectNearestHeading set to true, it should set the isSelected property of the nearest preceding heading suggestion to true when the source file is displayed in Reading mode', async () => {
+      // Arrange
+      const selectNearestHeadingSpy = jest
+        .spyOn(settings, 'selectNearestHeading', 'get')
+        .mockReturnValue(true);
+
+      // there should be a heading in the fixture that starts on this line number
+      const expectedHeadingStartLineNumber = 9;
+      const expectedSelectedHeading = rootFixture.cachedMetadata.headings.find(
+        (val) => val.position.start.line === expectedHeadingStartLineNumber,
+      );
+      expect(expectedSelectedHeading).not.toBeNull();
+
+      const mockView = mockRootSplitLeaf.view as MockProxy<MarkdownView>;
+      const mockPreviewMode = mockView.previewMode as MockProxy<MarkdownPreviewView>;
+      mockView.getMode.mockReturnValueOnce('preview');
+      mockPreviewMode.getScroll.mockReturnValueOnce(expectedHeadingStartLineNumber + 1.4);
+
+      const inputInfo = new InputInfo(symbolTrigger);
+      sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
+      expect(inputInfo.mode).toBe(Mode.SymbolList);
+
+      // Act
+      const results = await sut.getSuggestions(inputInfo);
+
+      // Assert
+      const selectedSuggestions = results.filter((v) => v.item.isSelected === true);
+      expect(selectedSuggestions).toHaveLength(1);
+      expect(selectedSuggestions[0].item.symbol).toBe(expectedSelectedHeading);
+
+      selectNearestHeadingSpy.mockReset();
+    });
+
     test('with filter search term, it should return only matching symbol suggestions', async () => {
       filterText = 'tag';
       mockMetadataCache.getFileCache.mockReturnValueOnce(leftFixture.cachedMetadata);
@@ -897,9 +970,12 @@ describe('symbolHandler', () => {
     it('should not return suggestions for a symbol type that is disabled', async () => {
       const inputInfo = new InputInfo(symbolTrigger);
 
-      const isSymbolTypeEnabledSpy = jest
-        .spyOn(settings, 'isSymbolTypeEnabled')
-        .mockImplementation((type) => (type === SymbolType.Tag ? false : true));
+      const enabledSymbolTypesSpy = jest
+        .spyOn(settings, 'enabledSymbolTypes', 'get')
+        .mockReturnValue({
+          ...SwitcherPlusSettings.defaults.enabledSymbolTypes,
+          [SymbolType.Tag]: false,
+        });
 
       mockMetadataCache.getFileCache.mockReturnValueOnce({ tags: getTags() });
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
@@ -912,7 +988,7 @@ describe('symbolHandler', () => {
         mockRootSplitLeaf.view.file,
       );
 
-      isSymbolTypeEnabledSpy.mockRestore();
+      enabledSymbolTypesSpy.mockRestore();
     });
 
     it('should include frontmatter links in symbol list', async () => {
@@ -1024,9 +1100,12 @@ describe('symbolHandler', () => {
     it('should not return suggestions for links if the Link symbol type is disabled', async () => {
       const inputInfo = new InputInfo(symbolTrigger);
 
-      const isSymbolTypeEnabledSpy = jest
-        .spyOn(settings, 'isSymbolTypeEnabled')
-        .mockImplementation((type) => (type === SymbolType.Link ? false : true));
+      const enabledSymbolTypesSpy = jest
+        .spyOn(settings, 'enabledSymbolTypes', 'get')
+        .mockReturnValue({
+          ...SwitcherPlusSettings.defaults.enabledSymbolTypes,
+          [SymbolType.Link]: false,
+        });
 
       mockMetadataCache.getFileCache.mockReturnValueOnce({ links: getLinks() });
       sut.validateCommand(inputInfo, 0, '', null, mockRootSplitLeaf);
@@ -1039,7 +1118,7 @@ describe('symbolHandler', () => {
         mockRootSplitLeaf.view.file,
       );
 
-      isSymbolTypeEnabledSpy.mockRestore();
+      enabledSymbolTypesSpy.mockRestore();
     });
 
     it('should not return suggestions for a sub-link type that is disabled', async () => {
@@ -3622,9 +3701,12 @@ describe('symbolHandler', () => {
       metadata.tags = [];
       mockMetadataCache.getFileCache.mockReturnValue(metadata);
 
-      const isSymbolTypeEnabledSpy = jest
-        .spyOn(settings, 'isSymbolTypeEnabled')
-        .mockImplementation((type) => (type === SymbolType.Tag ? false : true));
+      const enabledSymbolTypesSpy = jest
+        .spyOn(settings, 'enabledSymbolTypes', 'get')
+        .mockReturnValue({
+          ...SwitcherPlusSettings.defaults.enabledSymbolTypes,
+          [SymbolType.Tag]: false,
+        });
 
       const sourceInfo: SourceInfo = {
         file: mockFile,
@@ -3644,7 +3726,7 @@ describe('symbolHandler', () => {
       const tagSymbols = results.filter((r) => r.symbolType === SymbolType.Tag);
       expect(tagSymbols.length).toBe(0);
 
-      isSymbolTypeEnabledSpy.mockRestore();
+      enabledSymbolTypesSpy.mockRestore();
     });
 
     it('should include both inline and frontmatter tags when they are different', async () => {

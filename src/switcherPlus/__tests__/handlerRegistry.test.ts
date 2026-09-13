@@ -40,7 +40,6 @@ describe('HandlerRegistry', () => {
         ownSuggestionTypes: [SuggestionType.HeadingsList],
         parserCommand: {
           getCommandStr: () => headingsTrigger,
-          getCommandStrs: () => [headingsTrigger, '》'],
           type: 'prefix',
         },
       }),
@@ -125,12 +124,6 @@ describe('HandlerRegistry', () => {
 
     it('should get a handler by command string', () => {
       const handler = HandlerRegistry.getInstance().getHandler(headingsTrigger);
-
-      expect(handler).toBeInstanceOf(MockHandler);
-    });
-
-    it('should get a handler by an alternate command string', () => {
-      const handler = HandlerRegistry.getInstance().getHandler('》');
 
       expect(handler).toBeInstanceOf(MockHandler);
     });

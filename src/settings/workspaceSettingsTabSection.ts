@@ -1,18 +1,25 @@
 import { SettingsTabSection } from './settingsTabSection';
+import { SettingDefinitionPage } from 'obsidian';
+import { SettingsControlKey } from './switcherPlusSettings';
 
 export class WorkspaceSettingsTabSection extends SettingsTabSection {
-  display(containerEl: HTMLElement): void {
+  getSettingDefinitions(): SettingDefinitionPage<SettingsControlKey>[] {
     const { config } = this;
 
-    this.addSectionTitle(containerEl, 'Workspace List Mode');
-
-    this.addTriggerSetting(
-      containerEl,
-      'Workspace list mode trigger',
-      'Trigger text that will activate workspace list mode in the switcher',
-      config.workspaceListCommand,
-      'workspaceListCommand',
-      config.workspaceListPlaceholderText,
-    );
+    return [
+      {
+        type: 'page',
+        name: 'Workspace Mode',
+        displayValue: () => this.getModeDisplayValue('workspaceListCommand'),
+        items: [
+          ...this.createTriggerSettings(
+            'workspaceListCommand',
+            'Workspace list mode trigger',
+            'Primary trigger that will activate workspace list mode in the switcher',
+            config.workspaceListPlaceholderText,
+          ),
+        ],
+      },
+    ];
   }
 }

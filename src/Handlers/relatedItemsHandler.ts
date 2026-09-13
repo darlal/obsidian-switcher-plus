@@ -25,7 +25,6 @@ import {
   isTFile,
   isTFolder,
   isUnresolvedSuggestion,
-  getFirstCommandString,
   matcherFnForRegExList,
 } from 'src/utils';
 import { Searcher, StringSearcher } from 'src/search';
@@ -38,8 +37,8 @@ export class RelatedItemsHandler extends Handler<
   getCommandString(sessionOpts?: SessionOpts): string {
     const { settings } = this;
     return sessionOpts?.useActiveEditorAsSource
-      ? getFirstCommandString(settings.relatedItemsListActiveEditorCommand)
-      : getFirstCommandString(settings.relatedItemsListCommand);
+      ? settings.relatedItemsListActiveEditorCommand
+      : settings.relatedItemsListCommand;
   }
 
   validateCommand(

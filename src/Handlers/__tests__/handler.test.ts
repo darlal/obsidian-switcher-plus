@@ -1,6 +1,7 @@
 import {
   App,
   Editor,
+  MarkdownPreviewView,
   MarkdownView,
   TFile,
   WorkspaceLeaf,
@@ -258,12 +259,14 @@ describe('Handler', () => {
   describe('getCursorPosition', () => {
     let mockView: MockProxy<MarkdownView>;
     let mockEditor: MockProxy<Editor>;
+    let mockPreviewMode: MockProxy<MarkdownPreviewView>;
     let mockLeaf: MockProxy<WorkspaceLeaf>;
 
     beforeAll(() => {
       mockLeaf = makeLeaf();
       mockView = mockLeaf.view as MockProxy<MarkdownView>;
       mockEditor = mockView.editor as MockProxy<Editor>;
+      mockPreviewMode = mockView.previewMode as MockProxy<MarkdownPreviewView>;
     });
 
     it('should not throw on falsy input', () => {
@@ -284,14 +287,40 @@ describe('Handler', () => {
       expect(mockView.getViewType).toHaveBeenCalled();
     });
 
-    it('should return null for view that is in preview mode', () => {
+    it('should return the line the reader is scrolled to for view that is in preview mode', () => {
+      // getScroll() returns a fractional line, the portion of the line scrolled past the
+      // top edge of the viewport
       mockView.getViewType.mockReturnValueOnce('markdown');
       mockView.getMode.mockReturnValueOnce('preview');
+      mockPreviewMode.getScroll.mockReturnValueOnce(42.6);
 
       const result = sut.getCursorPosition(mockLeaf);
 
-      expect(result).toBe(null);
+      expect(result).toEqual({ line: 42, ch: 0 });
       expect(mockView.getMode).toHaveBeenCalled();
+      expect(mockPreviewMode.getScroll).toHaveBeenCalled();
+    });
+
+    it('should return the first line for view that is in preview mode when the scroll position has not been computed', () => {
+      mockView.getViewType.mockReturnValueOnce('markdown');
+      mockView.getMode.mockReturnValueOnce('preview');
+      mockPreviewMode.getScroll.mockReturnValueOnce(null);
+
+      const result = sut.getCursorPosition(mockLeaf);
+
+      expect(result).toEqual({ line: 0, ch: 0 });
+      expect(mockPreviewMode.getScroll).toHaveBeenCalled();
+    });
+
+    it('should not read the editor for view that is in preview mode', () => {
+      mockView.getViewType.mockReturnValueOnce('markdown');
+      mockView.getMode.mockReturnValueOnce('preview');
+      mockPreviewMode.getScroll.mockReturnValueOnce(42);
+      mockEditor.getCursor.mockClear();
+
+      sut.getCursorPosition(mockLeaf);
+
+      expect(mockEditor.getCursor).not.toHaveBeenCalled();
     });
 
     it('should return cursor position for markdown view that is not in preview mode', () => {

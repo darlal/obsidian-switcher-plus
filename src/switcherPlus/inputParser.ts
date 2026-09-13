@@ -169,10 +169,7 @@ export class InputParser {
       ];
 
       for (const cmdStr of cmdStrs) {
-        if (!cmdStr?.length) {
-          continue;
-        }
-
+        if (!cmdStr?.length) continue;
         const firstChar = cmdStr[0];
 
         if (!commandMap.has(firstChar)) {

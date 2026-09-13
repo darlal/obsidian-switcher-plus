@@ -8,8 +8,9 @@ import { EditorSettingsTabSection } from './editorSettingsTabSection';
 import { HeadingsSettingsTabSection } from './headingsSettingsTabSection';
 import { SymbolSettingsTabSection } from './symbolSettingsTabSection';
 import { VaultListSettingsTabSection } from './vaultListSettingsTabSection';
-import { SwitcherPlusSettings } from './switcherPlusSettings';
-import { App, PluginSettingTab } from 'obsidian';
+import { SettingsControlKey, SwitcherPlusSettings } from './switcherPlusSettings';
+import { App, PluginSettingTab, SettingDefinitionItem } from 'obsidian';
+import { logError } from 'src/utils';
 import type SwitcherPlusPlugin from '../main';
 
 type ConstructableSettingsTabSection = {
@@ -21,6 +22,23 @@ type ConstructableSettingsTabSection = {
 };
 
 export class SwitcherPlusSettingTab extends PluginSettingTab {
+  generalTabSection: ConstructableSettingsTabSection = GeneralSettingsTabSection;
+
+  /**
+   * To have all the custom mode section nest under one heading, each mode section
+   * has to contribute exactly one navigable page
+   */
+  modeTabSections = [
+    SymbolSettingsTabSection,
+    EditorSettingsTabSection,
+    RelatedItemsSettingsTabSection,
+    CommandListSettingsTabSection,
+    HeadingsSettingsTabSection,
+    BookmarksSettingsTabSection,
+    WorkspaceSettingsTabSection,
+    VaultListSettingsTabSection,
+  ];
+
   constructor(
     app: App,
     public plugin: SwitcherPlusPlugin,
@@ -30,30 +48,33 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     this.containerEl.addClass('qsp-settings-container');
   }
 
-  display(): void {
-    const { containerEl } = this;
-    const tabSections = [
-      GeneralSettingsTabSection,
-      SymbolSettingsTabSection,
-      HeadingsSettingsTabSection,
-      EditorSettingsTabSection,
-      RelatedItemsSettingsTabSection,
-      BookmarksSettingsTabSection,
-      CommandListSettingsTabSection,
-      WorkspaceSettingsTabSection,
-      VaultListSettingsTabSection,
+  getSettingDefinitions(): SettingDefinitionItem<SettingsControlKey>[] {
+    const { app, config, generalTabSection, modeTabSections } = this;
+
+    return [
+      ...new generalTabSection(app, this, config).getSettingDefinitions(),
+      {
+        type: 'group',
+        heading: 'Custom mode behaviors',
+        items: modeTabSections.flatMap((tabSectionClass) =>
+          new tabSectionClass(app, this, config).getSettingDefinitions(),
+        ),
+      },
     ];
-
-    containerEl.empty();
-
-    tabSections.forEach((tabSectionClass) => {
-      this.displayTabSection(tabSectionClass);
-    });
   }
 
-  displayTabSection(tabSectionClass: ConstructableSettingsTabSection): void {
-    const { app, config, containerEl } = this;
-    const tabSection = new tabSectionClass(app, this, config);
-    tabSection.display(containerEl);
+  getControlValue(key: string): unknown {
+    return this.config.readControlValue(key);
+  }
+
+  setControlValue(key: string, value: unknown): Promise<void> {
+    this.config.writeControlValue(key, value);
+
+    // Returned so the framework awaits the write before re-evaluating visible
+    // and disabled predicates. Rejections are logged rather than propagated
+    // because it is not documented how a rejected setControlValue is handled.
+    return this.config.saveSettings().catch((reason) => {
+      logError('Switcher++: Error saving changes to settings. ', reason);
+    });
   }
 }

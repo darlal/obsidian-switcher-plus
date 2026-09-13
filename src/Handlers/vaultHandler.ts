@@ -1,9 +1,4 @@
-import {
-  filenameFromPath,
-  getFirstCommandString,
-  logError,
-  notifyError,
-} from 'src/utils';
+import { filenameFromPath, logError, notifyError } from 'src/utils';
 import {
   AnySuggestion,
   MatchType,
@@ -36,7 +31,7 @@ export class VaultHandler extends Handler<VaultSuggestion> {
   };
 
   getCommandString(_sessionOpts?: SessionOpts): string {
-    return getFirstCommandString(this.settings?.vaultListCommand);
+    return this.settings?.vaultListCommand;
   }
 
   validateCommand(

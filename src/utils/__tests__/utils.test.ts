@@ -30,8 +30,6 @@ import {
   formatHeadingBreadcrumbs,
   getFileTags,
   formatTags,
-  getCommandStrings,
-  getFirstCommandString,
   notifyError,
   logError,
   logWarn,
@@ -59,18 +57,6 @@ import { Chance } from 'chance';
 const chance = new Chance();
 
 describe('utils', () => {
-  describe('mode command strings', () => {
-    it('should parse one trigger per line without trimming significant whitespace', () => {
-      expect(getCommandStrings('edt \n》\nedt ')).toEqual(['edt ', '》']);
-      expect(getFirstCommandString('edt \n》')).toBe('edt ');
-    });
-
-    it('should return no triggers for non-string input', () => {
-      expect(getCommandStrings(null)).toEqual([]);
-      expect(getFirstCommandString(undefined)).toBe('');
-    });
-  });
-
   describe('isSystemSuggestion', () => {
     it('should return true for FileSuggestion', () => {
       const sugg = makeFileSuggestion();

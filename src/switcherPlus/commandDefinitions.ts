@@ -13,7 +13,7 @@ import {
   WorkspaceHandler,
 } from 'src/Handlers';
 import { AnySuggestion, Mode, SuggestionType } from 'src/types';
-import { getCommandStrings, getFirstCommandString } from 'src/utils';
+import { getModeTriggers } from 'src/settings/modeTriggers';
 
 /**
  * A type alias for the constructor of a class that implements the {@link Handler} interface.
@@ -44,10 +44,7 @@ export interface ParserCommand {
    */
   getCommandStr: () => string;
 
-  /**
-   * Returns all command strings that trigger this command. When omitted, the
-   * parser falls back to the single string returned by getCommandStr.
-   */
+  /** All literal triggers, including optional aliases. */
   getCommandStrs?: () => string[];
 
   /**
@@ -131,8 +128,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.EditorList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => getFirstCommandString(config.editorListCommand),
-        getCommandStrs: () => getCommandStrings(config.editorListCommand),
+        getCommandStr: () => config.editorListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'editorListCommand'),
       },
     },
     {
@@ -144,8 +141,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.SymbolList],
       parserCommand: {
         type: 'sourced',
-        getCommandStr: () => getFirstCommandString(config.symbolListCommand),
-        getCommandStrs: () => getCommandStrings(config.symbolListCommand),
+        getCommandStr: () => config.symbolListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'symbolListCommand'),
       },
     },
     {
@@ -156,8 +153,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       handlerClass: SymbolHandler,
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => getFirstCommandString(config.symbolListActiveEditorCommand),
-        getCommandStrs: () => getCommandStrings(config.symbolListActiveEditorCommand),
+        getCommandStr: () => config.symbolListActiveEditorCommand,
+        getCommandStrs: () => getModeTriggers(config, 'symbolListActiveEditorCommand'),
         useActiveEditorAsSource: true,
       },
     },
@@ -170,8 +167,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.WorkspaceList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => getFirstCommandString(config.workspaceListCommand),
-        getCommandStrs: () => getCommandStrings(config.workspaceListCommand),
+        getCommandStr: () => config.workspaceListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'workspaceListCommand'),
       },
     },
     {
@@ -183,8 +180,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.HeadingsList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => getFirstCommandString(config.headingsListCommand),
-        getCommandStrs: () => getCommandStrings(config.headingsListCommand),
+        getCommandStr: () => config.headingsListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'headingsListCommand'),
       },
     },
     {
@@ -198,8 +195,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.Bookmark],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => getFirstCommandString(config.bookmarksListCommand),
-        getCommandStrs: () => getCommandStrings(config.bookmarksListCommand),
+        getCommandStr: () => config.bookmarksListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'bookmarksListCommand'),
       },
     },
     {
@@ -211,8 +208,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.CommandList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => getFirstCommandString(config.commandListCommand),
-        getCommandStrs: () => getCommandStrings(config.commandListCommand),
+        getCommandStr: () => config.commandListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'commandListCommand'),
       },
     },
     {
@@ -224,8 +221,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.RelatedItemsList],
       parserCommand: {
         type: 'sourced',
-        getCommandStr: () => getFirstCommandString(config.relatedItemsListCommand),
-        getCommandStrs: () => getCommandStrings(config.relatedItemsListCommand),
+        getCommandStr: () => config.relatedItemsListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'relatedItemsListCommand'),
       },
     },
     {
@@ -236,10 +233,9 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       handlerClass: RelatedItemsHandler,
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () =>
-          getFirstCommandString(config.relatedItemsListActiveEditorCommand),
+        getCommandStr: () => config.relatedItemsListActiveEditorCommand,
         getCommandStrs: () =>
-          getCommandStrings(config.relatedItemsListActiveEditorCommand),
+          getModeTriggers(config, 'relatedItemsListActiveEditorCommand'),
         useActiveEditorAsSource: true,
       },
     },
@@ -252,8 +248,8 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.VaultList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => getFirstCommandString(config.vaultListCommand),
-        getCommandStrs: () => getCommandStrings(config.vaultListCommand),
+        getCommandStr: () => config.vaultListCommand,
+        getCommandStrs: () => getModeTriggers(config, 'vaultListCommand'),
       },
     },
   ];

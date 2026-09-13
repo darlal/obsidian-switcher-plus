@@ -1,11 +1,11 @@
 import {
-  SettingsTabSection,
   BookmarksSettingsTabSection,
   SwitcherPlusSettings,
   SwitcherPlusSettingTab,
 } from 'src/settings';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { App } from 'obsidian';
+import { App, SettingDefinitionControl, SettingDefinitionPage } from 'obsidian';
+import { findSettingByKey, flattenSettingDefinitions } from '@fixtures';
 
 describe('bookmarksSettingsTabSection', () => {
   let mockApp: MockProxy<App>;
@@ -23,39 +23,42 @@ describe('bookmarksSettingsTabSection', () => {
     sut = new BookmarksSettingsTabSection(mockApp, mockPluginSettingTab, config);
   });
 
-  it('should display a header for the section', () => {
-    const addSectionTitleSpy = jest.spyOn(
-      SettingsTabSection.prototype,
-      'addSectionTitle',
-    );
+  describe('getSettingDefinitions', () => {
+    it('should return a single page for the section', () => {
+      const [page] = sut.getSettingDefinitions();
 
-    sut.display(mockContainerEl);
+      expect(page).toEqual(
+        expect.objectContaining({ type: 'page', name: 'Bookmarks Mode' }),
+      );
+    });
 
-    expect(addSectionTitleSpy).toHaveBeenCalledWith(
-      mockContainerEl,
-      'Bookmarks List Mode',
-    );
+    it('should show the mode trigger as the page display value', () => {
+      const [page] = sut.getSettingDefinitions() as SettingDefinitionPage[];
 
-    addSectionTitleSpy.mockRestore();
-  });
+      expect((page.displayValue as () => string)()).toBe(config.bookmarksListCommand);
+    });
 
-  it('should show the mode trigger setting', () => {
-    const addTriggerSettingSpy = jest.spyOn(
-      SettingsTabSection.prototype,
-      'addTriggerSetting',
-    );
+    it('should define the mode trigger setting', () => {
+      const definitions = sut.getSettingDefinitions();
 
-    sut.display(mockContainerEl);
+      expect(findSettingByKey(definitions, 'bookmarksListCommand')).toEqual({
+        name: 'Bookmarks list mode trigger',
+        desc: expect.any(String),
+        control: {
+          type: 'text',
+          key: 'bookmarksListCommand',
+          placeholder: config.bookmarksListPlaceholderText,
+          validate: expect.any(Function),
+        },
+      });
+    });
 
-    expect(addTriggerSettingSpy).toHaveBeenCalledWith(
-      mockContainerEl,
-      'Bookmarks list mode trigger',
-      expect.any(String),
-      config.bookmarksListCommand,
-      'bookmarksListCommand',
-      config.bookmarksListPlaceholderText,
-    );
+    it('should define exactly the expected settings', () => {
+      const keys = flattenSettingDefinitions(sut.getSettingDefinitions()).map(
+        (item) => (item as SettingDefinitionControl).control?.key,
+      );
 
-    addTriggerSettingSpy.mockRestore();
+      expect(keys).toEqual(['bookmarksListCommand']);
+    });
   });
 });

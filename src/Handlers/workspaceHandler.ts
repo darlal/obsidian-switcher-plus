@@ -1,4 +1,4 @@
-import { getFirstCommandString, getInternalEnabledPluginById } from 'src/utils';
+import { getInternalEnabledPluginById } from 'src/utils';
 import {
   AnySuggestion,
   Mode,
@@ -22,7 +22,7 @@ export const WORKSPACE_PLUGIN_ID = 'workspaces';
 
 export class WorkspaceHandler extends Handler<WorkspaceSuggestion> {
   getCommandString(_sessionOpts?: SessionOpts): string {
-    return getFirstCommandString(this.settings?.workspaceListCommand);
+    return this.settings?.workspaceListCommand;
   }
 
   validateCommand(

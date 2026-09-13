@@ -1,22 +1,27 @@
 import { SettingsTabSection } from './settingsTabSection';
+import { SettingDefinitionPage } from 'obsidian';
+import { SettingsControlKey } from './switcherPlusSettings';
 
 export class VaultListSettingsTabSection extends SettingsTabSection {
-  display(containerEl: HTMLElement): void {
+  getSettingDefinitions(): SettingDefinitionPage<SettingsControlKey>[] {
     const { config } = this;
 
-    const titleSetting = this.addSectionTitle(containerEl, 'Vault List Mode');
-    titleSetting.nameEl?.createSpan({
-      cls: ['qsp-tag', 'qsp-warning'],
-      text: 'Experimental',
-    });
-
-    this.addTriggerSetting(
-      containerEl,
-      'Vault list mode trigger',
-      'Trigger text that will activate vault list mode in the switcher',
-      config.vaultListCommand,
-      'vaultListCommand',
-      config.vaultListPlaceholderText,
-    );
+    return [
+      {
+        type: 'page',
+        name: 'Vault Mode',
+        desc: 'Experimental.',
+        status: () => 'warning',
+        displayValue: () => this.getModeDisplayValue('vaultListCommand'),
+        items: [
+          ...this.createTriggerSettings(
+            'vaultListCommand',
+            'Vault list mode trigger',
+            'Primary trigger that will activate vault list mode in the switcher',
+            config.vaultListPlaceholderText,
+          ),
+        ],
+      },
+    ];
   }
 }
