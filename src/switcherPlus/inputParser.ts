@@ -36,6 +36,8 @@ const IME_PUNCTUATION_FOLD: Readonly<Record<string, string>> = {
   '》': '>',
   '《': '<',
   '￥': '$',
+  '‘': "'",
+  '’': "'",
 };
 
 type MappedCommand = {

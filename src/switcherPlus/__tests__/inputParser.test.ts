@@ -499,6 +499,7 @@ describe('InputParser', () => {
     const asciiSymbolTrigger = '@';
     const asciiHeadingsTrigger = '#';
     const asciiDollarTrigger = '$';
+    const asciiBookmarkTrigger = "'";
     const underscoreTrigger = '_';
 
     let imeParser: InputParser;
@@ -546,6 +547,15 @@ describe('InputParser', () => {
           },
         }),
         mock<CommandDefinition>({
+          mode: Mode.BookmarksList,
+          handlerClass: MockHandler,
+          ownSuggestionTypes: [SuggestionType.Bookmark],
+          parserCommand: {
+            getCommandStr: () => asciiBookmarkTrigger,
+            type: 'prefix',
+          },
+        }),
+        mock<CommandDefinition>({
           mode: Mode.VaultList,
           handlerClass: MockHandler,
           ownSuggestionTypes: [SuggestionType.VaultList],
@@ -567,6 +577,19 @@ describe('InputParser', () => {
       expect(result.resolvedCommands[0].cmdStr).toBe(asciiDollarTrigger);
       expect(result.resolvedCommands[0].filterText).toBe('query');
     });
+
+    test.each(['‘', '’'])(
+      'should treat %s as the bookmark trigger via the IME table',
+      (inputChar: string) => {
+        const result = imeParser.parse(`${inputChar}query`);
+
+        expect(result.cleanInput).toBe(`${inputChar}query`);
+        expect(result.resolvedCommands).toHaveLength(1);
+        expect(result.resolvedCommands[0].cmdDef.mode).toBe(Mode.BookmarksList);
+        expect(result.resolvedCommands[0].cmdStr).toBe(asciiBookmarkTrigger);
+        expect(result.resolvedCommands[0].filterText).toBe('query');
+      },
+    );
 
     test('should treat 》 as the command trigger and keep raw cleanInput', () => {
       const result = imeParser.parse('》daily');
