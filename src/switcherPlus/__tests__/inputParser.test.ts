@@ -569,14 +569,17 @@ describe('InputParser', () => {
       imeParser = new InputParser(mockHandlerRegistry, imeConfig, imeDefs);
     });
 
-    test('should treat ￥ as the $ trigger via the IME table', () => {
-      const result = imeParser.parse('￥query');
+    test.each(['￥', '¥'])(
+      'should treat %s as the $ trigger via the IME table',
+      (inputChar: string) => {
+        const result = imeParser.parse(`${inputChar}query`);
 
-      expect(result.cleanInput).toBe('￥query');
-      expect(result.resolvedCommands[0].cmdDef.mode).toBe(Mode.RelatedItemsList);
-      expect(result.resolvedCommands[0].cmdStr).toBe(asciiDollarTrigger);
-      expect(result.resolvedCommands[0].filterText).toBe('query');
-    });
+        expect(result.cleanInput).toBe(`${inputChar}query`);
+        expect(result.resolvedCommands[0].cmdDef.mode).toBe(Mode.RelatedItemsList);
+        expect(result.resolvedCommands[0].cmdStr).toBe(asciiDollarTrigger);
+        expect(result.resolvedCommands[0].filterText).toBe('query');
+      },
+    );
 
     test.each(['‘', '’'])(
       'should treat %s as the bookmark trigger via the IME table',
