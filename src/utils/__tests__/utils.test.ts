@@ -776,6 +776,147 @@ describe('utils', () => {
       expect(result[0]).toBe(h1b);
       expect(result[1]).toBe(h2b);
     });
+
+    it('should exclude a lower-level heading from a previous section when levels are skipped', () => {
+      // Arrange
+      // # H1 A
+      // ## H2 AB
+      //
+      // # H1 B
+      // ### H3 BA  <- target
+      const h1a = makeHeading('H1 A', 1, makeLoc(0, 0, 0), makeLoc(0, 6, 6));
+      const h2ab = makeHeading('H2 AB', 2, makeLoc(1, 0, 7), makeLoc(1, 8, 15));
+      const h1b = makeHeading('H1 B', 1, makeLoc(3, 0, 17), makeLoc(3, 6, 23));
+      const h3ba = makeHeading('H3 BA', 3, makeLoc(4, 0, 24), makeLoc(4, 9, 33));
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h1a, h2ab, h1b, h3ba],
+      });
+
+      // Act
+      const result = getHeadingBreadcrumbs(h3ba, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual([h1b]);
+    });
+
+    it('should ignore headings that come after the target heading', () => {
+      // Arrange
+      // # T
+      // ## Target  <- target
+      // # Later
+      // ## Later child
+      const h1 = makeHeading('T', 1, makeLoc(0, 0, 0), makeLoc(0, 3, 3));
+      const target = makeHeading('Target', 2, makeLoc(1, 0, 4), makeLoc(1, 9, 13));
+      const h1Later = makeHeading('Later', 1, makeLoc(2, 0, 14), makeLoc(2, 7, 21));
+      const h2Later = makeHeading(
+        'Later child',
+        2,
+        makeLoc(3, 0, 22),
+        makeLoc(3, 14, 36),
+      );
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h1, target, h1Later, h2Later],
+      });
+
+      // Act
+      const result = getHeadingBreadcrumbs(target, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual([h1]);
+    });
+
+    it('should exclude a deeper heading from a section closed by a shallower heading', () => {
+      // Arrange
+      // ### X
+      // ## Y
+      // #### Z  <- target
+      const h3x = makeHeading('X', 3, makeLoc(0, 0, 0), makeLoc(0, 5, 5));
+      const h2y = makeHeading('Y', 2, makeLoc(1, 0, 6), makeLoc(1, 4, 10));
+      const h4z = makeHeading('Z', 4, makeLoc(2, 0, 11), makeLoc(2, 6, 17));
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h3x, h2y, h4z],
+      });
+
+      // Act
+      const result = getHeadingBreadcrumbs(h4z, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual([h2y]);
+    });
+
+    it('should exclude preceding sibling headings and their children', () => {
+      // Arrange
+      // # T
+      // ## A
+      // ### A1
+      // ## B  <- target
+      const h1 = makeHeading('T', 1, makeLoc(0, 0, 0), makeLoc(0, 3, 3));
+      const h2a = makeHeading('A', 2, makeLoc(1, 0, 4), makeLoc(1, 4, 8));
+      const h3a1 = makeHeading('A1', 3, makeLoc(2, 0, 9), makeLoc(2, 6, 15));
+      const h2b = makeHeading('B', 2, makeLoc(3, 0, 16), makeLoc(3, 4, 20));
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h1, h2a, h3a1, h2b],
+      });
+
+      // Act
+      const result = getHeadingBreadcrumbs(h2b, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual([h1]);
+    });
+
+    it('should return ancestors when the file has no H1', () => {
+      // Arrange
+      // ## A
+      // ### B  <- target
+      const h2 = makeHeading('A', 2, makeLoc(0, 0, 0), makeLoc(0, 4, 4));
+      const h3 = makeHeading('B', 3, makeLoc(1, 0, 5), makeLoc(1, 5, 10));
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h2, h3],
+      });
+
+      // Act
+      const result = getHeadingBreadcrumbs(h3, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual([h2]);
+    });
+
+    it('should return empty array when a non-H1 heading is the first heading', () => {
+      // Arrange
+      // (body text, no headings)
+      // ## A  <- target
+      const h2 = makeHeading('A', 2, makeLoc(3, 0, 30), makeLoc(3, 4, 34));
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h2],
+      });
+
+      // Act
+      const result = getHeadingBreadcrumbs(h2, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual([]);
+    });
+
+    it('should locate the target by line when it is not the cached heading instance', () => {
+      // Arrange
+      // # T
+      // ## A
+      // ### B  <- target (passed as a copy of the cached heading)
+      const h1 = makeHeading('T', 1, makeLoc(0, 0, 0), makeLoc(0, 3, 3));
+      const h2 = makeHeading('A', 2, makeLoc(1, 0, 4), makeLoc(1, 4, 8));
+      const h3 = makeHeading('B', 3, makeLoc(2, 0, 9), makeLoc(2, 5, 14));
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h1, h2, h3],
+      });
+      const targetCopy = makeHeading('B', 3, makeLoc(2, 0, 9), makeLoc(2, 5, 14));
+
+      // Act
+      const result = getHeadingBreadcrumbs(targetCopy, mockFile, mockMetadataCache);
+
+      // Assert
+      expect(result).toEqual([h1, h2]);
+    });
   });
 
   describe('formatHeadingBreadcrumbs', () => {

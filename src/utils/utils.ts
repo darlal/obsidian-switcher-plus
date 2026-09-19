@@ -497,14 +497,12 @@ function generateMarkdownLinkForReferenceCache(
 }
 
 /**
- * Extracts the hierarchical parent headings for a given heading by tracking the current
- * ancestor chain through preceding headings. A new heading replaces any earlier heading
- * at the same or deeper level, so breadcrumbs represent the heading's actual branch.
+ * Extracts the hierarchical parent headings for a given heading. This builds a breadcrumb
+ * trail that represents the heading's position in the document hierarchy.
  *
- * The algorithm works by:
- * 1. Finding all headings that come before the target heading by line number
- * 2. Updating the ancestor chain as each preceding heading starts or leaves a branch
- * 3. Sorting the result by level (ascending) to ensure H1 → H2 → H3 ordering
+ * The headings above the target are walked backwards (bottom-up), each one with a
+ * lower level than the most recently found ancestor is the next ancestor, until an
+ * H1 or the top of the file is reached.
  *
  * @param heading - The heading for which to extract breadcrumbs
  * @param file - The file containing the heading
@@ -519,40 +517,17 @@ export function getHeadingBreadcrumbs(
   const allHeadings = metadataCache.getFileCache(file)?.headings ?? [];
   const headingLine = heading.position.start.line;
 
-  // Track the current ancestor chain, clearing lower-level headings whenever a new
-  // higher-level heading starts a different branch.
-  const closestByLevel = new Map<number, HeadingCache>();
-
-  // Single pass through headings: find closest parent at each level
-  for (const h of allHeadings) {
-    const hLine = h.position.start.line;
-
-    // Only consider headings that come before our target heading
-    if (hLine >= headingLine) {
-      continue;
-    }
-
-    // Only consider headings at levels that are parents of our heading
-    if (h.level >= heading.level) {
-      continue;
-    }
-
-    // A heading at this level replaces any prior heading at the same or deeper
-    // levels, since those headings belong to the previous branch.
-    for (const level of closestByLevel.keys()) {
-      if (level >= h.level) {
-        closestByLevel.delete(level);
-      }
-    }
-    closestByLevel.set(h.level, h);
-  }
-
-  // Convert map to array and sort by level (H1 → H2 → H3)
+  // Headings from the cache are expected to be in document order, so walking the array
+  // backwards walks the file bottom-up
   const breadcrumbs: HeadingCache[] = [];
-  for (let level = 1; level < heading.level; level++) {
-    const parent = closestByLevel.get(level);
-    if (parent) {
-      breadcrumbs.push(parent);
+  let minLevel = heading.level;
+
+  for (let i = allHeadings.length - 1; i >= 0 && minLevel > 1; i--) {
+    const h = allHeadings[i];
+
+    if (h.position.start.line < headingLine && h.level < minLevel) {
+      breadcrumbs.unshift(h);
+      minLevel = h.level;
     }
   }
 
