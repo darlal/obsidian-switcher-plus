@@ -159,7 +159,7 @@ export class InputParser {
         if (match) {
           // Strip the escape char (existing behavior) but keep the raw command
           // characters the user typed, not the folded or configured trigger.
-          const cmdLen = match.cmdStr.length;
+          const cmdLen = match.foldedCmdStr.length;
           cleanInput += inputText.slice(i + escapeLen, i + escapeLen + cmdLen);
           i += escapeLen + cmdLen;
           continue;
@@ -172,7 +172,7 @@ export class InputParser {
         // A command was found. Add it to our list of found commands and
         // advance the pointer. Append the raw typed characters so filter text
         // keeps IME punctuation instead of rewriting it to the ASCII trigger.
-        const cmdLen = match.cmdStr.length;
+        const cmdLen = match.foldedCmdStr.length;
         foundCommands.push({ ...match, indexInCleanInput: cleanInput.length });
         cleanInput += inputText.slice(i, i + cmdLen);
         i += cmdLen;

@@ -499,8 +499,10 @@ describe('InputParser', () => {
     const asciiSymbolTrigger = '@';
     const asciiHeadingsTrigger = '#';
     const asciiDollarTrigger = '$';
+    const asciiDollarWithSpaceTrigger = '$ ';
     const asciiBookmarkTrigger = "'";
     const underscoreTrigger = '_';
+    const expandingTrigger = '.';
 
     let imeParser: InputParser;
 
@@ -547,6 +549,15 @@ describe('InputParser', () => {
           },
         }),
         mock<CommandDefinition>({
+          mode: Mode.RelatedItemsList,
+          handlerClass: MockHandler,
+          ownSuggestionTypes: [SuggestionType.RelatedItemsList],
+          parserCommand: {
+            getCommandStr: () => asciiDollarWithSpaceTrigger,
+            type: 'prefix',
+          },
+        }),
+        mock<CommandDefinition>({
           mode: Mode.BookmarksList,
           handlerClass: MockHandler,
           ownSuggestionTypes: [SuggestionType.Bookmark],
@@ -561,6 +572,15 @@ describe('InputParser', () => {
           ownSuggestionTypes: [SuggestionType.VaultList],
           parserCommand: {
             getCommandStr: () => underscoreTrigger,
+            type: 'prefix',
+          },
+        }),
+        mock<CommandDefinition>({
+          mode: Mode.VaultList,
+          handlerClass: MockHandler,
+          ownSuggestionTypes: [SuggestionType.VaultList],
+          parserCommand: {
+            getCommandStr: () => expandingTrigger,
             type: 'prefix',
           },
         }),
@@ -580,6 +600,16 @@ describe('InputParser', () => {
         expect(result.resolvedCommands[0].filterText).toBe('query');
       },
     );
+
+    test('should fold an IME table character and fullwidth space in a multi-character trigger', () => {
+      const result = imeParser.parse('￥\u3000query');
+
+      expect(result.cleanInput).toBe('￥\u3000query');
+      expect(result.resolvedCommands).toHaveLength(1);
+      expect(result.resolvedCommands[0].cmdDef.mode).toBe(Mode.RelatedItemsList);
+      expect(result.resolvedCommands[0].cmdStr).toBe(asciiDollarWithSpaceTrigger);
+      expect(result.resolvedCommands[0].filterText).toBe('query');
+    });
 
     test.each(['‘', '’'])(
       'should treat %s as the bookmark trigger via the IME table',
@@ -640,9 +670,9 @@ describe('InputParser', () => {
     );
 
     test('should not fold one-to-many punctuation onto a single-character trigger', () => {
-      const result = imeParser.parse('——foo');
+      const result = imeParser.parse('…foo');
 
-      expect(result.cleanInput).toBe('——foo');
+      expect(result.cleanInput).toBe('…foo');
       expect(result.resolvedCommands).toEqual([]);
     });
 
