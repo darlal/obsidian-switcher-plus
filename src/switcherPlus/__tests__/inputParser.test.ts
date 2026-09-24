@@ -492,6 +492,204 @@ describe('InputParser', () => {
       expect(inputInfo.mode).toBe(Mode.Standard);
     });
   });
+
+  describe('IME punctuation folding', () => {
+    const asciiEscape = '!';
+    const asciiCommandTrigger = '>';
+    const asciiSymbolTrigger = '@';
+    const asciiHeadingsTrigger = '#';
+    const asciiDollarTrigger = '$';
+    const asciiDollarWithSpaceTrigger = '$ ';
+    const asciiBookmarkTrigger = "'";
+    const underscoreTrigger = '_';
+    const expandingTrigger = '.';
+
+    let imeParser: InputParser;
+
+    beforeAll(() => {
+      const imeConfig = mock<SwitcherPlusSettings>({
+        escapeCmdChar: asciiEscape,
+      });
+
+      const imeDefs = [
+        mock<CommandDefinition>({
+          mode: Mode.CommandList,
+          handlerClass: MockHandler,
+          ownSuggestionTypes: [SuggestionType.CommandList],
+          parserCommand: {
+            getCommandStr: () => asciiCommandTrigger,
+            type: 'prefix',
+          },
+        }),
+        mock<CommandDefinition>({
+          mode: Mode.SymbolList,
+          handlerClass: MockHandler,
+          ownSuggestionTypes: [SuggestionType.SymbolList],
+          parserCommand: {
+            getCommandStr: () => asciiSymbolTrigger,
+            type: 'sourced',
+          },
+        }),
+        mock<CommandDefinition>({
+          mode: Mode.HeadingsList,
+          handlerClass: MockHandler,
+          ownSuggestionTypes: [SuggestionType.HeadingsList],
+          parserCommand: {
+            getCommandStr: () => asciiHeadingsTrigger,
+            type: 'prefix',
+          },
+        }),
+        mock<CommandDefinition>({
+          mode: Mode.RelatedItemsList,
+          handlerClass: MockHandler,
+          ownSuggestionTypes: [SuggestionType.RelatedItemsList],
+          parserCommand: {
+            getCommandStr: () => asciiDollarTrigger,
+            type: 'prefix',
+          },
+        }),
+        mock<CommandDefinition>({
+          mode: Mode.RelatedItemsList,
+          handlerClass: MockHandler,
+          ownSuggestionTypes: [SuggestionType.RelatedItemsList],
+          parserCommand: {
+            getCommandStr: () => asciiDollarWithSpaceTrigger,
+            type: 'prefix',
+          },
+        }),
+        mock<CommandDefinition>({
+          mode: Mode.BookmarksList,
+          handlerClass: MockHandler,
+          ownSuggestionTypes: [SuggestionType.Bookmark],
+          parserCommand: {
+            getCommandStr: () => asciiBookmarkTrigger,
+            type: 'prefix',
+          },
+        }),
+        mock<CommandDefinition>({
+          mode: Mode.VaultList,
+          handlerClass: MockHandler,
+          ownSuggestionTypes: [SuggestionType.VaultList],
+          parserCommand: {
+            getCommandStr: () => underscoreTrigger,
+            type: 'prefix',
+          },
+        }),
+        mock<CommandDefinition>({
+          mode: Mode.VaultList,
+          handlerClass: MockHandler,
+          ownSuggestionTypes: [SuggestionType.VaultList],
+          parserCommand: {
+            getCommandStr: () => expandingTrigger,
+            type: 'prefix',
+          },
+        }),
+      ];
+
+      imeParser = new InputParser(mockHandlerRegistry, imeConfig, imeDefs);
+    });
+
+    test.each(['￥', '¥'])(
+      'should treat %s as the $ trigger via the IME table',
+      (inputChar: string) => {
+        const result = imeParser.parse(`${inputChar}query`);
+
+        expect(result.cleanInput).toBe(`${inputChar}query`);
+        expect(result.resolvedCommands[0].cmdDef.mode).toBe(Mode.RelatedItemsList);
+        expect(result.resolvedCommands[0].cmdStr).toBe(asciiDollarTrigger);
+        expect(result.resolvedCommands[0].filterText).toBe('query');
+      },
+    );
+
+    test('should fold an IME table character and fullwidth space in a multi-character trigger', () => {
+      const result = imeParser.parse('￥\u3000query');
+
+      expect(result.cleanInput).toBe('￥\u3000query');
+      expect(result.resolvedCommands).toHaveLength(1);
+      expect(result.resolvedCommands[0].cmdDef.mode).toBe(Mode.RelatedItemsList);
+      expect(result.resolvedCommands[0].cmdStr).toBe(asciiDollarWithSpaceTrigger);
+      expect(result.resolvedCommands[0].filterText).toBe('query');
+    });
+
+    test.each(['‘', '’'])(
+      'should treat %s as the bookmark trigger via the IME table',
+      (inputChar: string) => {
+        const result = imeParser.parse(`${inputChar}query`);
+
+        expect(result.cleanInput).toBe(`${inputChar}query`);
+        expect(result.resolvedCommands).toHaveLength(1);
+        expect(result.resolvedCommands[0].cmdDef.mode).toBe(Mode.BookmarksList);
+        expect(result.resolvedCommands[0].cmdStr).toBe(asciiBookmarkTrigger);
+        expect(result.resolvedCommands[0].filterText).toBe('query');
+      },
+    );
+
+    test('should treat 》 as the command trigger and keep raw cleanInput', () => {
+      const result = imeParser.parse('》daily');
+
+      expect(result.cleanInput).toBe('》daily');
+      expect(result.resolvedCommands).toHaveLength(1);
+      expect(result.resolvedCommands[0].cmdDef.mode).toBe(Mode.CommandList);
+      expect(result.resolvedCommands[0].cmdStr).toBe(asciiCommandTrigger);
+      expect(result.resolvedCommands[0].filterText).toBe('daily');
+    });
+
+    test('should keep a later 》 in filter text instead of rewriting it', () => {
+      const result = imeParser.parse('》daily》x');
+
+      expect(result.cleanInput).toBe('》daily》x');
+      expect(result.resolvedCommands).toHaveLength(1);
+      expect(result.resolvedCommands[0].cmdStr).toBe(asciiCommandTrigger);
+      expect(result.resolvedCommands[0].filterText).toBe('daily》x');
+    });
+
+    test.each([
+      ['＞', Mode.CommandList, asciiCommandTrigger],
+      ['＠', Mode.SymbolList, asciiSymbolTrigger],
+      ['＃', Mode.HeadingsList, asciiHeadingsTrigger],
+    ])(
+      'should match fullwidth %s via NFKC',
+      (inputChar: string, mode: Mode, cmdStr: string) => {
+        const result = imeParser.parse(`${inputChar}query`);
+
+        expect(result.cleanInput).toBe(`${inputChar}query`);
+        expect(result.resolvedCommands[0].cmdDef.mode).toBe(mode);
+        expect(result.resolvedCommands[0].cmdStr).toBe(cmdStr);
+        expect(result.resolvedCommands[0].filterText).toBe('query');
+      },
+    );
+
+    test.each(['！>', '！》'])(
+      'should treat %s as an escaped command',
+      (input: string) => {
+        const result = imeParser.parse(input);
+
+        expect(result.resolvedCommands).toEqual([]);
+        expect(result.cleanInput).toBe(input.slice(1));
+      },
+    );
+
+    test('should not fold one-to-many punctuation onto a single-character trigger', () => {
+      const result = imeParser.parse('…foo');
+
+      expect(result.cleanInput).toBe('…foo');
+      expect(result.resolvedCommands).toEqual([]);
+    });
+
+    test('should not treat a prefix IME variant as a command when it is not at the start', () => {
+      const result = imeParser.parse('笔记》附录');
+
+      expect(result.cleanInput).toBe('笔记》附录');
+      expect(result.resolvedCommands).toEqual([]);
+    });
+
+    test('should not treat 《 as a command when < is not a configured trigger', () => {
+      const result = imeParser.parse('《红楼梦》');
+
+      expect(result.cleanInput).toBe('《红楼梦》');
+      expect(result.resolvedCommands).toEqual([]);
+    });
+  });
 });
 
 describe('InputParser integration tests', () => {
