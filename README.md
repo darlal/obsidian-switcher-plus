@@ -244,6 +244,18 @@ In the demo below, `Quick Switcher++: Open Symbols for the active editor` global
 | Enable quick open hotkeys for top results | **Enabled**: hotkeys will be defined for each of the top N results displayed in the Switcher. These hotkeys can be used to quickly open the associated suggestion directly.<br />**Disabled**: hotkeys are not defined. | enabled |
 | Reset active Quick Filters | **Enabled**: the switcher will reset all Quick Filters back to inactive for each session. | disabled |
 
+### Mode trigger matching
+
+IME punctuation variants are recognized without changing your configured triggers or search text. The longest matching trigger takes priority. Among matches of the same length, Switcher++ prefers:
+
+1. An exact match to the characters you typed.
+2. A trigger configured in its canonical (folded) form.
+3. The first registered command, if the candidates are identical or no canonical trigger is configured.
+
+For example, with `>` configured for Command mode and `》` for Symbol mode, `>foo` opens Command mode, `》foo` opens Symbol mode, and `＞foo` selects Command mode through its canonical `>` trigger.
+
+Settings show warnings for identical triggers, ambiguous IME fallback groups, and triggers that share the escape character or its IME variants. These warnings allow you to save and correct either field in any order. Existing saved configurations are also checked at startup, with each conflict reported once per plugin session. Escape processing still takes priority when an escape character is followed by a mode trigger.
+
 ## Global Commands for Hotkeys
 
 The following Global Commands are registered by the plugin, which can be used for global hotkeys/shortcuts.

@@ -1,5 +1,5 @@
 import { mock, MockProxy, mockReset } from 'jest-mock-extended';
-import { App } from 'obsidian';
+import { App, Notice } from 'obsidian';
 import SwitcherPlusPlugin from 'src/main';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
@@ -10,6 +10,7 @@ import {
   getCommandDefinitions,
 } from 'src/switcherPlus';
 import { Mode } from 'src/types';
+import * as Utils from 'src/utils/utils';
 
 describe('SwitcherPlusPlugin', () => {
   let mockApp: MockProxy<App>;
@@ -77,6 +78,85 @@ describe('SwitcherPlusPlugin', () => {
   });
 
   describe('onload', () => {
+    describe('saved trigger conflicts', () => {
+      let logWarnSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        (Notice as jest.Mock).mockClear();
+        logWarnSpy = jest.spyOn(Utils, 'logWarn').mockImplementation();
+      });
+
+      afterEach(() => {
+        logWarnSpy.mockRestore();
+      });
+
+      it('warns for an existing loaded config once per conflict per session', async () => {
+        updateDataAndLoadSettingsSpy.mockImplementation(function (
+          this: SwitcherPlusSettings,
+        ) {
+          this.symbolListCommand = '>';
+          return Promise.resolve();
+        });
+        await sut.onload();
+        sut.checkTriggerConflicts();
+        sut.checkTriggerConflicts();
+        expect(Notice).toHaveBeenCalledTimes(1);
+        expect(Notice).toHaveBeenCalledWith(
+          expect.stringContaining('Symbol mode ">" and Command mode ">"'),
+          10000,
+        );
+        expect(logWarnSpy).toHaveBeenCalledTimes(1);
+        expect(logWarnSpy).toHaveBeenCalledWith(expect.stringContaining('same trigger'));
+      });
+
+      it('does not warn about distinguishable exact and canonical triggers', async () => {
+        updateDataAndLoadSettingsSpy.mockImplementation(function (
+          this: SwitcherPlusSettings,
+        ) {
+          this.symbolListCommand = '》';
+          return Promise.resolve();
+        });
+        await sut.onload();
+        expect(Notice).not.toHaveBeenCalled();
+        expect(logWarnSpy).not.toHaveBeenCalled();
+      });
+
+      it('warns about each escape conflict and resets deduplication on a new load', async () => {
+        updateDataAndLoadSettingsSpy.mockImplementation(function (
+          this: SwitcherPlusSettings,
+        ) {
+          this.escapeCmdChar = '＞';
+          this.symbolListCommand = '>';
+          return Promise.resolve();
+        });
+        await sut.onload();
+        sut.checkTriggerConflicts();
+        expect(Notice).toHaveBeenCalledTimes(2);
+        await sut.onload();
+        expect(Notice).toHaveBeenCalledTimes(4);
+        expect(logWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('escape character'),
+        );
+      });
+
+      it('notifies again in an independent plugin instance', async () => {
+        updateDataAndLoadSettingsSpy.mockImplementation(function (
+          this: SwitcherPlusSettings,
+        ) {
+          this.symbolListCommand = '>';
+          return Promise.resolve();
+        });
+        await sut.onload();
+        const second = Object.create(SwitcherPlusPlugin.prototype) as SwitcherPlusPlugin;
+        second.app = mockApp;
+        second.manifest = {} as SwitcherPlusPlugin['manifest'];
+        second.addCommand = jest.fn();
+        second.addSettingTab = jest.fn();
+        await second.onload();
+        expect(Notice).toHaveBeenCalledTimes(2);
+      });
+    });
+
     it('should call addSettingTab', async () => {
       await sut.onload();
 

@@ -4,6 +4,7 @@ import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import { Mode, AnySuggestion } from 'src/types';
 import { WorkspaceLeaf } from 'obsidian';
+import { foldTriggerString, prepareTriggers } from 'src/utils/modeTriggers';
 
 /**
  * Represents a potential command match found by the parser.
@@ -27,19 +28,6 @@ export interface ParsedResult {
   /** A list of resolved commands, sorted by precedence and ready for validation. */
   resolvedCommands: ResolvedCommand[];
 }
-
-/**
- * IME punctuation that NFKC will not map back to the ASCII trigger.
- * Fullwidth forms such as ＞/＠/！ are handled by the NFKC fallback.
- */
-const IME_PUNCTUATION_FOLD: Readonly<Record<string, string>> = {
-  '》': '>',
-  '《': '<',
-  '￥': '$',
-  '¥': '$',
-  '‘': "'",
-  '’': "'",
-};
 
 type MappedCommand = {
   cmdDef: CommandDefinition;
@@ -71,37 +59,8 @@ export class InputParser {
     commandDefinitions: CommandDefinition[],
   ) {
     this.handlerRegistry = handlerRegistry;
-    this.foldedEscapeCmdChar = InputParser.foldString(config.escapeCmdChar);
+    this.foldedEscapeCmdChar = foldTriggerString(config.escapeCmdChar);
     this.commandMap = this.buildCommandMap(commandDefinitions);
-  }
-
-  /**
-   * Maps a single UTF-16 code unit to its ASCII trigger equivalent when possible.
-   * Checks the IME table first, then NFKC, and only accepts a single code unit so
-   * downstream index calculations stay aligned with the raw input.
-   */
-  private static foldChar(ch: string): string {
-    const mapped = IME_PUNCTUATION_FOLD[ch];
-    if (mapped !== undefined) {
-      return mapped;
-    }
-
-    const normalized = ch.normalize('NFKC');
-    return normalized.length === 1 ? normalized : ch;
-  }
-
-  /**
-   * Folds every UTF-16 code unit independently so the result stays the same length
-   * as the original string.
-   */
-  private static foldString(value: string): string {
-    let folded = '';
-
-    for (let i = 0; i < value.length; i += 1) {
-      folded += InputParser.foldChar(value[i]);
-    }
-
-    return folded;
   }
 
   /**
@@ -144,7 +103,7 @@ export class InputParser {
   parse(inputText: string): ParsedResult {
     let cleanInput = '';
     const foundCommands: FoundCommand[] = [];
-    const foldedInput = InputParser.foldString(inputText);
+    const foldedInput = foldTriggerString(inputText);
     const escapeLen = this.foldedEscapeCmdChar.length;
 
     let i = 0;
@@ -154,7 +113,7 @@ export class InputParser {
       // These should be treated as literal text rather than triggering a command.
       // Matching uses the folded copy so IME variants of the escape char also work.
       if (foldedInput.startsWith(this.foldedEscapeCmdChar, i)) {
-        const match = this.findCommandMatch(foldedInput, i + escapeLen);
+        const match = this.findCommandMatch(inputText, foldedInput, i + escapeLen);
 
         if (match) {
           // Strip the escape char (existing behavior) but keep the raw command
@@ -167,7 +126,7 @@ export class InputParser {
       }
 
       // Case 2: Check for a regular, unescaped command.
-      const match = this.findCommandMatch(foldedInput, i);
+      const match = this.findCommandMatch(inputText, foldedInput, i);
       if (match) {
         // A command was found. Add it to our list of found commands and
         // advance the pointer. Append the raw typed characters so filter text
@@ -210,26 +169,19 @@ export class InputParser {
   ): Map<string, MappedCommand[]> {
     const commandMap = new Map<string, MappedCommand[]>();
 
-    // First pass: group all valid commands by their starting character.
-    for (const cmdDef of commandDefinitions) {
-      const cmdStr = cmdDef.parserCommand.getCommandStr() ?? '';
-
-      if (cmdStr.length > 0) {
-        const foldedCmdStr = InputParser.foldString(cmdStr);
-        const firstChar = foldedCmdStr[0];
-
-        if (!commandMap.has(firstChar)) {
-          commandMap.set(firstChar, []);
-        }
-
-        commandMap.get(firstChar)?.push({ cmdDef, cmdStr, foldedCmdStr });
+    const commands = prepareTriggers(
+      commandDefinitions.map((cmdDef) => ({
+        cmdDef,
+        cmdStr: cmdDef.parserCommand.getCommandStr() ?? '',
+      })),
+    );
+    // Sorting once keeps each first-character bucket longest-first and canonical-first.
+    for (const command of commands) {
+      const firstChar = command.foldedCmdStr[0];
+      if (!commandMap.has(firstChar)) {
+        commandMap.set(firstChar, []);
       }
-    }
-
-    // Second pass: sort the commands within each group by length, longest first.
-    // This is critical for correctly matching overlapping commands (e.g., '::' vs ':').
-    for (const commands of commandMap.values()) {
-      commands.sort((a, b) => b.foldedCmdStr.length - a.foldedCmdStr.length);
+      commandMap.get(firstChar)?.push(command);
     }
 
     return commandMap;
@@ -238,26 +190,38 @@ export class InputParser {
   /**
    * Attempts to find a command match at a given index in the input text.
    * It uses the pre-built commandMap for efficient lookup.
+   * @param inputText - The original user input, for exact matches within a length group.
    * @param foldedInput - The folded copy of the user input.
    * @param index - The index at which to check for a command.
    * @returns The matched command, or null if no match is found.
    */
-  private findCommandMatch(foldedInput: string, index: number): MappedCommand | null {
+  private findCommandMatch(
+    inputText: string,
+    foldedInput: string,
+    index: number,
+  ): MappedCommand | null {
     // Narrow down potential matches by looking at the folded first character.
     const potentialCommands = this.commandMap.get(foldedInput[index]);
     if (!potentialCommands) {
       return null;
     }
 
-    // Because commands are sorted by length, the first match found is guaranteed
-    // to be the longest possible match.
+    // Longest-first is the outer rule. Within that length, prefer an exact raw
+    // match, then the first folded match (canonical-first, stable registration order).
+    let fallback: MappedCommand | null = null;
     for (const mappedCmd of potentialCommands) {
+      if (fallback && mappedCmd.foldedCmdStr.length < fallback.foldedCmdStr.length) {
+        break;
+      }
       if (foldedInput.startsWith(mappedCmd.foldedCmdStr, index)) {
-        return mappedCmd;
+        if (inputText.startsWith(mappedCmd.cmdStr, index)) {
+          return mappedCmd;
+        }
+        fallback ??= mappedCmd;
       }
     }
 
-    return null;
+    return fallback;
   }
 
   /**

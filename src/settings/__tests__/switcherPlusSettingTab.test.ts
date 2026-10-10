@@ -7,8 +7,15 @@ import {
   SettingsControlKey,
 } from 'src/settings';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { App, SettingDefinitionPage, ViewRegistry } from 'obsidian';
+import {
+  App,
+  SettingDefinitionItem,
+  SettingDefinitionPage,
+  ViewRegistry,
+} from 'obsidian';
 import * as Utils from 'src/utils/utils';
+import { findSettingByKey } from '@fixtures';
+import { HandlerRegistry } from 'src/switcherPlus/handlerRegistry';
 
 describe('SwitcherPlusSettingTab', () => {
   let mockApp: MockProxy<App>;
@@ -71,6 +78,99 @@ describe('SwitcherPlusSettingTab', () => {
         { type: 'group', heading: 'Custom mode behaviors', items: [] },
       ]);
 
+      generalSpy.mockRestore();
+    });
+
+    it('warns on duplicate trigger fields without replacing native text controls', () => {
+      realConfig.symbolListCommand = '>';
+      const definitions = declarativeSut.getSettingDefinitions();
+      for (const key of ['symbolListCommand', 'commandListCommand'] as const) {
+        const field = findSettingByKey(definitions, key);
+        expect(field.control.type).toBe('text');
+        expect(field.control).not.toHaveProperty('validate');
+        expect(field).not.toHaveProperty('render');
+        expect(field.desc).toContain('Warning:');
+        expect(field.desc).toContain('Symbol mode');
+        expect(field.desc).toContain('Command mode');
+      }
+      expect(findSettingByKey(definitions, 'headingsListCommand').desc).not.toContain(
+        'Warning:',
+      );
+    });
+
+    it('allows saving conflicts and clears warnings when the triggers are changed', async () => {
+      const saveSpy = jest.spyOn(realConfig, 'saveSettings').mockResolvedValue();
+      const updateSpy = jest.spyOn(declarativeSut, 'update');
+      await declarativeSut.setControlValue('symbolListCommand', '>');
+      expect(realConfig.symbolListCommand).toBe('>');
+      expect(
+        findSettingByKey(
+          declarativeSut.settingItems as SettingDefinitionItem<SettingsControlKey>[],
+          'symbolListCommand',
+        ).desc,
+      ).toContain('Warning:');
+      await declarativeSut.setControlValue('symbolListCommand', '》');
+      expect(
+        findSettingByKey(
+          declarativeSut.settingItems as SettingDefinitionItem<SettingsControlKey>[],
+          'symbolListCommand',
+        ).desc,
+      ).not.toContain('Warning:');
+      expect(saveSpy).toHaveBeenCalledTimes(2);
+      expect(updateSpy).toHaveBeenCalledTimes(2);
+      saveSpy.mockRestore();
+      updateSpy.mockRestore();
+    });
+
+    it('warns on the escape field and affected triggers without constructing handlers', () => {
+      realConfig.escapeCmdChar = '＞';
+      realConfig.symbolListCommand = '》';
+      const initializeSpy = jest.spyOn(HandlerRegistry, 'initialize');
+      const definitions = declarativeSut.getSettingDefinitions();
+      for (const key of [
+        'escapeCmdChar',
+        'symbolListCommand',
+        'commandListCommand',
+      ] as const) {
+        expect(findSettingByKey(definitions, key).desc).toContain('escape character');
+      }
+      expect(initializeSpy).not.toHaveBeenCalled();
+      initializeSpy.mockRestore();
+    });
+
+    it('combines duplicate and folded fallback warnings on the affected fields', () => {
+      realConfig.commandListCommand = '》';
+      realConfig.symbolListCommand = '》';
+      realConfig.headingsListCommand = '＞';
+      const definitions = declarativeSut.getSettingDefinitions();
+      const desc = findSettingByKey(definitions, 'symbolListCommand').desc as string;
+      expect(desc).toContain('same trigger');
+      expect(desc).toContain('Exact spellings work separately');
+      expect(desc.match(/Warning:/g)).toHaveLength(2);
+    });
+
+    it('keeps descriptions when a trigger definition uses a fragment or no description', () => {
+      const definitions = [
+        {
+          name: 'Fragment',
+          desc: { textContent: 'Original description' } as DocumentFragment,
+          control: { type: 'text' as const, key: 'symbolListCommand' as const },
+        },
+        {
+          name: 'No description',
+          control: { type: 'text' as const, key: 'commandListCommand' as const },
+        },
+      ];
+      const generalSpy = jest
+        .spyOn(GeneralSettingsTabSection.prototype, 'getSettingDefinitions')
+        .mockReturnValue(definitions);
+      declarativeSut.modeTabSections = [];
+      realConfig.symbolListCommand = '>';
+      const result = declarativeSut.getSettingDefinitions();
+      expect(findSettingByKey(result, 'symbolListCommand').desc).toContain(
+        'Original description',
+      );
+      expect(findSettingByKey(result, 'commandListCommand').desc).toContain('Warning:');
       generalSpy.mockRestore();
     });
 

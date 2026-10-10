@@ -12,6 +12,11 @@ import { SettingsControlKey, SwitcherPlusSettings } from './switcherPlusSettings
 import { App, PluginSettingTab, SettingDefinitionItem } from 'obsidian';
 import { logError } from 'src/utils';
 import type SwitcherPlusPlugin from '../main';
+import {
+  analyzeTriggerConflicts,
+  getConfiguredTriggers,
+  isTriggerSettingKey,
+} from 'src/utils/modeTriggers';
 
 type ConstructableSettingsTabSection = {
   new (
@@ -51,7 +56,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
   getSettingDefinitions(): SettingDefinitionItem<SettingsControlKey>[] {
     const { app, config, generalTabSection, modeTabSections } = this;
 
-    return [
+    const definitions: SettingDefinitionItem<SettingsControlKey>[] = [
       ...new generalTabSection(app, this, config).getSettingDefinitions(),
       {
         type: 'group',
@@ -61,6 +66,40 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
         ),
       },
     ];
+    const warnings = new Map<string, string[]>();
+    for (const conflict of analyzeTriggerConflicts(
+      getConfiguredTriggers(config),
+      config.escapeCmdChar,
+    )) {
+      for (const key of conflict.keys) {
+        const messages = warnings.get(key) ?? [];
+        messages.push(conflict.message);
+        warnings.set(key, messages);
+      }
+    }
+    this.addTriggerWarnings(definitions, warnings);
+    return definitions;
+  }
+
+  /** Keep native text controls; descriptions are regenerated on settings updates. */
+  private addTriggerWarnings(
+    items: SettingDefinitionItem<SettingsControlKey>[],
+    warnings: Map<string, string[]>,
+  ): void {
+    for (const item of items) {
+      if ('items' in item && item.items) {
+        this.addTriggerWarnings(item.items, warnings);
+      }
+      if ('control' in item && item.control) {
+        const messages = warnings.get(item.control.key);
+        if (messages) {
+          const desc = typeof item.desc === 'string' ? item.desc : item.desc?.textContent;
+          item.desc = [desc, ...messages.map((message) => `Warning: ${message}`)]
+            .filter(Boolean)
+            .join('\n\n');
+        }
+      }
+    }
   }
 
   getControlValue(key: string): unknown {
@@ -69,6 +108,9 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
 
   setControlValue(key: string, value: unknown): Promise<void> {
     this.config.writeControlValue(key, value);
+    if (isTriggerSettingKey(key)) {
+      this.update();
+    }
 
     // Returned so the framework awaits the write before re-evaluating visible
     // and disabled predicates. Rejections are logged rather than propagated
