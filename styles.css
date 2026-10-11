@@ -270,3 +270,14 @@
 /* Descriptive text displayed in the list item entry modal */
 .qsp-list-entry-description {}
 
+/* Live conflict feedback inside native trigger setting descriptions. */
+.qsp-trigger-warning {
+  color: var(--text-warning);
+  margin-top: var(--size-4-2);
+  white-space: pre-line;
+}
+
+.qsp-trigger-warning[hidden] {
+  display: none;
+}
+
