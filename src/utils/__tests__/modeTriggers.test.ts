@@ -146,4 +146,48 @@ describe('mode trigger analysis', () => {
       analyzeTriggerConflicts([trigger('a', '》'), trigger('b', '＞')], '>'),
     ).toHaveLength(2);
   });
+
+  test.each([
+    ['!', '!>', '>'],
+    ['！', '!》', '>'],
+    ['!', '!>x', '>'],
+    ['!!', '！！》x', '＞'],
+  ])('warns when escape %s masks trigger %s before %s', (escape, blocked, following) => {
+    const conflicts = analyzeTriggerConflicts(
+      [trigger('symbol', blocked), trigger('command', following)],
+      escape,
+    );
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0].keys).toEqual(['escapeCmdChar', 'symbol', 'command']);
+    expect(conflicts[0].message).toContain('Escape processing consumes');
+    expect(conflicts[0].message).toContain('symbol mode');
+    expect(conflicts[0].id).toContain('escape-prefix');
+  });
+
+  test.each([
+    ['!', ['!>']],
+    ['!', ['!x', '>']],
+    ['', ['!>', '>']],
+  ])('does not warn for usable escape-prefixed triggers (%s, %s)', (escape, commands) => {
+    expect(
+      analyzeTriggerConflicts(
+        commands.map((cmd, i) => trigger(String(i), cmd)),
+        escape,
+      ),
+    ).toEqual([]);
+  });
+
+  it('reports the longest escaped group and all its variants', () => {
+    const conflicts = analyzeTriggerConflicts(
+      [
+        trigger('symbol', '!>>x'),
+        trigger('short', '>'),
+        trigger('long', '>>'),
+        trigger('variant', '》》'),
+      ],
+      '!',
+    );
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0].keys).toEqual(['escapeCmdChar', 'symbol', 'long', 'variant']);
+  });
 });

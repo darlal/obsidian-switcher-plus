@@ -141,6 +141,25 @@ export function analyzeTriggerConflicts(
         keys: ['escapeCmdChar', ...group.map(({ key }) => key)],
         message: `${group.map(describeTrigger).join(' and ')} share the escape character ${JSON.stringify(escapeCmdChar.replace(/ /g, '␠'))} or its IME variants. Escape processing takes priority when followed by a mode trigger. Choose a different escape character or mode trigger.`,
       });
+    } else if (foldedEscape.length > 0 && foldedCmdStr.startsWith(foldedEscape)) {
+      const suffix = foldedCmdStr.slice(foldedEscape.length);
+      // The parser consumes escape + longest following trigger before trying
+      // the full trigger. An escape prefix alone does not cause a conflict.
+      const escapedGroup = [...groups].find(([candidate]) =>
+        suffix.startsWith(candidate),
+      )?.[1];
+      if (escapedGroup) {
+        const keys = [
+          'escapeCmdChar',
+          ...group.map(({ key }) => key),
+          ...escapedGroup.map(({ key }) => key),
+        ];
+        conflicts.push({
+          id: JSON.stringify(['escape-prefix', escapeCmdChar, keys]),
+          keys,
+          message: `${group.map(describeTrigger).join(' and ')} begin with the escape character ${JSON.stringify(escapeCmdChar.replace(/ /g, '␠'))} followed by ${escapedGroup.map(describeTrigger).join(' or ')} or its IME variants. Escape processing consumes this prefix before the full trigger can match. Choose a different escape character or mode trigger.`,
+        });
+      }
     }
   }
   return conflicts;

@@ -3,6 +3,7 @@ import { InputParser } from '../inputParser';
 import { CommandDefinition } from '../commandDefinitions';
 import { HandlerRegistry } from '../handlerRegistry';
 import { SwitcherPlusSettings } from 'src/settings';
+import { analyzeTriggerConflicts } from 'src/utils/modeTriggers';
 
 function definition(
   commandId: string,
@@ -24,6 +25,43 @@ function parser(definitions: CommandDefinition[], escapeCmdChar = '!'): InputPar
 }
 
 describe('folded trigger collisions', () => {
+  test.each([
+    ['!', '!>', '>', '!>foo', '>foo'],
+    ['！', '!》', '>', '！》foo', '》foo'],
+    ['!', '!>x', '>', '!>xfoo', '>xfoo'],
+    ['!!', '！！》x', '＞', '！！》xfoo', '》xfoo'],
+  ])(
+    'warns consistently with escape precedence (%s, %s)',
+    (escape, blocked, following, input, cleanInput) => {
+      const definitions = [
+        definition('symbol', blocked),
+        definition('command', following),
+      ];
+      const result = parser(definitions, escape).parse(input);
+      expect(result).toEqual({ cleanInput, resolvedCommands: [] });
+      const conflicts = analyzeTriggerConflicts(
+        definitions.map(({ commandId, parserCommand }) => ({
+          key: commandId,
+          name: commandId,
+          cmdStr: parserCommand.getCommandStr(),
+        })),
+        escape,
+      );
+      expect(conflicts).toHaveLength(1);
+      expect(conflicts[0].keys).toContain('symbol');
+    },
+  );
+
+  test.each([['!>'], ['!x', '>']])(
+    'keeps usable escape-prefixed trigger %s',
+    (...commands) => {
+      const sut = parser(commands.map((cmd, i) => definition(String(i), cmd)));
+      expect(sut.parse(`${commands[0]}foo`).resolvedCommands[0].cmdDef.commandId).toBe(
+        '0',
+      );
+    },
+  );
+
   test.each([false, true])(
     'prefers exact then canonical with reversed=%s',
     (reversed) => {
