@@ -245,7 +245,7 @@ describe('SwitcherPlusSettingTab', () => {
         ),
       ).not.toContain('Warning:');
       expect(saveSpy).toHaveBeenCalledTimes(2);
-      expect(updateSpy).not.toHaveBeenCalled();
+      expect(updateSpy).toHaveBeenCalledTimes(2);
       saveSpy.mockRestore();
       updateSpy.mockRestore();
     });
@@ -336,11 +336,44 @@ describe('SwitcherPlusSettingTab', () => {
       expect(liveClone.hidden).toBe(false);
       expect(originalWarning.textContent).toContain('same trigger');
       expect(descriptionText(retained)).toContain('same trigger');
-      expect(updateSpy).not.toHaveBeenCalled();
+      expect(updateSpy).toHaveBeenCalledTimes(1);
       await declarativeSut.setControlValue('symbolListCommand', '》');
       expect(liveClone.hidden).toBe(true);
       expect(liveClone.textContent).toBe('');
       expect(originalWarning.hidden).toBe(true);
+      saveSpy.mockRestore();
+      updateSpy.mockRestore();
+    });
+
+    it('refreshes rendered mode statuses when the root escape control changes', async () => {
+      const renderedStatuses = new Map<string, string>();
+      const render = (items: SettingDefinitionItem<SettingsControlKey>[]) => {
+        for (const item of items) {
+          if ('items' in item && item.items) {
+            render(item.items);
+            if (item.type === 'page' && typeof item.status === 'function') {
+              renderedStatuses.set(item.name, item.status());
+            }
+          }
+        }
+      };
+      // Native status callbacks are evaluated on render, not on config writes.
+      const update = declarativeSut.update.bind(declarativeSut);
+      const updateSpy = jest.spyOn(declarativeSut, 'update').mockImplementation(() => {
+        update();
+        render(
+          declarativeSut.settingItems as SettingDefinitionItem<SettingsControlKey>[],
+        );
+      });
+      const saveSpy = jest.spyOn(realConfig, 'saveSettings').mockResolvedValue();
+      declarativeSut.update();
+      expect(renderedStatuses.get('Command Mode')).toBeNull();
+
+      await declarativeSut.setControlValue('escapeCmdChar', '>');
+      expect(renderedStatuses.get('Command Mode')).toBe('warning');
+      await declarativeSut.setControlValue('escapeCmdChar', '!');
+      expect(renderedStatuses.get('Command Mode')).toBeNull();
+      expect(renderedStatuses.get('Vault Mode')).toBe('warning');
       saveSpy.mockRestore();
       updateSpy.mockRestore();
     });

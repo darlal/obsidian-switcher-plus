@@ -174,6 +174,8 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
     this.config.writeControlValue(key, value);
     if (isTriggerSettingKey(key)) {
       this.refreshTriggerWarnings();
+      // Native page status callbacks are only re-evaluated by update().
+      this.update();
     }
 
     // Returned so the framework awaits the write before re-evaluating visible
