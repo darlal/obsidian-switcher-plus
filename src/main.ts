@@ -30,6 +30,17 @@ export default class SwitcherPlusPlugin extends Plugin {
     CommandRegistrar.registerCommands(this, this.commandDefinitions);
   }
 
+  /**
+   * Obsidian calls this when data.json changes on disk while the plugin runs, for
+   * example after Obsidian Sync or a git pull. Without reloading, the next save
+   * would write the old settings back over the change.
+   */
+  async onExternalSettingsChange(): Promise<void> {
+    await this.options.reloadSettings();
+    this.registerRibbonCommandIcons();
+    this.updateLauncherButtonOverrides(true);
+  }
+
   onunload(): void {
     this.updateLauncherButtonOverrides(false);
   }
