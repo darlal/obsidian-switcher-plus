@@ -479,14 +479,13 @@ function generateMarkdownLinkForReferenceCache(
 }
 
 /**
- * Extracts the hierarchical parent headings for a given heading by finding the closest
- * preceding heading at each level from 1 to (heading.level - 1). This builds a breadcrumb
- * trail that represents the heading's position in the document hierarchy.
+ * Extracts the hierarchical parent headings for a given heading by tracking the current
+ * ancestor chain through preceding headings. A new heading replaces any earlier heading
+ * at the same or deeper level, so breadcrumbs represent the heading's actual branch.
  *
  * The algorithm works by:
  * 1. Finding all headings that come before the target heading by line number
- * 2. For each level from 1 to (heading.level - 1), finding the closest preceding heading
- *    at that level (the one with the highest line number)
+ * 2. Updating the ancestor chain as each preceding heading starts or leaves a branch
  * 3. Sorting the result by level (ascending) to ensure H1 → H2 → H3 ordering
  *
  * @param heading - The heading for which to extract breadcrumbs
@@ -502,7 +501,8 @@ export function getHeadingBreadcrumbs(
   const allHeadings = metadataCache.getFileCache(file)?.headings ?? [];
   const headingLine = heading.position.start.line;
 
-  // Track the closest (most recent) heading at each level that comes before our heading
+  // Track the current ancestor chain, clearing lower-level headings whenever a new
+  // higher-level heading starts a different branch.
   const closestByLevel = new Map<number, HeadingCache>();
 
   // Single pass through headings: find closest parent at each level
@@ -519,11 +519,14 @@ export function getHeadingBreadcrumbs(
       continue;
     }
 
-    // Update if this is the closest heading we've seen at this level
-    const existing = closestByLevel.get(h.level);
-    if (!existing || hLine > existing.position.start.line) {
-      closestByLevel.set(h.level, h);
+    // A heading at this level replaces any prior heading at the same or deeper
+    // levels, since those headings belong to the previous branch.
+    for (const level of closestByLevel.keys()) {
+      if (level >= h.level) {
+        closestByLevel.delete(level);
+      }
     }
+    closestByLevel.set(h.level, h);
   }
 
   // Convert map to array and sort by level (H1 → H2 → H3)

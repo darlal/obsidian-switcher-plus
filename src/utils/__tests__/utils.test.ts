@@ -635,6 +635,24 @@ describe('utils', () => {
       expect(result[0].level).toBe(1);
     });
 
+    it('should discard lower-level headings when a new higher-level heading starts', () => {
+      const h2a = makeHeading('Section A', 2, makeLoc(0, 0, 0), makeLoc(0, 9, 9));
+      const h1b = makeHeading('Section B', 1, makeLoc(5, 0, 50), makeLoc(5, 9, 59));
+      const h3b = makeHeading(
+        'Subsection B.A',
+        3,
+        makeLoc(10, 0, 100),
+        makeLoc(10, 14, 114),
+      );
+      mockMetadataCache.getFileCache.mockReturnValue({
+        headings: [h2a, h1b, h3b],
+      });
+
+      const result = getHeadingBreadcrumbs(h3b, mockFile, mockMetadataCache);
+
+      expect(result).toEqual([h1b]);
+    });
+
     it('should handle multiple H1s in file correctly', () => {
       // Arrange
       const h1a = makeHeading('First H1', 1, makeLoc(0, 0, 0), makeLoc(0, 8, 8));
