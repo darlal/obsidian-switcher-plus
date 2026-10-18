@@ -164,3 +164,18 @@ export function analyzeTriggerConflicts(
   }
   return conflicts;
 }
+
+/** Group conflict messages by every affected setting, including the escape setting. */
+export function groupTriggerWarnings(
+  conflicts: readonly TriggerConflict[],
+): Map<string, string[]> {
+  const warnings = new Map<string, string[]>();
+  for (const conflict of conflicts) {
+    for (const key of conflict.keys) {
+      const messages = warnings.get(key) ?? [];
+      messages.push(conflict.message);
+      warnings.set(key, messages);
+    }
+  }
+  return warnings;
+}

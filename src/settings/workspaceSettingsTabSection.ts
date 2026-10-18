@@ -9,6 +9,7 @@ export class WorkspaceSettingsTabSection extends SettingsTabSection {
     return [
       {
         type: 'page',
+        status: this.triggerStatus('workspaceListCommand'),
         name: 'Workspace Mode',
         displayValue: () => config.workspaceListCommand,
         items: [
@@ -21,6 +22,7 @@ export class WorkspaceSettingsTabSection extends SettingsTabSection {
               placeholder: config.workspaceListPlaceholderText,
             },
           },
+          this.triggerWarning('workspaceListCommand'),
         ],
       },
     ];

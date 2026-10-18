@@ -9,6 +9,7 @@ export class BookmarksSettingsTabSection extends SettingsTabSection {
     return [
       {
         type: 'page',
+        status: this.triggerStatus('bookmarksListCommand'),
         name: 'Bookmarks Mode',
         displayValue: () => config.bookmarksListCommand,
         items: [
@@ -21,6 +22,7 @@ export class BookmarksSettingsTabSection extends SettingsTabSection {
               placeholder: config.bookmarksListPlaceholderText,
             },
           },
+          this.triggerWarning('bookmarksListCommand'),
         ],
       },
     ];

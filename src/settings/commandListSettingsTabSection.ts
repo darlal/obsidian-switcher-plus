@@ -14,6 +14,7 @@ export class CommandListSettingsTabSection extends SettingsTabSection {
     return [
       {
         type: 'page',
+        status: this.triggerStatus('commandListCommand'),
         name: 'Command Mode',
         displayValue: () => config.commandListCommand,
         items: [
@@ -26,6 +27,7 @@ export class CommandListSettingsTabSection extends SettingsTabSection {
               placeholder: config.commandListPlaceholderText,
             },
           },
+          this.triggerWarning('commandListCommand'),
           {
             name: 'Max recent commands',
             desc: 'The maximum number of recently used commands to display in the list.',

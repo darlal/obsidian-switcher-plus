@@ -11,11 +11,12 @@ import {
   App,
   SettingDefinitionGroup,
   SettingDefinitionItem,
+  SettingDefinitionEmpty,
   SettingDefinitionPage,
   ViewRegistry,
 } from 'obsidian';
 import * as Utils from 'src/utils/utils';
-import { findSettingByKey } from '@fixtures';
+import { findSettingByKey, flattenSettingDefinitions, isSettingVisible } from '@fixtures';
 import { HandlerRegistry } from 'src/switcherPlus/handlerRegistry';
 
 const originalCreateFragment = window.createFragment;
@@ -24,24 +25,13 @@ function descriptionText(desc: string | DocumentFragment): string {
   return typeof desc === 'string' ? desc : desc.textContent;
 }
 
-/** A small DOM test double; text stays live when description children change. */
-function descriptionFragment(): DocumentFragment {
-  const children: (Node | string)[] = [];
-  const fragment = mock<DocumentFragment>();
-  fragment.append.mockImplementation((...nodes) => children.push(...nodes));
-  fragment.createDiv.mockImplementation(() => {
-    const element = mock<HTMLDivElement>({ dataset: {}, textContent: '', hidden: true });
-    children.push(element);
-    jest.spyOn(fragment, 'querySelector').mockReturnValue(element);
-    return element;
-  });
-  Object.defineProperty(fragment, 'textContent', {
-    get: () =>
-      children
-        .map((node) => (typeof node === 'string' ? node : node.textContent))
-        .join(''),
-  });
-  return fragment;
+function warningAfter(
+  items: SettingDefinitionItem<SettingsControlKey>[],
+  key: SettingsControlKey,
+): SettingDefinitionEmpty {
+  const leaves = flattenSettingDefinitions(items);
+  const field = findSettingByKey(items, key);
+  return leaves[leaves.indexOf(field) + 1] as SettingDefinitionEmpty;
 }
 
 describe('SwitcherPlusSettingTab', () => {
@@ -61,17 +51,16 @@ describe('SwitcherPlusSettingTab', () => {
 
     beforeEach(() => {
       window.createFragment = jest.fn((callback) => {
-        const fragment = descriptionFragment();
+        const fragment = mock<DocumentFragment>({ textContent: '' });
+        fragment.createSpan.mockImplementation((options: { text: string }) => {
+          fragment.textContent = options.text;
+          return mock<HTMLSpanElement>();
+        });
         callback?.(fragment);
         return fragment;
       });
       realConfig = new SwitcherPlusSettings(null);
       declarativeSut = new SwitcherPlusSettingTab(mockApp, null, realConfig);
-      const doc = mock<Document>();
-      jest
-        .spyOn(doc, 'querySelectorAll')
-        .mockReturnValue([] as unknown as NodeListOf<Element>);
-      Object.defineProperty(declarativeSut.containerEl, 'ownerDocument', { value: doc });
     });
 
     it('should read a control value from the config', () => {
@@ -122,6 +111,27 @@ describe('SwitcherPlusSettingTab', () => {
       generalSpy.mockRestore();
     });
 
+    it('adds a hidden warning immediately after every trigger, including Vault and escape', () => {
+      const definitions = declarativeSut.getSettingDefinitions();
+      for (const key of [
+        'escapeCmdChar',
+        'editorListCommand',
+        'symbolListCommand',
+        'symbolListActiveEditorCommand',
+        'relatedItemsListCommand',
+        'relatedItemsListActiveEditorCommand',
+        'commandListCommand',
+        'headingsListCommand',
+        'bookmarksListCommand',
+        'workspaceListCommand',
+        'vaultListCommand',
+      ] as const) {
+        const warning = warningAfter(definitions, key);
+        expect(warning.name).toBe('⚠ Warning');
+        expect(isSettingVisible(warning)).toBe(false);
+      }
+    });
+
     it('warns on duplicate trigger fields without replacing native text controls', () => {
       realConfig.symbolListCommand = '>';
       const definitions = declarativeSut.getSettingDefinitions();
@@ -130,13 +140,23 @@ describe('SwitcherPlusSettingTab', () => {
         expect(field.control.type).toBe('text');
         expect(field.control).not.toHaveProperty('validate');
         expect(field).not.toHaveProperty('render');
-        expect(descriptionText(field.desc)).toContain('⚠ Warning:');
-        expect(descriptionText(field.desc)).toContain('Symbol mode');
-        expect(descriptionText(field.desc)).toContain('Command mode');
+        const warning = warningAfter(definitions, key);
+        expect(warning.name).toBe('⚠ Warning');
+        expect(warning.searchable).toBe(false);
+        expect(warning).not.toHaveProperty('control');
+        expect(warning).not.toHaveProperty('render');
+        expect(isSettingVisible(warning)).toBe(true);
+        expect(typeof field.desc).toBe('string');
+        expect(descriptionText(warningAfter(definitions, key).desc)).toContain(
+          'Symbol mode',
+        );
+        expect(descriptionText(warningAfter(definitions, key).desc)).toContain(
+          'Command mode',
+        );
       }
-      expect(
-        descriptionText(findSettingByKey(definitions, 'headingsListCommand').desc),
-      ).not.toContain('Warning:');
+      expect(descriptionText(warningAfter(definitions, 'headingsListCommand').desc)).toBe(
+        '',
+      );
     });
 
     it('flags both mode pages for a secondary trigger conflict and clears the indicators', async () => {
@@ -190,37 +210,6 @@ describe('SwitcherPlusSettingTab', () => {
       expect(status(commandPage)).toBe('warning');
     });
 
-    it('preserves a static page status and finds trigger conflicts in nested groups', () => {
-      const page: SettingDefinitionPage<SettingsControlKey> = {
-        type: 'page',
-        name: 'Nested page',
-        status: 'warning',
-        items: [
-          {
-            type: 'group',
-            heading: 'Triggers',
-            items: [
-              {
-                name: 'Symbol trigger',
-                control: { type: 'text', key: 'symbolListCommand' },
-              },
-            ],
-          },
-        ],
-      };
-      const generalSpy = jest
-        .spyOn(GeneralSettingsTabSection.prototype, 'getSettingDefinitions')
-        .mockReturnValue([page]);
-      declarativeSut.getSettingDefinitions();
-      const status = page.status as () => 'warning' | null;
-      expect(status()).toBe('warning');
-      realConfig.symbolListCommand = '>';
-      expect(status()).toBe('warning');
-      realConfig.symbolListCommand = '@';
-      expect(status()).toBe('warning');
-      generalSpy.mockRestore();
-    });
-
     it('allows saving conflicts and clears warnings when the triggers are changed', async () => {
       declarativeSut.update();
       const saveSpy = jest.spyOn(realConfig, 'saveSettings').mockResolvedValue();
@@ -229,21 +218,21 @@ describe('SwitcherPlusSettingTab', () => {
       expect(realConfig.symbolListCommand).toBe('>');
       expect(
         descriptionText(
-          findSettingByKey(
+          warningAfter(
             declarativeSut.settingItems as SettingDefinitionItem<SettingsControlKey>[],
             'symbolListCommand',
           ).desc,
         ),
-      ).toContain('Warning:');
+      ).toContain('same trigger');
       await declarativeSut.setControlValue('symbolListCommand', '》');
       expect(
         descriptionText(
-          findSettingByKey(
+          warningAfter(
             declarativeSut.settingItems as SettingDefinitionItem<SettingsControlKey>[],
             'symbolListCommand',
           ).desc,
         ),
-      ).not.toContain('Warning:');
+      ).toBe('');
       expect(saveSpy).toHaveBeenCalledTimes(2);
       expect(updateSpy).toHaveBeenCalledTimes(2);
       saveSpy.mockRestore();
@@ -260,7 +249,7 @@ describe('SwitcherPlusSettingTab', () => {
         'symbolListCommand',
         'commandListCommand',
       ] as const) {
-        expect(descriptionText(findSettingByKey(definitions, key).desc)).toContain(
+        expect(descriptionText(warningAfter(definitions, key).desc)).toContain(
           'escape character',
         );
       }
@@ -273,76 +262,10 @@ describe('SwitcherPlusSettingTab', () => {
       realConfig.symbolListCommand = '》';
       realConfig.headingsListCommand = '＞';
       const definitions = declarativeSut.getSettingDefinitions();
-      const desc = descriptionText(
-        findSettingByKey(definitions, 'symbolListCommand').desc,
-      );
+      const desc = descriptionText(warningAfter(definitions, 'symbolListCommand').desc);
       expect(desc).toContain('same trigger');
       expect(desc).toContain('Exact spellings work separately');
-      expect(desc.match(/Warning:/g)).toHaveLength(2);
-    });
-
-    it('keeps descriptions when a trigger definition uses a fragment or no description', () => {
-      const originalDesc = mock<DocumentFragment>({
-        textContent: 'Original description',
-      });
-      originalDesc.cloneNode.mockReturnValue(
-        mock<Node>({ textContent: 'Original description' }),
-      );
-      const definitions = [
-        {
-          name: 'Fragment',
-          desc: originalDesc,
-          control: { type: 'text' as const, key: 'symbolListCommand' as const },
-        },
-        {
-          name: 'No description',
-          control: { type: 'text' as const, key: 'commandListCommand' as const },
-        },
-      ];
-      const generalSpy = jest
-        .spyOn(GeneralSettingsTabSection.prototype, 'getSettingDefinitions')
-        .mockReturnValue(definitions);
-      declarativeSut.modeTabSections = [];
-      realConfig.symbolListCommand = '>';
-      const result = declarativeSut.getSettingDefinitions();
-      expect(
-        descriptionText(findSettingByKey(result, 'symbolListCommand').desc),
-      ).toContain('Original description');
-      expect(
-        descriptionText(findSettingByKey(result, 'commandListCommand').desc),
-      ).toContain('Warning:');
-      expect(originalDesc.cloneNode).toHaveBeenCalledWith(true);
-      generalSpy.mockRestore();
-    });
-
-    it('updates an open subpage clone and retained descriptions without rebuilding the input', async () => {
-      const firstDefinitions = declarativeSut.getSettingDefinitions();
-      const retained = findSettingByKey(firstDefinitions, 'symbolListCommand')
-        .desc as DocumentFragment;
-      const originalWarning = retained.querySelector<HTMLElement>('.qsp-trigger-warning');
-      const liveClone = mock<HTMLElement>({
-        dataset: { triggerKey: 'symbolListCommand' },
-        hidden: true,
-      });
-      jest
-        .spyOn(declarativeSut.containerEl.ownerDocument, 'querySelectorAll')
-        .mockReturnValue([liveClone] as unknown as NodeListOf<Element>);
-      // The host can refresh the root definitions while a subpage retains its originals.
-      declarativeSut.getSettingDefinitions();
-      const saveSpy = jest.spyOn(realConfig, 'saveSettings').mockResolvedValue();
-      const updateSpy = jest.spyOn(declarativeSut, 'update');
-      await declarativeSut.setControlValue('symbolListCommand', '>');
-      expect(liveClone.textContent).toContain('⚠ Warning:');
-      expect(liveClone.hidden).toBe(false);
-      expect(originalWarning.textContent).toContain('same trigger');
-      expect(descriptionText(retained)).toContain('same trigger');
-      expect(updateSpy).toHaveBeenCalledTimes(1);
-      await declarativeSut.setControlValue('symbolListCommand', '》');
-      expect(liveClone.hidden).toBe(true);
-      expect(liveClone.textContent).toBe('');
-      expect(originalWarning.hidden).toBe(true);
-      saveSpy.mockRestore();
-      updateSpy.mockRestore();
+      expect(desc.split('\n\n')).toHaveLength(2);
     });
 
     it('refreshes rendered mode statuses when the root escape control changes', async () => {
@@ -376,27 +299,6 @@ describe('SwitcherPlusSettingTab', () => {
       expect(renderedStatuses.get('Vault Mode')).toBe('warning');
       saveSpy.mockRestore();
       updateSpy.mockRestore();
-    });
-
-    it('marks warning regions for accessible announcements and ignores collected descriptions', async () => {
-      const definitions = declarativeSut.getSettingDefinitions();
-      const warning = (
-        findSettingByKey(definitions, 'escapeCmdChar').desc as DocumentFragment
-      ).querySelector('.qsp-trigger-warning');
-      expect(warning.setAttribute).toHaveBeenCalledWith('role', 'status');
-      expect(warning.setAttribute).toHaveBeenCalledWith('aria-live', 'polite');
-      const liveClone = mock<HTMLElement>({ dataset: { triggerKey: 'escapeCmdChar' } });
-      jest
-        .spyOn(declarativeSut.containerEl.ownerDocument, 'querySelectorAll')
-        .mockReturnValue([liveClone] as unknown as NodeListOf<Element>);
-      const saveSpy = jest.spyOn(realConfig, 'saveSettings').mockResolvedValue();
-      const derefSpy = jest
-        .spyOn(WeakRef.prototype, 'deref')
-        .mockReturnValueOnce(undefined);
-      await declarativeSut.setControlValue('escapeCmdChar', '>');
-      expect(liveClone.textContent).toContain('escape character');
-      derefSpy.mockRestore();
-      saveSpy.mockRestore();
     });
 
     it('should keep the general settings flat and group the mode pages under a heading', () => {
