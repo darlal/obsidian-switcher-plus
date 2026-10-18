@@ -15,14 +15,12 @@ import { logWarn } from 'src/utils';
 export default class SwitcherPlusPlugin extends Plugin {
   public options: SwitcherPlusSettings;
   private _commandDefinitions: CommandDefinition[];
-  private notifiedTriggerConflicts: Set<string>;
 
   get commandDefinitions(): CommandDefinition[] {
     return this._commandDefinitions;
   }
 
   async onload(): Promise<void> {
-    this.notifiedTriggerConflicts = new Set();
     const options = new SwitcherPlusSettings(this);
     await options.updateDataAndLoadSettings();
     this.options = options;
@@ -39,17 +37,13 @@ export default class SwitcherPlusPlugin extends Plugin {
     this.updateLauncherButtonOverrides(false);
   }
 
-  /** Includes saved configurations and deduplicates notices for this plugin session. */
-  checkTriggerConflicts(): void {
+  /** Check existing saved configurations once during plugin loading. */
+  private checkTriggerConflicts(): void {
     const conflicts = analyzeTriggerConflicts(
       getConfiguredTriggers(this.options),
       this.options.escapeCmdChar,
     );
     for (const conflict of conflicts) {
-      if (this.notifiedTriggerConflicts.has(conflict.id)) {
-        continue;
-      }
-      this.notifiedTriggerConflicts.add(conflict.id);
       logWarn(conflict.message);
       new Notice(
         `Switcher++: ${conflict.message} Check mode triggers in settings.`,

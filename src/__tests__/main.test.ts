@@ -90,7 +90,7 @@ describe('SwitcherPlusPlugin', () => {
         logWarnSpy.mockRestore();
       });
 
-      it('warns for an existing loaded config once per conflict per session', async () => {
+      it('warns for conflicts in an existing loaded config', async () => {
         updateDataAndLoadSettingsSpy.mockImplementation(function (
           this: SwitcherPlusSettings,
         ) {
@@ -98,8 +98,6 @@ describe('SwitcherPlusPlugin', () => {
           return Promise.resolve();
         });
         await sut.onload();
-        sut.checkTriggerConflicts();
-        sut.checkTriggerConflicts();
         expect(Notice).toHaveBeenCalledTimes(1);
         expect(Notice).toHaveBeenCalledWith(
           expect.stringContaining('Symbol mode ">" and Command mode ">"'),
@@ -121,7 +119,7 @@ describe('SwitcherPlusPlugin', () => {
         expect(logWarnSpy).not.toHaveBeenCalled();
       });
 
-      it('warns about each escape conflict and resets deduplication on a new load', async () => {
+      it('warns about each escape conflict on load', async () => {
         updateDataAndLoadSettingsSpy.mockImplementation(function (
           this: SwitcherPlusSettings,
         ) {
@@ -130,30 +128,10 @@ describe('SwitcherPlusPlugin', () => {
           return Promise.resolve();
         });
         await sut.onload();
-        sut.checkTriggerConflicts();
         expect(Notice).toHaveBeenCalledTimes(2);
-        await sut.onload();
-        expect(Notice).toHaveBeenCalledTimes(4);
         expect(logWarnSpy).toHaveBeenCalledWith(
           expect.stringContaining('escape character'),
         );
-      });
-
-      it('notifies again in an independent plugin instance', async () => {
-        updateDataAndLoadSettingsSpy.mockImplementation(function (
-          this: SwitcherPlusSettings,
-        ) {
-          this.symbolListCommand = '>';
-          return Promise.resolve();
-        });
-        await sut.onload();
-        const second = Object.create(SwitcherPlusPlugin.prototype) as SwitcherPlusPlugin;
-        second.app = mockApp;
-        second.manifest = {} as SwitcherPlusPlugin['manifest'];
-        second.addCommand = jest.fn();
-        second.addSettingTab = jest.fn();
-        await second.onload();
-        expect(Notice).toHaveBeenCalledTimes(2);
       });
     });
 
