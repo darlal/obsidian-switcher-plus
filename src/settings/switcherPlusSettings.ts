@@ -1048,6 +1048,15 @@ export class SwitcherPlusSettings {
     }
   }
 
+  /**
+   * Reads the saved settings again over the defaults, for when data.json changed
+   * on disk. Keys missing from the file go back to their defaults.
+   */
+  async reloadSettings(): Promise<void> {
+    Object.assign(this.data, SwitcherPlusSettings.defaults);
+    await this.loadSettings();
+  }
+
   async saveSettings(): Promise<void> {
     const { plugin, data } = this;
     await plugin?.saveData(data);

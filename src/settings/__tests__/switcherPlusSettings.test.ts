@@ -509,6 +509,25 @@ describe('SwitcherPlusSettings', () => {
     mockPlugin.loadData.mockReset();
   });
 
+  it('should reset keys missing from the saved data to their defaults when reloading', async () => {
+    const defaults = getDefaultSettingsData();
+    const settings = getTransientSettingsData();
+
+    // these keys get merged
+    settings['matchPriorityAdjustments'] = defaults['matchPriorityAdjustments'];
+    settings['quickFilters'] = defaults['quickFilters'];
+
+    mockPlugin.loadData.mockResolvedValueOnce(settings);
+    await sut.loadSettings();
+    expect(sut).toEqual(expect.objectContaining(settings));
+
+    mockPlugin.loadData.mockResolvedValueOnce({});
+    await sut.reloadSettings();
+    expect(sut).toEqual(expect.objectContaining(defaults));
+
+    mockPlugin.loadData.mockReset();
+  });
+
   it('should use default data if settings cannot be loaded', async () => {
     const defaults = getDefaultSettingsData();
     mockPlugin.loadData.mockResolvedValueOnce(null);

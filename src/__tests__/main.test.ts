@@ -287,6 +287,39 @@ describe('SwitcherPlusPlugin', () => {
     });
   });
 
+  describe('onExternalSettingsChange', () => {
+    beforeEach(() => {
+      sut.options = settings;
+    });
+
+    it('should reload the settings, then refresh the ribbon icons and launcher buttons', async () => {
+      const calls: string[] = [];
+      const reloadSpy = jest.spyOn(settings, 'reloadSettings').mockImplementation(() => {
+        calls.push('reloadSettings');
+        return Promise.resolve();
+      });
+      const ribbonSpy = jest
+        .spyOn(sut, 'registerRibbonCommandIcons')
+        .mockImplementation(() => calls.push('registerRibbonCommandIcons'));
+      const launcherSpy = jest
+        .spyOn(sut, 'updateLauncherButtonOverrides')
+        .mockImplementation(() => calls.push('updateLauncherButtonOverrides'));
+
+      await sut.onExternalSettingsChange();
+
+      expect(calls).toEqual([
+        'reloadSettings',
+        'registerRibbonCommandIcons',
+        'updateLauncherButtonOverrides',
+      ]);
+      expect(launcherSpy).toHaveBeenCalledWith(true);
+
+      reloadSpy.mockRestore();
+      ribbonSpy.mockRestore();
+      launcherSpy.mockRestore();
+    });
+  });
+
   describe('onunload', () => {
     beforeEach(() => {
       sut.options = settings;
