@@ -65,6 +65,10 @@ export class RelatedItemsSettingsTabSection extends SettingsTabSection {
     return [
       {
         type: 'page',
+        status: this.triggerStatus(
+          'relatedItemsListCommand',
+          'relatedItemsListActiveEditorCommand',
+        ),
         name: 'Related Items Mode',
         displayValue: () => config.relatedItemsListCommand,
         items: [
@@ -77,6 +81,7 @@ export class RelatedItemsSettingsTabSection extends SettingsTabSection {
               placeholder: config.relatedItemsListPlaceholderText,
             },
           },
+          this.triggerWarning('relatedItemsListCommand'),
           {
             name: 'Related Items list mode trigger - Active editor only',
             desc: 'Character that will trigger related items list mode in the switcher. This always triggers a display of Related Items for the active editor only.',
@@ -86,6 +91,7 @@ export class RelatedItemsSettingsTabSection extends SettingsTabSection {
               placeholder: config.relatedItemsListActiveEditorCommand,
             },
           },
+          this.triggerWarning('relatedItemsListActiveEditorCommand'),
           this.createEnabledRelatedItemsDefinitions(),
           {
             name: 'Exclude open files',

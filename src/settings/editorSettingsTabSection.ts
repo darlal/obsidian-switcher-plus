@@ -71,6 +71,7 @@ export class EditorSettingsTabSection extends SettingsTabSection {
     return [
       {
         type: 'page',
+        status: this.triggerStatus('editorListCommand'),
         name: 'Editor Mode',
         displayValue: () => config.editorListCommand,
         items: [
@@ -83,6 +84,7 @@ export class EditorSettingsTabSection extends SettingsTabSection {
               placeholder: config.editorListPlaceholderText,
             },
           },
+          this.triggerWarning('editorListCommand'),
           {
             name: 'Order default editor list by most recently accessed',
             desc: 'When there is no search term, order the list of editors by most recent access time.',

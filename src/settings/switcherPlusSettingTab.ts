@@ -12,6 +12,7 @@ import { SettingsControlKey, SwitcherPlusSettings } from './switcherPlusSettings
 import { App, PluginSettingTab, SettingDefinitionItem } from 'obsidian';
 import { logError } from 'src/utils';
 import type SwitcherPlusPlugin from '../main';
+import { isTriggerSettingKey } from 'src/utils/modeTriggers';
 
 type ConstructableSettingsTabSection = {
   new (
@@ -69,6 +70,10 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
 
   setControlValue(key: string, value: unknown): Promise<void> {
     this.config.writeControlValue(key, value);
+    if (isTriggerSettingKey(key)) {
+      // Native page status callbacks are only re-evaluated by update().
+      this.update();
+    }
 
     // Returned so the framework awaits the write before re-evaluating visible
     // and disabled predicates. Rejections are logged rather than propagated

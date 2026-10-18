@@ -279,6 +279,7 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
     return [
       {
         type: 'page',
+        status: this.triggerStatus('headingsListCommand'),
         name: 'Headings Mode',
         displayValue: () => config.headingsListCommand,
         items: [
@@ -291,6 +292,7 @@ export class HeadingsSettingsTabSection extends SettingsTabSection {
               placeholder: config.headingsListPlaceholderText,
             },
           },
+          this.triggerWarning('headingsListCommand'),
           {
             name: 'Max recent files to show',
             desc: 'The maximum number of recent files to show when there is no search term',

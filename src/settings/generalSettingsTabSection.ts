@@ -447,6 +447,7 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         desc: 'Character to indicate that a mode trigger character should be treated just as a normal text.',
         control: { type: 'text', key: 'escapeCmdChar' },
       },
+      this.triggerWarning('escapeCmdChar'),
       {
         name: 'Allow Backspace key to close the Switcher',
         desc: 'When the search box is empty, pressing the backspace key will close Switcher++.',

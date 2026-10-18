@@ -270,3 +270,9 @@
 /* Descriptive text displayed in the list item entry modal */
 .qsp-list-entry-description {}
 
+/* Conflict feedback in declarative warning rows. */
+.qsp-trigger-warning {
+  color: var(--text-warning);
+  white-space: pre-line;
+}
+

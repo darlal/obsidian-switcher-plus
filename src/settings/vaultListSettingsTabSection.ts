@@ -23,6 +23,7 @@ export class VaultListSettingsTabSection extends SettingsTabSection {
               placeholder: config.vaultListPlaceholderText,
             },
           },
+          this.triggerWarning('vaultListCommand'),
         ],
       },
     ];
