@@ -24,6 +24,17 @@ function parser(definitions: CommandDefinition[], escapeCmdChar = '!'): InputPar
   );
 }
 
+function conflictsFor(definitions: CommandDefinition[]) {
+  return analyzeTriggerConflicts(
+    definitions.map(({ commandId, parserCommand }) => ({
+      key: commandId,
+      name: commandId,
+      cmdStr: parserCommand.getCommandStr(),
+    })),
+    '!',
+  );
+}
+
 describe('folded trigger collisions', () => {
   test.each([
     ['!', '!>', '>', '!>foo', '>foo'],
@@ -67,6 +78,7 @@ describe('folded trigger collisions', () => {
     (reversed) => {
       const definitions = [definition('symbol', '》'), definition('command', '>')];
       const sut = parser(reversed ? definitions.reverse() : definitions);
+      expect(conflictsFor(definitions)).toEqual([]);
       for (const [input, commandId, cmdStr] of [
         ['>foo', 'command', '>'],
         ['》foo', 'symbol', '》'],
@@ -88,6 +100,12 @@ describe('folded trigger collisions', () => {
     (rev) => {
       const definitions = [definition('chinese', '》'), definition('fullwidth', '＞')];
       const sut = parser(rev ? definitions.reverse() : definitions);
+      const conflicts = conflictsFor(definitions);
+      expect(conflicts).toHaveLength(1);
+      expect(conflicts[0].keys).toEqual(definitions.map(({ commandId }) => commandId));
+      expect(sut.parse('>foo').resolvedCommands[0].cmdDef.commandId).toBe(
+        conflicts[0].keys[0],
+      );
       expect(sut.parse('》foo').resolvedCommands[0].cmdDef.commandId).toBe('chinese');
       expect(sut.parse('＞foo').resolvedCommands[0].cmdDef.commandId).toBe('fullwidth');
       expect(sut.parse('>foo').resolvedCommands[0].cmdDef.commandId).toBe(
@@ -96,11 +114,22 @@ describe('folded trigger collisions', () => {
     },
   );
 
-  it('keeps first registration for byte-identical duplicates', () => {
-    const sut = parser([definition('first', '>'), definition('second', '>')]);
-    expect(sut.parse('>foo').resolvedCommands[0].cmdDef.commandId).toBe('first');
-    expect(sut.parse('》foo').resolvedCommands[0].cmdDef.commandId).toBe('first');
-  });
+  test.each([false, true])(
+    'reports duplicate groups consistent with registration order, reversed=%s',
+    (reversed) => {
+      const definitions = [definition('first', '>'), definition('second', '>')];
+      if (reversed) definitions.reverse();
+      const conflicts = conflictsFor(definitions);
+      expect(conflicts).toHaveLength(1);
+      expect(conflicts[0].keys).toEqual(definitions.map(({ commandId }) => commandId));
+      const sut = parser(definitions);
+      for (const input of ['>foo', '》foo']) {
+        expect(sut.parse(input).resolvedCommands[0].cmdDef.commandId).toBe(
+          conflicts[0].keys[0],
+        );
+      }
+    },
+  );
 
   it('keeps longest-folded priority over a shorter exact match', () => {
     const sut = parser([
