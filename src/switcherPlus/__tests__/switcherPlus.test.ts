@@ -122,6 +122,10 @@ describe('switcherPlus', () => {
   });
 
   describe('createAndOpen', () => {
+    beforeEach(() => {
+      mockPlugin.activeModal = null;
+    });
+
     it('should return true and call openInMode when system switcher is available', () => {
       const mockModal = mock<SwitcherPlus>();
       const createSpy = jest
@@ -167,6 +171,67 @@ describe('switcherPlus', () => {
 
       createSpy.mockRestore();
     });
+
+    it('should reuse the open modal instead of creating a new one', () => {
+      const openModal = mock<SwitcherPlus>({ isOpen: true });
+      mockPlugin.activeModal = openModal;
+      const createSpy = jest.spyOn(SwitcherPlusModal, 'create');
+      const sessionOpts = { useActiveEditorAsSource: chance.bool() };
+
+      const result = SwitcherPlusModal.createAndOpen(
+        mockApp,
+        mockPlugin,
+        Mode.SymbolList,
+        sessionOpts,
+      );
+
+      expect(result).toBe(true);
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(openModal.openInMode).toHaveBeenCalledWith({
+        mode: Mode.SymbolList,
+        ...sessionOpts,
+      });
+
+      createSpy.mockRestore();
+    });
+
+    it('should create a new modal when the tracked modal is closed', () => {
+      const closedModal = mock<SwitcherPlus>({ isOpen: false });
+      const newModal = mock<SwitcherPlus>();
+      mockPlugin.activeModal = closedModal;
+      const createSpy = jest.spyOn(SwitcherPlusModal, 'create').mockReturnValue(newModal);
+
+      SwitcherPlusModal.createAndOpen(mockApp, mockPlugin, Mode.EditorList);
+
+      expect(createSpy).toHaveBeenCalledWith(mockApp, mockPlugin);
+      expect(newModal.openInMode).toHaveBeenCalledWith({ mode: Mode.EditorList });
+      expect(closedModal.openInMode).not.toHaveBeenCalled();
+      expect(mockPlugin.activeModal).toBe(newModal);
+
+      createSpy.mockRestore();
+    });
+
+    it('should record the opened modal on the plugin', () => {
+      const newModal = mock<SwitcherPlus>();
+      const createSpy = jest.spyOn(SwitcherPlusModal, 'create').mockReturnValue(newModal);
+
+      SwitcherPlusModal.createAndOpen(mockApp, mockPlugin, Mode.HeadingsList);
+
+      expect(mockPlugin.activeModal).toBe(newModal);
+
+      createSpy.mockRestore();
+    });
+
+    it('should leave the tracked modal unchanged when system switcher is unavailable', () => {
+      const createSpy = jest.spyOn(SwitcherPlusModal, 'create').mockReturnValue(null);
+
+      const result = SwitcherPlusModal.createAndOpen(mockApp, mockPlugin, Mode.Standard);
+
+      expect(result).toBe(false);
+      expect(mockPlugin.activeModal).toBeNull();
+
+      createSpy.mockRestore();
+    });
   });
 
   describe('SwitcherPlusModal', () => {
@@ -197,6 +262,82 @@ describe('switcherPlus', () => {
       superOpenSpy.mockRestore();
     });
 
+    describe('openInMode when already open', () => {
+      const sessionOpts: SessionOpts = { mode: Mode.HeadingsList };
+      let isShowingModeSpy: jest.SpyInstance;
+      let setSessionOpenModeSpy: jest.SpyInstance;
+      let setInitialInputSpy: jest.SpyInstance;
+      let mhUpdateSuggestionsSpy: jest.SpyInstance;
+      let superOpenSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        (sut as unknown as { isOpen: boolean }).isOpen = true;
+        sut.inputEl = mock<HTMLInputElement>({ value: chance.word() });
+
+        isShowingModeSpy = jest.spyOn(ModeHandler.prototype, 'isShowingMode');
+        setSessionOpenModeSpy = jest
+          .spyOn(ModeHandler.prototype, 'setSessionOpenMode')
+          .mockReturnValue();
+        setInitialInputSpy = jest
+          .spyOn(ModeHandler.prototype, 'setInitialInputForSession')
+          .mockReturnValue();
+        mhUpdateSuggestionsSpy = jest
+          .spyOn(ModeHandler.prototype, 'updateSuggestions')
+          .mockReturnValue(true);
+        superOpenSpy = jest
+          .spyOn(MockSystemSwitcherModal.prototype, 'open')
+          .mockReturnValue();
+      });
+
+      afterEach(() => {
+        (sut as unknown as { isOpen: boolean }).isOpen = false;
+        isShowingModeSpy.mockRestore();
+        setSessionOpenModeSpy.mockRestore();
+        setInitialInputSpy.mockRestore();
+        mhUpdateSuggestionsSpy.mockRestore();
+        superOpenSpy.mockRestore();
+      });
+
+      it('should do nothing when the requested mode is already showing', () => {
+        isShowingModeSpy.mockReturnValue(true);
+        const inputText = sut.inputEl.value;
+
+        sut.openInMode(sessionOpts);
+
+        expect(isShowingModeSpy).toHaveBeenCalledWith(sessionOpts);
+        expect(setSessionOpenModeSpy).not.toHaveBeenCalled();
+        expect(superOpenSpy).not.toHaveBeenCalled();
+        expect(sut.inputEl.value).toBe(inputText);
+      });
+
+      it('should switch to the requested mode in place without reopening the modal', () => {
+        isShowingModeSpy.mockReturnValue(false);
+
+        sut.openInMode(sessionOpts);
+
+        expect(setSessionOpenModeSpy).toHaveBeenCalledWith(mockChooser, sessionOpts);
+        expect(setInitialInputSpy).toHaveBeenCalledWith(sut.inputEl);
+        expect(mhUpdateSuggestionsSpy).toHaveBeenCalledWith(
+          sut.inputEl.value,
+          mockChooser,
+          sut,
+        );
+        expect(superOpenSpy).not.toHaveBeenCalled();
+      });
+
+      it('should empty stale input before setting the initial input for the new mode', () => {
+        isShowingModeSpy.mockReturnValue(false);
+        let inputTextAtSetInitialInput: string;
+        setInitialInputSpy.mockImplementation((inputEl: HTMLInputElement) => {
+          inputTextAtSetInitialInput = inputEl.value;
+        });
+
+        sut.openInMode(sessionOpts);
+
+        expect(inputTextAtSetInitialInput).toBe('');
+      });
+    });
+
     test('onOpen() should forward to ModeHandler and call super.onOpen()', () => {
       const mhOnOpenSpy = jest.spyOn(ModeHandler.prototype, 'onOpen').mockReturnValue();
 
@@ -223,6 +364,29 @@ describe('switcherPlus', () => {
 
       mhOnCloseSpy.mockReset();
       superOnCloseSpy.mockRestore();
+    });
+
+    describe('onClose releasing the active modal', () => {
+      afterEach(() => {
+        mockPlugin.activeModal = null;
+      });
+
+      it('should clear plugin.activeModal when it is this modal', () => {
+        mockPlugin.activeModal = sut;
+
+        sut.onClose();
+
+        expect(mockPlugin.activeModal).toBeNull();
+      });
+
+      it('should leave plugin.activeModal alone when it is a different modal', () => {
+        const newerModal = mock<SwitcherPlus>();
+        mockPlugin.activeModal = newerModal;
+
+        sut.onClose();
+
+        expect(mockPlugin.activeModal).toBe(newerModal);
+      });
     });
 
     it('should forward to ModeHandler to get suggestions', () => {

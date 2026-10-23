@@ -53,8 +53,24 @@ export class SwitcherPlusModal {
       }
 
       openInMode(sessionOpts: SessionOpts): void {
-        this.exMode.setSessionOpenMode(this.chooser, sessionOpts);
-        super.open();
+        const { exMode, chooser, inputEl } = this;
+
+        if (!this.isOpen) {
+          exMode.setSessionOpenMode(chooser, sessionOpts);
+          super.open();
+          return;
+        }
+
+        if (exMode.isShowingMode(sessionOpts)) {
+          return;
+        }
+
+        // Switch the mode in place, the input is cleared because
+        // setInitialInputForSession assumes empty input, which the direct open path
+        // guarantees through SuggestModal.onOpen.
+        inputEl.value = '';
+        exMode.setSessionOpenMode(chooser, sessionOpts);
+        this.updateSuggestions();
       }
 
       onOpen(): void {
@@ -67,6 +83,12 @@ export class SwitcherPlusModal {
       onClose() {
         super.onClose();
         this.exMode.onClose();
+
+        // On phones onClose runs after the close animation, by which time a newer modal
+        // might already be the active one.
+        if (this.plugin.activeModal === this) {
+          this.plugin.activeModal = null;
+        }
       }
 
       protected updateSuggestions(): void {
@@ -103,10 +125,9 @@ export class SwitcherPlusModal {
   }
 
   /**
-   * Create the modal and open it in the given mode.
-   * Modal is created dynamically (same as system switcher) because
-   * system options are evaluated in the modal constructor.
-   * @returns true if the modal was opened, false if system switcher unavailable.
+   * Open the modal in the requested mode. If a modal is already open, it is
+   * reset and reused, otherwise a new modal is created.
+   * @returns true if a modal was opened or reused, false if system switcher unavailable.
    */
   static createAndOpen(
     app: App,
@@ -114,11 +135,17 @@ export class SwitcherPlusModal {
     mode: Mode,
     sessionOpts?: Pick<SessionOpts, 'useActiveEditorAsSource'>,
   ): boolean {
-    const modal = SwitcherPlusModal.create(app, plugin);
+    const openModal = plugin.activeModal;
+
+    // Reuse the open modal so a second trigger switches it instead of stacking (#262).
+    // isOpen is checked rather than just presence because on phones the reference is
+    // released after the close animation, but isOpen goes false as soon as close() runs.
+    const modal = openModal?.isOpen ? openModal : SwitcherPlusModal.create(app, plugin);
     if (!modal) {
       return false;
     }
 
+    plugin.activeModal = modal;
     modal.openInMode(Object.assign({ mode }, sessionOpts));
 
     return true;

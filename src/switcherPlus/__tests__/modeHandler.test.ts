@@ -320,6 +320,76 @@ describe('modeHandler', () => {
     });
   });
 
+  describe('isShowingMode', () => {
+    let sut: ModeHandler;
+    let inputInfoSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      sut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
+    });
+
+    afterEach(() => {
+      inputInfoSpy?.mockRestore();
+      inputInfoSpy = undefined;
+    });
+
+    it('should return false when the shown mode differs from the requested mode', () => {
+      const inputInfo = new InputInfo('', Mode.EditorList);
+      inputInfoSpy = jest.spyOn(sut, 'inputInfo', 'get').mockReturnValue(inputInfo);
+
+      const result = sut.isShowingMode({ mode: Mode.HeadingsList });
+
+      expect(result).toBe(false);
+    });
+
+    it('should return true for a non-sourced mode when modes match even if the source flags differ', () => {
+      const inputInfo = new InputInfo('', Mode.EditorList, {
+        useActiveEditorAsSource: true,
+      });
+      inputInfoSpy = jest.spyOn(sut, 'inputInfo', 'get').mockReturnValue(inputInfo);
+
+      const result = sut.isShowingMode({
+        mode: Mode.EditorList,
+        useActiveEditorAsSource: false,
+      });
+
+      expect(result).toBe(true);
+    });
+
+    it.each([Mode.SymbolList, Mode.RelatedItemsList])(
+      'should return true for sourced mode %s when modes match and undefined/false source flags agree',
+      (mode) => {
+        const inputInfo = new InputInfo('', mode, { useActiveEditorAsSource: undefined });
+        inputInfoSpy = jest.spyOn(sut, 'inputInfo', 'get').mockReturnValue(inputInfo);
+
+        const result = sut.isShowingMode({ mode, useActiveEditorAsSource: false });
+
+        expect(result).toBe(true);
+      },
+    );
+
+    it.each([Mode.SymbolList, Mode.RelatedItemsList])(
+      'should return false for sourced mode %s when modes match but the source flags differ',
+      (mode) => {
+        const inputInfo = new InputInfo('', mode, { useActiveEditorAsSource: true });
+        inputInfoSpy = jest.spyOn(sut, 'inputInfo', 'get').mockReturnValue(inputInfo);
+
+        const result = sut.isShowingMode({ mode });
+
+        expect(result).toBe(false);
+      },
+    );
+
+    it('should return true for Standard mode right after construction', () => {
+      HandlerRegistry.reset();
+      const freshSut = new ModeHandler(mockApp, mockSettings, mock<SwitcherPlusKeymap>());
+
+      const result = freshSut.isShowingMode({ mode: Mode.Standard });
+
+      expect(result).toBe(true);
+    });
+  });
+
   describe('Restoring previous session input', () => {
     const mockKeymap = mock<SwitcherPlusKeymap>();
     const mockChooser = mock<Chooser<AnySuggestion>>();

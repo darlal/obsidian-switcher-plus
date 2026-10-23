@@ -114,7 +114,7 @@ export declare class SystemSwitcher extends SuggestModal<AnySuggestion> {
    * create-new-file button.
    */
   ctaEl: HTMLElement;
-  protected isOpen: boolean;
+  isOpen: boolean;
   protected chooser: Chooser<AnySuggestion>;
   constructor(app: App);
   protected onInput(): void;
@@ -126,6 +126,13 @@ export declare class SystemSwitcher extends SuggestModal<AnySuggestion> {
 
 export interface SwitcherPlus extends SystemSwitcher {
   get exMode(): ModeDispatcher;
+  /**
+   * Opens the modal in the requested mode. If the modal is already open, it does
+   * nothing when the requested mode is already being displayed, otherwise it switches
+   * the open modal to that mode in place.
+   *
+   * @param {SessionOpts} sessionOpts the requested mode and command options
+   */
   openInMode(sessionOpts: SessionOpts): void;
 }
 
@@ -186,6 +193,16 @@ export interface ModeDispatcher {
   ): void;
 
   setSessionOpenMode(chooser: Chooser<AnySuggestion>, SessionOpts: SessionOpts): void;
+
+  /**
+   * Determines whether the mode requested by sessionOpts is the one currently
+   * being displayed. For sourced modes, the requested command variant (active editor vs
+   * selected suggestion) must also match.
+   *
+   * @param {SessionOpts} sessionOpts the requested mode and command options
+   * @returns {boolean} true if the requested mode is already showing, otherwise false
+   */
+  isShowingMode(sessionOpts: SessionOpts): boolean;
 
   /**
    * Returns relevant InputInfo properties to be used for triggering fulltext search.

@@ -8,12 +8,16 @@ import {
   getCommandDefinitions,
   CommandDefinition,
 } from 'src/switcherPlus';
-import { Mode } from 'src/types';
+import { Mode, SwitcherPlus } from 'src/types';
 import { analyzeTriggerConflicts, getConfiguredTriggers } from 'src/utils/modeTriggers';
 import { logWarn } from 'src/utils';
 
 export default class SwitcherPlusPlugin extends Plugin {
   public options: SwitcherPlusSettings;
+  /**
+   * The modal instance, if any, so subsequent open triggers can reuse it
+   */
+  activeModal: SwitcherPlus;
   private _commandDefinitions: CommandDefinition[];
 
   get commandDefinitions(): CommandDefinition[] {

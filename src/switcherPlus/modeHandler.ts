@@ -137,6 +137,21 @@ export class ModeHandler implements ModeDispatcher {
     this.sessionOpts = Object.assign({}, sessionOpts);
   }
 
+  isShowingMode(sessionOpts: SessionOpts): boolean {
+    const { mode, sessionOpts: currentOpts } = this.inputInfo;
+
+    if (mode !== sessionOpts.mode) {
+      return false;
+    }
+
+    // Sourced modes have two commands (selected suggestion vs active editor) that can
+    // show different sources, so the command variant must match too.
+    return (
+      !getSourcedModes().includes(mode) ||
+      !!currentOpts.useActiveEditorAsSource === !!sessionOpts.useActiveEditorAsSource
+    );
+  }
+
   setInitialInputForSession(inputEl: HTMLInputElement): void {
     const { mode } = this.sessionOpts;
     if (!mode) {
