@@ -1,4 +1,4 @@
-import { Notice, Plugin } from 'obsidian';
+import { Plugin } from 'obsidian';
 import { SwitcherPlusSettings, SwitcherPlusSettingTab } from 'src/settings';
 import {
   EmptyTabMonitor,
@@ -9,8 +9,12 @@ import {
   CommandDefinition,
 } from 'src/switcherPlus';
 import { Mode, SwitcherPlus } from 'src/types';
-import { analyzeTriggerConflicts, getConfiguredTriggers } from 'src/utils/modeTriggers';
-import { logWarn } from 'src/utils';
+import {
+  analyzeTriggerConflicts,
+  describeTriggerConflict,
+  getConfiguredTriggers,
+  notifyWarn,
+} from 'src/utils';
 
 export default class SwitcherPlusPlugin extends Plugin {
   public options: SwitcherPlusSettings;
@@ -55,16 +59,15 @@ export default class SwitcherPlusPlugin extends Plugin {
   /** Check existing saved configurations once during plugin loading. */
   private checkTriggerConflicts(): void {
     const conflicts = analyzeTriggerConflicts(
-      getConfiguredTriggers(this.options),
+      getConfiguredTriggers(this.commandDefinitions),
       this.options.escapeCmdChar,
     );
-    for (const conflict of conflicts) {
-      logWarn(conflict.message);
-      new Notice(
-        `Switcher++: ${conflict.message} Check mode triggers in settings.`,
-        10000,
-      );
+    if (conflicts.length === 0) {
+      return;
     }
+
+    const messages = conflicts.map(describeTriggerConflict).join('\n\n');
+    notifyWarn(`${messages}\n\nCheck mode triggers in settings.`, 10000);
   }
 
   registerRibbonCommandIcons(): void {

@@ -5,6 +5,8 @@ import {
 } from 'src/settings';
 import { RelationType } from 'src/types';
 import { mock, MockProxy } from 'jest-mock-extended';
+import type SwitcherPlusPlugin from 'src/main';
+import { getCommandDefinitions } from 'src/switcherPlus/commandDefinitions';
 import { App, Setting } from 'obsidian';
 import { findListByHeading, findSettingByKey } from '@fixtures';
 import * as ListEntryModal from 'src/settings/listEntryModal';
@@ -20,8 +22,13 @@ describe('relatedItemsSettingsTabSection', () => {
   beforeAll(() => {
     mockApp = mock<App>();
     mockContainerEl = mock<HTMLElement>();
-    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
+    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({
+      containerEl: mockContainerEl,
+      plugin: mock<SwitcherPlusPlugin>({
+        commandDefinitions: getCommandDefinitions(config),
+      }),
+    });
 
     sut = new RelatedItemsSettingsTabSection(mockApp, mockPluginSettingTab, config);
   });

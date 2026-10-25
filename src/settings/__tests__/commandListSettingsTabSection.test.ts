@@ -5,6 +5,8 @@ import {
 } from 'src/settings';
 import { MAX_STORED_RECENT_COMMANDS } from 'src/Handlers';
 import { mock, MockProxy } from 'jest-mock-extended';
+import type SwitcherPlusPlugin from 'src/main';
+import { getCommandDefinitions } from 'src/switcherPlus/commandDefinitions';
 import { App } from 'obsidian';
 import { findSettingByKey } from '@fixtures';
 
@@ -18,8 +20,13 @@ describe('commandListSettingsTabSection', () => {
   beforeAll(() => {
     mockApp = mock<App>();
     mockContainerEl = mock<HTMLElement>();
-    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
+    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({
+      containerEl: mockContainerEl,
+      plugin: mock<SwitcherPlusPlugin>({
+        commandDefinitions: getCommandDefinitions(config),
+      }),
+    });
 
     sut = new CommandListSettingsTabSection(mockApp, mockPluginSettingTab, config);
   });

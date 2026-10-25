@@ -99,26 +99,22 @@ export class SymbolSettingsTabSection extends SettingsTabSection {
         name: 'Symbol Mode',
         displayValue: () => config.symbolListCommand,
         items: [
-          {
-            name: 'Symbol list mode trigger',
+          this.triggerGroup({
             desc: 'Character that will trigger symbol list mode in the switcher. This triggers a display of Symbols for the source file of the currently selected (highlighted) suggestion in the switcher. If there is not a suggestion, display results for the active editor.',
             control: {
               type: 'text',
               key: 'symbolListCommand',
               placeholder: config.symbolListPlaceholderText,
             },
-          },
-          this.triggerWarning('symbolListCommand'),
-          {
-            name: 'Symbol list mode trigger - Active editor only',
+          }),
+          this.triggerGroup({
             desc: 'Character that will trigger symbol list mode in the switcher. This always triggers a display of Symbols for the active editor only.',
             control: {
               type: 'text',
               key: 'symbolListActiveEditorCommand',
               placeholder: config.symbolListActiveEditorCommand,
             },
-          },
-          this.triggerWarning('symbolListActiveEditorCommand'),
+          }),
           {
             name: 'List symbols as indented outline',
             desc: 'Enabled, symbols will be displayed in the (line) order they appear in the source text, indented under any preceding heading. Disabled, symbols will be grouped by type: Headings, Tags, Links, Embeds.',

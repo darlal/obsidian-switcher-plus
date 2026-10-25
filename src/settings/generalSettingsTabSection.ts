@@ -443,12 +443,6 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         control: { type: 'toggle', key: 'quickOpen.isEnabled' },
       },
       {
-        name: 'Mode trigger escape character',
-        desc: 'Character to indicate that a mode trigger character should be treated just as a normal text.',
-        control: { type: 'text', key: 'escapeCmdChar' },
-      },
-      this.triggerWarning('escapeCmdChar'),
-      {
         name: 'Allow Backspace key to close the Switcher',
         desc: 'When the search box is empty, pressing the backspace key will close Switcher++.',
         control: { type: 'toggle', key: 'shouldCloseModalOnBackspace' },
@@ -457,6 +451,17 @@ export class GeneralSettingsTabSection extends SettingsTabSection {
         name: 'Reset active Quick Filters',
         desc: 'When enabled, the switcher will reset all Quick Filters back to inactive for each session.',
         control: { type: 'toggle', key: 'quickFilters.shouldResetActiveFacets' },
+      },
+      {
+        type: 'group',
+        items: [
+          {
+            name: 'Mode trigger escape character',
+            desc: 'Character to indicate that a mode trigger character should be treated just as a normal text.',
+            control: { type: 'text', key: 'escapeCmdChar' },
+          },
+          this.triggerWarning('escapeCmdChar'),
+        ],
       },
       this.createRibbonCommandsDefinitions(),
       this.createLauncherGroupDefinition(),

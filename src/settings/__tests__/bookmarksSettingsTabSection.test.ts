@@ -4,6 +4,8 @@ import {
   SwitcherPlusSettingTab,
 } from 'src/settings';
 import { mock, MockProxy } from 'jest-mock-extended';
+import type SwitcherPlusPlugin from 'src/main';
+import { getCommandDefinitions } from 'src/switcherPlus/commandDefinitions';
 import { App, SettingDefinitionControl, SettingDefinitionPage } from 'obsidian';
 import { findSettingByKey, flattenSettingDefinitions } from '@fixtures';
 
@@ -17,8 +19,13 @@ describe('bookmarksSettingsTabSection', () => {
   beforeAll(() => {
     mockApp = mock<App>();
     mockContainerEl = mock<HTMLElement>();
-    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
+    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({
+      containerEl: mockContainerEl,
+      plugin: mock<SwitcherPlusPlugin>({
+        commandDefinitions: getCommandDefinitions(config),
+      }),
+    });
 
     sut = new BookmarksSettingsTabSection(mockApp, mockPluginSettingTab, config);
   });
@@ -50,6 +57,22 @@ describe('bookmarksSettingsTabSection', () => {
           placeholder: config.bookmarksListPlaceholderText,
         },
       });
+    });
+
+    it('should throw when no command definition owns a trigger setting', () => {
+      const tabWithoutDefinitions = mock<SwitcherPlusSettingTab>({
+        containerEl: mockContainerEl,
+        plugin: mock<SwitcherPlusPlugin>({ commandDefinitions: [] }),
+      });
+      const section = new BookmarksSettingsTabSection(
+        mockApp,
+        tabWithoutDefinitions,
+        config,
+      );
+
+      expect(() => section.getSettingDefinitions()).toThrow(
+        'No command definition owns the trigger setting "bookmarksListCommand"',
+      );
     });
 
     it('should define exactly the expected settings', () => {

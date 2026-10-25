@@ -1,4 +1,5 @@
 import { App } from 'obsidian';
+import { WritableKeys } from 'ts-essentials';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
   BookmarksHandler,
@@ -26,6 +27,19 @@ export type HandlerConstructor = new (
 ) => Handler<AnySuggestion>;
 
 /**
+ * The writable settings typed exactly `string` (not a literal union), which are the
+ * only settings a mode trigger can be stored in. Typing the key this way lets
+ * `config[settingsTriggerKey]` read as a string without a cast.
+ */
+export type TriggerSettingKey = {
+  [K in WritableKeys<SwitcherPlusSettings>]: string extends SwitcherPlusSettings[K]
+    ? SwitcherPlusSettings[K] extends string
+      ? K
+      : never
+    : never;
+}[WritableKeys<SwitcherPlusSettings>];
+
+/**
  * Defines how a command can be triggered from the switcher input field.
  */
 export interface ParserCommand {
@@ -36,6 +50,20 @@ export interface ParserCommand {
    *   (e.g., showing symbols for a specific file).
    */
   type: 'prefix' | 'sourced' | 'none';
+
+  /**
+   * The setting that stores this command's trigger. Settings and conflict detection
+   * derive the list of mode triggers from this field, so it is the single record
+   * of which settings are triggers. Absent when `type` is `'none'`.
+   */
+  settingsTriggerKey?: TriggerSettingKey;
+
+  /**
+   * The label of the trigger's row in the settings tab. Conflict messages use the
+   * same label so users can find the other trigger they need to change. Absent
+   * when `type` is `'none'`.
+   */
+  settingsTriggerName?: string;
 
   /**
    * A function that returns the command string (e.g., 'edt ') that triggers this command.
@@ -102,6 +130,17 @@ export interface CommandDefinition {
  * @returns An array of {@link CommandDefinition} objects.
  */
 export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefinition[] {
+  // Each trigger key is written once and the command string is read through it,
+  // so the key and the value it reads cannot point at different settings.
+  const trigger = (
+    settingsTriggerKey: TriggerSettingKey,
+    settingsTriggerName: string,
+  ) => ({
+    settingsTriggerKey,
+    settingsTriggerName,
+    getCommandStr: () => config[settingsTriggerKey],
+  });
+
   return [
     {
       commandId: 'switcher-plus:open',
@@ -124,7 +163,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.EditorList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.editorListCommand,
+        ...trigger('editorListCommand', 'Editor list mode trigger'),
       },
     },
     {
@@ -136,7 +175,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.SymbolList],
       parserCommand: {
         type: 'sourced',
-        getCommandStr: () => config.symbolListCommand,
+        ...trigger('symbolListCommand', 'Symbol list mode trigger'),
       },
     },
     {
@@ -147,7 +186,10 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       handlerClass: SymbolHandler,
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.symbolListActiveEditorCommand,
+        ...trigger(
+          'symbolListActiveEditorCommand',
+          'Symbol list mode trigger - Active editor only',
+        ),
         useActiveEditorAsSource: true,
       },
     },
@@ -160,7 +202,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.WorkspaceList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.workspaceListCommand,
+        ...trigger('workspaceListCommand', 'Workspace list mode trigger'),
       },
     },
     {
@@ -172,7 +214,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.HeadingsList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.headingsListCommand,
+        ...trigger('headingsListCommand', 'Headings list mode trigger'),
       },
     },
     {
@@ -186,7 +228,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.Bookmark],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.bookmarksListCommand,
+        ...trigger('bookmarksListCommand', 'Bookmarks list mode trigger'),
       },
     },
     {
@@ -198,7 +240,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.CommandList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.commandListCommand,
+        ...trigger('commandListCommand', 'Command list mode trigger'),
       },
     },
     {
@@ -210,7 +252,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.RelatedItemsList],
       parserCommand: {
         type: 'sourced',
-        getCommandStr: () => config.relatedItemsListCommand,
+        ...trigger('relatedItemsListCommand', 'Related Items list mode trigger'),
       },
     },
     {
@@ -221,7 +263,10 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       handlerClass: RelatedItemsHandler,
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.relatedItemsListActiveEditorCommand,
+        ...trigger(
+          'relatedItemsListActiveEditorCommand',
+          'Related Items list mode trigger - Active editor only',
+        ),
         useActiveEditorAsSource: true,
       },
     },
@@ -234,7 +279,7 @@ export function getCommandDefinitions(config: SwitcherPlusSettings): CommandDefi
       ownSuggestionTypes: [SuggestionType.VaultList],
       parserCommand: {
         type: 'prefix',
-        getCommandStr: () => config.vaultListCommand,
+        ...trigger('vaultListCommand', 'Vault list mode trigger'),
       },
     },
   ];

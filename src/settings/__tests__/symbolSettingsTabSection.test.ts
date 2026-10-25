@@ -5,6 +5,8 @@ import {
   SwitcherPlusSettingTab,
 } from 'src/settings';
 import { mock, MockProxy } from 'jest-mock-extended';
+import type SwitcherPlusPlugin from 'src/main';
+import { getCommandDefinitions } from 'src/switcherPlus/commandDefinitions';
 import {
   App,
   Setting,
@@ -25,8 +27,13 @@ describe('symbolSettingsTabSection', () => {
   beforeAll(() => {
     mockApp = mock<App>({ viewRegistry: mock<ViewRegistry>() });
     mockContainerEl = mock<HTMLElement>();
-    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
+    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({
+      containerEl: mockContainerEl,
+      plugin: mock<SwitcherPlusPlugin>({
+        commandDefinitions: getCommandDefinitions(config),
+      }),
+    });
   });
 
   describe('saveEnableSubLinkChange', () => {

@@ -5,6 +5,8 @@ import {
   SwitcherPlusSettingTab,
 } from 'src/settings';
 import { mock, mockFn, MockProxy, mockReset } from 'jest-mock-extended';
+import type SwitcherPlusPlugin from 'src/main';
+import { getCommandDefinitions } from 'src/switcherPlus/commandDefinitions';
 import {
   App,
   DropdownComponent,
@@ -47,7 +49,10 @@ describe('generalSettingsTabSection', () => {
     config = new SwitcherPlusSettings(null);
     mockPluginSettingTab = mock<SwitcherPlusSettingTab>({
       containerEl: mockContainerEl,
-      plugin: { registerRibbonCommandIcons: mockFn() },
+      plugin: mock<SwitcherPlusPlugin>({
+        registerRibbonCommandIcons: mockFn(),
+        commandDefinitions: getCommandDefinitions(config),
+      }),
     });
 
     sut = new GeneralSettingsTabSection(mockApp, mockPluginSettingTab, config);

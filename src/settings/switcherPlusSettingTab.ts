@@ -10,9 +10,8 @@ import { SymbolSettingsTabSection } from './symbolSettingsTabSection';
 import { VaultListSettingsTabSection } from './vaultListSettingsTabSection';
 import { SettingsControlKey, SwitcherPlusSettings } from './switcherPlusSettings';
 import { App, PluginSettingTab, SettingDefinitionItem } from 'obsidian';
-import { logError } from 'src/utils';
+import { isTriggerSettingKey, logError } from 'src/utils';
 import type SwitcherPlusPlugin from '../main';
-import { isTriggerSettingKey } from 'src/utils/modeTriggers';
 
 type ConstructableSettingsTabSection = {
   new (
@@ -70,7 +69,7 @@ export class SwitcherPlusSettingTab extends PluginSettingTab {
 
   setControlValue(key: string, value: unknown): Promise<void> {
     this.config.writeControlValue(key, value);
-    if (isTriggerSettingKey(key)) {
+    if (isTriggerSettingKey(key, this.plugin.commandDefinitions)) {
       // Native page status callbacks are only re-evaluated by update().
       this.update();
     }

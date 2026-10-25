@@ -72,26 +72,22 @@ export class RelatedItemsSettingsTabSection extends SettingsTabSection {
         name: 'Related Items Mode',
         displayValue: () => config.relatedItemsListCommand,
         items: [
-          {
-            name: 'Related Items list mode trigger',
+          this.triggerGroup({
             desc: 'Character that will trigger related items list mode in the switcher. This triggers a display of Related Items for the source file of the currently selected (highlighted) suggestion in the switcher. If there is not a suggestion, display results for the active editor.',
             control: {
               type: 'text',
               key: 'relatedItemsListCommand',
               placeholder: config.relatedItemsListPlaceholderText,
             },
-          },
-          this.triggerWarning('relatedItemsListCommand'),
-          {
-            name: 'Related Items list mode trigger - Active editor only',
+          }),
+          this.triggerGroup({
             desc: 'Character that will trigger related items list mode in the switcher. This always triggers a display of Related Items for the active editor only.',
             control: {
               type: 'text',
               key: 'relatedItemsListActiveEditorCommand',
               placeholder: config.relatedItemsListActiveEditorCommand,
             },
-          },
-          this.triggerWarning('relatedItemsListActiveEditorCommand'),
+          }),
           this.createEnabledRelatedItemsDefinitions(),
           {
             name: 'Exclude open files',

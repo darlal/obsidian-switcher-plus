@@ -4,6 +4,8 @@ import {
   SwitcherPlusSettingTab,
 } from 'src/settings';
 import { mock, MockProxy } from 'jest-mock-extended';
+import type SwitcherPlusPlugin from 'src/main';
+import { getCommandDefinitions } from 'src/switcherPlus/commandDefinitions';
 import { App, Setting, ViewRegistry } from 'obsidian';
 import { findListByHeading, findSettingByKey } from '@fixtures';
 import * as ListEntryModal from 'src/settings/listEntryModal';
@@ -21,8 +23,13 @@ describe('editorSettingsTabSection', () => {
     mockApp = mock<App>({ viewRegistry: mock<ViewRegistry>() });
     mockApp.viewRegistry.viewByType = { [viewTypeName]: null };
     mockContainerEl = mock<HTMLElement>();
-    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
+    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({
+      containerEl: mockContainerEl,
+      plugin: mock<SwitcherPlusPlugin>({
+        commandDefinitions: getCommandDefinitions(config),
+      }),
+    });
 
     sut = new EditorSettingsTabSection(mockApp, mockPluginSettingTab, config);
   });

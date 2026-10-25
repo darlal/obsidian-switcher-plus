@@ -16,8 +16,15 @@ import {
   ViewRegistry,
 } from 'obsidian';
 import * as Utils from 'src/utils/utils';
-import { findSettingByKey, flattenSettingDefinitions, isSettingVisible } from '@fixtures';
+import {
+  findListByHeading,
+  findSettingByKey,
+  flattenSettingDefinitions,
+  isSettingVisible,
+} from '@fixtures';
 import { HandlerRegistry } from 'src/switcherPlus/handlerRegistry';
+import { getCommandDefinitions } from 'src/switcherPlus/commandDefinitions';
+import type SwitcherPlusPlugin from 'src/main';
 
 const originalCreateFragment = window.createFragment;
 
@@ -32,6 +39,37 @@ function warningAfter(
   const leaves = flattenSettingDefinitions(items);
   const field = findSettingByKey(items, key);
   return leaves[leaves.indexOf(field) + 1] as SettingDefinitionEmpty;
+}
+
+type Container = { type?: string; heading?: string; items?: unknown[] };
+
+/** Returns the container whose own items include the control bound to key. */
+function findParentGroup(
+  items: SettingDefinitionItem<SettingsControlKey>[],
+  key: SettingsControlKey,
+): Container | undefined {
+  for (const item of items as Container[]) {
+    if (!item.items) {
+      continue;
+    }
+
+    const isParent = item.items.some(
+      (child) => (child as { control?: { key: string } }).control?.key === key,
+    );
+    if (isParent) {
+      return item;
+    }
+
+    const nested = findParentGroup(
+      item.items as SettingDefinitionItem<SettingsControlKey>[],
+      key,
+    );
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return undefined;
 }
 
 describe('SwitcherPlusSettingTab', () => {
@@ -60,7 +98,13 @@ describe('SwitcherPlusSettingTab', () => {
         return fragment;
       });
       realConfig = new SwitcherPlusSettings(null);
-      declarativeSut = new SwitcherPlusSettingTab(mockApp, null, realConfig);
+      declarativeSut = new SwitcherPlusSettingTab(
+        mockApp,
+        mock<SwitcherPlusPlugin>({
+          commandDefinitions: getCommandDefinitions(realConfig),
+        }),
+        realConfig,
+      );
     });
 
     it('should read a control value from the config', () => {
@@ -132,6 +176,54 @@ describe('SwitcherPlusSettingTab', () => {
       }
     });
 
+    it('should place each mode trigger and its warning alone in an untitled group', () => {
+      const definitions = declarativeSut.getSettingDefinitions();
+
+      for (const key of [
+        'editorListCommand',
+        'symbolListCommand',
+        'symbolListActiveEditorCommand',
+        'relatedItemsListCommand',
+        'relatedItemsListActiveEditorCommand',
+        'commandListCommand',
+        'headingsListCommand',
+        'bookmarksListCommand',
+        'workspaceListCommand',
+        'vaultListCommand',
+      ] as const) {
+        expect(findParentGroup(definitions, key)).toEqual({
+          type: 'group',
+          items: [
+            findSettingByKey(definitions, key),
+            expect.objectContaining({ name: '⚠ Warning' }),
+          ],
+        });
+      }
+    });
+
+    it('should place the escape character and its warning alone in an untitled group', () => {
+      const definitions = declarativeSut.getSettingDefinitions();
+
+      const parent = findParentGroup(definitions, 'escapeCmdChar');
+
+      expect(parent).toEqual({
+        type: 'group',
+        items: [
+          findSettingByKey(definitions, 'escapeCmdChar'),
+          expect.objectContaining({ name: '⚠ Warning' }),
+        ],
+      });
+    });
+
+    it('should place the escape character group right before the ribbon icons list', () => {
+      const definitions = declarativeSut.getSettingDefinitions();
+      const parent = findParentGroup(definitions, 'escapeCmdChar');
+
+      const next = definitions[definitions.findIndex((item) => item === parent) + 1];
+
+      expect(next).toBe(findListByHeading(definitions, 'Show ribbon icons'));
+    });
+
     it('warns on duplicate trigger fields without replacing native text controls', () => {
       realConfig.symbolListCommand = '>';
       const definitions = declarativeSut.getSettingDefinitions();
@@ -148,10 +240,10 @@ describe('SwitcherPlusSettingTab', () => {
         expect(isSettingVisible(warning)).toBe(true);
         expect(typeof field.desc).toBe('string');
         expect(descriptionText(warningAfter(definitions, key).desc)).toContain(
-          'Symbol mode',
+          'Symbol list mode trigger',
         );
         expect(descriptionText(warningAfter(definitions, key).desc)).toContain(
-          'Command mode',
+          'Command list mode trigger',
         );
       }
       expect(descriptionText(warningAfter(definitions, 'headingsListCommand').desc)).toBe(

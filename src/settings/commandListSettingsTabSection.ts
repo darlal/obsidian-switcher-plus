@@ -18,16 +18,14 @@ export class CommandListSettingsTabSection extends SettingsTabSection {
         name: 'Command Mode',
         displayValue: () => config.commandListCommand,
         items: [
-          {
-            name: 'Command list mode trigger',
+          this.triggerGroup({
             desc: 'Character that will trigger command list mode in the switcher',
             control: {
               type: 'text',
               key: 'commandListCommand',
               placeholder: config.commandListPlaceholderText,
             },
-          },
-          this.triggerWarning('commandListCommand'),
+          }),
           {
             name: 'Max recent commands',
             desc: 'The maximum number of recently used commands to display in the list.',

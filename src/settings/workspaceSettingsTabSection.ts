@@ -13,16 +13,14 @@ export class WorkspaceSettingsTabSection extends SettingsTabSection {
         name: 'Workspace Mode',
         displayValue: () => config.workspaceListCommand,
         items: [
-          {
-            name: 'Workspace list mode trigger',
+          this.triggerGroup({
             desc: 'Character that will trigger workspace list mode in the switcher',
             control: {
               type: 'text',
               key: 'workspaceListCommand',
               placeholder: config.workspaceListPlaceholderText,
             },
-          },
-          this.triggerWarning('workspaceListCommand'),
+          }),
         ],
       },
     ];

@@ -31,9 +31,11 @@ import {
   getFileTags,
   formatTags,
   notifyError,
+  notifyWarn,
   logError,
   logWarn,
   headingLevelClass,
+  groupBy,
 } from 'src/utils';
 import {
   getTags,
@@ -1454,6 +1456,36 @@ describe('utils', () => {
     });
   });
 
+  describe('notifyWarn', () => {
+    let consoleWarnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleWarnSpy = jest.spyOn(console, 'warn').mockReturnValue();
+      (Notice as jest.Mock).mockClear();
+    });
+
+    afterEach(() => {
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should construct a Notice prefixed with "Switcher++:" for the given duration', () => {
+      const message = chance.sentence();
+      const duration = chance.integer({ min: 1000, max: 20000 });
+
+      notifyWarn(message, duration);
+
+      expect(Notice).toHaveBeenCalledWith(`Switcher++: ${message}`, duration);
+    });
+
+    it('should log the prefixed message to console.warn', () => {
+      const message = chance.sentence();
+
+      notifyWarn(message);
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(`Switcher++: ${message}`);
+    });
+  });
+
   describe('notifyError', () => {
     let consoleErrorSpy: jest.SpyInstance;
 
@@ -1559,6 +1591,26 @@ describe('utils', () => {
   describe('headingLevelClass', () => {
     it('should encode the heading level in the class name', () => {
       expect(headingLevelClass(2)).toBe('qsp-headings-l2');
+    });
+  });
+
+  describe('groupBy', () => {
+    it('should group items by key, keeping first-seen key order and item order', () => {
+      const items = ['apple', 'bean', 'avocado', 'banana', 'cherry'];
+
+      const result = groupBy(items, (item) => item[0]);
+
+      expect([...result.entries()]).toEqual([
+        ['a', ['apple', 'avocado']],
+        ['b', ['bean', 'banana']],
+        ['c', ['cherry']],
+      ]);
+    });
+
+    it('should return an empty map when there are no items', () => {
+      const result = groupBy([], (item: string) => item);
+
+      expect(result.size).toBe(0);
     });
   });
 });

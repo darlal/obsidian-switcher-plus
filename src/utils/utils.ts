@@ -212,6 +212,20 @@ export function notifyError(userMessage: string, err?: unknown): void {
 }
 
 /**
+ * Shows an Obsidian Notice toast prefixed with "Switcher++:" and logs the same
+ * message to console.warn. Use for problems the user should fix but that don't
+ * stop the plugin working (e.g. conflicting settings found at startup). For
+ * failures use {@link notifyError}; to only log, use {@link logWarn}.
+ *
+ * @param userMessage - body of the toast; will be prefixed with "Switcher++: "
+ * @param duration - optional time in milliseconds before the toast hides itself
+ */
+export function notifyWarn(userMessage: string, duration?: number): void {
+  new Notice(`Switcher++: ${userMessage}`, duration);
+  logWarn(userMessage);
+}
+
+/**
  * Logs a message to the developer console via console.error prefixed with "Switcher++: ".
  * Use for background or per-item failures that should not interrupt the user (e.g.
  * per-file parse errors during symbol enumeration, or one-shot startup
@@ -646,4 +660,30 @@ export function formatTags(
     : tags;
 
   return formattedTags.join(separator);
+}
+
+/**
+ * Groups items into arrays by a computed key. Keys keep the order they are first seen in
+ * and each group keeps the input order, so a sorted input stays sorted per group. Should
+ * be migrated to Map.groupBy() when it becomes available.
+ *
+ * @param items - The items to group.
+ * @param keyFn - Returns the group key for an item.
+ * @returns A map from each key to the items that produced it.
+ */
+export function groupBy<T, K>(items: Iterable<T>, keyFn: (item: T) => K): Map<K, T[]> {
+  const groups = new Map<K, T[]>();
+
+  for (const item of items) {
+    const key = keyFn(item);
+    const group = groups.get(key);
+
+    if (group) {
+      group.push(item);
+    } else {
+      groups.set(key, [item]);
+    }
+  }
+
+  return groups;
 }

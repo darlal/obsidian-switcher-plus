@@ -4,7 +4,7 @@ import { InputInfo } from './inputInfo';
 import { SwitcherPlusSettings } from 'src/settings';
 import { Mode, AnySuggestion } from 'src/types';
 import { WorkspaceLeaf } from 'obsidian';
-import { foldTriggerString, prepareTriggers } from 'src/utils/modeTriggers';
+import { foldTriggerString, groupBy, prepareTriggers } from 'src/utils';
 
 /**
  * Represents a potential command match found by the parser.
@@ -167,29 +167,28 @@ export class InputParser {
   private buildCommandMap(
     commandDefinitions: CommandDefinition[],
   ): Map<string, MappedCommand[]> {
-    const commandMap = new Map<string, MappedCommand[]>();
-
     const commands = prepareTriggers(
       commandDefinitions.map((cmdDef) => ({
         cmdDef,
         cmdStr: cmdDef.parserCommand.getCommandStr() ?? '',
       })),
     );
-    // Sorting once keeps each first-character bucket longest-first and canonical-first.
-    for (const command of commands) {
-      const firstChar = command.foldedCmdStr[0];
-      if (!commandMap.has(firstChar)) {
-        commandMap.set(firstChar, []);
-      }
-      commandMap.get(firstChar)?.push(command);
-    }
 
-    return commandMap;
+    // Sorting once keeps each first-character bucket longest-first and canonical-first.
+    return groupBy(commands, ({ foldedCmdStr }) => foldedCmdStr[0]);
   }
 
   /**
    * Attempts to find a command match at a given index in the input text.
    * It uses the pre-built commandMap for efficient lookup.
+   *
+   * Longest folded trigger wins first. Among candidates of the same folded length,
+   * three tiers break the tie:
+   * 1. Exact: the raw typed characters equal the configured trigger.
+   * 2. Canonical: the configured trigger is already its own fold, e.g. `>` over `》`
+   *    when `＞` is typed. Comes from the build-time sort.
+   * 3. Registration order: identical triggers, or a fold group with no canonical
+   *    member. Comes from the stable build-time sort.
    * @param inputText - The original user input, for exact matches within a length group.
    * @param foldedInput - The folded copy of the user input.
    * @param index - The index at which to check for a command.

@@ -14,16 +14,14 @@ export class VaultListSettingsTabSection extends SettingsTabSection {
         status: () => 'warning',
         displayValue: () => config.vaultListCommand,
         items: [
-          {
-            name: 'Vault list mode trigger',
+          this.triggerGroup({
             desc: 'Character that will trigger vault list mode in the switcher',
             control: {
               type: 'text',
               key: 'vaultListCommand',
               placeholder: config.vaultListPlaceholderText,
             },
-          },
-          this.triggerWarning('vaultListCommand'),
+          }),
         ],
       },
     ];

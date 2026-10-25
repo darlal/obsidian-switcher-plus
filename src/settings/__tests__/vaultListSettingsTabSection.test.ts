@@ -4,6 +4,8 @@ import {
   SwitcherPlusSettingTab,
 } from 'src/settings';
 import { mock, MockProxy } from 'jest-mock-extended';
+import type SwitcherPlusPlugin from 'src/main';
+import { getCommandDefinitions } from 'src/switcherPlus/commandDefinitions';
 import { App, SettingDefinitionControl, SettingDefinitionPage } from 'obsidian';
 import { findSettingByKey, flattenSettingDefinitions } from '@fixtures';
 
@@ -17,8 +19,13 @@ describe('vaultListSettingsTabSection', () => {
   beforeAll(() => {
     mockApp = mock<App>();
     mockContainerEl = mock<HTMLElement>();
-    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({ containerEl: mockContainerEl });
     config = new SwitcherPlusSettings(null);
+    mockPluginSettingTab = mock<SwitcherPlusSettingTab>({
+      containerEl: mockContainerEl,
+      plugin: mock<SwitcherPlusPlugin>({
+        commandDefinitions: getCommandDefinitions(config),
+      }),
+    });
 
     sut = new VaultListSettingsTabSection(mockApp, mockPluginSettingTab, config);
   });

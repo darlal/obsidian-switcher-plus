@@ -1,5 +1,5 @@
 import { mock, MockProxy, mockReset } from 'jest-mock-extended';
-import { App, Notice } from 'obsidian';
+import { App } from 'obsidian';
 import SwitcherPlusPlugin from 'src/main';
 import { SwitcherPlusSettings } from 'src/settings';
 import {
@@ -79,15 +79,14 @@ describe('SwitcherPlusPlugin', () => {
 
   describe('onload', () => {
     describe('saved trigger conflicts', () => {
-      let logWarnSpy: jest.SpyInstance;
+      let notifyWarnSpy: jest.SpyInstance;
 
       beforeEach(() => {
-        (Notice as jest.Mock).mockClear();
-        logWarnSpy = jest.spyOn(Utils, 'logWarn').mockImplementation();
+        notifyWarnSpy = jest.spyOn(Utils, 'notifyWarn').mockImplementation();
       });
 
       afterEach(() => {
-        logWarnSpy.mockRestore();
+        notifyWarnSpy.mockRestore();
       });
 
       it('warns for conflicts in an existing loaded config', async () => {
@@ -98,13 +97,13 @@ describe('SwitcherPlusPlugin', () => {
           return Promise.resolve();
         });
         await sut.onload();
-        expect(Notice).toHaveBeenCalledTimes(1);
-        expect(Notice).toHaveBeenCalledWith(
-          expect.stringContaining('Symbol mode ">" and Command mode ">"'),
+        expect(notifyWarnSpy).toHaveBeenCalledTimes(1);
+        expect(notifyWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            'Symbol list mode trigger ">" and Command list mode trigger ">"',
+          ),
           10000,
         );
-        expect(logWarnSpy).toHaveBeenCalledTimes(1);
-        expect(logWarnSpy).toHaveBeenCalledWith(expect.stringContaining('same trigger'));
       });
 
       it('does not warn about distinguishable exact and canonical triggers', async () => {
@@ -115,11 +114,10 @@ describe('SwitcherPlusPlugin', () => {
           return Promise.resolve();
         });
         await sut.onload();
-        expect(Notice).not.toHaveBeenCalled();
-        expect(logWarnSpy).not.toHaveBeenCalled();
+        expect(notifyWarnSpy).not.toHaveBeenCalled();
       });
 
-      it('warns about each escape conflict on load', async () => {
+      it('should combine every conflict into one notice on load', async () => {
         updateDataAndLoadSettingsSpy.mockImplementation(function (
           this: SwitcherPlusSettings,
         ) {
@@ -128,9 +126,14 @@ describe('SwitcherPlusPlugin', () => {
           return Promise.resolve();
         });
         await sut.onload();
-        expect(Notice).toHaveBeenCalledTimes(2);
-        expect(logWarnSpy).toHaveBeenCalledWith(
+        expect(notifyWarnSpy).toHaveBeenCalledTimes(1);
+        expect(notifyWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('same trigger'),
+          10000,
+        );
+        expect(notifyWarnSpy).toHaveBeenCalledWith(
           expect.stringContaining('escape character'),
+          10000,
         );
       });
     });

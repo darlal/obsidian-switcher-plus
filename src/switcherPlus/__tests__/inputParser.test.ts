@@ -690,6 +690,155 @@ describe('InputParser', () => {
       expect(result.resolvedCommands).toEqual([]);
     });
   });
+
+  describe('trigger tie-break', () => {
+    const makeDefinition = (
+      commandId: string,
+      cmdStr: string,
+      type: 'prefix' | 'sourced' = 'prefix',
+    ): CommandDefinition =>
+      mock<CommandDefinition>({
+        commandId,
+        parserCommand: { type, getCommandStr: () => cmdStr },
+      });
+
+    const makeParser = (definitions: CommandDefinition[], escapeCmdChar = '!') =>
+      new InputParser(
+        mock<HandlerRegistry>(),
+        mock<SwitcherPlusSettings>({ escapeCmdChar }),
+        definitions,
+      );
+
+    it('should match an escape-prefixed trigger when nothing after the escape is a trigger', () => {
+      const sut = makeParser([makeDefinition('0', '!>')]);
+
+      const result = sut.parse('!>foo');
+
+      expect(result.resolvedCommands[0].cmdDef.commandId).toBe('0');
+    });
+
+    it('should match an escape-prefixed trigger when the escape is followed by a non-trigger', () => {
+      const sut = makeParser([makeDefinition('0', '!x'), makeDefinition('1', '>')]);
+
+      const result = sut.parse('!xfoo');
+
+      expect(result.resolvedCommands[0].cmdDef.commandId).toBe('0');
+    });
+
+    it('should prefer the longest folded trigger when a shorter trigger matches exactly', () => {
+      const sut = makeParser([
+        makeDefinition('short', '>'),
+        makeDefinition('long', '》》'),
+        makeDefinition('unmatched', '>x'),
+      ]);
+
+      const result = sut.parse('>＞foo');
+
+      expect(result.resolvedCommands[0].cmdDef.commandId).toBe('long');
+      expect(result.resolvedCommands[0].cmdStr).toBe('》》');
+      expect(result.resolvedCommands[0].filterText).toBe('foo');
+      expect(result.cleanInput).toBe('>＞foo');
+    });
+
+    it('should match the shorter trigger when the longer trigger does not match', () => {
+      const sut = makeParser([
+        makeDefinition('short', '>'),
+        makeDefinition('long', '》》'),
+        makeDefinition('unmatched', '>x'),
+      ]);
+
+      const result = sut.parse('>foo');
+
+      expect(result.resolvedCommands[0].cmdDef.commandId).toBe('short');
+    });
+
+    it('should stop before shorter candidates when a longer folded fallback is found', () => {
+      const sut = makeParser([
+        makeDefinition('long', '>>'),
+        makeDefinition('short', '>'),
+      ]);
+
+      const result = sut.parse('>》foo');
+
+      expect(result.resolvedCommands[0].cmdDef.commandId).toBe('long');
+    });
+
+    describe('when several triggers have the same folded length', () => {
+      const makeSameLengthParser = () =>
+        makeParser([
+          makeDefinition('long', '>>'),
+          makeDefinition('different', '>x'),
+          makeDefinition('exact', '》》'),
+        ]);
+
+      it('should prefer an exact match listed after a folded match', () => {
+        const sut = makeSameLengthParser();
+
+        const result = sut.parse('》》foo');
+
+        expect(result.resolvedCommands[0].cmdDef.commandId).toBe('exact');
+      });
+
+      it('should fall back to the first folded match when none is exact', () => {
+        const sut = makeSameLengthParser();
+
+        const result = sut.parse('＞＞foo');
+
+        expect(result.resolvedCommands[0].cmdDef.commandId).toBe('long');
+      });
+
+      it('should match nothing when no candidate matches', () => {
+        const sut = makeSameLengthParser();
+
+        const result = sut.parse('>y');
+
+        expect(result.resolvedCommands).toEqual([]);
+      });
+    });
+
+    it('should apply the longest rule to escapes and keep source-command offsets', () => {
+      const sut = makeParser([
+        makeDefinition('canonical', '> ', 'sourced'),
+        makeDefinition('exact', '》 ', 'sourced'),
+      ]);
+
+      const result = sut.parse('💩！》\u3000foo ＞\u3000bar');
+
+      expect(result.cleanInput).toBe('💩》\u3000foo ＞\u3000bar');
+      expect(result.resolvedCommands).toHaveLength(1);
+      expect(result.resolvedCommands[0]).toEqual(
+        expect.objectContaining({
+          cmdStr: '> ',
+          filterText: 'bar',
+          indexInCleanInput: 8,
+        }),
+      );
+    });
+
+    it('should escape the following trigger when the escape folds onto a trigger', () => {
+      const sut = makeParser(
+        [makeDefinition('symbol', '》'), makeDefinition('heading', '#')],
+        '>',
+      );
+
+      const result = sut.parse('》#foo');
+
+      expect(result).toEqual({ cleanInput: '#foo', resolvedCommands: [] });
+    });
+
+    it('should match a trigger that folds onto the escape when no trigger follows it', () => {
+      const sut = makeParser(
+        [makeDefinition('symbol', '》'), makeDefinition('heading', '#')],
+        '>',
+      );
+
+      const result = sut.parse('》foo');
+
+      // The warning for this configuration must not claim every input using
+      // this trigger is unreachable.
+      expect(result.resolvedCommands[0].cmdDef.commandId).toBe('symbol');
+    });
+  });
 });
 
 describe('InputParser integration tests', () => {
