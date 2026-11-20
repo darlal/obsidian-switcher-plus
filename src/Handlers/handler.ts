@@ -56,6 +56,8 @@ import {
   formatTags,
   logError,
   notifyError,
+  filenameFromPath,
+  folderPathFromPath,
 } from 'src/utils';
 
 export abstract class Handler<T extends AnySuggestion> {
@@ -720,7 +722,7 @@ export abstract class Handler<T extends AnySuggestion> {
       return;
     }
 
-    const isRoot = file.parent.isRoot();
+    const isRoot = !folderPathFromPath(file.path);
     let format = this.settings.pathDisplayFormat;
     let hidePath =
       format === PathDisplayFormat.None || (isRoot && this.settings.hidePathIfRoot);
@@ -906,9 +908,9 @@ export abstract class Handler<T extends AnySuggestion> {
     let text = '';
 
     if (file) {
-      const { parent } = file;
-      const dirname = parent.name;
-      const isRoot = parent.isRoot();
+      const folderPath = folderPathFromPath(file.path);
+      const dirname = filenameFromPath(folderPath);
+      const isRoot = !folderPath;
 
       // root path is expected to always be "/"
       const rootPath = this.app.vault.getRoot().path;
@@ -925,11 +927,8 @@ export abstract class Handler<T extends AnySuggestion> {
           break;
         case PathDisplayFormat.FolderPathFilenameOptional:
           if (excludeOptionalFilename) {
-            text = parent.path;
-
-            if (!isRoot) {
-              text += rootPath; // add explicit trailing /
-            }
+            // add explicit trailing / for nested folders
+            text = isRoot ? rootPath : `${folderPath}${rootPath}`;
           } else {
             text = this.getPathDisplayText(file, PathDisplayFormat.Full);
           }

@@ -251,7 +251,8 @@ export class RelatedItemsHandler extends Handler<
   addRelatedDiskFiles(sourceFile: TFile, collection: RelatedItemsInfo[]): void {
     const { excludeRelatedFolders, excludeOpenRelatedFiles } = this.settings;
 
-    if (sourceFile) {
+    // parent can be null when Obsidian fails to attach the file to its folder
+    if (sourceFile?.parent) {
       walkVaultTree(sourceFile.parent.children, {
         shouldExcludeFolder: matcherFnForRegExList(excludeRelatedFolders),
         onFile: (file) => {

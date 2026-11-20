@@ -197,6 +197,18 @@ export function filenameFromPath(path: string): string {
 }
 
 /**
+ * Returns the vault relative path of the folder containing path. Derived from the
+ * path string because Obsidian can leave TAbstractFile.parent null in some cases.
+ *
+ * @param path - vault relative file path
+ * @returns the folder path, or an empty string when path is at the vault root
+ */
+export function folderPathFromPath(path: string): string {
+  const index = path ? path.lastIndexOf('/') : -1;
+  return index === -1 ? '' : path.slice(0, index);
+}
+
+/**
  * Shows an Obsidian Notice toast prefixed with "Switcher++:" and logs the
  * details to console.error. Use for runtime failures that the user initiated
  * and should be told about (e.g. navigation or IO operations that failed

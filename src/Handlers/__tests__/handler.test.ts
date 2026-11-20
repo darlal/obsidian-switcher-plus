@@ -1476,6 +1476,7 @@ describe('Handler', () => {
       });
 
       mockRootFile = new TFile();
+      mockRootFile.path = mockRootFile.name;
       mockRootFile.parent = mockVaultRoot;
     });
 
@@ -1545,6 +1546,30 @@ describe('Handler', () => {
       );
 
       getDisplayTextSpy.mockRestore();
+    });
+
+    // Obsidian can leave a TFile in the vault with a null parent folder #266
+    it('should render path information for a file with no parent folder', () => {
+      mockSettings.pathDisplayFormat = PathDisplayFormat.Full;
+      mockSettings.hidePathIfRoot = true;
+      mockVault.getRoot.mockReturnValueOnce(mockVaultRoot);
+      const orphanFile = new TFile();
+      orphanFile.parent = null;
+
+      expect(() => sut.renderPath(mockParentEl, orphanFile)).not.toThrow();
+      expect(mockParentEl.createDiv).toHaveBeenCalled();
+    });
+
+    test('with hidePathIfRoot enabled, it should not render anything for a file at the vault root with no parent folder', () => {
+      mockSettings.pathDisplayFormat = PathDisplayFormat.Full;
+      mockSettings.hidePathIfRoot = true;
+      const orphanFile = new TFile();
+      orphanFile.path = orphanFile.name;
+      orphanFile.parent = null;
+
+      sut.renderPath(mockParentEl, orphanFile);
+
+      expect(mockParentEl.createDiv).not.toHaveBeenCalled();
     });
   });
 
@@ -2211,9 +2236,11 @@ describe('Handler', () => {
       mockVault.getRoot.mockReturnValue(mockVaultRoot);
 
       mockRootFile = new TFile();
+      mockRootFile.path = mockRootFile.name;
       mockRootFile.parent = mockVaultRoot;
 
       mockNestedFile = new TFile();
+      mockNestedFile.path = `path/to/parentFolderName/${mockNestedFile.name}`;
       mockNestedFile.parent = mock<TFolder>({
         name: 'parentFolderName',
         path: 'path/to/parentFolderName',
@@ -2294,6 +2321,53 @@ describe('Handler', () => {
       );
 
       expect(result).toBe(mockNestedFile.parent.path + '/');
+    });
+
+    describe('with a file that has no parent folder (#266)', () => {
+      let orphanFile: TFile;
+
+      beforeAll(() => {
+        orphanFile = new TFile();
+        orphanFile.name = 'note.md';
+        orphanFile.path = 'path/to/parentFolderName/note.md';
+        orphanFile.parent = null;
+      });
+
+      test('with PathDisplayFormat.FolderWithFilename, it should return parentFolderName/filename', () => {
+        const result = sut.getPathDisplayText(
+          orphanFile,
+          PathDisplayFormat.FolderWithFilename,
+        );
+
+        expect(result).toBe('parentFolderName/note.md');
+      });
+
+      test('with PathDisplayFormat.FolderOnly, it should return parentFolderName', () => {
+        const result = sut.getPathDisplayText(orphanFile, PathDisplayFormat.FolderOnly);
+
+        expect(result).toBe('parentFolderName');
+      });
+
+      test('with PathDisplayFormat.FolderPathFilenameOptional and excludeOptionalFilename enabled, it should return the parent folder path with trailing "/"', () => {
+        const result = sut.getPathDisplayText(
+          orphanFile,
+          PathDisplayFormat.FolderPathFilenameOptional,
+          true,
+        );
+
+        expect(result).toBe('path/to/parentFolderName/');
+      });
+
+      test('with PathDisplayFormat.FolderOnly, it should return "/" for a file at the vault root', () => {
+        const rootOrphan = new TFile();
+        rootOrphan.name = 'note.md';
+        rootOrphan.path = 'note.md';
+        rootOrphan.parent = null;
+
+        const result = sut.getPathDisplayText(rootOrphan, PathDisplayFormat.FolderOnly);
+
+        expect(result).toBe('/');
+      });
     });
   });
 

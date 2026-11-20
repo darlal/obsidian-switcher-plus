@@ -728,6 +728,15 @@ describe('relatedItemsHandler', () => {
   });
 
   describe('addRelatedDiskFiles', () => {
+    it('should not throw when sourceFile has no parent folder', () => {
+      const sourceFile = new TFile();
+      sourceFile.parent = null;
+      const results: RelatedItemsInfo[] = [];
+
+      expect(() => sut.addRelatedDiskFiles(sourceFile, results)).not.toThrow();
+      expect(results).toHaveLength(0);
+    });
+
     test('with excludeRelatedFolders unset, it should include files from subfolders', () => {
       const sourceFile = new TFile();
       sourceFile.parent = makeFileTree(sourceFile);

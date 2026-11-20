@@ -18,6 +18,7 @@ import {
 } from 'src/types';
 import {
   filenameFromPath,
+  folderPathFromPath,
   stripMDExtensionFromPath,
   isSystemSuggestion,
   isTFolder,
@@ -169,6 +170,23 @@ describe('utils', () => {
       const path = `path\\to\\filename.ext`;
       filenameFromPath(path);
       expect(mockNormalizePath).toHaveBeenCalledWith(path);
+    });
+  });
+
+  describe('folderPathFromPath', () => {
+    it('should return an empty string with falsy input', () => {
+      const result = folderPathFromPath(null);
+      expect(result).toBe('');
+    });
+
+    it('should return an empty string when there is no path delimiter', () => {
+      const result = folderPathFromPath('note.md');
+      expect(result).toBe('');
+    });
+
+    it('should return everything before the last path delimiter', () => {
+      const result = folderPathFromPath('path/to/note.md');
+      expect(result).toBe('path/to');
     });
   });
 
