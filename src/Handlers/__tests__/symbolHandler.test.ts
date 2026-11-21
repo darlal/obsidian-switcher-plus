@@ -1631,49 +1631,7 @@ describe('symbolHandler', () => {
         // Assert
         expect(mockWorkspace.openLinkText).toHaveBeenCalledTimes(1);
         expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
-          `${mockBaseFile.path}#All Tasks`,
-          mockBaseFile.path,
-          false,
-        );
-
-        navigateToLeafOrOpenFileSpy.mockReset();
-        mockWorkspace.openLinkText.mockReset();
-      });
-
-      it('should construct linktext correctly by stripping .base extension', async () => {
-        // Arrange
-        const mockBaseFile = new TFile();
-        mockBaseFile.path = 'Projects/MyBase.base';
-        mockBaseFile.extension = 'base';
-        const baseViewData: BaseViewData = {
-          type: 'list',
-          name: 'Project List',
-        };
-        const baseViewSugg = makeSymbolSuggestion(
-          baseViewData,
-          SymbolType.BaseView,
-          mockBaseFile,
-        );
-        const promise = Promise.resolve();
-
-        mockWorkspace.openLinkText = mockFn().mockResolvedValue(undefined);
-
-        const mockLeaf = makeLeaf(mockBaseFile);
-        sut.inputInfo = makeInputInfo({
-          mode: Mode.SymbolList,
-          sourceInfo: { file: mockBaseFile, leaf: mockLeaf },
-        });
-
-        navigateToLeafOrOpenFileSpy.mockReturnValueOnce(promise);
-
-        // Act
-        sut.onChooseSuggestion(baseViewSugg, null);
-        await promise;
-
-        // Assert
-        // Should strip .base extension and construct linktext with view name
-        expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
-          `${mockBaseFile.path}#Project List`,
+          '#All Tasks',
           mockBaseFile.path,
           false,
         );
@@ -1714,7 +1672,7 @@ describe('symbolHandler', () => {
 
         // Assert
         expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
-          `${mockBaseFile.path}#Kanban Board (2024)`,
+          '#Kanban Board (2024)',
           mockBaseFile.path,
           false,
         );
@@ -1786,7 +1744,7 @@ describe('symbolHandler', () => {
 
         // Assert
         expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
-          `${mockBaseFile.path}#All Tasks`,
+          '#All Tasks',
           mockBaseFile.path,
           false,
         );
@@ -1834,7 +1792,7 @@ describe('symbolHandler', () => {
         // Should call openLinkText after navigateToLeafOrOpenFileAsync resolves
         expect(navigateToLeafOrOpenFileSpy).toHaveBeenCalled();
         expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
-          `${mockBaseFile.path}#All Tasks`,
+          '#All Tasks',
           mockBaseFile.path,
           false,
         );
@@ -1842,6 +1800,53 @@ describe('symbolHandler', () => {
         navigateToLeafOrOpenFileSpy.mockReset();
         mockWorkspace.openLinkText.mockReset();
       });
+
+      // Obsidian never resolves a link path that starts with "file:" (external files),
+      // so the view is addressed with a same-file link that resolves via sourcePath.
+      it.each([
+        { location: 'vault', path: 'Projects/MyBase.base', isOpen: true },
+        { location: 'vault', path: 'Projects/MyBase.base', isOpen: false },
+        { location: 'external', path: 'file:/Users/me/MyBase.base', isOpen: true },
+        { location: 'external', path: 'file:/Users/me/MyBase.base', isOpen: false },
+      ])(
+        'should open the view with a same-file link for a $location file when isOpen is $isOpen',
+        async ({ path, isOpen }) => {
+          const mockBaseFile = new TFile();
+          mockBaseFile.path = path;
+          mockBaseFile.extension = 'base';
+          const baseViewSugg = makeSymbolSuggestion(
+            { type: 'table', name: 'All Tasks' },
+            SymbolType.BaseView,
+            mockBaseFile,
+          );
+          const mockLeaf = isOpen ? makeLeaf(mockBaseFile) : null;
+
+          mockWorkspace.openLinkText = mockFn().mockResolvedValue(undefined);
+          sut.inputInfo = makeInputInfo({
+            mode: Mode.SymbolList,
+            sourceInfo: { file: mockBaseFile, leaf: mockLeaf },
+          });
+          navigateToLeafOrOpenFileSpy.mockResolvedValueOnce(undefined);
+
+          await sut.navigateAndCompleteSymbol(null, baseViewSugg);
+
+          expect(navigateToLeafOrOpenFileSpy).toHaveBeenCalledWith(
+            null,
+            mockBaseFile,
+            expect.anything(),
+            mockLeaf,
+            Mode.SymbolList,
+          );
+          expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
+            '#All Tasks',
+            path,
+            false,
+          );
+
+          navigateToLeafOrOpenFileSpy.mockReset();
+          mockWorkspace.openLinkText.mockReset();
+        },
+      );
     });
   });
 

@@ -224,7 +224,9 @@ export class SymbolHandler extends Handler<SymbolSuggestion> {
     if (SymbolHandler.isBaseViewSymbolPayload(item)) {
       const baseView = item.symbol as BaseViewData;
       const filePath = sugg.file?.path;
-      const linktext = `${filePath}#${baseView.name}`;
+      // Same-file link (empty path) resolves to sourcePath itself. A full-path link
+      // fails for external files because Obsidian never resolves a "file:" link path.
+      const linktext = `#${baseView.name}`;
 
       // Dec 2025: there is not an API available to open/navigate to a specific
       // base file view, so use openLinkText() to simulate the open, hopefully this
