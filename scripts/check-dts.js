@@ -3,16 +3,18 @@
  * Type-checks the project with lib checking enabled, failing only on
  * diagnostics in our own source.
  *
- * tsconfig.json sets skipLibCheck: true because obsidian 1.13.1 ships an
- * obsidian.d.ts seems to fail type-check: Menu, Modal, and PopoverSuggest are
- * each declared `implements HistoryHandler` while none of them declares that
- * interface's required onHistoryBack().
+ * tsconfig.json sets skipLibCheck: true because a dependency's d.ts fails
+ * lib checking. Originally that was obsidian 1.13.1 (Menu, Modal, and
+ * PopoverSuggest declared `implements HistoryHandler` without onHistoryBack());
+ * obsidian 1.14.4 lib-checks clean. As of 11/21/2026 the remaining failure is
+ * @jest/environment 29.7.0, whose JestImportMeta no longer matches the newer
+ * `jest` global type (TS2430).
  *
- * That makes our own src/types/obsidian/index.d.ts stop getting type-checked as
- * well silently. This restores that coverage: run tsc with lib checking on,
- * discard the node_modules noise, and report what is left.
+ * skipLibCheck also silently stops our own src/types/obsidian/index.d.ts from
+ * being type-checked. This restores that coverage: run tsc with lib checking
+ * on, discard the node_modules noise, and report what is left.
  *
- * Once obsidian ships a d.ts that lib-checks clean skipLibCheck and this script
+ * Once every dependency's d.ts lib-checks clean, skipLibCheck and this script
  * can both be removed.
  */
 const { spawnSync } = require('child_process');

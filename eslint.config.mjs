@@ -1,8 +1,6 @@
-import js from '@eslint/js';
 import jestPlugin from 'eslint-plugin-jest';
 import obsidianmd from 'eslint-plugin-obsidianmd';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
-import tseslint from 'typescript-eslint';
 import globals from 'globals';
 
 export default [
@@ -22,31 +20,16 @@ export default [
       'scripts/**',
     ],
   },
-  // ESLint core recommended
-  js.configs.recommended,
-  // 5/22/2026: Obsidian plugin recommended bundle. Note: the bundle declares
-  // package.json-scoped blocks that apply the TypeScript parser to JSON;
-  // do not broaden the lint glob (currently "**/*.{js,ts}") to include
-  // package.json or it will fail to parse. The bundle's `validate-manifest`
-  // and `validate-license` rules already run as a side-effect of JS/TS
-  // linting, so no glob expansion is needed.
+  // Obsidian plugin recommended bundle. Since eslint-plugin-obsidianmd 0.6.0 it
+  // carries ESLint's core recommended rules and typescript-eslint's
+  // recommended(TypeChecked) configs itself, scoped to JS/TS files, so they are
+  // not spread separately here: an unscoped copy reaches manifest.json/LICENSE
+  // (where core rules crash ESLint) and re-enables
+  // @typescript-eslint/no-misused-promises, which the bundle replaces with
+  // obsidianmd/no-misused-promises (Obsidian's chaining `then` false positive).
+  // validate-manifest and validate-license only run on manifest.json and
+  // LICENSE, so the lint script must list those files explicitly.
   ...obsidianmd.configs.recommended,
-  // TypeScript: parser + plugin + recommended-type-checked rules. Spread
-  // AFTER obsidian so its `eslintRecommended` carry-over turns `no-undef`
-  // off for TS files (obsidian re-enables it; left on it flags every
-  // imported type as undefined).
-  ...tseslint.configs.recommendedTypeChecked,
-  // Plain JS tooling is outside tsconfig's project, so the type-aware rules
-  // spread above crash ESLint rather than reporting. Turn them off for .js only.
-  {
-    ...tseslint.configs.disableTypeChecked,
-    files: ['**/*.js'],
-    languageOptions: {
-      globals: {
-        ...globals.node,
-      },
-    },
-  },
   // Main TypeScript configuration: scope parserOptions.project to .ts/.tsx
   {
     files: ['**/*.ts', '**/*.tsx'],
@@ -60,6 +43,15 @@ export default [
       },
     },
     rules: {
+      // Stricter than the bundle, which relaxes these from typescript-eslint's
+      // recommendedTypeChecked defaults. Test files relax no-explicit-any
+      // again in the test/mock profile below.
+      '@typescript-eslint/ban-ts-comment': 'error',
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-require-imports': 'error',
+      '@typescript-eslint/no-unused-expressions': 'error',
+      '@typescript-eslint/require-await': 'error',
+      'prefer-const': 'error',
       '@typescript-eslint/unbound-method': 'error',
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
@@ -122,5 +114,5 @@ export default [
     },
   },
   // Prettier (must be last so it disables conflicting stylistic rules)
-  eslintPluginPrettierRecommended,
+  { ...eslintPluginPrettierRecommended, files: ['**/*.{js,mjs,ts}'] },
 ];
