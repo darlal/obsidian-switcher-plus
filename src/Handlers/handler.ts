@@ -1522,7 +1522,11 @@ export abstract class Handler<T extends AnySuggestion> {
     const activeView = workspace.getActiveViewOfType(FileView);
     let sourcePath = '';
 
-    if (activeView?.file) {
+    // Files outside the vault (TExternalFile) have a "file:" path prefix. When given one as
+    // the source path, openLinkText only looks for the file next to it on disk and shows
+    // "File not found" instead of creating it. Use an empty source path so the new file
+    // is created in the vault.
+    if (activeView?.file && !activeView.file.path.startsWith('file:')) {
       sourcePath = activeView.file.path;
     }
 

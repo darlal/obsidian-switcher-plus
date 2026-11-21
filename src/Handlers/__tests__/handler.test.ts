@@ -1571,6 +1571,19 @@ describe('Handler', () => {
 
       expect(mockParentEl.createDiv).not.toHaveBeenCalled();
     });
+
+    test('with hidePathIfRoot enabled, it should render path information for a file outside the vault (#263)', () => {
+      mockSettings.pathDisplayFormat = PathDisplayFormat.Full;
+      mockSettings.hidePathIfRoot = true;
+      mockVault.getRoot.mockReturnValueOnce(mockVaultRoot);
+      const externalFile = new TFile();
+      externalFile.path = 'file:/abs/dir/note.md';
+      externalFile.parent = null;
+
+      sut.renderPath(mockParentEl, externalFile);
+
+      expect(mockParentEl.createDiv).toHaveBeenCalled();
+    });
   });
 
   describe('renderBreadcrumb', () => {
@@ -2367,6 +2380,49 @@ describe('Handler', () => {
         const result = sut.getPathDisplayText(rootOrphan, PathDisplayFormat.FolderOnly);
 
         expect(result).toBe('/');
+      });
+    });
+
+    // TExternalFile paths are "file:" prefixed absolute paths and parent is always null
+    describe('with a file outside the vault', () => {
+      let externalFile: TFile;
+
+      beforeAll(() => {
+        externalFile = new TFile();
+        externalFile.name = 'note.md';
+        externalFile.path = 'file:/abs/dir/note.md';
+        externalFile.parent = null;
+      });
+
+      test('with PathDisplayFormat.Full, it should return the "file:" prefixed path', () => {
+        const result = sut.getPathDisplayText(externalFile, PathDisplayFormat.Full);
+
+        expect(result).toBe('file:/abs/dir/note.md');
+      });
+
+      test('with PathDisplayFormat.FolderWithFilename, it should return dir/filename', () => {
+        const result = sut.getPathDisplayText(
+          externalFile,
+          PathDisplayFormat.FolderWithFilename,
+        );
+
+        expect(result).toBe('dir/note.md');
+      });
+
+      test('with PathDisplayFormat.FolderOnly, it should return the containing directory name', () => {
+        const result = sut.getPathDisplayText(externalFile, PathDisplayFormat.FolderOnly);
+
+        expect(result).toBe('dir');
+      });
+
+      test('with PathDisplayFormat.FolderPathFilenameOptional and excludeOptionalFilename enabled, it should return the "file:" prefixed directory path with trailing "/"', () => {
+        const result = sut.getPathDisplayText(
+          externalFile,
+          PathDisplayFormat.FolderPathFilenameOptional,
+          true,
+        );
+
+        expect(result).toBe('file:/abs/dir/');
       });
     });
   });
@@ -3269,6 +3325,29 @@ describe('Handler', () => {
       expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
         filename,
         file.path,
+        false,
+        viewState,
+      );
+
+      mockWorkspace.getActiveViewOfType.mockReset();
+      mockWorkspace.openLinkText.mockReset();
+    });
+
+    // Link resolution from an external source path only considers files next to it on disk
+    it('should use an empty source path when the active view file is outside the vault', () => {
+      const filename = chance.word();
+      const mockEvt = mock<MouseEvent>();
+      const file = new TFile();
+      file.path = 'file:/abs/dir/note.md';
+      mockWorkspace.getActiveViewOfType.mockReturnValueOnce(mock<FileView>({ file }));
+
+      mockWorkspace.openLinkText.mockReturnValueOnce(Promise.resolve());
+
+      sut.createFile(filename, mockEvt);
+
+      expect(mockWorkspace.openLinkText).toHaveBeenCalledWith(
+        filename,
+        '',
         false,
         viewState,
       );
