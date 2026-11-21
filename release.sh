@@ -57,7 +57,7 @@ then
     git commit -m"build: version bump ${NEW_VERSION}"
     git tag "${NEW_VERSION}"
     git push
-    git push --tags
+    git push origin "${NEW_VERSION}"
   fi
 else
   echo "Exiting."
