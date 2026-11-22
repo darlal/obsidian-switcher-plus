@@ -37,10 +37,45 @@ describe('vaultListSettingsTabSection', () => {
       expect(page).toEqual(expect.objectContaining({ type: 'page', name: 'Vault Mode' }));
     });
 
-    it('should flag the page as experimental with a warning status', () => {
+    it('should not flag the page with a status when the trigger has no conflict', () => {
       const [page] = sut.getSettingDefinitions() as SettingDefinitionPage[];
 
+      expect((page.status as () => string)()).toBeNull();
+    });
+
+    it('should flag the page with a warning status when the trigger conflicts', () => {
+      const conflictConfig = new SwitcherPlusSettings(null);
+      const conflictSut = new VaultListSettingsTabSection(
+        mockApp,
+        mock<SwitcherPlusSettingTab>({
+          plugin: mock<SwitcherPlusPlugin>({
+            commandDefinitions: getCommandDefinitions(conflictConfig),
+          }),
+        }),
+        conflictConfig,
+      );
+
+      const [page] = conflictSut.getSettingDefinitions() as SettingDefinitionPage[];
+
+      conflictConfig.vaultListCommand = conflictConfig.editorListCommand;
+
       expect((page.status as () => string)()).toBe('warning');
+    });
+
+    it('should describe the page as experimental', () => {
+      const [page] = sut.getSettingDefinitions() as SettingDefinitionPage[];
+
+      expect(page.desc).toBe('Experimental.');
+    });
+
+    it('should include a text only row stating the mode is experimental', () => {
+      const definitions = sut.getSettingDefinitions();
+
+      const rows = flattenSettingDefinitions(definitions).filter(
+        (item) => item.name === 'Experimental',
+      );
+
+      expect(rows).toEqual([{ name: 'Experimental', desc: expect.any(String) }]);
     });
 
     it('should show the mode trigger as the page display value', () => {
@@ -68,7 +103,7 @@ describe('vaultListSettingsTabSection', () => {
         (item) => (item as SettingDefinitionControl).control?.key,
       );
 
-      expect(keys).toEqual(['vaultListCommand']);
+      expect(keys.filter(Boolean)).toEqual(['vaultListCommand']);
     });
   });
 });

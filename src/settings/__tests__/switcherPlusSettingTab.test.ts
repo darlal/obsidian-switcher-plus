@@ -268,7 +268,7 @@ describe('SwitcherPlusSettingTab', () => {
 
       expect(status(symbolPage)).toBeNull();
       expect(status(commandPage)).toBeNull();
-      expect(status(vaultPage)).toBe('warning');
+      expect(status(vaultPage)).toBeNull();
       await declarativeSut.setControlValue('symbolListActiveEditorCommand', '>');
       expect(realConfig.symbolListCommand).toBe('@');
       expect(status(symbolPage)).toBe('warning');
@@ -277,7 +277,7 @@ describe('SwitcherPlusSettingTab', () => {
       await declarativeSut.setControlValue('symbolListActiveEditorCommand', '@@');
       expect(status(symbolPage)).toBeNull();
       expect(status(commandPage)).toBeNull();
-      expect(status(vaultPage)).toBe('warning');
+      expect(status(vaultPage)).toBeNull();
       expect(vaultPage.desc).toBe('Experimental.');
       saveSpy.mockRestore();
     });
@@ -388,7 +388,7 @@ describe('SwitcherPlusSettingTab', () => {
       expect(renderedStatuses.get('Command Mode')).toBe('warning');
       await declarativeSut.setControlValue('escapeCmdChar', '!');
       expect(renderedStatuses.get('Command Mode')).toBeNull();
-      expect(renderedStatuses.get('Vault Mode')).toBe('warning');
+      expect(renderedStatuses.get('Vault Mode')).toBeNull();
       saveSpy.mockRestore();
       updateSpy.mockRestore();
     });

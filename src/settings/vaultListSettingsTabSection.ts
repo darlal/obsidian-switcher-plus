@@ -11,9 +11,13 @@ export class VaultListSettingsTabSection extends SettingsTabSection {
         type: 'page',
         name: 'Vault Mode',
         desc: 'Experimental.',
-        status: () => 'warning',
+        status: this.triggerStatus('vaultListCommand'),
         displayValue: () => config.vaultListCommand,
         items: [
+          {
+            name: 'Experimental',
+            desc: 'Vault mode is experimental and may change or be removed.',
+          },
           this.triggerGroup({
             desc: 'Character that will trigger vault list mode in the switcher',
             control: {
