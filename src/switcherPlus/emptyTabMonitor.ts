@@ -15,6 +15,8 @@ interface EmptyTabLauncherConfig {
 // also keeps when no custom iconName is configured.
 const DEFAULT_LAUNCHER_ICON = 'lucide-search';
 
+const LAUNCHER_BUTTON_CLASS = 'qsp-empty-state-action-launch';
+
 /**
  * Adds a custom launcher button to the empty tab view. The button is created by
  * cloning a native empty-state action button so it inherits whatever markup and
@@ -23,26 +25,24 @@ const DEFAULT_LAUNCHER_ICON = 'lucide-search';
  * @param  {string} buttonLabel The text label for the button.
  * @param  {string} iconName Icon to display, falls back to the core switcher icon when empty.
  * @param  {()=>void} onclickListener The event handler for the button click.
- * @returns HTMLElement The created button element, or null if no native action
- * button was found to clone.
  */
 function addLauncherButton(
   containerEl: HTMLElement,
   buttonLabel: string,
   iconName: string,
   onclickListener: () => void,
-): HTMLElement {
+): void {
   const buttonListEl = containerEl.find('.empty-state-action-list');
   const templateEl = buttonListEl?.find('.empty-state-action');
 
   if (!templateEl) {
-    return null;
+    return;
   }
 
   // cloneNode() does not copy listeners attached with addEventListener(),
   // so the clone should not carry any core behavior.
   const qspButton = templateEl.cloneNode(true) as HTMLElement;
-  qspButton.addClass('qsp-empty-state-action-launch');
+  qspButton.addClass(LAUNCHER_BUTTON_CLASS);
 
   // Hotkey badge belongs to the cloned core command, not to this launcher
   qspButton.find('.empty-state-hotkey')?.detach();
@@ -75,11 +75,9 @@ function addLauncherButton(
   });
 
   buttonListEl.appendChild(qspButton);
-  return qspButton;
 }
 
 export class EmptyTabMonitor {
-  static readonly emptyLeaves = new Map<WorkspaceLeaf, HTMLElement>();
   private static layoutChangeEventRef: EventRef;
 
   static installEmptyTabMonitor(
@@ -107,11 +105,11 @@ export class EmptyTabMonitor {
     workspace.offref(EmptyTabMonitor.layoutChangeEventRef);
     EmptyTabMonitor.layoutChangeEventRef = null;
 
-    const { emptyLeaves } = EmptyTabMonitor;
-    for (const key of emptyLeaves.keys()) {
-      emptyLeaves.get(key)?.detach();
-      emptyLeaves.delete(key);
-    }
+    workspace.iterateAllLeaves((leaf: WorkspaceLeaf) => {
+      if (leafHasLoadedViewOfType(leaf, 'empty')) {
+        leaf.view.containerEl.find(`.${LAUNCHER_BUTTON_CLASS}`)?.detach();
+      }
+    });
   }
 
   /**
@@ -137,19 +135,11 @@ export class EmptyTabMonitor {
     };
 
     workspace.iterateAllLeaves((leaf: WorkspaceLeaf) => {
-      const { emptyLeaves } = EmptyTabMonitor;
-
-      if (leafHasLoadedViewOfType(leaf, 'empty') && !emptyLeaves.has(leaf)) {
+      if (leafHasLoadedViewOfType(leaf, 'empty')) {
         const { containerEl } = leaf.view;
-        const qspButton = addLauncherButton(
-          containerEl,
-          buttonLabel,
-          iconName,
-          onclickListener,
-        );
 
-        if (qspButton) {
-          emptyLeaves.set(leaf, qspButton);
+        if (!containerEl.find(`.${LAUNCHER_BUTTON_CLASS}`)) {
+          addLauncherButton(containerEl, buttonLabel, iconName, onclickListener);
         }
       }
     });

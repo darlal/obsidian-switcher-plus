@@ -1,5 +1,13 @@
 import { mock, MockProxy, mockClear } from 'jest-mock-extended';
-import { App, setIcon, setTooltip, View, Workspace, WorkspaceLeaf } from 'obsidian';
+import {
+  App,
+  EventRef,
+  setIcon,
+  setTooltip,
+  View,
+  Workspace,
+  WorkspaceLeaf,
+} from 'obsidian';
 import { EmptyTabMonitor, SwitcherPlusModal } from 'src/switcherPlus';
 import * as Utils from 'src/utils/utils';
 import { Mode } from 'src/types';
@@ -55,7 +63,6 @@ describe('EmptyTabMonitor', () => {
   });
 
   afterEach(() => {
-    EmptyTabMonitor.emptyLeaves.clear();
     mockClear(mockPlugin);
     mockClear(mockWorkspace);
     createAndOpenSpy.mockClear();
@@ -64,20 +71,55 @@ describe('EmptyTabMonitor', () => {
     leafHasLoadedViewOfTypeSpy.mockRestore();
   });
 
-  it('should detach and remove all buttons from emptyLeaves map', () => {
-    const mockButton1 = mock<HTMLElement>();
-    const mockButton2 = mock<HTMLElement>();
-    const mockLeaf1 = mock<WorkspaceLeaf>();
-    const mockLeaf2 = mock<WorkspaceLeaf>();
+  describe('removeEmptyTabButtons', () => {
+    const makeLeafWithButton = (button: HTMLElement) => {
+      const containerEl = mock<HTMLElement>();
+      containerEl.find
+        .calledWith('.qsp-empty-state-action-launch')
+        .mockReturnValue(button);
 
-    EmptyTabMonitor.emptyLeaves.set(mockLeaf1, mockButton1);
-    EmptyTabMonitor.emptyLeaves.set(mockLeaf2, mockButton2);
+      return mock<WorkspaceLeaf>({ view: mock<View>({ containerEl }) });
+    };
 
-    EmptyTabMonitor.removeEmptyTabButtons(mockWorkspace);
+    it('should detach the launcher button from every empty tab', () => {
+      const mockButton1 = mock<HTMLElement>();
+      const mockButton2 = mock<HTMLElement>();
+      const mockLeaf1 = makeLeafWithButton(mockButton1);
+      const mockLeaf2 = makeLeafWithButton(mockButton2);
+      leafHasLoadedViewOfTypeSpy.mockReturnValue(true);
+      mockWorkspace.iterateAllLeaves.mockImplementationOnce((callback) => {
+        callback(mockLeaf1);
+        callback(mockLeaf2);
+      });
 
-    expect(mockButton1.detach).toHaveBeenCalledTimes(1);
-    expect(mockButton2.detach).toHaveBeenCalledTimes(1);
-    expect(EmptyTabMonitor.emptyLeaves.size).toBe(0);
+      EmptyTabMonitor.removeEmptyTabButtons(mockWorkspace);
+
+      expect(mockButton1.detach).toHaveBeenCalledTimes(1);
+      expect(mockButton2.detach).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not touch tabs that are not empty', () => {
+      const mockButton = mock<HTMLElement>();
+      const mockLeaf = makeLeafWithButton(mockButton);
+      leafHasLoadedViewOfTypeSpy.mockReturnValue(false);
+      mockWorkspace.iterateAllLeaves.mockImplementationOnce((callback) => {
+        callback(mockLeaf);
+      });
+
+      EmptyTabMonitor.removeEmptyTabButtons(mockWorkspace);
+
+      expect(mockButton.detach).not.toHaveBeenCalled();
+    });
+
+    it('should stop listening for layout changes', () => {
+      const eventRef = mock<EventRef>();
+      mockWorkspace.on.mockReturnValueOnce(eventRef);
+      EmptyTabMonitor.installEmptyTabMonitor(mockPlugin, mockConfig);
+
+      EmptyTabMonitor.removeEmptyTabButtons(mockWorkspace);
+
+      expect(mockWorkspace.offref).toHaveBeenCalledWith(eventRef);
+    });
   });
 
   describe('installEmptyTabMonitor', () => {
@@ -215,7 +257,6 @@ describe('EmptyTabMonitor', () => {
 
       expect(mockTemplateEl.cloneNode).toHaveBeenCalledWith(true);
       expect(mockButtonEl.addClass).toHaveBeenCalledWith('qsp-empty-state-action-launch');
-      expect(EmptyTabMonitor.emptyLeaves.get(mockLeaf)).toBe(mockButtonEl);
     });
 
     it('should append the launcher button after the native action buttons', () => {
@@ -318,17 +359,28 @@ describe('EmptyTabMonitor', () => {
 
       EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
-      expect(EmptyTabMonitor.emptyLeaves.has(mockLeaf)).toBe(false);
+      expect(mockTemplateEl.cloneNode).not.toHaveBeenCalled();
     });
 
-    it('should not add a button when a button already exists for the leaf', () => {
-      const existingButton = mock<HTMLElement>();
-      EmptyTabMonitor.emptyLeaves.set(mockLeaf, existingButton);
+    it('should not add a button when the tab already shows the launcher button', () => {
+      mockViewContainerEl.find
+        .calledWith('.qsp-empty-state-action-launch')
+        .mockReturnValue(mock<HTMLElement>());
 
       EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
-      expect(EmptyTabMonitor.emptyLeaves.get(mockLeaf)).toBe(existingButton);
       expect(mockTemplateEl.cloneNode).not.toHaveBeenCalled();
+      expect(mockButtonListEl.appendChild).not.toHaveBeenCalled();
+    });
+
+    it('should add the button again when core rebuilt the action list without it', () => {
+      // The first pass adds the button, then core empties and rebuilds the list,
+      // so the launcher button is no longer in the tab on the next pass
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+
+      expect(mockButtonListEl.appendChild).toHaveBeenCalledTimes(2);
     });
 
     it('should not set an icon when the cloned button has no icon element', () => {
@@ -354,7 +406,7 @@ describe('EmptyTabMonitor', () => {
 
       EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
-      expect(EmptyTabMonitor.emptyLeaves.has(mockLeaf)).toBe(false);
+      expect(mockTemplateEl.cloneNode).not.toHaveBeenCalled();
     });
 
     it('should not add a button when no native action button is found', () => {
@@ -362,7 +414,7 @@ describe('EmptyTabMonitor', () => {
 
       EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
-      expect(EmptyTabMonitor.emptyLeaves.has(mockLeaf)).toBe(false);
+      expect(mockButtonListEl.appendChild).not.toHaveBeenCalled();
     });
   });
 });
