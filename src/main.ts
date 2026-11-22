@@ -98,6 +98,7 @@ export default class SwitcherPlusPlugin extends Plugin {
         isEnabled: mobileLauncher.isEnabled && mobileLauncher.isEmptyTabButtonEnabled,
         buttonLabel,
         mode: openMode,
+        iconName: mobileLauncher.iconName,
       });
     }
   }

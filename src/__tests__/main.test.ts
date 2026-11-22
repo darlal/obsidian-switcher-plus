@@ -220,6 +220,7 @@ describe('SwitcherPlusPlugin', () => {
         isEnabled: true,
         buttonLabel: 'Switcher++: Open in Headings Mode',
         mode: Mode.HeadingsList,
+        iconName: settings.mobileLauncher.iconName,
       });
     });
 

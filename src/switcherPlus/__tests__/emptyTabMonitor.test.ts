@@ -1,9 +1,12 @@
-import { mock, MockProxy, mockFn, mockClear } from 'jest-mock-extended';
-import { App, View, Workspace, WorkspaceLeaf } from 'obsidian';
+import { mock, MockProxy, mockClear } from 'jest-mock-extended';
+import { App, setIcon, setTooltip, View, Workspace, WorkspaceLeaf } from 'obsidian';
 import { EmptyTabMonitor, SwitcherPlusModal } from 'src/switcherPlus';
 import * as Utils from 'src/utils/utils';
 import { Mode } from 'src/types';
 import SwitcherPlusPlugin from 'src/main';
+import { Chance } from 'chance';
+
+const chance = new Chance();
 
 describe('EmptyTabMonitor', () => {
   let mockPlugin: MockProxy<SwitcherPlusPlugin>;
@@ -14,6 +17,7 @@ describe('EmptyTabMonitor', () => {
     isEnabled: boolean;
     buttonLabel: string;
     mode: Mode;
+    iconName: string;
   };
   let leafHasLoadedViewOfTypeSpy: jest.SpyInstance;
 
@@ -26,6 +30,7 @@ describe('EmptyTabMonitor', () => {
       isEnabled: true,
       buttonLabel: 'Test Button',
       mode: Mode.HeadingsList,
+      iconName: '',
     };
 
     createAndOpenSpy = jest
@@ -140,19 +145,38 @@ describe('EmptyTabMonitor', () => {
   });
 
   describe('updateEmptyTabs', () => {
+    const mockSetIcon = jest.mocked<typeof setIcon>(setIcon);
+    const mockSetTooltip = jest.mocked<typeof setTooltip>(setTooltip);
     let mockLeaf: MockProxy<WorkspaceLeaf>;
     let mockViewContainerEl: MockProxy<HTMLElement>;
     let mockButtonListEl: MockProxy<HTMLElement>;
-    let mockFirstChildEl: MockProxy<Element>;
-    let mockButtonEl: MockProxy<HTMLDivElement>;
+    let mockTemplateEl: MockProxy<HTMLElement>;
+    let mockButtonEl: MockProxy<HTMLElement>;
+    let mockHotkeyEl: MockProxy<HTMLElement>;
+    let mockIconEl: MockProxy<HTMLElement>;
+    let mockLabelEl: MockProxy<HTMLElement>;
+
+    const getButtonListener = (type: string) =>
+      mockButtonEl.addEventListener.mock.calls.find((call) => call[0] === type)?.[1] as
+        ((evt?: unknown) => void) | undefined;
 
     beforeEach(() => {
-      mockButtonEl = mock<HTMLDivElement>();
-      mockFirstChildEl = mock<Element>();
-      mockButtonListEl = mock<HTMLElement>({
-        firstElementChild: mockFirstChildEl,
-        createDiv: mockFn().mockReturnValue(mockButtonEl),
-      });
+      mockHotkeyEl = mock<HTMLElement>();
+      mockIconEl = mock<HTMLElement>();
+      mockLabelEl = mock<HTMLElement>();
+
+      mockButtonEl = mock<HTMLElement>();
+      mockButtonEl.find.calledWith('.empty-state-hotkey').mockReturnValue(mockHotkeyEl);
+      mockButtonEl.find.calledWith('.text-button-icon').mockReturnValue(mockIconEl);
+      mockButtonEl.find.calledWith('.text-button-label').mockReturnValue(mockLabelEl);
+
+      mockTemplateEl = mock<HTMLElement>();
+      mockTemplateEl.cloneNode.mockReturnValue(mockButtonEl);
+
+      mockButtonListEl = mock<HTMLElement>();
+      mockButtonListEl.find
+        .calledWith('.empty-state-action')
+        .mockReturnValue(mockTemplateEl);
 
       mockViewContainerEl = mock<HTMLElement>();
       mockViewContainerEl.find
@@ -168,37 +192,79 @@ describe('EmptyTabMonitor', () => {
       mockWorkspace.iterateAllLeaves.mockImplementation((callback) => {
         callback(mockLeaf);
       });
+
+      leafHasLoadedViewOfTypeSpy.mockReturnValue(true);
     });
 
-    it('should not look for empty tabs if config.isEnabled is false', () => {
+    afterEach(() => {
+      mockSetIcon.mockClear();
+      mockSetTooltip.mockClear();
+      mockConfig.iconName = '';
+    });
+
+    it('should not look for empty tabs when config.isEnabled is false', () => {
       mockConfig.isEnabled = false;
+
       EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
       expect(mockWorkspace.iterateAllLeaves).not.toHaveBeenCalled();
     });
 
-    it('should add a button to an empty leaf that does not have one', () => {
-      leafHasLoadedViewOfTypeSpy.mockReturnValue(true);
-
+    it('should create the launcher button by deep cloning a native action button', () => {
       EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
-      expect(EmptyTabMonitor.emptyLeaves.has(mockLeaf)).toBe(true);
-      expect(mockButtonEl.addEventListener).toHaveBeenCalledWith(
-        'click',
-        expect.any(Function),
-      );
+      expect(mockTemplateEl.cloneNode).toHaveBeenCalledWith(true);
+      expect(mockButtonEl.addClass).toHaveBeenCalledWith('qsp-empty-state-action-launch');
+      expect(EmptyTabMonitor.emptyLeaves.get(mockLeaf)).toBe(mockButtonEl);
     });
 
-    it('should call SwitcherPlusModal.createAndOpen when the button is clicked', () => {
-      leafHasLoadedViewOfTypeSpy.mockReturnValue(true);
+    it('should append the launcher button after the native action buttons', () => {
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+
+      expect(mockButtonListEl.appendChild).toHaveBeenCalledWith(mockButtonEl);
+    });
+
+    it('should remove the hotkey badge copied from the native button', () => {
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+
+      expect(mockHotkeyEl.detach).toHaveBeenCalledTimes(1);
+    });
+
+    it('should set the configured icon when iconName is provided', () => {
+      const iconName = `lucide-${chance.word()}`;
+      mockConfig.iconName = iconName;
 
       EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
-      const clickHandler = mockButtonEl.addEventListener.mock.calls.find(
-        (call) => call[0] === 'click',
-      )?.[1] as (() => void) | undefined;
+      expect(mockSetIcon).toHaveBeenCalledWith(mockIconEl, iconName);
+    });
 
-      clickHandler?.();
+    it('should set the core switcher icon when iconName is empty', () => {
+      mockConfig.iconName = '';
+
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+
+      expect(mockSetIcon).toHaveBeenCalledWith(mockIconEl, 'lucide-search');
+    });
+
+    it('should set the button label on the label element', () => {
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+
+      expect(mockLabelEl.setText).toHaveBeenCalledWith(mockConfig.buttonLabel);
+      expect(mockButtonEl.setText).not.toHaveBeenCalled();
+    });
+
+    it('should set the accessible name to the button label', () => {
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+
+      expect(mockSetTooltip).toHaveBeenCalledWith(mockButtonEl, mockConfig.buttonLabel);
+    });
+
+    it('should open SwitcherPlusModal when the button is clicked', () => {
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+      const clickListener = getButtonListener('click');
+
+      clickListener?.();
 
       expect(createAndOpenSpy).toHaveBeenCalledWith(
         mockApp,
@@ -207,41 +273,92 @@ describe('EmptyTabMonitor', () => {
       );
     });
 
-    it('should insert the launcher button after the first button (the "Create new note" button)', () => {
-      leafHasLoadedViewOfTypeSpy.mockReturnValue(true);
+    it.each(['Enter', ' '])(
+      'should open SwitcherPlusModal when the "%s" key is pressed',
+      (key) => {
+        const evt = mock<KeyboardEvent>({ key, isComposing: false });
+        EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+        const keydownListener = getButtonListener('keydown');
 
+        keydownListener?.(evt);
+
+        expect(evt.preventDefault).toHaveBeenCalledTimes(1);
+        expect(createAndOpenSpy).toHaveBeenCalledWith(
+          mockApp,
+          mockPlugin,
+          Mode.HeadingsList,
+        );
+      },
+    );
+
+    it('should not open SwitcherPlusModal when a non-activation key is pressed', () => {
+      const evt = mock<KeyboardEvent>({ key: 'a', isComposing: false });
       EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+      const keydownListener = getButtonListener('keydown');
 
-      expect(mockButtonListEl.insertAfter).toHaveBeenCalledWith(
-        mockButtonEl,
-        mockFirstChildEl,
-      );
-      expect(EmptyTabMonitor.emptyLeaves.has(mockLeaf)).toBe(true);
+      keydownListener?.(evt);
+
+      expect(evt.preventDefault).not.toHaveBeenCalled();
+      expect(createAndOpenSpy).not.toHaveBeenCalled();
     });
 
-    it('should not add a button if leaf is not empty', () => {
+    it('should not open SwitcherPlusModal when Enter is pressed during IME composition', () => {
+      const evt = mock<KeyboardEvent>({ key: 'Enter', isComposing: true });
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+      const keydownListener = getButtonListener('keydown');
+
+      keydownListener?.(evt);
+
+      expect(evt.preventDefault).not.toHaveBeenCalled();
+      expect(createAndOpenSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not add a button when the leaf is not empty', () => {
       leafHasLoadedViewOfTypeSpy.mockReturnValue(false);
+
       EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
       expect(EmptyTabMonitor.emptyLeaves.has(mockLeaf)).toBe(false);
     });
 
-    it('should not add a button if a button already exists for the leaf', () => {
-      leafHasLoadedViewOfTypeSpy.mockReturnValue(true);
+    it('should not add a button when a button already exists for the leaf', () => {
       const existingButton = mock<HTMLElement>();
       EmptyTabMonitor.emptyLeaves.set(mockLeaf, existingButton);
 
       EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 
       expect(EmptyTabMonitor.emptyLeaves.get(mockLeaf)).toBe(existingButton);
-      expect(mockButtonListEl.createDiv).not.toHaveBeenCalled();
+      expect(mockTemplateEl.cloneNode).not.toHaveBeenCalled();
     });
 
-    it('should not add button if buttonListEl is not found', () => {
-      leafHasLoadedViewOfTypeSpy.mockReturnValue(true);
+    it('should not set an icon when the cloned button has no icon element', () => {
+      mockButtonEl.find.calledWith('.text-button-icon').mockReturnValue(null);
+
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+
+      expect(mockSetIcon).not.toHaveBeenCalled();
+    });
+
+    it('should set the button label on the button itself when the cloned button has no label element', () => {
+      mockButtonEl.find.calledWith('.text-button-label').mockReturnValue(null);
+
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+
+      expect(mockButtonEl.setText).toHaveBeenCalledWith(mockConfig.buttonLabel);
+    });
+
+    it('should not add a button when the action list is not found', () => {
       mockViewContainerEl.find
         .calledWith('.empty-state-action-list')
         .mockReturnValue(null);
+
+      EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
+
+      expect(EmptyTabMonitor.emptyLeaves.has(mockLeaf)).toBe(false);
+    });
+
+    it('should not add a button when no native action button is found', () => {
+      mockButtonListEl.find.calledWith('.empty-state-action').mockReturnValue(null);
 
       EmptyTabMonitor.updateEmptyTabs(mockWorkspace, mockPlugin, mockConfig);
 

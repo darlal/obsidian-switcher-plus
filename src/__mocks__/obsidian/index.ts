@@ -14,6 +14,7 @@ import {
   Notice,
   normalizePath,
   setIcon,
+  setTooltip,
   parseLinktext,
   parseYaml,
   Component,
@@ -85,6 +86,7 @@ const mockNormalizePath = mockFn<typeof normalizePath>().mockImplementation(
 
 const mockRenderResults = mockFn<typeof renderResults>().mockImplementation(() => {});
 const mockSetIcon = mockFn<typeof setIcon>().mockImplementation(() => {});
+const mockSetTooltip = mockFn<typeof setTooltip>().mockImplementation(() => {});
 const mockSortSearchResults = mockFn<typeof sortSearchResults>().mockImplementation(
   () => {},
 );
@@ -132,6 +134,7 @@ export {
   mockDebounce as debounce,
   mockNormalizePath as normalizePath,
   mockSetIcon as setIcon,
+  mockSetTooltip as setTooltip,
   mockParseLinktext as parseLinktext,
   mockParseYaml as parseYaml,
   mockStripHeadingForLink as stripHeadingForLink,

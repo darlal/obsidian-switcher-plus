@@ -497,7 +497,8 @@ export type MobileLauncherConfig = {
    */
   modeString: string;
   /**
-   * Name of icon file to use instead of the default "🔍" icon.
+   * Name of icon to use for the launcher buttons (mobile navbar and empty tab)
+   * instead of the default "🔍" icon.
    */
   iconName: string;
   /**
